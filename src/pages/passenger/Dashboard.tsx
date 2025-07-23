@@ -11,6 +11,8 @@ import { ReviewModal } from "@/components/ReviewModal";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  
+  // State declarations
   const [activeTab, setActiveTab] = useState("bookings");
   const [messagingOpen, setMessagingOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
@@ -18,6 +20,8 @@ const Dashboard = () => {
   const [profileEditOpen, setProfileEditOpen] = useState(false);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [selectedBookingForReview, setSelectedBookingForReview] = useState<string | null>(null);
+  
+  // Celebration modal states
   const [showWelcomeCelebration, setShowWelcomeCelebration] = useState(false);
   const [showRideConfirmation, setShowRideConfirmation] = useState(false);
 
