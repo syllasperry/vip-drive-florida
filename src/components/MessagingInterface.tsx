@@ -14,9 +14,10 @@ interface MessagingInterfaceProps {
   isOpen: boolean;
   onClose: () => void;
   userType: "passenger" | "driver";
+  preFilledMessage?: string;
 }
 
-export const MessagingInterface = ({ isOpen, onClose, userType }: MessagingInterfaceProps) => {
+export const MessagingInterface = ({ isOpen, onClose, userType, preFilledMessage }: MessagingInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -25,7 +26,7 @@ export const MessagingInterface = ({ isOpen, onClose, userType }: MessagingInter
       timestamp: new Date(Date.now() - 300000)
     }
   ]);
-  const [newMessage, setNewMessage] = useState("");
+  const [newMessage, setNewMessage] = useState(preFilledMessage || "");
   const [showEmojis, setShowEmojis] = useState(false);
 
   const quickReplies = userType === "passenger" 

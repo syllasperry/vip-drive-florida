@@ -182,7 +182,15 @@ const Dashboard = () => {
                         <p className="text-sm text-orange-800">
                           If payment is not completed within 24 hours, the ride will be automatically canceled.
                         </p>
-                        <Button size="sm" variant="luxury" className="mt-2">
+                        <Button 
+                          size="sm" 
+                          variant="luxury" 
+                          className="mt-2"
+                          onClick={() => {
+                            setMessagingOpen(true);
+                            // We'll handle the pre-filled message in the MessagingInterface component
+                          }}
+                        >
                           Complete Payment
                         </Button>
                       </div>
@@ -335,6 +343,7 @@ const Dashboard = () => {
           isOpen={messagingOpen}
           onClose={() => setMessagingOpen(false)}
           userType="passenger"
+          preFilledMessage="Hi, could you please confirm your payment details so I can complete the payment?"
         />
         
         <SettingsModal

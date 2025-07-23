@@ -1,17 +1,19 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Car, Calendar, MessageCircle, DollarSign, Settings, LogOut, Clock } from "lucide-react";
+import { Car, Calendar, MessageCircle, DollarSign, Settings, LogOut, Clock, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MessagingInterface } from "@/components/MessagingInterface";
 
 const DriverDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("rides");
+  const [messagingOpen, setMessagingOpen] = useState(false);
 
   const handleLogout = () => {
     navigate("/");
   };
 
-  const mockRides = [
+  const [mockRides, setMockRides] = useState([
     {
       id: "1",
       date: "2024-01-15",
@@ -20,7 +22,9 @@ const DriverDashboard = () => {
       to: "Brickell City Centre",
       passenger: "Sarah Johnson",
       status: "confirmed",
-      payment: "$85.00"
+      payment: "$85.00",
+      paymentMethod: "Visa ending in 4532",
+      countdown: null
     },
     {
       id: "2", 
@@ -29,18 +33,53 @@ const DriverDashboard = () => {
       from: "Fort Lauderdale Airport", 
       to: "Las Olas Boulevard",
       passenger: "Mike Chen",
+      status: "waiting_payment",
+      payment: "$95.00",
+      paymentMethod: "Zelle",
+      countdown: 18 // hours remaining
+    },
+    {
+      id: "3",
+      date: "2024-01-20",
+      time: "16:00",
+      from: "Palm Beach Airport",
+      to: "Worth Avenue",
+      passenger: "Emma Davis",
       status: "pending",
-      payment: "$95.00"
+      payment: "$120.00",
+      paymentMethod: null,
+      countdown: null
     }
-  ];
+  ]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "confirmed": return "bg-green-100 text-green-800";
       case "pending": return "bg-yellow-100 text-yellow-800";
+      case "waiting_payment": return "bg-orange-100 text-orange-800";
       case "completed": return "bg-blue-100 text-blue-800";
       default: return "bg-gray-100 text-gray-800";
     }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "confirmed": return "Confirmed";
+      case "pending": return "Pending";
+      case "waiting_payment": return "Waiting for Payment";
+      case "completed": return "Completed";
+      default: return status;
+    }
+  };
+
+  const handleConfirmPaymentReceived = (rideId: string) => {
+    setMockRides(prevRides => 
+      prevRides.map(ride => 
+        ride.id === rideId 
+          ? { ...ride, status: "confirmed" }
+          : ride
+      )
+    );
   };
 
   return (
@@ -101,8 +140,14 @@ const DriverDashboard = () => {
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-3">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(ride.status)}`}>
-                          {ride.status.charAt(0).toUpperCase() + ride.status.slice(1)}
+                          {getStatusText(ride.status)}
                         </span>
+                        {ride.status === "waiting_payment" && ride.countdown && (
+                          <div className="flex items-center space-x-1 text-orange-600">
+                            <Clock className="h-3 w-3" />
+                            <span className="text-xs font-medium">{ride.countdown}h left</span>
+                          </div>
+                        )}
                         <span className="text-sm text-muted-foreground">
                           {new Date(ride.date).toLocaleDateString()} at {ride.time}
                         </span>
@@ -122,11 +167,33 @@ const DriverDashboard = () => {
                         <span className="text-muted-foreground">To:</span>
                         <span className="ml-2 text-card-foreground">{ride.to}</span>
                       </div>
+                      {ride.paymentMethod && (
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Payment:</span>
+                          <span className="ml-2 text-card-foreground">{ride.paymentMethod}</span>
+                        </div>
+                      )}
                     </div>
                     {ride.status === "pending" && (
                       <div className="flex space-x-2 mt-4">
                         <Button size="sm" variant="luxury">Accept</Button>
                         <Button size="sm" variant="outline">Decline</Button>
+                      </div>
+                    )}
+                    {ride.status === "waiting_payment" && (
+                      <div className="mt-3 p-3 bg-orange-50 rounded-lg border border-orange-200">
+                        <p className="text-sm text-orange-800 mb-2">
+                          Passenger needs to complete payment within 24 hours.
+                        </p>
+                        <Button 
+                          size="sm" 
+                          variant="luxury" 
+                          className="flex items-center space-x-2"
+                          onClick={() => handleConfirmPaymentReceived(ride.id)}
+                        >
+                          <CheckCircle className="h-3 w-3" />
+                          <span>Confirm Payment Received</span>
+                        </Button>
                       </div>
                     )}
                   </div>
@@ -210,6 +277,13 @@ const DriverDashboard = () => {
             </div>
           )}
         </div>
+
+        {/* Messaging Modal */}
+        <MessagingInterface 
+          isOpen={messagingOpen}
+          onClose={() => setMessagingOpen(false)}
+          userType="driver"
+        />
       </div>
     </div>
   );
