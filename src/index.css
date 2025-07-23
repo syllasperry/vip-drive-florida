@@ -126,3 +126,22 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Mechanical Flip Animation for Departures Board */
+@keyframes flip {
+  0% {
+    transform: rotateX(0deg);
+  }
+  50% {
+    transform: rotateX(90deg);
+    opacity: 0.5;
+  }
+  100% {
+    transform: rotateX(0deg);
+  }
+}
+
+.animate-flip {
+  animation: flip 0.6s ease-in-out;
+  transform-style: preserve-3d;
+}

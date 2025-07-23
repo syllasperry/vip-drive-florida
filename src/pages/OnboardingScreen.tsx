@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,112 @@ const airports = [
   { code: "OPF", name: "Opa-locka Executive Airport" },
   { code: "FXE", name: "Fort Lauderdale Executive Airport" }
 ];
+
+interface Airport {
+  code: string;
+  name: string;
+}
+
+const DeparturesBoard = ({ airports }: { airports: Airport[] }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isFlipping, setIsFlipping] = useState(false);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsFlipping(true);
+      setTimeout(() => {
+        setCurrentIndex((prev) => (prev + 1) % airports.length);
+        setIsFlipping(false);
+      }, 300);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [airports.length]);
+
+  const nextAirport = airports[(currentIndex + 1) % airports.length];
+
+  return (
+    <div className="bg-black rounded-lg border-4 border-slate-700 p-6 font-mono">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-4 pb-2 border-b border-amber-400/30">
+        <div className="flex items-center space-x-2">
+          <div className="w-6 h-6 bg-amber-400 rounded-sm flex items-center justify-center">
+            <span className="text-black text-xs font-bold">✈</span>
+          </div>
+          <span className="text-amber-400 text-sm font-bold">DEPARTURES</span>
+        </div>
+        <div className="text-amber-400 text-sm font-bold">VIP CHAUFFEUR</div>
+      </div>
+
+      {/* Column Headers */}
+      <div className="grid grid-cols-12 gap-2 mb-2 text-amber-400/70 text-xs font-bold uppercase">
+        <div className="col-span-2">CODE</div>
+        <div className="col-span-6">DESTINATION</div>
+        <div className="col-span-2">STATUS</div>
+        <div className="col-span-2">GATE</div>
+      </div>
+
+      {/* Departure Row */}
+      <div className="grid grid-cols-12 gap-2 items-center py-3 border-t border-amber-400/20">
+        {/* Airport Code */}
+        <div className="col-span-2">
+          <div className={`text-amber-400 text-lg font-bold transition-all duration-300 ${
+            isFlipping ? 'animate-flip' : ''
+          }`}>
+            {airports[currentIndex].code}
+          </div>
+        </div>
+
+        {/* Airport Name */}
+        <div className="col-span-6">
+          <div className={`text-white text-sm transition-all duration-300 ${
+            isFlipping ? 'animate-flip' : ''
+          }`}>
+            {airports[currentIndex].name}
+          </div>
+        </div>
+
+        {/* Status */}
+        <div className="col-span-2">
+          <div className="text-green-400 text-xs font-bold">
+            AVAILABLE
+          </div>
+        </div>
+
+        {/* Gate */}
+        <div className="col-span-2">
+          <div className="text-amber-400 text-sm font-bold">
+            VIP
+          </div>
+        </div>
+      </div>
+
+      {/* Next Row Preview */}
+      <div className="grid grid-cols-12 gap-2 items-center py-2 opacity-40 border-t border-amber-400/10">
+        <div className="col-span-2">
+          <div className="text-amber-400 text-lg font-bold">
+            {nextAirport.code}
+          </div>
+        </div>
+        <div className="col-span-6">
+          <div className="text-white text-sm">
+            {nextAirport.name}
+          </div>
+        </div>
+        <div className="col-span-2">
+          <div className="text-green-400 text-xs font-bold">
+            AVAILABLE
+          </div>
+        </div>
+        <div className="col-span-2">
+          <div className="text-amber-400 text-sm font-bold">
+            VIP
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const OnboardingScreen = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -160,24 +266,16 @@ const OnboardingScreen = () => {
         </div>
       </div>
 
-      {/* Airport Support */}
-      <div className="py-8 px-4 bg-card/50">
-        <h3 className="text-xl font-semibold text-center mb-6 text-foreground">
-          South Florida Airports Supported
+      {/* Mechanical Departures Board */}
+      <div className="py-8 px-4 bg-gradient-to-b from-slate-900 to-slate-800">
+        <h3 className="text-xl font-semibold text-center mb-6 text-white">
+          South Florida Airports We Serve
         </h3>
-        <div className="bg-secondary/20 p-4 rounded-lg">
-          <div className="space-y-3">
-            {airports.map((airport, index) => (
-              <div 
-                key={airport.code}
-                className="flex items-center justify-between py-2 px-3 bg-card rounded border-l-4 border-primary animate-slide-up"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <span className="font-bold text-primary text-lg">{airport.code}</span>
-                <span className="text-foreground flex-1 text-right">{airport.name}</span>
-              </div>
-            ))}
-          </div>
+        <div className="max-w-4xl mx-auto">
+          <DeparturesBoard airports={airports} />
+          <p className="text-center text-slate-300 text-sm mt-4 opacity-80">
+            We proudly serve both international and private airports throughout South Florida
+          </p>
         </div>
       </div>
 
