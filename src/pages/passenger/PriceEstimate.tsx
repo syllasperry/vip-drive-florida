@@ -98,8 +98,8 @@ const PriceEstimate = () => {
                 Pickup Location
               </Label>
               <GoogleMapsAutocomplete
-                id="pickup"
-                placeholder="Enter pickup address"
+                id="pickup-location"
+                placeholder="Pickup Location"
                 value={pickup}
                 onChange={(value) => setPickup(value)}
                 className="h-12"
@@ -112,8 +112,8 @@ const PriceEstimate = () => {
                 Drop-off Location
               </Label>
               <GoogleMapsAutocomplete
-                id="dropoff"
-                placeholder="Enter destination address"
+                id="dropoff-location"
+                placeholder="Drop-off Location"
                 value={dropoff}
                 onChange={(value) => setDropoff(value)}
                 className="h-12"

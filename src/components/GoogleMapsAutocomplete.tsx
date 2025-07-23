@@ -31,25 +31,31 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
   const autocompleteRef = useRef<any>(null);
   const [isGoogleMapsLoaded, setIsGoogleMapsLoaded] = useState(false);
   const [fallbackMode, setFallbackMode] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Load Google Maps API
   useEffect(() => {
     const loadGoogleMapsAPI = () => {
       // Check if already loaded
       if (window.google && window.google.maps && window.google.maps.places) {
+        console.log('Google Maps already loaded');
         setIsGoogleMapsLoaded(true);
         return;
       }
 
       // Check if script is already being loaded
-      if (document.querySelector('script[src*="maps.googleapis.com"]')) {
+      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
+      if (existingScript) {
+        console.log('Google Maps script already exists, waiting for load...');
         // Wait for it to load
         window.initGoogleMaps = () => {
+          console.log('Google Maps callback triggered');
           setIsGoogleMapsLoaded(true);
         };
         return;
       }
 
+      console.log('Loading Google Maps API...');
       // Load the script
       const script = document.createElement('script');
       script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyC9dfSbH8HI8isN8Sdl9XxE5SJFtsrImpQ&libraries=places&callback=initGoogleMaps';
@@ -57,11 +63,12 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
       script.defer = true;
       
       window.initGoogleMaps = () => {
+        console.log('Google Maps loaded successfully');
         setIsGoogleMapsLoaded(true);
       };
 
-      script.onerror = () => {
-        console.warn('Failed to load Google Maps API, falling back to manual input');
+      script.onerror = (error) => {
+        console.error('Failed to load Google Maps API:', error);
         setFallbackMode(true);
       };
 
@@ -73,30 +80,42 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
 
   // Initialize autocomplete when Google Maps is loaded
   useEffect(() => {
-    if (isGoogleMapsLoaded && inputRef.current && !autocompleteRef.current) {
+    if (isGoogleMapsLoaded && inputRef.current && !isInitialized) {
       try {
+        console.log('Initializing Google Places Autocomplete for:', id);
+        
         autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
           types: ['address'],
-          componentRestrictions: { country: 'us' }, // Restrict to US addresses
+          componentRestrictions: { country: 'us' },
           fields: ['formatted_address', 'place_id', 'geometry', 'address_components']
         });
 
         autocompleteRef.current.addListener('place_changed', () => {
           const place = autocompleteRef.current?.getPlace();
+          console.log('Place selected:', place);
           if (place && place.formatted_address) {
             onChange(place.formatted_address, place);
           }
         });
+
+        setIsInitialized(true);
+        console.log('Google Places Autocomplete initialized successfully for:', id);
       } catch (error) {
-        console.warn('Failed to initialize Google Places Autocomplete:', error);
+        console.error('Failed to initialize Google Places Autocomplete:', error);
         setFallbackMode(true);
       }
     }
-  }, [isGoogleMapsLoaded, onChange]);
+  }, [isGoogleMapsLoaded, onChange, id, isInitialized]);
 
-  // Handle manual input changes
+  // Handle manual input changes with minimum character trigger
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.value);
+    const newValue = e.target.value;
+    onChange(newValue);
+    
+    // Log for debugging
+    if (newValue.length >= 3 && isGoogleMapsLoaded && autocompleteRef.current) {
+      console.log('Autocomplete should be active for:', newValue);
+    }
   };
 
   return (
