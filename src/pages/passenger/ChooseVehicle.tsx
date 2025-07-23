@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Users, Luggage, Check, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { supabase } from "@/integrations/supabase/client";
+import CelebrationModal from "@/components/CelebrationModal";
 import teslaImg from "@/assets/tesla-model-y.jpg";
 import bmwImg from "@/assets/bmw-sedan.jpg";
 import chevroletImg from "@/assets/chevrolet-suv.jpg";
@@ -49,9 +52,36 @@ const vehicles = [
 
 const ChooseVehicle = () => {
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const [showCelebration, setShowCelebration] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const bookingData = location.state;
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        // Fetch passenger data
+        const { data: passenger } = await supabase
+          .from('passengers')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        
+        setUser(passenger);
+      }
+    };
+
+    fetchUserData();
+
+    // Check if we should show welcome celebration
+    const shouldShowCelebration = localStorage.getItem("show_welcome_celebration");
+    if (shouldShowCelebration === "true") {
+      setShowCelebration(true);
+      localStorage.removeItem("show_welcome_celebration");
+    }
+  }, []);
 
   const handleContinue = () => {
     if (selectedVehicle) {
@@ -72,7 +102,7 @@ const ChooseVehicle = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4">
       <div className="max-w-2xl mx-auto pt-8">
-        {/* Dashboard shortcut button */}
+        {/* User profile header */}
         <div className="flex justify-end mb-6">
           <Button
             variant="ghost"
@@ -80,9 +110,17 @@ const ChooseVehicle = () => {
             onClick={handleDashboardClick}
             className="text-muted-foreground hover:text-foreground text-base"
           >
-            <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center mr-2">
-              <User className="h-4 w-4" />
-            </div>
+            <Avatar className="w-6 h-6 mr-2">
+              <AvatarImage 
+                src={user?.profile_photo_url || undefined} 
+                alt={user?.full_name || "User"} 
+              />
+              <AvatarFallback>
+                {user?.full_name ? user.full_name.charAt(0).toUpperCase() : <User className="h-4 w-4" />}
+              </AvatarFallback>
+            </Avatar>
+            <span>{user?.full_name?.split(' ')[0] || 'User'}</span>
+            <span className="mx-1">•</span>
             <span className="text-green-500">Online</span>
             <span className="ml-1">— Go to Dashboard</span>
           </Button>
@@ -175,6 +213,16 @@ const ChooseVehicle = () => {
           </p>
         </div>
       </div>
+
+      <CelebrationModal
+        isOpen={showCelebration}
+        onClose={() => setShowCelebration(false)}
+        title={`🎉 Welcome, ${user?.full_name?.split(' ')[0] || 'VIP'}! 🥂`}
+        message="You are now a VIP member. Your exclusive ride experience begins now."
+        actionText="Choose Your Vehicle"
+        onAction={() => setShowCelebration(false)}
+        showConfetti={true}
+      />
     </div>
   );
 };

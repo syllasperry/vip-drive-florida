@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { CameraCapture } from "@/components/CameraCapture";
 
 const PassengerLogin = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -20,6 +21,7 @@ const PassengerLogin = () => {
     hearAbout: "",
     profilePhoto: null as File | null
   });
+  const [showCamera, setShowCamera] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const bookingData = location.state;
@@ -75,6 +77,27 @@ const PassengerLogin = () => {
         if (error) throw error;
 
         if (data.user) {
+          let profilePhotoUrl = null;
+          
+          // Upload profile photo if provided
+          if (formData.profilePhoto) {
+            const fileExt = formData.profilePhoto.name.split('.').pop();
+            const fileName = `${data.user.id}-profile.${fileExt}`;
+            
+            const { error: uploadError } = await supabase.storage
+              .from('avatars')
+              .upload(fileName, formData.profilePhoto, {
+                upsert: true
+              });
+
+            if (!uploadError) {
+              const { data: { publicUrl } } = supabase.storage
+                .from('avatars')
+                .getPublicUrl(fileName);
+              profilePhotoUrl = publicUrl;
+            }
+          }
+
           // Create passenger record
           const { error: insertError } = await supabase
             .from('passengers')
@@ -83,16 +106,17 @@ const PassengerLogin = () => {
               full_name: formData.name,
               email: formData.email,
               phone: formData.phone,
-              profile_photo_url: null // TODO: Handle photo upload
+              profile_photo_url: profilePhotoUrl
             });
 
           if (insertError) throw insertError;
 
           localStorage.setItem("show_welcome_celebration", "true");
+          localStorage.setItem("new_user_name", formData.name);
           
           toast({
             title: "Account created!",
-            description: "Please check your email to verify your account.",
+            description: "Welcome to VIP! Your account has been created.",
           });
 
           navigate(bookingData ? "/passenger/choose-vehicle" : "/passenger/dashboard", 
@@ -132,6 +156,20 @@ const PassengerLogin = () => {
       }
       
       setFormData(prev => ({ ...prev, profilePhoto: file }));
+    }
+  };
+
+  const handleCameraCapture = (file: File) => {
+    setFormData(prev => ({ ...prev, profilePhoto: file }));
+  };
+
+  const handleTakePhoto = () => {
+    // On mobile, try to detect if camera is available
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      setShowCamera(true);
+    } else {
+      // Fallback to file input with camera capture
+      document.getElementById('camera-capture')?.click();
     }
   };
 
@@ -287,7 +325,7 @@ const PassengerLogin = () => {
                         <input
                           type="file"
                           accept="image/*"
-                          capture="environment"
+                          capture="user"
                           onChange={handlePhotoUpload}
                           className="hidden"
                           id="camera-capture"
@@ -297,7 +335,7 @@ const PassengerLogin = () => {
                           variant="outline" 
                           size="sm" 
                           className="cursor-pointer w-full sm:w-auto"
-                          onClick={() => document.getElementById('camera-capture')?.click()}
+                          onClick={handleTakePhoto}
                         >
                           <Camera className="h-4 w-4 mr-1" />
                           Take Photo
@@ -390,6 +428,12 @@ const PassengerLogin = () => {
           </div>
         </div>
       </div>
+      
+      <CameraCapture
+        isOpen={showCamera}
+        onClose={() => setShowCamera(false)}
+        onCapture={handleCameraCapture}
+      />
     </div>
   );
 };
