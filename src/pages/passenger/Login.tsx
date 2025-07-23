@@ -61,6 +61,17 @@ const PassengerLogin = () => {
         navigate(bookingData ? "/passenger/choose-vehicle" : "/passenger/dashboard", 
                { state: bookingData });
       } else {
+        // Check if email already exists in passengers table
+        const { data: existingPassenger } = await supabase
+          .from('passengers')
+          .select('email')
+          .eq('email', formData.email)
+          .single();
+
+        if (existingPassenger) {
+          throw new Error("This email is already registered. Please log in instead.");
+        }
+
         // Create new user account
         const { data, error } = await supabase.auth.signUp({
           email: formData.email,
