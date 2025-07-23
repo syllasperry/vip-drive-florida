@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Plane, Car, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const HomeScreen = () => {
   const navigate = useNavigate();
@@ -33,9 +34,15 @@ const HomeScreen = () => {
           >
             {(isPassengerLoggedIn || isDriverLoggedIn) ? (
               <>
-                <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center mr-2">
-                  <User className="h-4 w-4" />
-                </div>
+                <Avatar className="w-6 h-6 mr-2">
+                  <AvatarImage 
+                    src="https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=100&h=100&fit=crop&crop=face" 
+                    alt="User Profile" 
+                  />
+                  <AvatarFallback>
+                    <User className="h-4 w-4" />
+                  </AvatarFallback>
+                </Avatar>
                 <span className="text-green-500">Online</span>
                 <span className="ml-1">— Go to Dashboard</span>
               </>

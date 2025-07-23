@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import businessmanImg from "@/assets/onboarding-businessman.jpg";
 import womanBookingImg from "@/assets/onboarding-woman-booking.jpg";
 import chauffeurWelcomeImg from "@/assets/onboarding-chauffeur-welcome.jpg";
+import sarahJohnsonAvatar from "@/assets/sarah-johnson-avatar.jpg";
 
 const onboardingSlides = [
   {
@@ -35,7 +36,7 @@ const testimonials = [
     name: "Sarah Johnson",
     rating: 5,
     text: "The best chauffeur service in Miami. Highly recommended!",
-    avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b5c3?w=100&h=100&fit=crop&crop=face"
+    avatar: sarahJohnsonAvatar
   },
   {
     name: "David Chen",
@@ -168,6 +169,15 @@ const DeparturesBoard = ({ airports }: { airports: Airport[] }) => {
 const OnboardingScreen = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const navigate = useNavigate();
+
+  // Auto-play carousel every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % onboardingSlides.length);
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % onboardingSlides.length);
