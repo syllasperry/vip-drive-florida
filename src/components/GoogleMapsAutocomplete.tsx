@@ -94,7 +94,8 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
         autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
           types: ['geocode'],
           componentRestrictions: { country: 'us' },
-          fields: ['formatted_address', 'place_id', 'geometry', 'address_components']
+          fields: ['formatted_address', 'place_id', 'geometry', 'address_components'],
+          bounds: undefined // Allow global search
         });
 
         autocompleteRef.current.addListener('place_changed', () => {
@@ -114,13 +115,13 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
     }
   }, [isGoogleMapsLoaded, onChange, id, isInitialized]);
 
-  // Handle manual input changes - no restrictions on typing
+  // Handle manual input changes - allow free typing
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     onChange(newValue);
     
-    // Log for debugging - autocomplete should work after 1 character
-    if (newValue.length >= 1 && isGoogleMapsLoaded && autocompleteRef.current) {
+    // Log for debugging - autocomplete should work after 2-3 characters
+    if (newValue.length >= 2 && isGoogleMapsLoaded && autocompleteRef.current) {
       console.log('Autocomplete active for:', newValue);
     }
   };
@@ -130,12 +131,11 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
       ref={inputRef}
       value={value}
       onChange={handleInputChange}
-      placeholder={fallbackMode ? "Enter your address manually" : placeholder}
+      placeholder={fallbackMode ? "Enter your address manually - no suggestions available" : placeholder}
       className={className}
       id={id}
       required={required}
       disabled={disabled}
-      autoComplete="off"
     />
   );
 };
