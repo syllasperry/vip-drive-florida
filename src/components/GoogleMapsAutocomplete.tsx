@@ -110,7 +110,19 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
 
   // Initialize autocomplete when Google Maps is loaded
   const initializeAutocomplete = useCallback(() => {
-    if (!isGoogleMapsLoaded || !inputRef.current || !userLocation) {
+    if (!isGoogleMapsLoaded || !inputRef.current || !userLocation || !id) {
+      console.log(`⏳ Waiting for dependencies for ${id}:`, {
+        isGoogleMapsLoaded,
+        hasInputRef: !!inputRef.current,
+        hasUserLocation: !!userLocation,
+        hasId: !!id
+      });
+      return;
+    }
+
+    // Prevent double initialization
+    if (autocompleteRef.current) {
+      console.log(`✅ Autocomplete already initialized for: ${id}`);
       return;
     }
 
@@ -144,6 +156,7 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
         }
       };
 
+      // Create unique autocomplete instance for this specific input
       autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, options);
 
       // Enhanced place selection handler
@@ -196,8 +209,25 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
 
   // Initialize when dependencies are ready
   useEffect(() => {
-    initializeAutocomplete();
+    // Small delay to ensure DOM is ready and prevent race conditions
+    const timer = setTimeout(() => {
+      initializeAutocomplete();
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, [initializeAutocomplete]);
+
+  // Cleanup autocomplete instance on unmount
+  useEffect(() => {
+    return () => {
+      if (autocompleteRef.current) {
+        console.log(`🧹 Cleaning up autocomplete for: ${id}`);
+        // Google Maps autocomplete doesn't have a direct cleanup method
+        // but clearing the ref helps prevent memory leaks
+        autocompleteRef.current = null;
+      }
+    };
+  }, [id]);
 
   // Handle input changes with validation
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
