@@ -28,6 +28,13 @@ export const MessagingInterface = ({ isOpen, onClose, userType, preFilledMessage
       ? "https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=100&h=100&fit=crop&crop=face"
       : "https://images.unsplash.com/photo-1581092795360-fd1ca04f0952?w=100&h=100&fit=crop&crop=face"
   };
+
+  // Mock driver vehicle data - in real app this would come from driver profile
+  const driverVehicle = {
+    make: "Mercedes-Benz",
+    model: "S-Class",
+    color: "Black"
+  };
   
   const otherUser = {
     name: userType === "passenger" ? "Michael Chen" : "Sarah Johnson", 
@@ -85,6 +92,20 @@ export const MessagingInterface = ({ isOpen, onClose, userType, preFilledMessage
   const handleEmojiSelect = (emoji: string) => {
     setNewMessage(prev => prev + emoji);
     setShowEmojis(false);
+  };
+
+  const handleSendArrivalInstructions = () => {
+    const arrivalMessage = `Hi, I'm your chauffeur, ${currentUser.name}, driving a ${driverVehicle.make} ${driverVehicle.model}, ${driverVehicle.color}. I'm currently waiting at the Cell Phone Lot, approximately 5 minutes from the terminal. As soon as you've collected your luggage, please let me know which door number (Arrivals or Departures) you'll be at, and I'll meet you there. If your plans change or if there are any delays, please update me here. Looking forward to assisting you!`;
+    
+    const message: Message = {
+      id: Date.now().toString(),
+      text: arrivalMessage,
+      sender: userType,
+      timestamp: new Date(),
+      senderName: currentUser.name,
+      senderAvatar: currentUser.avatar
+    };
+    setMessages(prev => [...prev, message]);
   };
 
   if (!isOpen) return null;
@@ -159,6 +180,19 @@ export const MessagingInterface = ({ isOpen, onClose, userType, preFilledMessage
               </Button>
             ))}
           </div>
+
+          {/* Send Arrival Instructions Button - Driver Only */}
+          {userType === "driver" && (
+            <div className="mb-4">
+              <Button
+                onClick={handleSendArrivalInstructions}
+                className="w-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
+                size="sm"
+              >
+                📍 Send Arrival Instructions
+              </Button>
+            </div>
+          )}
 
           {/* Emoji Picker */}
           {showEmojis && (
