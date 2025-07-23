@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      bookings: {
+        Row: {
+          created_at: string
+          driver_id: string | null
+          dropoff_location: string
+          id: string
+          passenger_id: string
+          payment_status: string
+          pickup_location: string
+          pickup_time: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          driver_id?: string | null
+          dropoff_location: string
+          id?: string
+          passenger_id: string
+          payment_status?: string
+          pickup_location: string
+          pickup_time: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          driver_id?: string | null
+          dropoff_location?: string
+          id?: string
+          passenger_id?: string
+          payment_status?: string
+          pickup_location?: string
+          pickup_time?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "passengers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       Bookings: {
         Row: {
           created_at: string
@@ -58,6 +109,118 @@ export type Database = {
           vehicle_id?: string
         }
         Relationships: []
+      }
+      drivers: {
+        Row: {
+          car_type: string | null
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          license_plate: string | null
+          phone: string | null
+          profile_photo_url: string | null
+        }
+        Insert: {
+          car_type?: string | null
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          license_plate?: string | null
+          phone?: string | null
+          profile_photo_url?: string | null
+        }
+        Update: {
+          car_type?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          license_plate?: string | null
+          phone?: string | null
+          profile_photo_url?: string | null
+        }
+        Relationships: []
+      }
+      passengers: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          phone: string | null
+          profile_photo_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          phone?: string | null
+          profile_photo_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          profile_photo_url?: string | null
+        }
+        Relationships: []
+      }
+      reviews: {
+        Row: {
+          booking_id: string
+          comment: string | null
+          created_at: string
+          driver_id: string
+          id: string
+          passenger_id: string
+          rating: number
+        }
+        Insert: {
+          booking_id: string
+          comment?: string | null
+          created_at?: string
+          driver_id: string
+          id?: string
+          passenger_id: string
+          rating: number
+        }
+        Update: {
+          booking_id?: string
+          comment?: string | null
+          created_at?: string
+          driver_id?: string
+          id?: string
+          passenger_id?: string
+          rating?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "passengers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       users: {
         Row: {
