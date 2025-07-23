@@ -32,6 +32,9 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
   const [isGoogleMapsLoaded, setIsGoogleMapsLoaded] = useState(false);
   const [fallbackMode, setFallbackMode] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Create a unique identifier for this instance
+  const instanceId = useRef(id || `autocomplete-${Math.random().toString(36).substr(2, 9)}`).current;
 
   // Load Google Maps API
   useEffect(() => {
@@ -78,11 +81,11 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
     loadGoogleMapsAPI();
   }, []);
 
-  // Initialize autocomplete when Google Maps is loaded
+  // Initialize autocomplete when Google Maps is loaded - separate instance per field
   useEffect(() => {
     if (isGoogleMapsLoaded && inputRef.current && !isInitialized) {
       try {
-        console.log('Initializing Google Places Autocomplete for:', id);
+        console.log('Initializing Google Places Autocomplete for:', instanceId);
         
         // Check if Places service is available
         if (!window.google?.maps?.places?.Autocomplete) {
@@ -92,28 +95,32 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
         }
         
         autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
-          types: ['geocode'],
+          types: ['establishment', 'geocode'], // Include establishments for detailed places
           componentRestrictions: { country: 'us' },
-          fields: ['formatted_address', 'place_id', 'geometry', 'address_components'],
-          bounds: undefined // Allow global search
+          fields: ['place_id', 'name', 'formatted_address', 'geometry', 'types', 'address_components'],
+          strictBounds: false
         });
 
         autocompleteRef.current.addListener('place_changed', () => {
           const place = autocompleteRef.current?.getPlace();
-          console.log('Place selected:', place);
-          if (place && place.formatted_address) {
-            onChange(place.formatted_address, place);
+          console.log('Place selected for', instanceId, ':', place);
+          if (place && (place.formatted_address || place.name)) {
+            // Use name for establishments (like terminals) or formatted_address for general locations
+            const displayAddress = place.name && place.types?.includes('establishment') 
+              ? `${place.name}, ${place.formatted_address}` 
+              : place.formatted_address || place.name;
+            onChange(displayAddress, place);
           }
         });
 
         setIsInitialized(true);
-        console.log('Google Places Autocomplete initialized successfully for:', id);
+        console.log('Google Places Autocomplete initialized successfully for:', instanceId);
       } catch (error) {
         console.error('Failed to initialize Google Places Autocomplete:', error);
         setFallbackMode(true);
       }
     }
-  }, [isGoogleMapsLoaded, onChange, id, isInitialized]);
+  }, [isGoogleMapsLoaded, onChange, instanceId, isInitialized]);
 
   // Handle manual input changes - allow free typing
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -122,7 +129,7 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
     
     // Log for debugging - autocomplete should work after 2-3 characters
     if (newValue.length >= 2 && isGoogleMapsLoaded && autocompleteRef.current) {
-      console.log('Autocomplete active for:', newValue);
+      console.log('Autocomplete active for', instanceId, ':', newValue);
     }
   };
 
