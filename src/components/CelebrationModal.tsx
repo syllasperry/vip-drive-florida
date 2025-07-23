@@ -18,7 +18,7 @@ const CelebrationModal = ({
   isOpen, 
   onClose, 
   title = "🎉 Welcome to VIP! 🎉",
-  message = "You've successfully joined our VIP experience.\nEnjoy your premium rides in style and comfort.",
+  message = "You're officially part of the premium club.\nYour exclusive ride experience begins now.",
   actionText = "Go to Dashboard",
   onAction,
   showConfetti = true
@@ -33,6 +33,14 @@ const CelebrationModal = ({
       return () => clearTimeout(timer);
     }
   }, [isOpen, showConfetti]);
+
+  // Auto-close welcome modal after 4 seconds
+  useEffect(() => {
+    if (isOpen && title.includes("Welcome to VIP")) {
+      const timer = setTimeout(() => onClose(), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, title, onClose]);
 
   const handleAction = () => {
     if (onAction) {
@@ -70,17 +78,24 @@ const CelebrationModal = ({
       )}
       
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-md mx-4 p-0 overflow-hidden">
-          <div className="bg-gradient-to-br from-primary/10 to-secondary/10 p-8 text-center space-y-6">
+        <DialogContent className="sm:max-w-md mx-4 p-0 overflow-hidden rounded-xl shadow-2xl">
+          <button
+            onClick={onClose}
+            className="absolute right-4 top-4 z-10 rounded-full bg-background/20 p-2 text-muted-foreground hover:bg-background/40 transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+          
+          <div className="bg-gradient-to-br from-primary/10 to-secondary/10 p-8 text-center space-y-6 relative">
             <div className="flex justify-center">
-              <div className="bg-primary/20 p-4 rounded-full">
-                <Wine className="h-12 w-12 text-primary" />
+              <div className="bg-primary/20 p-4 rounded-full animate-pulse">
+                <Wine className="h-16 w-16 text-primary" />
               </div>
             </div>
             
-            <div className="space-y-3">
-              <h2 className="text-2xl font-bold text-foreground">{title}</h2>
-              <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
+            <div className="space-y-4">
+              <h2 className="text-3xl font-bold text-foreground">{title}</h2>
+              <p className="text-lg text-muted-foreground leading-relaxed whitespace-pre-line">
                 {message}
               </p>
             </div>
@@ -89,7 +104,7 @@ const CelebrationModal = ({
               onClick={handleAction}
               variant="luxury"
               size="lg"
-              className="w-full"
+              className="w-full text-lg py-3"
             >
               {actionText}
             </Button>

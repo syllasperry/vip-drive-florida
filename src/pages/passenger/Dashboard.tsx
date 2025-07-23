@@ -135,24 +135,10 @@ const Dashboard = () => {
                 <p className="text-muted-foreground">Manage your rides and bookings</p>
               </div>
             </div>
-            <div className="flex space-x-2">
-              <Button onClick={handleNewBooking} variant="luxury" className="flex items-center space-x-2">
-                <Plus className="h-4 w-4" />
-                <span>New Booking</span>
-              </Button>
-              {/* Demo button to test ride confirmation */}
-              <Button 
-                onClick={() => {
-                  localStorage.setItem("ride_confirmed", "true");
-                  window.location.reload();
-                }}
-                variant="outline" 
-                size="sm"
-                className="text-xs"
-              >
-                Test Confirmation
-              </Button>
-            </div>
+            <Button onClick={handleNewBooking} variant="luxury" className="flex items-center space-x-2">
+              <Plus className="h-4 w-4" />
+              <span>New Booking</span>
+            </Button>
           </div>
         </div>
 
@@ -460,8 +446,8 @@ const Dashboard = () => {
         <CelebrationModal
           isOpen={showRideConfirmation}
           onClose={() => setShowRideConfirmation(false)}
-          title="🎉 Your ride has been confirmed! 🎉"
-          message="Get ready for a premium experience.\nYour chauffeur will meet you at the agreed location."
+          title="🥂 Your ride has been confirmed!"
+          message="Get ready for a premium experience. Your chauffeur will meet you at the agreed location."
           actionText="View Details"
           onAction={() => setShowRideConfirmation(false)}
         />
