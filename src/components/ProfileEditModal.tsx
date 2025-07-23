@@ -3,6 +3,8 @@ import { X, Upload, User, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ConsentModal } from "@/components/ConsentModal";
+import { useToast } from "@/hooks/use-toast";
 
 interface ProfileEditModalProps {
   isOpen: boolean;
@@ -16,6 +18,9 @@ export const ProfileEditModal = ({ isOpen, onClose }: ProfileEditModalProps) => 
     phone: "+1 (555) 123-4567",
     profilePhoto: null as File | null
   });
+  const [consentModalOpen, setConsentModalOpen] = useState(false);
+  const [consentType, setConsentType] = useState<"upload" | "camera">("upload");
+  const { toast } = useToast();
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -24,20 +29,42 @@ export const ProfileEditModal = ({ isOpen, onClose }: ProfileEditModalProps) => 
     }));
   };
 
+  const handlePhotoConsent = (type: "upload" | "camera") => {
+    setConsentType(type);
+    setConsentModalOpen(true);
+  };
+
+  const handlePhotoConsentAgree = () => {
+    setConsentModalOpen(false);
+    if (consentType === "upload") {
+      document.getElementById("photo-upload")?.click();
+    } else {
+      document.getElementById("camera-capture")?.click();
+    }
+  };
+
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       // Validate file type
       const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
       if (!validTypes.includes(file.type)) {
-        alert('Please select a valid image file (JPG, PNG)');
+        toast({
+          title: "Invalid file type",
+          description: "Please select a valid image file (JPG, PNG)",
+          variant: "destructive"
+        });
         return;
       }
       
       // Validate file size (5MB limit)
       const maxSize = 5 * 1024 * 1024; // 5MB in bytes
       if (file.size > maxSize) {
-        alert('File size must be less than 5MB');
+        toast({
+          title: "File too large", 
+          description: "File size must be less than 5MB",
+          variant: "destructive"
+        });
         return;
       }
       
@@ -87,36 +114,42 @@ export const ProfileEditModal = ({ isOpen, onClose }: ProfileEditModalProps) => 
             </div>
             <div className="space-y-2">
               <div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                  id="photo-upload"
-                />
-                <Label htmlFor="photo-upload" asChild>
-                  <Button variant="outline" size="sm" className="cursor-pointer">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload Photo
-                  </Button>
-                </Label>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handlePhotoConsent("upload")}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload Photo
+                </Button>
               </div>
               <div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                  id="camera-capture"
-                />
-                <Label htmlFor="camera-capture" asChild>
-                  <Button variant="outline" size="sm" className="cursor-pointer">
-                    <Camera className="h-4 w-4 mr-2" />
-                    Take Photo
-                  </Button>
-                </Label>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handlePhotoConsent("camera")}
+                >
+                  <Camera className="h-4 w-4 mr-2" />
+                  Take Photo
+                </Button>
               </div>
+
+              {/* Hidden file inputs */}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoUpload}
+                className="hidden"
+                id="photo-upload"
+              />
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handlePhotoUpload}
+                className="hidden"
+                id="camera-capture"
+              />
             </div>
           </div>
 
@@ -172,6 +205,19 @@ export const ProfileEditModal = ({ isOpen, onClose }: ProfileEditModalProps) => 
           </Button>
         </div>
       </div>
+
+      {/* Consent Modal */}
+      <ConsentModal
+        isOpen={consentModalOpen}
+        onClose={() => setConsentModalOpen(false)}
+        onAgree={handlePhotoConsentAgree}
+        title={consentType === "upload" ? "Upload Photo" : "Camera Access"}
+        description={
+          consentType === "upload"
+            ? "By uploading your photo, you consent to us using it for your profile display within the app. Do you agree?"
+            : "This app needs permission to access your camera to take your profile photo. Do you agree?"
+        }
+      />
     </div>
   );
 };

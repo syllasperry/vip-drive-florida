@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Calendar, MessageCircle, CreditCard, Settings, LogOut, Plus, Clock } from "lucide-react";
+import { User, Calendar, MessageCircle, CreditCard, Settings, LogOut, Plus, Clock, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MessagingInterface } from "@/components/MessagingInterface";
 import { SettingsModal } from "@/components/SettingsModal";
 import { ProfileEditModal } from "@/components/ProfileEditModal";
+import { ReviewModal } from "@/components/ReviewModal";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -13,6 +14,8 @@ const Dashboard = () => {
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [settingsType, setSettingsType] = useState<"notifications" | "privacy">("notifications");
   const [profileEditOpen, setProfileEditOpen] = useState(false);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [selectedBookingForReview, setSelectedBookingForReview] = useState<string | null>(null);
 
   const handleNewBooking = () => {
     navigate("/passenger/price-estimate");
@@ -209,6 +212,22 @@ const Dashboard = () => {
                         </p>
                       </div>
                     )}
+                    {booking.status === "payment_confirmed" && (
+                      <div className="mt-3 flex justify-end">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedBookingForReview(booking.id);
+                            setReviewModalOpen(true);
+                          }}
+                          className="flex items-center space-x-1"
+                        >
+                          <Star className="h-4 w-4" />
+                          <span>Leave a Review</span>
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))}
                 {bookings.length === 0 && (
@@ -369,6 +388,15 @@ const Dashboard = () => {
         <ProfileEditModal
           isOpen={profileEditOpen}
           onClose={() => setProfileEditOpen(false)}
+        />
+
+        <ReviewModal
+          isOpen={reviewModalOpen}
+          onClose={() => {
+            setReviewModalOpen(false);
+            setSelectedBookingForReview(null);
+          }}
+          bookingId={selectedBookingForReview || ""}
         />
       </div>
     </div>
