@@ -10,6 +10,8 @@ const PriceEstimate = () => {
   const [pickup, setPickup] = useState("");
   const [dropoff, setDropoff] = useState("");
   const [estimatedPrice, setEstimatedPrice] = useState<string | null>(null);
+  const [isPickupValid, setIsPickupValid] = useState(true);
+  const [isDropoffValid, setIsDropoffValid] = useState(true);
   const navigate = useNavigate();
   
   // Check if user is logged in
@@ -31,13 +33,22 @@ const PriceEstimate = () => {
   };
 
   const calculateEstimate = () => {
-    if (pickup && dropoff) {
-      // Simple estimation logic - in real app this would call Google Distance Matrix API
-      const basePrice = 75;
-      const randomRange = Math.floor(Math.random() * 50) + 25;
-      const estimate = `$${basePrice + randomRange} - $${basePrice + randomRange + 50}`;
-      setEstimatedPrice(estimate);
+    // Validate both fields before calculating
+    if (!pickup || !dropoff) {
+      if (!pickup) setIsPickupValid(false);
+      if (!dropoff) setIsDropoffValid(false);
+      return;
     }
+    
+    if (!isPickupValid || !isDropoffValid) {
+      return;
+    }
+    
+    // Simple estimation logic - in real app this would call Google Distance Matrix API
+    const basePrice = 75;
+    const randomRange = Math.floor(Math.random() * 50) + 25;
+    const estimate = `$${basePrice + randomRange} - $${basePrice + randomRange + 50}`;
+    setEstimatedPrice(estimate);
   };
 
   const handleContinue = () => {
@@ -102,7 +113,9 @@ const PriceEstimate = () => {
                 placeholder="Pickup Location"
                 value={pickup}
                 onChange={(value) => setPickup(value)}
+                onValidationChange={setIsPickupValid}
                 className="h-12"
+                required={true}
               />
             </div>
 
@@ -116,13 +129,15 @@ const PriceEstimate = () => {
                 placeholder="Drop-off Location"
                 value={dropoff}
                 onChange={(value) => setDropoff(value)}
+                onValidationChange={setIsDropoffValid}
                 className="h-12"
+                required={true}
               />
             </div>
 
             <Button 
               onClick={calculateEstimate}
-              disabled={!pickup || !dropoff}
+              disabled={!pickup || !dropoff || !isPickupValid || !isDropoffValid}
               className="w-full"
               size="lg"
             >

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
+import { MapPin, Plane, Home, Building } from 'lucide-react';
 
 interface GoogleMapsAutocompleteProps {
   value: string;
@@ -9,6 +10,7 @@ interface GoogleMapsAutocompleteProps {
   id?: string;
   required?: boolean;
   disabled?: boolean;
+  onValidationChange?: (isValid: boolean) => void;
 }
 
 declare global {
@@ -25,16 +27,44 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
   className,
   id,
   required = false,
-  disabled = false
+  disabled = false,
+  onValidationChange
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<any>(null);
   const [isGoogleMapsLoaded, setIsGoogleMapsLoaded] = useState(false);
   const [fallbackMode, setFallbackMode] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [isValid, setIsValid] = useState(true);
+  const [selectedFromSuggestions, setSelectedFromSuggestions] = useState(false);
   
   // Create a unique identifier for this instance
   const instanceId = useRef(id || `autocomplete-${Math.random().toString(36).substr(2, 9)}`).current;
+
+  // Get user's current location for biasing results
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const location = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+          setUserLocation(location);
+          console.log('User location obtained:', location);
+        },
+        (error) => {
+          console.log('Geolocation denied, using South Florida fallback');
+          // Fallback to Fort Lauderdale area
+          setUserLocation({ lat: 26.1224, lng: -80.1373 });
+        }
+      );
+    } else {
+      // Fallback to South Florida area
+      setUserLocation({ lat: 26.1224, lng: -80.1373 });
+    }
+  }, []);
 
   // Load Google Maps API
   useEffect(() => {
@@ -59,7 +89,7 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
       }
 
       console.log('Loading Google Maps API...');
-      // Load the script
+      // Load the script with updated API key
       const script = document.createElement('script');
       script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyC9dfSbH8HI8isN8Sdl9XxE5SJFtsrImpQ&libraries=places&callback=initGoogleMaps';
       script.async = true;
@@ -83,7 +113,7 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
 
   // Initialize autocomplete when Google Maps is loaded - separate instance per field
   useEffect(() => {
-    if (isGoogleMapsLoaded && inputRef.current && !isInitialized) {
+    if (isGoogleMapsLoaded && inputRef.current && !isInitialized && userLocation) {
       try {
         console.log('Initializing Google Places Autocomplete for:', instanceId);
         
@@ -93,12 +123,23 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
           setFallbackMode(true);
           return;
         }
+
+        // Create bounds for South Florida region
+        const bounds = new window.google.maps.LatLngBounds(
+          new window.google.maps.LatLng(25.7617, -80.1918), // SW corner (Miami)
+          new window.google.maps.LatLng(26.3056, -80.0844)  // NE corner (Boca Raton)
+        );
         
         autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
           types: ['establishment', 'geocode'], // Include establishments for detailed places
           componentRestrictions: { country: 'us' },
           fields: ['place_id', 'name', 'formatted_address', 'geometry', 'types', 'address_components'],
-          strictBounds: false
+          bounds: bounds,
+          strictBounds: false,
+          locationBias: {
+            center: { lat: userLocation.lat, lng: userLocation.lng },
+            radius: 50000 // 50km radius
+          }
         });
 
         autocompleteRef.current.addListener('place_changed', () => {
@@ -110,6 +151,9 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
               ? `${place.name}, ${place.formatted_address}` 
               : place.formatted_address || place.name;
             onChange(displayAddress, place);
+            setSelectedFromSuggestions(true);
+            setIsValid(true);
+            onValidationChange?.(true);
           }
         });
 
@@ -120,12 +164,22 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
         setFallbackMode(true);
       }
     }
-  }, [isGoogleMapsLoaded, onChange, instanceId, isInitialized]);
+  }, [isGoogleMapsLoaded, onChange, instanceId, isInitialized, userLocation, onValidationChange]);
 
   // Handle manual input changes - allow free typing
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     onChange(newValue);
+    setSelectedFromSuggestions(false);
+    
+    // Validation logic
+    if (required && newValue.length > 3 && !selectedFromSuggestions) {
+      setIsValid(false);
+      onValidationChange?.(false);
+    } else if (!required || newValue.length === 0) {
+      setIsValid(true);
+      onValidationChange?.(true);
+    }
     
     // Log for debugging - autocomplete should work after 2-3 characters
     if (newValue.length >= 2 && isGoogleMapsLoaded && autocompleteRef.current) {
@@ -133,17 +187,34 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
     }
   };
 
+  const handleBlur = () => {
+    // Final validation on blur
+    if (required && value.length > 0 && !selectedFromSuggestions) {
+      setIsValid(false);
+      onValidationChange?.(false);
+    }
+  };
+
   return (
-    <Input
-      ref={inputRef}
-      value={value}
-      onChange={handleInputChange}
-      placeholder={fallbackMode ? "Enter your address manually - no suggestions available" : placeholder}
-      className={className}
-      id={id}
-      required={required}
-      disabled={disabled}
-    />
+    <div className="relative">
+      <Input
+        ref={inputRef}
+        value={value}
+        onChange={handleInputChange}
+        onBlur={handleBlur}
+        placeholder={fallbackMode ? "Enter your address manually - no suggestions available" : placeholder}
+        className={`${className} ${!isValid ? 'border-red-500 border-2' : ''}`}
+        id={id}
+        required={required}
+        disabled={disabled}
+        autoComplete="on"
+      />
+      {!isValid && (
+        <div className="absolute top-full left-0 mt-1 text-xs text-red-500 bg-white px-2 py-1 rounded shadow-sm border z-50">
+          Please select a location from the suggestions
+        </div>
+      )}
+    </div>
   );
 };
 
