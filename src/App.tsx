@@ -10,6 +10,9 @@ import HomeScreen from "./pages/HomeScreen";
 import PriceEstimate from "./pages/passenger/PriceEstimate";
 import PassengerLogin from "./pages/passenger/Login";
 import ChooseVehicle from "./pages/passenger/ChooseVehicle";
+import BookingForm from "./pages/passenger/BookingForm";
+import Confirmation from "./pages/passenger/Confirmation";
+import PassengerDashboard from "./pages/passenger/Dashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +30,9 @@ const App = () => (
           <Route path="/passenger/price-estimate" element={<PriceEstimate />} />
           <Route path="/passenger/login" element={<PassengerLogin />} />
           <Route path="/passenger/choose-vehicle" element={<ChooseVehicle />} />
+          <Route path="/passenger/booking-form" element={<BookingForm />} />
+          <Route path="/passenger/confirmation" element={<Confirmation />} />
+          <Route path="/passenger/dashboard" element={<PassengerDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
