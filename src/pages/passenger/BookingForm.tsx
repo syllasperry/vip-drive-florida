@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Users, Luggage, Plane } from "lucide-react";
+import { Users, Luggage, Plane, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,10 +48,29 @@ const BookingForm = () => {
     }));
   };
 
+  const handleGoBack = () => {
+    navigate("/passenger/choose-vehicle", { 
+      state: { pickup, dropoff } 
+    });
+  };
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4">
       <div className="max-w-2xl mx-auto pt-8">
+        {/* Go Back button */}
+        <div className="flex justify-start mb-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleGoBack}
+            className="text-muted-foreground hover:text-foreground text-base"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Go Back
+          </Button>
+        </div>
+
         <div className="text-center mb-8 space-y-2">
           <h1 className="text-3xl font-bold text-foreground">Complete Your Booking</h1>
           <p className="text-muted-foreground">Fill in the details for your ride</p>

@@ -26,7 +26,17 @@ const PassengerLogin = () => {
     // In real app, this would authenticate with backend
     // Set authentication state for demo purposes
     localStorage.setItem("passenger_logged_in", "true");
-    navigate("/passenger/choose-vehicle", { state: bookingData });
+    
+    if (!isLogin) {
+      // Set flag for welcome celebration on new account creation
+      localStorage.setItem("show_welcome_celebration", "true");
+    }
+    
+    if (bookingData) {
+      navigate("/passenger/choose-vehicle", { state: bookingData });
+    } else {
+      navigate("/passenger/dashboard");
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {

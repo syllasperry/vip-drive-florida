@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { User, Calendar, MessageCircle, CreditCard, Settings, LogOut, Plus, Clock, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { MessagingInterface } from "@/components/MessagingInterface";
 import { SettingsModal } from "@/components/SettingsModal";
 import { ProfileEditModal } from "@/components/ProfileEditModal";
+import CelebrationModal from "@/components/CelebrationModal";
 import { ReviewModal } from "@/components/ReviewModal";
 
 const Dashboard = () => {
@@ -17,16 +18,35 @@ const Dashboard = () => {
   const [profileEditOpen, setProfileEditOpen] = useState(false);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [selectedBookingForReview, setSelectedBookingForReview] = useState<string | null>(null);
+  const [showWelcomeCelebration, setShowWelcomeCelebration] = useState(false);
+  const [showRideConfirmation, setShowRideConfirmation] = useState(false);
 
   const handleNewBooking = () => {
     navigate("/passenger/price-estimate");
   };
 
   const handleLogout = () => {
-    // Clear authentication state
     localStorage.removeItem("passenger_logged_in");
     navigate("/");
   };
+
+  // Check for new account celebration
+  useEffect(() => {
+    const isNewAccount = localStorage.getItem("show_welcome_celebration");
+    if (isNewAccount === "true") {
+      setShowWelcomeCelebration(true);
+      localStorage.removeItem("show_welcome_celebration");
+    }
+  }, []);
+
+  // Simulate ride confirmation (in real app this would come from backend)
+  useEffect(() => {
+    const rideConfirmed = localStorage.getItem("ride_confirmed");
+    if (rideConfirmed === "true") {
+      setShowRideConfirmation(true);
+      localStorage.removeItem("ride_confirmed");
+    }
+  }, []);
 
   const [bookings, setBookings] = useState([
     {
@@ -111,10 +131,24 @@ const Dashboard = () => {
                 <p className="text-muted-foreground">Manage your rides and bookings</p>
               </div>
             </div>
-            <Button onClick={handleNewBooking} variant="luxury" className="flex items-center space-x-2">
-              <Plus className="h-4 w-4" />
-              <span>New Booking</span>
-            </Button>
+            <div className="flex space-x-2">
+              <Button onClick={handleNewBooking} variant="luxury" className="flex items-center space-x-2">
+                <Plus className="h-4 w-4" />
+                <span>New Booking</span>
+              </Button>
+              {/* Demo button to test ride confirmation */}
+              <Button 
+                onClick={() => {
+                  localStorage.setItem("ride_confirmed", "true");
+                  window.location.reload();
+                }}
+                variant="outline" 
+                size="sm"
+                className="text-xs"
+              >
+                Test Confirmation
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -410,6 +444,22 @@ const Dashboard = () => {
             setSelectedBookingForReview(null);
           }}
           bookingId={selectedBookingForReview || ""}
+        />
+
+        {/* Welcome Celebration Modal */}
+        <CelebrationModal
+          isOpen={showWelcomeCelebration}
+          onClose={() => setShowWelcomeCelebration(false)}
+        />
+
+        {/* Ride Confirmation Celebration */}
+        <CelebrationModal
+          isOpen={showRideConfirmation}
+          onClose={() => setShowRideConfirmation(false)}
+          title="🎉 Your ride has been confirmed! 🎉"
+          message="Get ready for a premium experience.\nYour chauffeur will meet you at the agreed location."
+          actionText="View Details"
+          onAction={() => setShowRideConfirmation(false)}
         />
       </div>
     </div>

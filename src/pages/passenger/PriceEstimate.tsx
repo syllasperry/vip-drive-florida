@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapPin, ArrowRight, Info, User } from "lucide-react";
+import { MapPin, ArrowRight, Info, User, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +23,10 @@ const PriceEstimate = () => {
     } else {
       navigate("/passenger/login");
     }
+  };
+
+  const handleGoBack = () => {
+    navigate("/passenger/dashboard");
   };
 
   const calculateEstimate = () => {
@@ -55,9 +59,19 @@ const PriceEstimate = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4">
       <div className="max-w-md mx-auto pt-8">
-        {/* Dashboard shortcut button */}
-        {(isPassengerLoggedIn || isDriverLoggedIn) && (
-          <div className="flex justify-end mb-4">
+        {/* Go Back and Dashboard buttons */}
+        <div className="flex justify-between items-center mb-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleGoBack}
+            className="text-muted-foreground hover:text-foreground text-base"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Go Back
+          </Button>
+          
+          {(isPassengerLoggedIn || isDriverLoggedIn) && (
             <Button
               variant="ghost"
               size="sm"
@@ -67,8 +81,8 @@ const PriceEstimate = () => {
               <User className="h-4 w-4 mr-2" />
               Dashboard
             </Button>
-          </div>
-        )}
+          )}
+        </div>
         
         <div className="text-center mb-8 space-y-2">
           <h1 className="text-3xl font-bold text-foreground">Get Price Estimate</h1>
