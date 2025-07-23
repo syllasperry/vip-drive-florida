@@ -125,13 +125,20 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
             </div>
           ) : stream ? (
             <div className="text-center space-y-4">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-64 h-48 bg-black rounded-lg mx-auto object-cover"
-              />
+              <div className="relative w-64 h-48 bg-black rounded-lg mx-auto overflow-hidden">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover"
+                  onLoadedMetadata={() => {
+                    if (videoRef.current) {
+                      videoRef.current.play();
+                    }
+                  }}
+                />
+              </div>
               <Button onClick={capturePhoto} variant="luxury" size="lg">
                 <Camera className="h-5 w-5 mr-2" />
                 Capture Photo

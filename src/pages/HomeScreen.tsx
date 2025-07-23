@@ -23,20 +23,31 @@ const HomeScreen = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center p-6">
       <div className="w-full max-w-md space-y-8 animate-fade-in">
-        {/* Dashboard shortcut button */}
-        {(isPassengerLoggedIn || isDriverLoggedIn) && (
-          <div className="flex justify-end">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleDashboardClick}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <User className="h-4 w-4 mr-2" />
-              Go to Dashboard
-            </Button>
-          </div>
-        )}
+        {/* Enhanced Dashboard shortcut button */}
+        <div className="flex justify-end">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleDashboardClick}
+            className="text-muted-foreground hover:text-foreground text-base"
+          >
+            {(isPassengerLoggedIn || isDriverLoggedIn) ? (
+              <>
+                <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center mr-2">
+                  <User className="h-4 w-4" />
+                </div>
+                <span className="text-green-500">Online</span>
+                <span className="ml-1">— Go to Dashboard</span>
+              </>
+            ) : (
+              <>
+                <User className="h-4 w-4 mr-2" />
+                <span className="text-muted-foreground">Offline</span>
+                <span className="ml-1">— Go to Dashboard</span>
+              </>
+            )}
+          </Button>
+        </div>
         
         <div className="text-center space-y-4">
           <h1 className="text-4xl font-bold text-foreground">Welcome to VIP</h1>
