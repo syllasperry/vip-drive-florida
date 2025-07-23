@@ -85,7 +85,7 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
         console.log('Initializing Google Places Autocomplete for:', id);
         
         autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
-          types: ['address'],
+          types: ['geocode'],
           componentRestrictions: { country: 'us' },
           fields: ['formatted_address', 'place_id', 'geometry', 'address_components']
         });
@@ -107,14 +107,14 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
     }
   }, [isGoogleMapsLoaded, onChange, id, isInitialized]);
 
-  // Handle manual input changes with minimum character trigger
+  // Handle manual input changes - no restrictions on typing
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     onChange(newValue);
     
-    // Log for debugging
-    if (newValue.length >= 3 && isGoogleMapsLoaded && autocompleteRef.current) {
-      console.log('Autocomplete should be active for:', newValue);
+    // Log for debugging - autocomplete should work after 1 character
+    if (newValue.length >= 1 && isGoogleMapsLoaded && autocompleteRef.current) {
+      console.log('Autocomplete active for:', newValue);
     }
   };
 
