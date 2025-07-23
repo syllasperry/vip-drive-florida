@@ -27,6 +27,20 @@ export const ProfileEditModal = ({ isOpen, onClose }: ProfileEditModalProps) => 
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      // Validate file type
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+      if (!validTypes.includes(file.type)) {
+        alert('Please select a valid image file (JPG, PNG)');
+        return;
+      }
+      
+      // Validate file size (5MB limit)
+      const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+      if (file.size > maxSize) {
+        alert('File size must be less than 5MB');
+        return;
+      }
+      
       setFormData(prev => ({
         ...prev,
         profilePhoto: file
@@ -75,6 +89,7 @@ export const ProfileEditModal = ({ isOpen, onClose }: ProfileEditModalProps) => 
               <input
                 type="file"
                 accept="image/*"
+                capture="environment"
                 onChange={handlePhotoUpload}
                 className="hidden"
                 id="photo-upload"

@@ -22,9 +22,20 @@ const PriceEstimate = () => {
   };
 
   const handleContinue = () => {
-    navigate("/passenger/login", { 
-      state: { pickup, dropoff, estimatedPrice } 
-    });
+    // Check if user is already logged in (in real app, this would check actual auth state)
+    const isLoggedIn = localStorage.getItem("passenger_logged_in") === "true";
+    
+    if (isLoggedIn) {
+      // If logged in, go directly to choose vehicle
+      navigate("/passenger/choose-vehicle", { 
+        state: { pickup, dropoff, estimatedPrice } 
+      });
+    } else {
+      // If not logged in, go to login first
+      navigate("/passenger/login", { 
+        state: { pickup, dropoff, estimatedPrice } 
+      });
+    }
   };
 
   return (

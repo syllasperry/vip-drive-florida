@@ -19,10 +19,12 @@ const Dashboard = () => {
   };
 
   const handleLogout = () => {
+    // Clear authentication state
+    localStorage.removeItem("passenger_logged_in");
     navigate("/");
   };
 
-  const mockBookings = [
+  const [bookings, setBookings] = useState([
     {
       id: "1",
       date: "2024-01-15",
@@ -42,10 +44,10 @@ const Dashboard = () => {
       from: "Fort Lauderdale Airport",
       to: "Las Olas Boulevard",
       vehicle: "BMW Sedan",
-      status: "waiting_payment",
+      status: "payment_confirmed",
       driver: "Mike Rodriguez",
       paymentMethod: "Zelle",
-      countdown: 21 // hours remaining
+      countdown: null
     },
     {
       id: "3",
@@ -59,13 +61,14 @@ const Dashboard = () => {
       paymentMethod: null,
       countdown: null
     }
-  ];
+  ]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "confirmed": return "bg-green-100 text-green-800";
       case "pending": return "bg-yellow-100 text-yellow-800";
       case "waiting_payment": return "bg-orange-100 text-orange-800";
+      case "payment_confirmed": return "bg-green-100 text-green-800";
       case "completed": return "bg-blue-100 text-blue-800";
       default: return "bg-gray-100 text-gray-800";
     }
@@ -76,6 +79,7 @@ const Dashboard = () => {
       case "confirmed": return "Confirmed";
       case "pending": return "Pending";
       case "waiting_payment": return "Waiting for Payment";
+      case "payment_confirmed": return "Payment Confirmed";
       case "completed": return "Completed";
       default: return status;
     }
@@ -133,7 +137,7 @@ const Dashboard = () => {
             <div>
               <h2 className="text-xl font-bold text-card-foreground mb-6">My Bookings</h2>
               <div className="space-y-4">
-                {mockBookings.map(booking => (
+                {bookings.map(booking => (
                   <div key={booking.id} className="border border-border rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-3">
@@ -195,9 +199,19 @@ const Dashboard = () => {
                         </Button>
                       </div>
                     )}
+                    {booking.status === "payment_confirmed" && (
+                      <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                        <p className="text-sm text-green-800 flex items-center">
+                          ✅ Payment Confirmed by Driver
+                        </p>
+                        <p className="text-sm text-green-700 mt-1">
+                          Your ride is fully confirmed and scheduled. Thank you!
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ))}
-                {mockBookings.length === 0 && (
+                {bookings.length === 0 && (
                   <div className="text-center py-8">
                     <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                     <p className="text-muted-foreground">No bookings yet</p>

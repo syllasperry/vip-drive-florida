@@ -23,6 +23,8 @@ const PassengerLogin = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // In real app, this would authenticate with backend
+    // Set authentication state for demo purposes
+    localStorage.setItem("passenger_logged_in", "true");
     navigate("/passenger/choose-vehicle", { state: bookingData });
   };
 

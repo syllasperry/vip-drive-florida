@@ -64,7 +64,7 @@ const DriverDashboard = () => {
       from: "Fort Lauderdale Airport", 
       to: "Las Olas Boulevard",
       passenger: "Mike Chen",
-      status: "waiting_payment",
+      status: "payment_confirmed",
       payment: "$95.00",
       paymentMethod: "Zelle",
       countdown: 18 // hours remaining
@@ -88,6 +88,7 @@ const DriverDashboard = () => {
       case "confirmed": return "bg-green-100 text-green-800";
       case "pending": return "bg-yellow-100 text-yellow-800";
       case "waiting_payment": return "bg-orange-100 text-orange-800";
+      case "payment_confirmed": return "bg-green-100 text-green-800";
       case "completed": return "bg-blue-100 text-blue-800";
       default: return "bg-gray-100 text-gray-800";
     }
@@ -98,6 +99,7 @@ const DriverDashboard = () => {
       case "confirmed": return "Confirmed";
       case "pending": return "Pending";
       case "waiting_payment": return "Waiting for Payment";
+      case "payment_confirmed": return "Payment Confirmed";
       case "completed": return "Completed";
       default: return status;
     }
