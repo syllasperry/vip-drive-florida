@@ -33,14 +33,8 @@ const PriceEstimate = () => {
   };
 
   const calculateEstimate = () => {
-    // Validate both fields before calculating
-    if (!pickup || !dropoff) {
-      if (!pickup) setIsPickupValid(false);
-      if (!dropoff) setIsDropoffValid(false);
-      return;
-    }
-    
-    if (!isPickupValid || !isDropoffValid) {
+    // Only require non-empty fields, allow manual input
+    if (!pickup.trim() || !dropoff.trim()) {
       return;
     }
     
@@ -49,6 +43,8 @@ const PriceEstimate = () => {
     const randomRange = Math.floor(Math.random() * 50) + 25;
     const estimate = `$${basePrice + randomRange} - $${basePrice + randomRange + 50}`;
     setEstimatedPrice(estimate);
+    
+    console.log('💰 Price calculated for route:', { pickup, dropoff, estimate });
   };
 
   const handleContinue = () => {
@@ -110,12 +106,12 @@ const PriceEstimate = () => {
               </Label>
               <GoogleMapsAutocomplete
                 id="pickup-location"
-                placeholder="Pickup Location"
+                placeholder="Enter pickup location (e.g., MIA, Fort Lauderdale Airport)"
                 value={pickup}
                 onChange={(value) => setPickup(value)}
                 onValidationChange={setIsPickupValid}
                 className="h-12"
-                required={true}
+                required={false}
               />
             </div>
 
@@ -126,18 +122,18 @@ const PriceEstimate = () => {
               </Label>
               <GoogleMapsAutocomplete
                 id="dropoff-location"
-                placeholder="Drop-off Location"
+                placeholder="Enter destination (e.g., Miami, 2911 NE 10th Ter)"
                 value={dropoff}
                 onChange={(value) => setDropoff(value)}
                 onValidationChange={setIsDropoffValid}
                 className="h-12"
-                required={true}
+                required={false}
               />
             </div>
 
             <Button 
               onClick={calculateEstimate}
-              disabled={!pickup || !dropoff || !isPickupValid || !isDropoffValid}
+              disabled={!pickup.trim() || !dropoff.trim()}
               className="w-full"
               size="lg"
             >

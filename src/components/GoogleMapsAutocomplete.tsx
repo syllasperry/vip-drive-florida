@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
-import { MapPin, Plane, Home, Building } from 'lucide-react';
+import { MapPin, Plane, Home, Building, AlertTriangle } from 'lucide-react';
 
 interface GoogleMapsAutocompleteProps {
   value: string;
@@ -34,13 +34,10 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
   const autocompleteRef = useRef<any>(null);
   const [isGoogleMapsLoaded, setIsGoogleMapsLoaded] = useState(false);
   const [fallbackMode, setFallbackMode] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
-  const [isValid, setIsValid] = useState(true);
-  const [selectedFromSuggestions, setSelectedFromSuggestions] = useState(false);
-  
-  // Create a unique identifier for this instance
-  const instanceId = useRef(id || `autocomplete-${Math.random().toString(36).substr(2, 9)}`).current;
+  const [showValidationWarning, setShowValidationWarning] = useState(false);
+  const [hasUserSelectedFromDropdown, setHasUserSelectedFromDropdown] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   // Get user's current location for biasing results
   useEffect(() => {
@@ -52,17 +49,18 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
             lng: position.coords.longitude
           };
           setUserLocation(location);
-          console.log('User location obtained:', location);
+          console.log('✅ User location obtained for autocomplete bias:', location);
         },
         (error) => {
-          console.log('Geolocation denied, using South Florida fallback');
-          // Fallback to Fort Lauderdale area
-          setUserLocation({ lat: 26.1224, lng: -80.1373 });
-        }
+          console.log('📍 Geolocation denied, using South Florida fallback (Pompano Beach)');
+          // Fallback to Pompano Beach, FL area
+          setUserLocation({ lat: 26.2379, lng: -80.1248 });
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
       );
     } else {
-      // Fallback to South Florida area
-      setUserLocation({ lat: 26.1224, lng: -80.1373 });
+      console.log('📍 Geolocation not available, using South Florida fallback');
+      setUserLocation({ lat: 26.2379, lng: -80.1248 });
     }
   }, []);
 
@@ -71,7 +69,7 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
     const loadGoogleMapsAPI = () => {
       // Check if already loaded
       if (window.google && window.google.maps && window.google.maps.places) {
-        console.log('Google Maps already loaded');
+        console.log('✅ Google Maps already loaded');
         setIsGoogleMapsLoaded(true);
         return;
       }
@@ -79,29 +77,28 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
       // Check if script is already being loaded
       const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
       if (existingScript) {
-        console.log('Google Maps script already exists, waiting for load...');
-        // Wait for it to load
+        console.log('🔄 Google Maps script already exists, waiting for load...');
         window.initGoogleMaps = () => {
-          console.log('Google Maps callback triggered');
+          console.log('✅ Google Maps callback triggered');
           setIsGoogleMapsLoaded(true);
         };
         return;
       }
 
-      console.log('Loading Google Maps API...');
-      // Load the script with updated API key
+      console.log('🚀 Loading Google Maps API with updated key...');
       const script = document.createElement('script');
       script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyC9dfSbH8HI8isN8Sdl9XxE5SJFtsrImpQ&libraries=places&callback=initGoogleMaps';
       script.async = true;
       script.defer = true;
       
       window.initGoogleMaps = () => {
-        console.log('Google Maps loaded successfully');
+        console.log('✅ Google Maps loaded successfully');
         setIsGoogleMapsLoaded(true);
       };
 
       script.onerror = (error) => {
-        console.error('Failed to load Google Maps API:', error);
+        console.error('❌ Failed to load Google Maps API:', error);
+        setApiError('Failed to load Google Maps API');
         setFallbackMode(true);
       };
 
@@ -111,87 +108,135 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
     loadGoogleMapsAPI();
   }, []);
 
-  // Initialize autocomplete when Google Maps is loaded - separate instance per field
-  useEffect(() => {
-    if (isGoogleMapsLoaded && inputRef.current && !isInitialized && userLocation) {
-      try {
-        console.log('Initializing Google Places Autocomplete for:', instanceId);
-        
-        // Check if Places service is available
-        if (!window.google?.maps?.places?.Autocomplete) {
-          console.error('Google Places Autocomplete not available');
-          setFallbackMode(true);
-          return;
-        }
-
-        // Create bounds for South Florida region
-        const bounds = new window.google.maps.LatLngBounds(
-          new window.google.maps.LatLng(25.7617, -80.1918), // SW corner (Miami)
-          new window.google.maps.LatLng(26.3056, -80.0844)  // NE corner (Boca Raton)
-        );
-        
-        autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
-          types: ['establishment', 'geocode'], // Include establishments for detailed places
-          componentRestrictions: { country: 'us' },
-          fields: ['place_id', 'name', 'formatted_address', 'geometry', 'types', 'address_components'],
-          bounds: bounds,
-          strictBounds: false,
-          locationBias: {
-            center: { lat: userLocation.lat, lng: userLocation.lng },
-            radius: 50000 // 50km radius
-          }
-        });
-
-        autocompleteRef.current.addListener('place_changed', () => {
-          const place = autocompleteRef.current?.getPlace();
-          console.log('Place selected for', instanceId, ':', place);
-          if (place && (place.formatted_address || place.name)) {
-            // Use name for establishments (like terminals) or formatted_address for general locations
-            const displayAddress = place.name && place.types?.includes('establishment') 
-              ? `${place.name}, ${place.formatted_address}` 
-              : place.formatted_address || place.name;
-            onChange(displayAddress, place);
-            setSelectedFromSuggestions(true);
-            setIsValid(true);
-            onValidationChange?.(true);
-          }
-        });
-
-        setIsInitialized(true);
-        console.log('Google Places Autocomplete initialized successfully for:', instanceId);
-      } catch (error) {
-        console.error('Failed to initialize Google Places Autocomplete:', error);
-        setFallbackMode(true);
-      }
+  // Initialize autocomplete when Google Maps is loaded
+  const initializeAutocomplete = useCallback(() => {
+    if (!isGoogleMapsLoaded || !inputRef.current || !userLocation) {
+      return;
     }
-  }, [isGoogleMapsLoaded, onChange, instanceId, isInitialized, userLocation, onValidationChange]);
 
-  // Handle manual input changes - allow free typing
+    try {
+      console.log(`🔧 Initializing Google Places Autocomplete for: ${id}`);
+      
+      // Check if Places service is available
+      if (!window.google?.maps?.places?.Autocomplete) {
+        console.error('❌ Google Places Autocomplete not available');
+        setApiError('Google Places Autocomplete not available');
+        setFallbackMode(true);
+        return;
+      }
+
+      // Create bounds for South Florida region (Fort Lauderdale to Miami)
+      const southFloridaBounds = new window.google.maps.LatLngBounds(
+        new window.google.maps.LatLng(25.7617, -80.1918), // SW corner (Miami)
+        new window.google.maps.LatLng(26.3056, -80.0844)  // NE corner (Boca Raton)
+      );
+
+      // Enhanced autocomplete options
+      const options = {
+        types: ['geocode', 'establishment'], // Exactly as requested
+        componentRestrictions: { country: 'us' },
+        fields: ['formatted_address', 'name', 'geometry', 'types', 'place_id'], // Added types for categorization
+        bounds: southFloridaBounds,
+        strictBounds: false,
+        locationBias: {
+          center: { lat: userLocation.lat, lng: userLocation.lng },
+          radius: 50000 // 50km radius for bias
+        }
+      };
+
+      autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, options);
+
+      // Enhanced place selection handler
+      autocompleteRef.current.addListener('place_changed', () => {
+        const place = autocompleteRef.current?.getPlace();
+        console.log(`📍 Place selected for ${id}:`, place);
+        
+        if (place && (place.formatted_address || place.name)) {
+          let displayAddress = '';
+          
+          // Handle different place types with smart formatting
+          if (place.name && place.types) {
+            const isAirport = place.types.includes('airport');
+            const isEstablishment = place.types.includes('establishment');
+            
+            if (isAirport || (isEstablishment && place.name.toLowerCase().includes('airport'))) {
+              // For airports, prioritize the name with address details
+              displayAddress = place.name.includes('Airport') 
+                ? place.name 
+                : `${place.name}, ${place.formatted_address}`;
+            } else if (isEstablishment) {
+              // For other establishments, show name + address
+              displayAddress = `${place.name}, ${place.formatted_address}`;
+            } else {
+              // For geocoded addresses
+              displayAddress = place.formatted_address || place.name;
+            }
+          } else {
+            displayAddress = place.formatted_address || place.name;
+          }
+          
+          onChange(displayAddress, place);
+          setHasUserSelectedFromDropdown(true);
+          setShowValidationWarning(false);
+          onValidationChange?.(true);
+          
+          console.log(`✅ Address set for ${id}: ${displayAddress}`);
+        }
+      });
+
+      console.log(`✅ Google Places Autocomplete initialized successfully for: ${id}`);
+      setApiError(null);
+      
+    } catch (error) {
+      console.error(`❌ Failed to initialize Google Places Autocomplete for ${id}:`, error);
+      setApiError(`Failed to initialize autocomplete: ${error}`);
+      setFallbackMode(true);
+    }
+  }, [isGoogleMapsLoaded, userLocation, id, onChange, onValidationChange]);
+
+  // Initialize when dependencies are ready
+  useEffect(() => {
+    initializeAutocomplete();
+  }, [initializeAutocomplete]);
+
+  // Handle input changes with validation
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     onChange(newValue);
-    setSelectedFromSuggestions(false);
     
-    // Validation logic
-    if (required && newValue.length > 3 && !selectedFromSuggestions) {
-      setIsValid(false);
+    // Reset selection state when user types
+    if (hasUserSelectedFromDropdown && newValue !== value) {
+      setHasUserSelectedFromDropdown(false);
+    }
+    
+    // Only show validation warning if user has typed substantial text but hasn't selected
+    if (required && newValue.length > 5 && !hasUserSelectedFromDropdown) {
+      setShowValidationWarning(true);
       onValidationChange?.(false);
-    } else if (!required || newValue.length === 0) {
-      setIsValid(true);
+    } else {
+      setShowValidationWarning(false);
       onValidationChange?.(true);
     }
     
-    // Log for debugging - autocomplete should work after 2-3 characters
+    // Log for debugging
     if (newValue.length >= 2 && isGoogleMapsLoaded && autocompleteRef.current) {
-      console.log('Autocomplete active for', instanceId, ':', newValue);
+      console.log(`🔍 Autocomplete active for ${id}: "${newValue}"`);
     }
   };
 
   const handleBlur = () => {
-    // Final validation on blur
-    if (required && value.length > 0 && !selectedFromSuggestions) {
-      setIsValid(false);
+    // Only validate on blur if there's substantial text and no selection
+    if (required && value.length > 5 && !hasUserSelectedFromDropdown && !showValidationWarning) {
+      setShowValidationWarning(true);
       onValidationChange?.(false);
+    }
+  };
+
+  const handleFocus = () => {
+    // Clear validation warning when user focuses to try again
+    if (showValidationWarning && value.length > 0) {
+      setShowValidationWarning(false);
+      onValidationChange?.(true);
     }
   };
 
@@ -202,16 +247,34 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
         value={value}
         onChange={handleInputChange}
         onBlur={handleBlur}
-        placeholder={fallbackMode ? "Enter your address manually - no suggestions available" : placeholder}
-        className={`${className} ${!isValid ? 'border-red-500 border-2' : ''}`}
+        onFocus={handleFocus}
+        placeholder={fallbackMode ? "Enter your address manually" : placeholder}
+        className={`${className} ${showValidationWarning ? 'border-yellow-500 border-2' : ''}`}
         id={id}
         required={required}
         disabled={disabled}
-        autoComplete="on"
+        autoComplete="on" // Explicitly enable as requested
       />
-      {!isValid && (
-        <div className="absolute top-full left-0 mt-1 text-xs text-red-500 bg-white px-2 py-1 rounded shadow-sm border z-50">
+      
+      {/* Validation warning tooltip */}
+      {showValidationWarning && (
+        <div className="absolute top-full left-0 mt-1 text-xs text-yellow-600 bg-yellow-50 border border-yellow-200 px-3 py-2 rounded-md shadow-sm z-50 flex items-center gap-2">
+          <AlertTriangle className="h-3 w-3" />
           Please select a location from the suggestions
+        </div>
+      )}
+      
+      {/* API Error display */}
+      {apiError && (
+        <div className="absolute top-full left-0 mt-1 text-xs text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded-md shadow-sm z-50">
+          ⚠️ {apiError}
+        </div>
+      )}
+      
+      {/* Fallback mode indicator */}
+      {fallbackMode && (
+        <div className="absolute top-full left-0 mt-1 text-xs text-gray-500 bg-gray-50 border border-gray-200 px-3 py-2 rounded-md shadow-sm z-50">
+          📝 Manual entry mode - Google suggestions unavailable
         </div>
       )}
     </div>
