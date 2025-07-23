@@ -30,27 +30,27 @@ const HomeScreen = () => {
             variant="ghost"
             size="sm"
             onClick={handleDashboardClick}
-            className="text-muted-foreground hover:text-foreground text-base"
+            className="text-muted-foreground hover:text-foreground text-lg"
           >
             {(isPassengerLoggedIn || isDriverLoggedIn) ? (
               <>
-                <Avatar className="w-6 h-6 mr-2">
+                <Avatar className="w-8 h-8 mr-3 ring-2 ring-green-500/30">
                   <AvatarImage 
                     src="https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=100&h=100&fit=crop&crop=face" 
                     alt="User Profile" 
                   />
-                  <AvatarFallback>
+                  <AvatarFallback className="bg-green-100 text-green-700">
                     <User className="h-4 w-4" />
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-green-500">Online</span>
-                <span className="ml-1">— Go to Dashboard</span>
+                <span className="text-green-500 font-medium">Online</span>
+                <span className="ml-2">— Go to Dashboard</span>
               </>
             ) : (
               <>
-                <User className="h-4 w-4 mr-2" />
+                <User className="h-5 w-5 mr-2" />
                 <span className="text-muted-foreground">Offline</span>
-                <span className="ml-1">— Go to Dashboard</span>
+                <span className="ml-2">— Go to Dashboard</span>
               </>
             )}
           </Button>

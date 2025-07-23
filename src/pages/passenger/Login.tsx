@@ -188,12 +188,16 @@ const PassengerLogin = () => {
                           className="hidden"
                           id="photo-upload"
                         />
-                        <Label htmlFor="photo-upload" asChild>
-                          <Button type="button" variant="outline" size="sm" className="cursor-pointer">
-                            <Upload className="h-4 w-4 mr-1" />
-                            Upload Photo
-                          </Button>
-                        </Label>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm" 
+                          className="cursor-pointer w-full sm:w-auto"
+                          onClick={() => document.getElementById('photo-upload')?.click()}
+                        >
+                          <Upload className="h-4 w-4 mr-1" />
+                          Upload Photo
+                        </Button>
                       </div>
                       <div>
                         <input
@@ -204,12 +208,16 @@ const PassengerLogin = () => {
                           className="hidden"
                           id="camera-capture"
                         />
-                        <Label htmlFor="camera-capture" asChild>
-                          <Button type="button" variant="outline" size="sm" className="cursor-pointer">
-                            <Camera className="h-4 w-4 mr-1" />
-                            Take Photo
-                          </Button>
-                        </Label>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm" 
+                          className="cursor-pointer w-full sm:w-auto"
+                          onClick={() => document.getElementById('camera-capture')?.click()}
+                        >
+                          <Camera className="h-4 w-4 mr-1" />
+                          Take Photo
+                        </Button>
                       </div>
                     </div>
                   </div>

@@ -120,7 +120,7 @@ const DriverDashboard = () => {
       <div className="max-w-4xl mx-auto p-4">
         {/* Header */}
         <div className="bg-card rounded-xl p-6 mb-6 shadow-lg">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-card-foreground">Driver Dashboard</h1>
               <p className="text-muted-foreground">Manage your rides and earnings</p>
