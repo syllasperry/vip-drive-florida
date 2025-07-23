@@ -4,6 +4,7 @@ import { MapPin, ArrowRight, Info, User, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import GoogleMapsAutocomplete from "@/components/GoogleMapsAutocomplete";
 
 const PriceEstimate = () => {
   const [pickup, setPickup] = useState("");
@@ -96,11 +97,11 @@ const PriceEstimate = () => {
                 <MapPin className="inline h-4 w-4 mr-2" />
                 Pickup Location
               </Label>
-              <Input
+              <GoogleMapsAutocomplete
                 id="pickup"
                 placeholder="Enter pickup address"
                 value={pickup}
-                onChange={(e) => setPickup(e.target.value)}
+                onChange={(value) => setPickup(value)}
                 className="h-12"
               />
             </div>
@@ -110,11 +111,11 @@ const PriceEstimate = () => {
                 <MapPin className="inline h-4 w-4 mr-2" />
                 Drop-off Location
               </Label>
-              <Input
+              <GoogleMapsAutocomplete
                 id="dropoff"
                 placeholder="Enter destination address"
                 value={dropoff}
-                onChange={(e) => setDropoff(e.target.value)}
+                onChange={(value) => setDropoff(value)}
                 className="h-12"
               />
             </div>
