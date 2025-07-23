@@ -84,6 +84,13 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
       try {
         console.log('Initializing Google Places Autocomplete for:', id);
         
+        // Check if Places service is available
+        if (!window.google?.maps?.places?.Autocomplete) {
+          console.error('Google Places Autocomplete not available');
+          setFallbackMode(true);
+          return;
+        }
+        
         autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
           types: ['geocode'],
           componentRestrictions: { country: 'us' },
@@ -128,6 +135,7 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
       id={id}
       required={required}
       disabled={disabled}
+      autoComplete="off"
     />
   );
 };
