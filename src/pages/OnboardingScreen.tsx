@@ -84,86 +84,115 @@ const DeparturesBoard = ({ airports }: { airports: Airport[] }) => {
   const nextAirport = airports[(currentIndex + 1) % airports.length];
 
   return (
-    <div className="bg-black rounded-lg border-4 border-slate-700 p-3 sm:p-6 font-mono">
+    <div className="bg-black rounded-lg border-2 sm:border-4 border-slate-700 p-2 sm:p-6 font-mono overflow-hidden">
       {/* Header */}
-      <div className="flex justify-between items-center mb-4 pb-2 border-b border-amber-400/30">
+      <div className="flex justify-between items-center mb-3 sm:mb-4 pb-2 border-b border-amber-400/30">
         <div className="flex items-center space-x-1 sm:space-x-2">
-          <div className="w-5 h-5 sm:w-6 sm:h-6 bg-amber-400 rounded-sm flex items-center justify-center">
+          <div className="w-4 h-4 sm:w-6 sm:h-6 bg-amber-400 rounded-sm flex items-center justify-center">
             <span className="text-black text-xs font-bold">✈</span>
           </div>
           <span className="text-amber-400 text-xs sm:text-sm font-bold">DEPARTURES</span>
         </div>
-        <div className="text-amber-400 text-xs sm:text-sm font-bold hidden sm:block">VIP CHAUFFEUR</div>
-        <div className="text-amber-400 text-xs font-bold sm:hidden">VIP</div>
+        <div className="text-amber-400 text-xs sm:text-sm font-bold hidden md:block">VIP CHAUFFEUR</div>
+        <div className="text-amber-400 text-xs font-bold md:hidden">VIP</div>
       </div>
 
-      {/* Column Headers - Mobile Layout */}
-      <div className="grid grid-cols-8 sm:grid-cols-12 gap-1 sm:gap-2 mb-2 text-amber-400/70 text-xs font-bold uppercase">
-        <div className="col-span-2">CODE</div>
-        <div className="col-span-4 sm:col-span-6">DESTINATION</div>
-        <div className="col-span-2 sm:col-span-2">STATUS</div>
-        <div className="col-span-0 sm:col-span-2 hidden sm:block">GATE</div>
-      </div>
-
-      {/* Departure Row - Mobile Layout */}
-      <div className="grid grid-cols-8 sm:grid-cols-12 gap-1 sm:gap-2 items-center py-2 sm:py-3 border-t border-amber-400/20">
-        {/* Airport Code */}
-        <div className="col-span-2">
-          <div className={`text-amber-400 text-sm sm:text-lg font-bold transition-all duration-300 ${
+      {/* Mobile: Card Layout */}
+      <div className="block sm:hidden space-y-3">
+        {/* Current Airport Card */}
+        <div className="bg-slate-800/50 rounded p-3 border border-amber-400/20">
+          <div className="flex items-center justify-between mb-2">
+            <div className={`text-amber-400 text-lg font-bold transition-all duration-300 ${
+              isFlipping ? 'animate-flip' : ''
+            }`}>
+              {airports[currentIndex].code}
+            </div>
+            <div className="text-green-400 text-xs font-bold px-2 py-1 bg-green-400/10 rounded">
+              AVAILABLE
+            </div>
+          </div>
+          <div className={`text-white text-sm leading-relaxed transition-all duration-300 ${
             isFlipping ? 'animate-flip' : ''
           }`}>
-            {airports[currentIndex].code}
+            {airports[currentIndex].name.split(' ').slice(0, 3).join(' ')}
           </div>
         </div>
 
-        {/* Airport Name */}
-        <div className="col-span-4 sm:col-span-6">
-          <div className={`text-white text-xs sm:text-sm transition-all duration-300 leading-tight ${
-            isFlipping ? 'animate-flip' : ''
-          }`}>
-            <span className="block sm:hidden">{airports[currentIndex].name.replace(/International|Executive/, '').replace(/Airport/, '').trim()}</span>
-            <span className="hidden sm:block">{airports[currentIndex].name}</span>
+        {/* Next Airport Preview */}
+        <div className="bg-slate-800/30 rounded p-3 border border-amber-400/10 opacity-60">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-amber-400 text-lg font-bold">
+              {nextAirport.code}
+            </div>
+            <div className="text-green-400 text-xs font-bold px-2 py-1 bg-green-400/10 rounded">
+              AVAILABLE
+            </div>
           </div>
-        </div>
-
-        {/* Status */}
-        <div className="col-span-2">
-          <div className="text-green-400 text-xs font-bold">
-            <span className="hidden sm:block">AVAILABLE</span>
-            <span className="sm:hidden">AVAIL</span>
-          </div>
-        </div>
-
-        {/* Gate - Hidden on mobile */}
-        <div className="col-span-0 sm:col-span-2 hidden sm:block">
-          <div className="text-amber-400 text-sm font-bold">
-            VIP
+          <div className="text-white text-sm leading-relaxed">
+            {nextAirport.name.split(' ').slice(0, 3).join(' ')}
           </div>
         </div>
       </div>
 
-      {/* Next Row Preview - Mobile Layout */}
-      <div className="grid grid-cols-8 sm:grid-cols-12 gap-1 sm:gap-2 items-center py-2 opacity-40 border-t border-amber-400/10">
-        <div className="col-span-2">
-          <div className="text-amber-400 text-sm sm:text-lg font-bold">
-            {nextAirport.code}
+      {/* Desktop: Table Layout */}
+      <div className="hidden sm:block">
+        {/* Column Headers */}
+        <div className="grid grid-cols-12 gap-2 mb-2 text-amber-400/70 text-xs font-bold uppercase">
+          <div className="col-span-2">CODE</div>
+          <div className="col-span-6">DESTINATION</div>
+          <div className="col-span-2">STATUS</div>
+          <div className="col-span-2">GATE</div>
+        </div>
+
+        {/* Departure Row */}
+        <div className="grid grid-cols-12 gap-2 items-center py-3 border-t border-amber-400/20">
+          <div className="col-span-2">
+            <div className={`text-amber-400 text-lg font-bold transition-all duration-300 ${
+              isFlipping ? 'animate-flip' : ''
+            }`}>
+              {airports[currentIndex].code}
+            </div>
+          </div>
+          <div className="col-span-6">
+            <div className={`text-white text-sm transition-all duration-300 ${
+              isFlipping ? 'animate-flip' : ''
+            }`}>
+              {airports[currentIndex].name}
+            </div>
+          </div>
+          <div className="col-span-2">
+            <div className="text-green-400 text-xs font-bold">
+              AVAILABLE
+            </div>
+          </div>
+          <div className="col-span-2">
+            <div className="text-amber-400 text-sm font-bold">
+              VIP
+            </div>
           </div>
         </div>
-        <div className="col-span-4 sm:col-span-6">
-          <div className="text-white text-xs sm:text-sm leading-tight">
-            <span className="block sm:hidden">{nextAirport.name.replace(/International|Executive/, '').replace(/Airport/, '').trim()}</span>
-            <span className="hidden sm:block">{nextAirport.name}</span>
+
+        {/* Next Row Preview */}
+        <div className="grid grid-cols-12 gap-2 items-center py-2 opacity-40 border-t border-amber-400/10">
+          <div className="col-span-2">
+            <div className="text-amber-400 text-lg font-bold">
+              {nextAirport.code}
+            </div>
           </div>
-        </div>
-        <div className="col-span-2">
-          <div className="text-green-400 text-xs font-bold">
-            <span className="hidden sm:block">AVAILABLE</span>
-            <span className="sm:hidden">AVAIL</span>
+          <div className="col-span-6">
+            <div className="text-white text-sm">
+              {nextAirport.name}
+            </div>
           </div>
-        </div>
-        <div className="col-span-0 sm:col-span-2 hidden sm:block">
-          <div className="text-amber-400 text-sm font-bold">
-            VIP
+          <div className="col-span-2">
+            <div className="text-green-400 text-xs font-bold">
+              AVAILABLE
+            </div>
+          </div>
+          <div className="col-span-2">
+            <div className="text-amber-400 text-sm font-bold">
+              VIP
+            </div>
           </div>
         </div>
       </div>
