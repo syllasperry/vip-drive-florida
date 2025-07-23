@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Upload, User } from "lucide-react";
+import { X, Upload, User, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -85,21 +85,38 @@ export const ProfileEditModal = ({ isOpen, onClose }: ProfileEditModalProps) => 
                 <User className="h-8 w-8 text-muted-foreground" />
               )}
             </div>
-            <div>
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handlePhotoUpload}
-                className="hidden"
-                id="photo-upload"
-              />
-              <Label htmlFor="photo-upload" asChild>
-                <Button variant="outline" size="sm" className="cursor-pointer">
-                  <Upload className="h-4 w-4 mr-2" />
-                  Change Photo
-                </Button>
-              </Label>
+            <div className="space-y-2">
+              <div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                  id="photo-upload"
+                />
+                <Label htmlFor="photo-upload" asChild>
+                  <Button variant="outline" size="sm" className="cursor-pointer">
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload Photo
+                  </Button>
+                </Label>
+              </div>
+              <div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                  id="camera-capture"
+                />
+                <Label htmlFor="camera-capture" asChild>
+                  <Button variant="outline" size="sm" className="cursor-pointer">
+                    <Camera className="h-4 w-4 mr-2" />
+                    Take Photo
+                  </Button>
+                </Label>
+              </div>
             </div>
           </div>
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Eye, EyeOff, Mail, Lock, User, Phone, Camera } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, Phone, Camera, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +14,8 @@ const PassengerLogin = () => {
     password: "",
     name: "",
     phone: "",
-    hearAbout: ""
+    hearAbout: "",
+    profilePhoto: null as File | null
   });
   const navigate = useNavigate();
   const location = useLocation();
@@ -30,6 +31,35 @@ const PassengerLogin = () => {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+      if (!validTypes.includes(file.type)) {
+        alert('Please select a valid image file (JPG, PNG)');
+        return;
+      }
+      
+      // Validate file size (5MB limit)
+      const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+      if (file.size > maxSize) {
+        alert('File size must be less than 5MB');
+        return;
+      }
+      
+      setFormData(prev => ({ ...prev, profilePhoto: file }));
+    }
+  };
+
+  const handleGoogleAuth = () => {
+    // This would integrate with Google OAuth
+    // For now, simulate successful login
+    alert('Google OAuth integration requires Supabase connection. For demo purposes, signing you in...');
+    localStorage.setItem("passenger_logged_in", "true");
+    navigate("/passenger/choose-vehicle", { state: bookingData });
   };
 
   return (
@@ -128,12 +158,50 @@ const PassengerLogin = () => {
                     Profile Photo
                   </Label>
                   <div className="flex items-center space-x-3">
-                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
-                      <Camera className="h-6 w-6 text-muted-foreground" />
+                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center overflow-hidden">
+                      {formData.profilePhoto ? (
+                        <img 
+                          src={URL.createObjectURL(formData.profilePhoto)} 
+                          alt="Profile" 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Camera className="h-6 w-6 text-muted-foreground" />
+                      )}
                     </div>
-                    <Button type="button" variant="outline" size="sm">
-                      Upload Photo
-                    </Button>
+                    <div className="space-y-2">
+                      <div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handlePhotoUpload}
+                          className="hidden"
+                          id="photo-upload"
+                        />
+                        <Label htmlFor="photo-upload" asChild>
+                          <Button type="button" variant="outline" size="sm" className="cursor-pointer">
+                            <Upload className="h-4 w-4 mr-1" />
+                            Upload Photo
+                          </Button>
+                        </Label>
+                      </div>
+                      <div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={handlePhotoUpload}
+                          className="hidden"
+                          id="camera-capture"
+                        />
+                        <Label htmlFor="camera-capture" asChild>
+                          <Button type="button" variant="outline" size="sm" className="cursor-pointer">
+                            <Camera className="h-4 w-4 mr-1" />
+                            Take Photo
+                          </Button>
+                        </Label>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -170,7 +238,13 @@ const PassengerLogin = () => {
               </div>
             </div>
 
-            <Button variant="outline" size="lg" className="w-full">
+            <Button 
+              variant="outline" 
+              size="lg" 
+              className="w-full"
+              onClick={handleGoogleAuth}
+              type="button"
+            >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                 <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                 <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -182,7 +256,11 @@ const PassengerLogin = () => {
 
             {isLogin && (
               <div className="text-center">
-                <Button variant="link" size="sm">
+                <Button 
+                  variant="link" 
+                  size="sm"
+                  onClick={() => navigate("/passenger/forgot-password")}
+                >
                   Forgot your password?
                 </Button>
               </div>

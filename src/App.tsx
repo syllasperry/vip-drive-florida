@@ -9,6 +9,7 @@ import OnboardingScreen from "./pages/OnboardingScreen";
 import HomeScreen from "./pages/HomeScreen";
 import PriceEstimate from "./pages/passenger/PriceEstimate";
 import PassengerLogin from "./pages/passenger/Login";
+import ForgotPassword from "./pages/passenger/ForgotPassword";
 import ChooseVehicle from "./pages/passenger/ChooseVehicle";
 import BookingForm from "./pages/passenger/BookingForm";
 import Confirmation from "./pages/passenger/Confirmation";
@@ -31,6 +32,7 @@ const App = () => (
           <Route path="/home" element={<HomeScreen />} />
           <Route path="/passenger/price-estimate" element={<PriceEstimate />} />
           <Route path="/passenger/login" element={<PassengerLogin />} />
+          <Route path="/passenger/forgot-password" element={<ForgotPassword />} />
           <Route path="/passenger/choose-vehicle" element={<ChooseVehicle />} />
           <Route path="/passenger/booking-form" element={<BookingForm />} />
           <Route path="/passenger/confirmation" element={<Confirmation />} />
