@@ -64,7 +64,7 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
     }
   }, []);
 
-  // Load Google Maps API
+  // Load Google Maps API - shared instance
   useEffect(() => {
     const loadGoogleMapsAPI = () => {
       // Check if already loaded
@@ -78,22 +78,34 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
       const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
       if (existingScript) {
         console.log('🔄 Google Maps script already exists, waiting for load...');
-        window.initGoogleMaps = () => {
-          console.log('✅ Google Maps callback triggered');
-          setIsGoogleMapsLoaded(true);
+        
+        // Listen for the global callback
+        const checkLoaded = () => {
+          if (window.google && window.google.maps && window.google.maps.places) {
+            console.log('✅ Google Maps loaded via existing script');
+            setIsGoogleMapsLoaded(true);
+          } else {
+            // Retry check
+            setTimeout(checkLoaded, 100);
+          }
         };
+        checkLoaded();
         return;
       }
 
       console.log('🚀 Loading Google Maps API with updated key...');
       const script = document.createElement('script');
-      script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyC9dfSbH8HI8isN8Sdl9XxE5SJFtsrImpQ&libraries=places&callback=initGoogleMaps';
+      script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyAfNVjYBceNqJbEnB_JOp7thCKrR01aRW0&libraries=places&callback=initGoogleMaps';
       script.async = true;
       script.defer = true;
       
+      // Set up global callback that all instances can use
       window.initGoogleMaps = () => {
-        console.log('✅ Google Maps loaded successfully');
+        console.log('✅ Google Maps loaded successfully via callback');
         setIsGoogleMapsLoaded(true);
+        
+        // Notify all other GoogleMapsAutocomplete instances
+        window.dispatchEvent(new CustomEvent('googleMapsLoaded'));
       };
 
       script.onerror = (error) => {
@@ -106,6 +118,19 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
     };
 
     loadGoogleMapsAPI();
+
+    // Listen for Google Maps loaded event from other instances
+    const handleGoogleMapsLoaded = () => {
+      if (window.google && window.google.maps && window.google.maps.places) {
+        setIsGoogleMapsLoaded(true);
+      }
+    };
+
+    window.addEventListener('googleMapsLoaded', handleGoogleMapsLoaded);
+    
+    return () => {
+      window.removeEventListener('googleMapsLoaded', handleGoogleMapsLoaded);
+    };
   }, []);
 
   // Initialize autocomplete when Google Maps is loaded
@@ -143,11 +168,11 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
         new window.google.maps.LatLng(26.3056, -80.0844)  // NE corner (Boca Raton)
       );
 
-      // Enhanced autocomplete options
+      // Enhanced autocomplete options - exactly as requested
       const options = {
-        types: ['geocode', 'establishment'], // Exactly as requested
+        types: ['geocode', 'establishment'],
         componentRestrictions: { country: 'us' },
-        fields: ['formatted_address', 'name', 'geometry', 'types', 'place_id'], // Added types for categorization
+        fields: ['formatted_address', 'name', 'geometry', 'types', 'place_id'],
         bounds: southFloridaBounds,
         strictBounds: false,
         locationBias: {
@@ -157,9 +182,10 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
       };
 
       // Create unique autocomplete instance for this specific input
+      console.log(`🎯 Creating new Autocomplete instance for: ${id}`);
       autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, options);
 
-      // Enhanced place selection handler
+      // Add place selection listener
       autocompleteRef.current.addListener('place_changed', () => {
         const place = autocompleteRef.current?.getPlace();
         console.log(`📍 Place selected for ${id}:`, place);
