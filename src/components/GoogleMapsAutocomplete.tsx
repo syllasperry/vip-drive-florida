@@ -64,53 +64,54 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
     }
   }, []);
 
-  // Load Google Maps API - shared instance
+  // Load Google Maps API - robust loading system
   useEffect(() => {
     const loadGoogleMapsAPI = () => {
-      // Check if already loaded
-      if (window.google && window.google.maps && window.google.maps.places) {
-        console.log('✅ Google Maps already loaded');
+      // Check if already loaded and available
+      if (window.google?.maps?.places?.Autocomplete) {
+        console.log('✅ Google Maps Places API already available');
         setIsGoogleMapsLoaded(true);
         return;
       }
 
-      // Check if script is already being loaded
-      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
-      if (existingScript) {
-        console.log('🔄 Google Maps script already exists, waiting for load...');
-        
-        // Listen for the global callback
-        const checkLoaded = () => {
-          if (window.google && window.google.maps && window.google.maps.places) {
-            console.log('✅ Google Maps loaded via existing script');
-            setIsGoogleMapsLoaded(true);
-          } else {
-            // Retry check
-            setTimeout(checkLoaded, 100);
-          }
-        };
-        checkLoaded();
-        return;
-      }
+      // Remove any existing scripts to avoid conflicts
+      const existingScripts = document.querySelectorAll('script[src*="maps.googleapis.com"]');
+      existingScripts.forEach(script => script.remove());
 
-      console.log('🚀 Loading Google Maps API with updated key...');
+      console.log('🚀 Loading Google Maps API from scratch...');
       const script = document.createElement('script');
-      script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyAfNVjYBceNqJbEnB_JOp7thCKrR01aRW0&libraries=places&callback=initGoogleMaps';
+      script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyC9dfSbH8HI8isN8Sdl9XxE5SJFtsrImpQ&libraries=places';
       script.async = true;
       script.defer = true;
       
-      // Set up global callback that all instances can use
-      window.initGoogleMaps = () => {
-        console.log('✅ Google Maps loaded successfully via callback');
-        setIsGoogleMapsLoaded(true);
+      script.onload = () => {
+        console.log('📥 Google Maps script loaded, checking API availability...');
         
-        // Notify all other GoogleMapsAutocomplete instances
-        window.dispatchEvent(new CustomEvent('googleMapsLoaded'));
+        // Wait for Google Maps API to be fully available
+        const checkGoogleMaps = () => {
+          if (window.google?.maps?.places?.Autocomplete) {
+            console.log('✅ Google Maps Places API is now available!');
+            console.log('Available APIs:', {
+              google: !!window.google,
+              maps: !!window.google?.maps,
+              places: !!window.google?.maps?.places,
+              Autocomplete: !!window.google?.maps?.places?.Autocomplete
+            });
+            setIsGoogleMapsLoaded(true);
+            setApiError(null);
+            setFallbackMode(false);
+          } else {
+            console.log('⏳ Waiting for Google Maps Places API to be available...');
+            setTimeout(checkGoogleMaps, 100);
+          }
+        };
+        
+        checkGoogleMaps();
       };
 
       script.onerror = (error) => {
-        console.error('❌ Failed to load Google Maps API:', error);
-        setApiError('Failed to load Google Maps API');
+        console.error('❌ Failed to load Google Maps script:', error);
+        setApiError('Failed to load Google Maps API - check API key and permissions');
         setFallbackMode(true);
       };
 
@@ -118,22 +119,9 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
     };
 
     loadGoogleMapsAPI();
-
-    // Listen for Google Maps loaded event from other instances
-    const handleGoogleMapsLoaded = () => {
-      if (window.google && window.google.maps && window.google.maps.places) {
-        setIsGoogleMapsLoaded(true);
-      }
-    };
-
-    window.addEventListener('googleMapsLoaded', handleGoogleMapsLoaded);
-    
-    return () => {
-      window.removeEventListener('googleMapsLoaded', handleGoogleMapsLoaded);
-    };
   }, []);
 
-  // Initialize autocomplete when Google Maps is loaded
+  // Initialize autocomplete with robust error handling
   const initializeAutocomplete = useCallback(() => {
     if (!isGoogleMapsLoaded || !inputRef.current || !userLocation || !id) {
       console.log(`⏳ Waiting for dependencies for ${id}:`, {
@@ -154,91 +142,68 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
     try {
       console.log(`🔧 Initializing Google Places Autocomplete for: ${id}`);
       
-      // Check if Places service is available
+      // Double-check Google Maps API availability
       if (!window.google?.maps?.places?.Autocomplete) {
-        console.error('❌ Google Places Autocomplete not available');
+        console.error(`❌ Google Places Autocomplete not available for ${id}`);
         setApiError('Google Places Autocomplete not available');
         setFallbackMode(true);
         return;
       }
 
-      // Create bounds for South Florida region (Fort Lauderdale to Miami)
+      // Create bounds for South Florida region
       const southFloridaBounds = new window.google.maps.LatLngBounds(
         new window.google.maps.LatLng(25.7617, -80.1918), // SW corner (Miami)
         new window.google.maps.LatLng(26.3056, -80.0844)  // NE corner (Boca Raton)
       );
 
-      // Enhanced autocomplete options - exactly as requested
+      // Simple, robust autocomplete options
       const options = {
         types: ['geocode', 'establishment'],
         componentRestrictions: { country: 'us' },
-        fields: ['formatted_address', 'name', 'geometry', 'types', 'place_id'],
-        bounds: southFloridaBounds,
-        strictBounds: false,
-        locationBias: {
-          center: { lat: userLocation.lat, lng: userLocation.lng },
-          radius: 50000 // 50km radius for bias
-        }
+        fields: ['formatted_address', 'name', 'geometry', 'place_id'],
+        bounds: southFloridaBounds
       };
 
       // Create unique autocomplete instance for this specific input
       console.log(`🎯 Creating new Autocomplete instance for: ${id}`);
       autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, options);
 
-      // Add place selection listener
+      // Add place selection listener with error handling
       autocompleteRef.current.addListener('place_changed', () => {
-        const place = autocompleteRef.current?.getPlace();
-        console.log(`📍 Place selected for ${id}:`, place);
-        
-        if (place && (place.formatted_address || place.name)) {
-          let displayAddress = '';
+        try {
+          const place = autocompleteRef.current?.getPlace();
+          console.log(`📍 Place selected for ${id}:`, place);
           
-          // Handle different place types with smart formatting
-          if (place.name && place.types) {
-            const isAirport = place.types.includes('airport');
-            const isEstablishment = place.types.includes('establishment');
-            
-            if (isAirport || (isEstablishment && place.name.toLowerCase().includes('airport'))) {
-              // For airports, prioritize the name with address details
-              displayAddress = place.name.includes('Airport') 
-                ? place.name 
-                : `${place.name}, ${place.formatted_address}`;
-            } else if (isEstablishment) {
-              // For other establishments, show name + address
-              displayAddress = `${place.name}, ${place.formatted_address}`;
-            } else {
-              // For geocoded addresses
-              displayAddress = place.formatted_address || place.name;
-            }
-          } else {
-            displayAddress = place.formatted_address || place.name;
+          if (place && (place.formatted_address || place.name)) {
+            const displayAddress = place.formatted_address || place.name;
+            onChange(displayAddress, place);
+            setHasUserSelectedFromDropdown(true);
+            setShowValidationWarning(false);
+            onValidationChange?.(true);
+            console.log(`✅ Address set for ${id}: ${displayAddress}`);
           }
-          
-          onChange(displayAddress, place);
-          setHasUserSelectedFromDropdown(true);
-          setShowValidationWarning(false);
-          onValidationChange?.(true);
-          
-          console.log(`✅ Address set for ${id}: ${displayAddress}`);
+        } catch (error) {
+          console.error(`❌ Error in place_changed for ${id}:`, error);
         }
       });
 
       console.log(`✅ Google Places Autocomplete initialized successfully for: ${id}`);
       setApiError(null);
+      setFallbackMode(false);
       
     } catch (error) {
       console.error(`❌ Failed to initialize Google Places Autocomplete for ${id}:`, error);
-      setApiError(`Failed to initialize autocomplete: ${error}`);
+      setApiError(`Failed to initialize autocomplete: ${error.message}`);
       setFallbackMode(true);
     }
   }, [isGoogleMapsLoaded, userLocation, id, onChange, onValidationChange]);
 
-  // Initialize when dependencies are ready
+  // Initialize when dependencies are ready with proper timing
   useEffect(() => {
-    // Small delay to ensure DOM is ready and prevent race conditions
+    // Longer delay to ensure DOM is ready and Google Maps is fully loaded
     const timer = setTimeout(() => {
       initializeAutocomplete();
-    }, 100);
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [initializeAutocomplete]);
@@ -248,35 +213,43 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
     return () => {
       if (autocompleteRef.current) {
         console.log(`🧹 Cleaning up autocomplete for: ${id}`);
-        // Google Maps autocomplete doesn't have a direct cleanup method
-        // but clearing the ref helps prevent memory leaks
-        autocompleteRef.current = null;
+        try {
+          // Clear the autocomplete reference
+          autocompleteRef.current = null;
+        } catch (error) {
+          console.warn(`Warning during cleanup for ${id}:`, error);
+        }
       }
     };
   }, [id]);
 
-  // Handle input changes with validation
+  // Handle input changes with improved error handling
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    onChange(newValue);
-    
-    // Reset selection state when user types
-    if (hasUserSelectedFromDropdown && newValue !== value) {
-      setHasUserSelectedFromDropdown(false);
-    }
-    
-    // Only show validation warning if user has typed substantial text but hasn't selected
-    if (required && newValue.length > 5 && !hasUserSelectedFromDropdown) {
-      setShowValidationWarning(true);
-      onValidationChange?.(false);
-    } else {
-      setShowValidationWarning(false);
-      onValidationChange?.(true);
-    }
-    
-    // Log for debugging
-    if (newValue.length >= 2 && isGoogleMapsLoaded && autocompleteRef.current) {
-      console.log(`🔍 Autocomplete active for ${id}: "${newValue}"`);
+    try {
+      const newValue = e.target.value;
+      onChange(newValue);
+      
+      // Reset selection state when user types
+      if (hasUserSelectedFromDropdown && newValue !== value) {
+        setHasUserSelectedFromDropdown(false);
+      }
+      
+      // Only show validation warning if user has typed substantial text but hasn't selected
+      if (required && newValue.length > 5 && !hasUserSelectedFromDropdown) {
+        setShowValidationWarning(true);
+        onValidationChange?.(false);
+      } else {
+        setShowValidationWarning(false);
+        onValidationChange?.(true);
+      }
+      
+      // Log for debugging
+      if (newValue.length >= 2 && isGoogleMapsLoaded && autocompleteRef.current) {
+        console.log(`🔍 Autocomplete active for ${id}: "${newValue}"`);
+      }
+    } catch (error) {
+      console.error(`❌ Error in handleInputChange for ${id}:`, error);
+      setApiError('Input error occurred');
     }
   };
 
