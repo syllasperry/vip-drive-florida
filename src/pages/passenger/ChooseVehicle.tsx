@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Users, Luggage, Check } from "lucide-react";
+import { Users, Luggage, Check, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import teslaImg from "@/assets/tesla-model-y.jpg";
 import bmwImg from "@/assets/bmw-sedan.jpg";
@@ -65,9 +65,29 @@ const ChooseVehicle = () => {
     }
   };
 
+  const handleDashboardClick = () => {
+    navigate("/passenger/dashboard");
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4">
       <div className="max-w-2xl mx-auto pt-8">
+        {/* Dashboard shortcut button */}
+        <div className="flex justify-end mb-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleDashboardClick}
+            className="text-muted-foreground hover:text-foreground text-base"
+          >
+            <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center mr-2">
+              <User className="h-4 w-4" />
+            </div>
+            <span className="text-green-500">Online</span>
+            <span className="ml-1">— Go to Dashboard</span>
+          </Button>
+        </div>
+
         <div className="text-center mb-8 space-y-2">
           <h1 className="text-3xl font-bold text-foreground">Choose Your Vehicle</h1>
           <p className="text-muted-foreground">Select the perfect ride for your journey</p>

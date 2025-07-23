@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { User, Calendar, MessageCircle, CreditCard, Settings, LogOut, Plus, Clock, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { MessagingInterface } from "@/components/MessagingInterface";
 import { SettingsModal } from "@/components/SettingsModal";
 import { ProfileEditModal } from "@/components/ProfileEditModal";
@@ -94,9 +95,21 @@ const Dashboard = () => {
         {/* Header */}
         <div className="bg-card rounded-xl p-6 mb-6 shadow-lg">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-card-foreground">Welcome back!</h1>
-              <p className="text-muted-foreground">Manage your rides and bookings</p>
+            <div className="flex items-center space-x-4">
+              <Avatar 
+                className="h-12 w-12 cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+                onClick={() => setProfileEditOpen(true)}
+              >
+                <AvatarImage src="" alt="Profile" />
+                <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
+                  JD
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <h1 className="text-2xl font-bold text-card-foreground">Welcome back!</h1>
+                <p className="text-lg font-medium text-primary">John Doe</p>
+                <p className="text-muted-foreground">Manage your rides and bookings</p>
+              </div>
             </div>
             <Button onClick={handleNewBooking} variant="luxury" className="flex items-center space-x-2">
               <Plus className="h-4 w-4" />
