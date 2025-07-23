@@ -51,7 +51,7 @@ export const MessagingInterface = ({ isOpen, onClose, userType, preFilledMessage
 
   const quickReplies = userType === "passenger" 
     ? ["Thank you!", "How long until arrival?", "I'm ready", "Delayed by 5 minutes"]
-    : ["I'm here", "On my way", "At Cell Phone Lot", "Delayed by 5 minutes", "Arrived"];
+    : ["I'm at the Cell Phone Lot", "I'll be there in 5 minutes", "Please send payment confirmation", "I'm here", "On my way", "Arrived"];
 
   const emojis = ["👍", "👌", "🙏", "⏰", "🚗", "✅", "❌", "📍"];
 
