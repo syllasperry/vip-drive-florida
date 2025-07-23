@@ -1,22 +1,59 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plane, Car, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { supabase } from "@/integrations/supabase/client";
 
 const HomeScreen = () => {
   const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [userProfile, setUserProfile] = useState<any>(null);
   
-  // Check if user is logged in and what type
-  const isPassengerLoggedIn = localStorage.getItem("passenger_logged_in") === "true";
-  const isDriverLoggedIn = localStorage.getItem("driver_logged_in") === "true";
+  useEffect(() => {
+    // Check authentication status
+    const checkAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setIsAuthenticated(!!session);
+        
+        if (session?.user) {
+          // Fetch user profile from passengers table
+          const { data: passenger } = await supabase
+            .from('passengers')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          
+          setUserProfile(passenger);
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+        setIsAuthenticated(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsAuthenticated(!!session);
+      if (!session) {
+        setUserProfile(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
   
   const handleDashboardClick = () => {
-    if (isPassengerLoggedIn) {
+    if (isAuthenticated) {
       navigate("/passenger/dashboard");
-    } else if (isDriverLoggedIn) {
-      navigate("/driver/dashboard");
     } else {
-      // If not logged in, show passenger login as default
+      // If not logged in, redirect to login
       navigate("/passenger/login");
     }
   };
@@ -32,15 +69,15 @@ const HomeScreen = () => {
             onClick={handleDashboardClick}
             className="text-muted-foreground hover:text-foreground text-lg"
           >
-            {(isPassengerLoggedIn || isDriverLoggedIn) ? (
+            {isAuthenticated ? (
               <>
                 <Avatar className="w-8 h-8 mr-3 ring-2 ring-green-500/30">
                   <AvatarImage 
-                    src="https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=100&h=100&fit=crop&crop=face" 
+                    src={userProfile?.profile_photo_url || undefined} 
                     alt="User Profile" 
                   />
                   <AvatarFallback className="bg-green-100 text-green-700">
-                    <User className="h-4 w-4" />
+                    {userProfile?.full_name ? userProfile.full_name.charAt(0).toUpperCase() : <User className="h-4 w-4" />}
                   </AvatarFallback>
                 </Avatar>
                 <span className="text-green-500 font-medium">Online</span>

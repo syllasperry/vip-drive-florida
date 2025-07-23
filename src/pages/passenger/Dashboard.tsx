@@ -8,9 +8,17 @@ import { SettingsModal } from "@/components/SettingsModal";
 import { ProfileEditModal } from "@/components/ProfileEditModal";
 import CelebrationModal from "@/components/CelebrationModal";
 import { ReviewModal } from "@/components/ReviewModal";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  // Authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [userProfile, setUserProfile] = useState<any>(null);
   
   // State declarations
   const [activeTab, setActiveTab] = useState("bookings");
@@ -25,13 +33,69 @@ const Dashboard = () => {
   const [showWelcomeCelebration, setShowWelcomeCelebration] = useState(false);
   const [showRideConfirmation, setShowRideConfirmation] = useState(false);
 
+  // Authentication check and user data fetching
+  useEffect(() => {
+    const checkAuthAndLoadData = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          // No session, redirect to login
+          navigate("/passenger/login");
+          return;
+        }
+
+        setIsAuthenticated(true);
+        
+        // Fetch user profile
+        const { data: passenger, error } = await supabase
+          .from('passengers')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (error) {
+          console.error('Error fetching user profile:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load user profile",
+            variant: "destructive",
+          });
+        } else {
+          setUserProfile(passenger);
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+        navigate("/passenger/login");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuthAndLoadData();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) {
+        navigate("/passenger/login");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate, toast]);
+
   const handleNewBooking = () => {
     navigate("/passenger/price-estimate");
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("passenger_logged_in");
-    navigate("/");
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate("/");
+    } catch (error) {
+      console.error('Logout error:', error);
+      navigate("/");
+    }
   };
 
   // Check for new account celebration
@@ -113,6 +177,23 @@ const Dashboard = () => {
     }
   };
 
+  // Show loading while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render dashboard if not authenticated
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
       <div className="max-w-4xl mx-auto p-4">
@@ -124,14 +205,14 @@ const Dashboard = () => {
                 className="h-12 w-12 cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
                 onClick={() => setProfileEditOpen(true)}
               >
-                <AvatarImage src="" alt="Profile" />
+                <AvatarImage src={userProfile?.profile_photo_url || undefined} alt="Profile" />
                 <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
-                  JD
+                  {userProfile?.full_name ? userProfile.full_name.charAt(0).toUpperCase() : 'U'}
                 </AvatarFallback>
               </Avatar>
               <div>
                 <h1 className="text-2xl font-bold text-card-foreground">Welcome back!</h1>
-                <p className="text-lg font-medium text-primary">John Doe</p>
+                <p className="text-lg font-medium text-primary">{userProfile?.full_name || 'VIP Member'}</p>
                 <p className="text-muted-foreground">Manage your rides and bookings</p>
               </div>
             </div>
@@ -289,7 +370,7 @@ const Dashboard = () => {
                     <label className="block text-sm font-medium text-card-foreground mb-1">Name</label>
                     <input 
                       type="text" 
-                      defaultValue="John Doe" 
+                      defaultValue={userProfile?.full_name || ''} 
                       className="w-full p-2 border border-border rounded-lg bg-background"
                       disabled
                     />
@@ -298,7 +379,7 @@ const Dashboard = () => {
                     <label className="block text-sm font-medium text-card-foreground mb-1">Email</label>
                     <input 
                       type="email" 
-                      defaultValue="john@example.com" 
+                      defaultValue={userProfile?.email || ''} 
                       className="w-full p-2 border border-border rounded-lg bg-background"
                       disabled
                     />
@@ -307,7 +388,7 @@ const Dashboard = () => {
                     <label className="block text-sm font-medium text-card-foreground mb-1">Phone</label>
                     <input 
                       type="tel" 
-                      defaultValue="+1 (555) 123-4567" 
+                      defaultValue={userProfile?.phone || ''} 
                       className="w-full p-2 border border-border rounded-lg bg-background"
                       disabled
                     />
