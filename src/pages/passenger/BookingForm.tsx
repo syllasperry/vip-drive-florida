@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Calendar, Clock, Users, Luggage, Plane } from "lucide-react";
+import { Users, Luggage, Plane } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { DateTimePicker } from "@/components/DateTimePicker";
 
 const BookingForm = () => {
   const navigate = useNavigate();
@@ -47,28 +48,6 @@ const BookingForm = () => {
     }));
   };
 
-  // Generate date options (48 hours from now)
-  const generateDateOptions = () => {
-    const dates = [];
-    const today = new Date();
-    
-    for (let i = 2; i <= 30; i++) { // Start from 2 days (48 hours) from now
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
-      dates.push({
-        value: date.toISOString().split('T')[0],
-        label: date.toLocaleDateString('en-US', { 
-          weekday: 'long', 
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric' 
-        })
-      });
-    }
-    return dates;
-  };
-
-  const dateOptions = generateDateOptions();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4">
@@ -115,41 +94,12 @@ const BookingForm = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="date" className="text-card-foreground flex items-center">
-                    <Calendar className="mr-1 h-4 w-4" />
-                    Date (min 48h advance)
-                  </Label>
-                  <Select value={formData.date} onValueChange={(value) => handleInputChange("date", value)}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Select date" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {dateOptions.map(option => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="time" className="text-card-foreground flex items-center">
-                    <Clock className="mr-1 h-4 w-4" />
-                    Time
-                  </Label>
-                  <Input
-                    id="time"
-                    type="time"
-                    value={formData.time}
-                    onChange={(e) => handleInputChange("time", e.target.value)}
-                    className="mt-1"
-                    required
-                  />
-                </div>
-              </div>
+              <DateTimePicker
+                selectedDate={formData.date}
+                selectedTime={formData.time}
+                onDateChange={(date) => handleInputChange("date", date)}
+                onTimeChange={(time) => handleInputChange("time", time)}
+              />
 
               <div className="grid grid-cols-2 gap-4">
                 <div>

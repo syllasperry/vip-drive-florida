@@ -1,11 +1,18 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Calendar, MessageCircle, CreditCard, Settings, LogOut, Plus } from "lucide-react";
+import { User, Calendar, MessageCircle, CreditCard, Settings, LogOut, Plus, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MessagingInterface } from "@/components/MessagingInterface";
+import { SettingsModal } from "@/components/SettingsModal";
+import { ProfileEditModal } from "@/components/ProfileEditModal";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("bookings");
+  const [messagingOpen, setMessagingOpen] = useState(false);
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [settingsType, setSettingsType] = useState<"notifications" | "privacy">("notifications");
+  const [profileEditOpen, setProfileEditOpen] = useState(false);
 
   const handleNewBooking = () => {
     navigate("/passenger/price-estimate");
@@ -24,7 +31,9 @@ const Dashboard = () => {
       to: "Brickell City Centre",
       vehicle: "Tesla Model Y",
       status: "confirmed",
-      driver: "John Smith"
+      driver: "John Smith",
+      paymentMethod: "Visa ending in 4532",
+      countdown: null
     },
     {
       id: "2", 
@@ -33,8 +42,22 @@ const Dashboard = () => {
       from: "Fort Lauderdale Airport",
       to: "Las Olas Boulevard",
       vehicle: "BMW Sedan",
+      status: "waiting_payment",
+      driver: "Mike Rodriguez",
+      paymentMethod: "Zelle",
+      countdown: 21 // hours remaining
+    },
+    {
+      id: "3",
+      date: "2024-01-20",
+      time: "16:00", 
+      from: "Palm Beach Airport",
+      to: "Worth Avenue",
+      vehicle: "Mercedes Van",
       status: "pending",
-      driver: null
+      driver: null,
+      paymentMethod: null,
+      countdown: null
     }
   ];
 
@@ -42,8 +65,19 @@ const Dashboard = () => {
     switch (status) {
       case "confirmed": return "bg-green-100 text-green-800";
       case "pending": return "bg-yellow-100 text-yellow-800";
+      case "waiting_payment": return "bg-orange-100 text-orange-800";
       case "completed": return "bg-blue-100 text-blue-800";
       default: return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "confirmed": return "Confirmed";
+      case "pending": return "Pending";
+      case "waiting_payment": return "Waiting for Payment";
+      case "completed": return "Completed";
+      default: return status;
     }
   };
 
@@ -104,8 +138,14 @@ const Dashboard = () => {
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-3">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
-                          {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                          {getStatusText(booking.status)}
                         </span>
+                        {booking.status === "waiting_payment" && booking.countdown && (
+                          <div className="flex items-center space-x-1 text-orange-600">
+                            <Clock className="h-3 w-3" />
+                            <span className="text-xs font-medium">{booking.countdown}h left</span>
+                          </div>
+                        )}
                         <span className="text-sm text-muted-foreground">
                           {new Date(booking.date).toLocaleDateString()} at {booking.time}
                         </span>
@@ -130,7 +170,23 @@ const Dashboard = () => {
                           <span className="ml-2 text-card-foreground">{booking.driver}</span>
                         </div>
                       )}
+                      {booking.paymentMethod && (
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Payment:</span>
+                          <span className="ml-2 text-card-foreground">{booking.paymentMethod}</span>
+                        </div>
+                      )}
                     </div>
+                    {booking.status === "waiting_payment" && (
+                      <div className="mt-3 p-3 bg-orange-50 rounded-lg border border-orange-200">
+                        <p className="text-sm text-orange-800">
+                          If payment is not completed within 24 hours, the ride will be automatically canceled.
+                        </p>
+                        <Button size="sm" variant="luxury" className="mt-2">
+                          Complete Payment
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))}
                 {mockBookings.length === 0 && (
@@ -179,7 +235,7 @@ const Dashboard = () => {
                     />
                   </div>
                 </div>
-                <Button variant="outline">Edit Profile</Button>
+                <Button variant="outline" onClick={() => setProfileEditOpen(true)}>Edit Profile</Button>
               </div>
             </div>
           )}
@@ -187,12 +243,17 @@ const Dashboard = () => {
           {activeTab === "messages" && (
             <div>
               <h2 className="text-xl font-bold text-card-foreground mb-6">Messages</h2>
-              <div className="text-center py-8">
-                <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No messages yet</p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Messages with your drivers will appear here
-                </p>
+              <div className="space-y-4">
+                <div className="border border-border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-medium text-card-foreground">John Smith (Driver)</h3>
+                    <span className="text-xs text-muted-foreground">2 min ago</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-3">Hi! I'm on my way to pick you up.</p>
+                  <Button size="sm" variant="outline" onClick={() => setMessagingOpen(true)}>
+                    Reply
+                  </Button>
+                </div>
               </div>
             </div>
           )}
@@ -227,14 +288,32 @@ const Dashboard = () => {
                     <h3 className="font-medium text-card-foreground">Notifications</h3>
                     <p className="text-sm text-muted-foreground">Manage your notification preferences</p>
                   </div>
-                  <Button variant="outline" size="sm">Configure</Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setSettingsType("notifications");
+                      setSettingsModalOpen(true);
+                    }}
+                  >
+                    Configure
+                  </Button>
                 </div>
                 <div className="flex items-center justify-between p-4 border border-border rounded-lg">
                   <div>
                     <h3 className="font-medium text-card-foreground">Privacy</h3>
                     <p className="text-sm text-muted-foreground">Control your privacy settings</p>
                   </div>
-                  <Button variant="outline" size="sm">Manage</Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setSettingsType("privacy");
+                      setSettingsModalOpen(true);
+                    }}
+                  >
+                    Manage
+                  </Button>
                 </div>
                 <div className="pt-4 border-t border-border">
                   <Button 
@@ -250,6 +329,24 @@ const Dashboard = () => {
             </div>
           )}
         </div>
+
+        {/* Modals */}
+        <MessagingInterface 
+          isOpen={messagingOpen}
+          onClose={() => setMessagingOpen(false)}
+          userType="passenger"
+        />
+        
+        <SettingsModal
+          isOpen={settingsModalOpen}
+          onClose={() => setSettingsModalOpen(false)}
+          type={settingsType}
+        />
+
+        <ProfileEditModal
+          isOpen={profileEditOpen}
+          onClose={() => setProfileEditOpen(false)}
+        />
       </div>
     </div>
   );
