@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ConsentModal } from "@/components/ConsentModal";
+import { CameraCapture } from "@/components/CameraCapture";
 import { useToast } from "@/hooks/use-toast";
 
 interface ProfileEditModalProps {
@@ -20,6 +21,7 @@ export const ProfileEditModal = ({ isOpen, onClose }: ProfileEditModalProps) => 
   });
   const [consentModalOpen, setConsentModalOpen] = useState(false);
   const [consentType, setConsentType] = useState<"upload" | "camera">("upload");
+  const [cameraOpen, setCameraOpen] = useState(false);
   const { toast } = useToast();
 
   const handleInputChange = (field: string, value: string) => {
@@ -39,40 +41,44 @@ export const ProfileEditModal = ({ isOpen, onClose }: ProfileEditModalProps) => 
     if (consentType === "upload") {
       document.getElementById("photo-upload")?.click();
     } else {
-      document.getElementById("camera-capture")?.click();
+      setCameraOpen(true);
     }
   };
 
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Validate file type
-      const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
-      if (!validTypes.includes(file.type)) {
-        toast({
-          title: "Invalid file type",
-          description: "Please select a valid image file (JPG, PNG)",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      // Validate file size (5MB limit)
-      const maxSize = 5 * 1024 * 1024; // 5MB in bytes
-      if (file.size > maxSize) {
-        toast({
-          title: "File too large", 
-          description: "File size must be less than 5MB",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      setFormData(prev => ({
-        ...prev,
-        profilePhoto: file
-      }));
+      handlePhotoFile(file);
     }
+  };
+
+  const handlePhotoFile = (file: File) => {
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please select a valid image file (JPG, PNG)",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Validate file size (5MB limit)
+    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+    if (file.size > maxSize) {
+      toast({
+        title: "File too large", 
+        description: "File size must be less than 5MB",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setFormData(prev => ({
+      ...prev,
+      profilePhoto: file
+    }));
   };
 
   const handleSave = () => {
@@ -134,21 +140,13 @@ export const ProfileEditModal = ({ isOpen, onClose }: ProfileEditModalProps) => 
                 </Button>
               </div>
 
-              {/* Hidden file inputs */}
+              {/* Hidden file input */}
               <input
                 type="file"
                 accept="image/*"
                 onChange={handlePhotoUpload}
                 className="hidden"
                 id="photo-upload"
-              />
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handlePhotoUpload}
-                className="hidden"
-                id="camera-capture"
               />
             </div>
           </div>
@@ -217,6 +215,13 @@ export const ProfileEditModal = ({ isOpen, onClose }: ProfileEditModalProps) => 
             ? "By uploading your photo, you consent to us using it for your profile display within the app. Do you agree?"
             : "This app needs permission to access your camera to take your profile photo. Do you agree?"
         }
+      />
+
+      {/* Camera Capture Modal */}
+      <CameraCapture
+        isOpen={cameraOpen}
+        onClose={() => setCameraOpen(false)}
+        onCapture={handlePhotoFile}
       />
     </div>
   );

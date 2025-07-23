@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapPin, ArrowRight, Info } from "lucide-react";
+import { MapPin, ArrowRight, Info, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,20 @@ const PriceEstimate = () => {
   const [dropoff, setDropoff] = useState("");
   const [estimatedPrice, setEstimatedPrice] = useState<string | null>(null);
   const navigate = useNavigate();
+  
+  // Check if user is logged in
+  const isPassengerLoggedIn = localStorage.getItem("passenger_logged_in") === "true";
+  const isDriverLoggedIn = localStorage.getItem("driver_logged_in") === "true";
+  
+  const handleDashboardClick = () => {
+    if (isPassengerLoggedIn) {
+      navigate("/passenger/dashboard");
+    } else if (isDriverLoggedIn) {
+      navigate("/driver/dashboard");
+    } else {
+      navigate("/passenger/login");
+    }
+  };
 
   const calculateEstimate = () => {
     if (pickup && dropoff) {
@@ -41,6 +55,21 @@ const PriceEstimate = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4">
       <div className="max-w-md mx-auto pt-8">
+        {/* Dashboard shortcut button */}
+        {(isPassengerLoggedIn || isDriverLoggedIn) && (
+          <div className="flex justify-end mb-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDashboardClick}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <User className="h-4 w-4 mr-2" />
+              Dashboard
+            </Button>
+          </div>
+        )}
+        
         <div className="text-center mb-8 space-y-2">
           <h1 className="text-3xl font-bold text-foreground">Get Price Estimate</h1>
           <p className="text-muted-foreground">Plan your premium journey</p>
