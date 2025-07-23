@@ -1,14 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock, User, Phone, Camera, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const PassengerLogin = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -20,22 +23,90 @@ const PassengerLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const bookingData = location.state;
+  const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    // Check if user is already logged in
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        navigate(bookingData ? "/passenger/choose-vehicle" : "/passenger/dashboard", 
+               { state: bookingData });
+      }
+    };
+    checkAuth();
+  }, [navigate, bookingData]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In real app, this would authenticate with backend
-    // Set authentication state for demo purposes
-    localStorage.setItem("passenger_logged_in", "true");
-    
-    if (!isLogin) {
-      // Set flag for welcome celebration on new account creation
-      localStorage.setItem("show_welcome_celebration", "true");
-    }
-    
-    if (bookingData) {
-      navigate("/passenger/choose-vehicle", { state: bookingData });
-    } else {
-      navigate("/passenger/dashboard");
+    setLoading(true);
+
+    try {
+      if (isLogin) {
+        // Sign in existing user
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Welcome back!",
+          description: "You've been successfully signed in.",
+        });
+
+        navigate(bookingData ? "/passenger/choose-vehicle" : "/passenger/dashboard", 
+               { state: bookingData });
+      } else {
+        // Create new user account
+        const { data, error } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/passenger/dashboard`,
+            data: {
+              full_name: formData.name,
+              phone: formData.phone,
+            }
+          }
+        });
+
+        if (error) throw error;
+
+        if (data.user) {
+          // Create passenger record
+          const { error: insertError } = await supabase
+            .from('passengers')
+            .insert({
+              id: data.user.id,
+              full_name: formData.name,
+              email: formData.email,
+              phone: formData.phone,
+              profile_photo_url: null // TODO: Handle photo upload
+            });
+
+          if (insertError) throw insertError;
+
+          localStorage.setItem("show_welcome_celebration", "true");
+          
+          toast({
+            title: "Account created!",
+            description: "Please check your email to verify your account.",
+          });
+
+          navigate(bookingData ? "/passenger/choose-vehicle" : "/passenger/dashboard", 
+                 { state: bookingData });
+        }
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -64,12 +135,25 @@ const PassengerLogin = () => {
     }
   };
 
-  const handleGoogleAuth = () => {
-    // This would integrate with Google OAuth
-    // For now, simulate successful login
-    alert('Google OAuth integration requires Supabase connection. For demo purposes, signing you in...');
-    localStorage.setItem("passenger_logged_in", "true");
-    navigate("/passenger/choose-vehicle", { state: bookingData });
+  const handleGoogleAuth = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/passenger/dashboard`
+        }
+      });
+      
+      if (error) throw error;
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Google sign-in failed. Please try again.",
+        variant: "destructive",
+      });
+      setLoading(false);
+    }
   };
 
   return (
@@ -241,8 +325,14 @@ const PassengerLogin = () => {
               </>
             )}
 
-            <Button type="submit" variant="luxury" size="lg" className="w-full">
-              {isLogin ? "Sign In" : "Create Account"}
+            <Button 
+              type="submit" 
+              variant="luxury" 
+              size="lg" 
+              className="w-full"
+              disabled={loading || !formData.email || !formData.password || (!isLogin && !formData.name)}
+            >
+              {loading ? "Loading..." : (isLogin ? "Sign In" : "Create Account")}
             </Button>
           </form>
 

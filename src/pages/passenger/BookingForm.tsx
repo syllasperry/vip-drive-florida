@@ -8,11 +8,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { DateTimePicker } from "@/components/DateTimePicker";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const BookingForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { pickup, dropoff, selectedVehicle } = location.state || {};
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     flightInfo: "",
@@ -28,17 +32,69 @@ const BookingForm = () => {
     otherPersonEmail: ""
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Navigate to confirmation page
-    navigate("/passenger/confirmation", {
-      state: {
-        pickup,
-        dropoff,
-        selectedVehicle,
-        bookingDetails: formData
+    setLoading(true);
+
+    try {
+      // Get current user
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to create a booking.",
+          variant: "destructive",
+        });
+        navigate("/passenger/login");
+        return;
       }
-    });
+
+      // Combine date and time for pickup_time
+      const pickupDateTime = new Date(`${formData.date}T${formData.time}`);
+
+      // Create booking in database
+      const { data: booking, error } = await supabase
+        .from('bookings')
+        .insert({
+          passenger_id: session.user.id,
+          pickup_location: pickup,
+          dropoff_location: dropoff,
+          pickup_time: pickupDateTime.toISOString(),
+          passenger_count: parseInt(formData.passengers),
+          luggage_count: parseInt(formData.luggage),
+          flight_info: formData.flightInfo || '',
+          status: 'pending',
+          payment_status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast({
+        title: "Booking submitted!",
+        description: "Your booking request has been sent to drivers.",
+      });
+
+      // Navigate to confirmation page
+      navigate("/passenger/confirmation", {
+        state: {
+          pickup,
+          dropoff,
+          selectedVehicle,
+          bookingDetails: formData,
+          bookingId: booking.id
+        }
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create booking. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string | boolean) => {
@@ -251,9 +307,9 @@ const BookingForm = () => {
             variant="luxury"
             size="lg"
             className="w-full"
-            disabled={!formData.date || !formData.time}
+            disabled={loading || !formData.date || !formData.time}
           >
-            Submit Booking Request
+            {loading ? "Creating Booking..." : "Submit Booking Request"}
           </Button>
 
           <div className="text-center">

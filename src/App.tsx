@@ -15,6 +15,7 @@ import BookingForm from "./pages/passenger/BookingForm";
 import Confirmation from "./pages/passenger/Confirmation";
 import PassengerDashboard from "./pages/passenger/Dashboard";
 import DriverLogin from "./pages/driver/Login";
+import DriverRegister from "./pages/driver/Register";
 import DriverDashboard from "./pages/driver/Dashboard";
 import NotFound from "./pages/NotFound";
 
@@ -38,6 +39,7 @@ const App = () => (
           <Route path="/passenger/confirmation" element={<Confirmation />} />
           <Route path="/passenger/dashboard" element={<PassengerDashboard />} />
           <Route path="/driver/login" element={<DriverLogin />} />
+          <Route path="/driver/register" element={<DriverRegister />} />
           <Route path="/driver/dashboard" element={<DriverDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
