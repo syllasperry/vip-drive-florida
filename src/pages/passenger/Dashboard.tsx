@@ -35,62 +35,107 @@ const Dashboard = () => {
   const [showRideConfirmation, setShowRideConfirmation] = useState(false);
 
   const handlePhotoUpload = async (file: File) => {
-    if (!userProfile?.id) return;
+    if (!userProfile?.id) {
+      toast({
+        title: "Error",
+        description: "User profile not loaded",
+        variant: "destructive",
+      });
+      return;
+    }
 
+    // Validate file type
     if (!file.type.startsWith("image/")) {
       toast({
-        title: "Invalid file",
-        description: "Please upload a valid image.",
+        title: "Invalid file type",
+        description: "Please upload a valid image (JPG, PNG, GIF).",
         variant: "destructive",
       });
       return;
     }
 
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${userProfile.id}.${fileExt}`;
-    const filePath = `avatars/${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("avatars")
-      .upload(filePath, file, { upsert: true });
-
-    if (uploadError) {
-      console.error(uploadError);
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
       toast({
-        title: "Upload failed",
-        description: "Failed to upload profile photo",
+        title: "File too large",
+        description: "File size must be less than 5MB.",
         variant: "destructive",
       });
       return;
     }
 
-    const { data: publicURLData } = supabase.storage
-      .from("avatars")
-      .getPublicUrl(filePath);
+    try {
+      // Show uploading state immediately
+      const optimisticUrl = URL.createObjectURL(file);
+      const previousUrl = userProfile.profile_photo_url;
+      
+      setUserProfile((prev: any) => ({
+        ...prev,
+        profile_photo_url: optimisticUrl,
+      }));
 
-    const publicURL = publicURLData?.publicUrl;
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${userProfile.id}-${Date.now()}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
 
-    const { error: updateError } = await supabase
-      .from("passengers")
-      .update({ profile_photo_url: publicURL })
-      .eq("id", userProfile.id);
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file, { upsert: true });
 
-    if (updateError) {
-      console.error(updateError);
-      toast({
-        title: "Update failed",
-        description: "Failed to update profile photo",
-        variant: "destructive",
-      });
-    } else {
+      if (uploadError) {
+        throw new Error(`Upload failed: ${uploadError.message}`);
+      }
+
+      // Get public URL
+      const { data: publicURLData } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(filePath);
+
+      const publicURL = publicURLData?.publicUrl;
+      if (!publicURL) {
+        throw new Error("Failed to get public URL");
+      }
+
+      // Update database
+      const { error: updateError } = await supabase
+        .from("passengers")
+        .update({ profile_photo_url: publicURL })
+        .eq("id", userProfile.id);
+
+      if (updateError) {
+        throw new Error(`Database update failed: ${updateError.message}`);
+      }
+
+      // Update state with final URL
       setUserProfile((prev: any) => ({
         ...prev,
         profile_photo_url: publicURL,
       }));
 
+      // Clean up old URL if it exists and is a blob
+      if (previousUrl && previousUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(previousUrl);
+      }
+
       toast({
         title: "Photo updated!",
         description: "Your profile photo has been successfully uploaded.",
+      });
+
+    } catch (error) {
+      console.error("Photo upload error:", error);
+      
+      // Revert optimistic update on error
+      setUserProfile((prev: any) => ({
+        ...prev,
+        profile_photo_url: userProfile.profile_photo_url,
+      }));
+
+      toast({
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : "Failed to upload profile photo",
+        variant: "destructive",
       });
     }
   };

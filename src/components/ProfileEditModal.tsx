@@ -59,11 +59,11 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload }
 
   const handlePhotoFile = async (file: File) => {
     // Validate file type
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     if (!validTypes.includes(file.type)) {
       toast({
         title: "Invalid file type",
-        description: "Please select a valid image file (JPG, PNG)",
+        description: "Please select a valid image file (JPG, PNG, GIF, WebP)",
         variant: "destructive"
       });
       return;
@@ -84,14 +84,35 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload }
     if (onPhotoUpload) {
       setIsUploading(true);
       try {
-        await onPhotoUpload(file);
-        // Update local state to show the image immediately
+        // Show optimistic update
+        const previewUrl = URL.createObjectURL(file);
         setFormData(prev => ({
           ...prev,
-          profilePhoto: file
+          profilePhoto: file,
+          profilePhotoUrl: previewUrl
         }));
+
+        await onPhotoUpload(file);
+        
+        toast({
+          title: "Photo uploaded!",
+          description: "Your profile photo has been updated successfully.",
+        });
+        
       } catch (error) {
         console.error('Photo upload failed:', error);
+        toast({
+          title: "Upload failed",
+          description: "Failed to upload photo. Please try again.",
+          variant: "destructive"
+        });
+        
+        // Revert optimistic update on error
+        setFormData(prev => ({
+          ...prev,
+          profilePhoto: null,
+          profilePhotoUrl: userProfile?.profile_photo_url || null
+        }));
       } finally {
         setIsUploading(false);
       }
@@ -99,7 +120,8 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload }
       // Fallback to local state only
       setFormData(prev => ({
         ...prev,
-        profilePhoto: file
+        profilePhoto: file,
+        profilePhotoUrl: URL.createObjectURL(file)
       }));
     }
   };
@@ -146,23 +168,32 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload }
           <div className="flex flex-col items-center space-y-4">
             <div className="relative w-20 h-20 bg-muted rounded-full flex items-center justify-center">
               {isUploading ? (
-                <div className="w-full h-full rounded-full bg-muted animate-pulse flex items-center justify-center">
-                  <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <div className="w-full h-full rounded-full bg-muted flex items-center justify-center relative">
+                  <div className="absolute inset-0 bg-primary/10 rounded-full animate-pulse" />
+                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                 </div>
+              ) : formData.profilePhotoUrl ? (
+                <img 
+                  src={formData.profilePhotoUrl} 
+                  alt="Profile" 
+                  className="w-full h-full object-cover rounded-full transition-opacity duration-300"
+                  onError={() => {
+                    setFormData(prev => ({ ...prev, profilePhotoUrl: null }));
+                  }}
+                />
               ) : userProfile?.profile_photo_url ? (
                 <img 
                   src={userProfile.profile_photo_url} 
                   alt="Profile" 
-                  className="w-full h-full object-cover rounded-full"
-                />
-              ) : formData.profilePhoto ? (
-                <img 
-                  src={URL.createObjectURL(formData.profilePhoto)} 
-                  alt="Profile" 
-                  className="w-full h-full object-cover rounded-full"
+                  className="w-full h-full object-cover rounded-full transition-opacity duration-300"
+                  onError={() => {
+                    setFormData(prev => ({ ...prev, profilePhotoUrl: null }));
+                  }}
                 />
               ) : (
-                <User className="h-8 w-8 text-muted-foreground" />
+                <div className="w-full h-full rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+                  <User className="h-8 w-8 text-primary" />
+                </div>
               )}
             </div>
             <div className="space-y-2">

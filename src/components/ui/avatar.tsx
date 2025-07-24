@@ -24,8 +24,14 @@ const AvatarImage = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AvatarPrimitive.Image
     ref={ref}
-    className={cn("aspect-square h-full w-full", className)}
+    className={cn("aspect-square h-full w-full transition-opacity duration-300", className)}
     {...props}
+    onError={(e) => {
+      e.currentTarget.style.display = 'none';
+    }}
+    onLoad={(e) => {
+      e.currentTarget.style.opacity = '1';
+    }}
   />
 ))
 AvatarImage.displayName = AvatarPrimitive.Image.displayName

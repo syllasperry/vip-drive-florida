@@ -12,7 +12,7 @@ export const ProfileHeader = ({ userProfile, onPhotoUpload, userType, isOnline =
   return (
     <div className="bg-card rounded-2xl p-6 mb-6 shadow-[var(--shadow-elegant)]">
       <div className="flex items-center gap-4">
-        <div className="relative">
+        <div className="relative group">
           <Avatar 
             className="h-16 w-16 cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all duration-300"
             onClick={() => document.getElementById('photo-upload')?.click()}
@@ -26,6 +26,14 @@ export const ProfileHeader = ({ userProfile, onPhotoUpload, userType, isOnline =
               {userProfile?.full_name ? userProfile.full_name.charAt(0).toUpperCase() : (userType === "passenger" ? 'P' : 'D')}
             </AvatarFallback>
           </Avatar>
+          
+          {/* Upload overlay on hover */}
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 rounded-full flex items-center justify-center">
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-white text-xs font-medium">
+              Change
+            </div>
+          </div>
+          
           <input
             id="photo-upload"
             type="file"
