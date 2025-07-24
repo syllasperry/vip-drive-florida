@@ -11,7 +11,48 @@ import { ReviewModal } from "@/components/ReviewModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-const Dashboard = () => {
+const Dashboard = () => {, const handlePhotoUpload = async (file: File) => {
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${userProfile.id}.${fileExt}`;
+  const filePath = `avatars/${fileName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from('avatars')
+    .upload(filePath, file, { upsert: true });
+
+  if (uploadError) {
+    console.error(uploadError);
+    return;
+  }
+
+  const { data: publicURLData } = supabase.storage
+    .from('avatars')
+    .getPublicUrl(filePath);
+
+  const publicURL = publicURLData?.publicUrl;
+
+  const { error: updateError } = await supabase
+    .from('profiles')
+    .update({ avatar_url: publicURL })
+    .eq('id', userProfile.id);
+
+  if (updateError) console.error(updateError);
+  if (updateError) {
+  console.error(updateError);
+} else {
+  // Atualiza o avatar instantaneamente no estado local
+  setUserProfile((prev: any) => ({
+    ...prev,
+    profile_photo_url: publicURL,
+  }));
+
+  // Exibe um toast de sucesso
+  toast({
+    title: "Photo updated!",
+    description: "Your profile photo has been successfully uploaded.",
+  });
+}
+};
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -207,9 +248,30 @@ const Dashboard = () => {
               >
                 <AvatarImage src={userProfile?.profile_photo_url || undefined} alt="Profile" />
                 <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
+                  
                   {userProfile?.full_name ? userProfile.full_name.charAt(0).toUpperCase() : 'U'}
                 </AvatarFallback>
               </Avatar>
+              <input
+                <input
+  type="file"
+  accept="image/*"
+  onChange={(e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handlePhotoUpload(file);
+    }
+  }}
+  className="mt-2"
+/>
+  type="file"
+  accept="image/*"
+  onChange={(e) => {
+    const file = e.target.files?.[0];
+    if (file) handlePhotoUpload(file);
+  }}
+  className="mt-2"
+/>
               <div>
                 <h1 className="text-2xl font-bold text-card-foreground">Welcome back!</h1>
                 <p className="text-lg font-medium text-primary">{userProfile?.full_name || 'VIP Member'}</p>
