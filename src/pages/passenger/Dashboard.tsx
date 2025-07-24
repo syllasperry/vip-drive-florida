@@ -396,6 +396,8 @@ const Dashboard = () => {
       <ProfileEditModal 
         isOpen={profileEditOpen}
         onClose={() => setProfileEditOpen(false)}
+        userProfile={userProfile}
+        onPhotoUpload={handlePhotoUpload}
       />
 
       <ReviewModal 

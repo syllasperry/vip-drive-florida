@@ -11,9 +11,11 @@ import { useToast } from "@/hooks/use-toast";
 interface ProfileEditModalProps {
   isOpen: boolean;
   onClose: () => void;
+  userProfile?: any;
+  onPhotoUpload?: (file: File) => Promise<void>;
 }
 
-export const ProfileEditModal = ({ isOpen, onClose }: ProfileEditModalProps) => {
+export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload }: ProfileEditModalProps) => {
   const [formData, setFormData] = useState({
     name: "John Doe",
     email: "john@example.com",
@@ -78,98 +80,43 @@ export const ProfileEditModal = ({ isOpen, onClose }: ProfileEditModalProps) => 
       return;
     }
     
-    // Upload to Supabase immediately
-    await uploadPhotoToSupabase(file);
-  };
-
-  const uploadPhotoToSupabase = async (file: File) => {
-    setIsUploading(true);
-    
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${session.user.id}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(filePath, file, { upsert: true });
-
-      if (uploadError) {
-        console.error(uploadError);
-        toast({
-          title: "Upload failed",
-          description: "Failed to upload profile photo",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const { data: publicURLData } = supabase.storage
-        .from("avatars")
-        .getPublicUrl(filePath);
-
-      const publicURL = publicURLData?.publicUrl;
-
-      const { error: updateError } = await supabase
-        .from("passengers")
-        .update({ profile_photo_url: publicURL })
-        .eq("id", session.user.id);
-
-      if (updateError) {
-        console.error(updateError);
-        toast({
-          title: "Update failed",
-          description: "Failed to update profile photo",
-          variant: "destructive",
-        });
-      } else {
-        // Update local form data with the uploaded file
+    // Use the dashboard's photo upload handler if available
+    if (onPhotoUpload) {
+      setIsUploading(true);
+      try {
+        await onPhotoUpload(file);
+        // Update local state to show the image immediately
         setFormData(prev => ({
           ...prev,
-          profilePhoto: file,
-          profilePhotoUrl: publicURL
+          profilePhoto: file
         }));
-
-        toast({
-          title: "Photo updated!",
-          description: "Your profile photo has been successfully uploaded.",
-        });
+      } catch (error) {
+        console.error('Photo upload failed:', error);
+      } finally {
+        setIsUploading(false);
       }
-    } finally {
-      setIsUploading(false);
+    } else {
+      // Fallback to local state only
+      setFormData(prev => ({
+        ...prev,
+        profilePhoto: file
+      }));
     }
   };
 
+
   // Load current user profile data when modal opens
   useEffect(() => {
-    const loadUserProfile = async () => {
-      if (!isOpen) return;
+    if (!isOpen || !userProfile) return;
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const { data: passenger } = await supabase
-        .from("passengers")
-        .select("*")
-        .eq("id", session.user.id)
-        .single();
-
-      if (passenger) {
-        setFormData({
-          name: passenger.full_name || "John Doe",
-          email: passenger.email || "john@example.com",
-          phone: passenger.phone || "+1 (555) 123-4567",
-          profilePhoto: null,
-          profilePhotoUrl: passenger.profile_photo_url
-        });
-      }
-    };
-
-    loadUserProfile();
-  }, [isOpen]);
+    setFormData({
+      name: userProfile.full_name || "John Doe",
+      email: userProfile.email || "john@example.com", 
+      phone: userProfile.phone || "+1 (555) 123-4567",
+      profilePhoto: null,
+      profilePhotoUrl: userProfile.profile_photo_url
+    });
+  }, [isOpen, userProfile]);
 
   const handleSave = () => {
     // Save logic here
@@ -202,9 +149,9 @@ export const ProfileEditModal = ({ isOpen, onClose }: ProfileEditModalProps) => 
                 <div className="w-full h-full rounded-full bg-muted animate-pulse flex items-center justify-center">
                   <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                 </div>
-              ) : formData.profilePhotoUrl ? (
+              ) : userProfile?.profile_photo_url ? (
                 <img 
-                  src={formData.profilePhotoUrl} 
+                  src={userProfile.profile_photo_url} 
                   alt="Profile" 
                   className="w-full h-full object-cover rounded-full"
                 />
