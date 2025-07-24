@@ -11,48 +11,7 @@ import { ReviewModal } from "@/components/ReviewModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-const Dashboard = () => {, const handlePhotoUpload = async (file: File) => {
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${userProfile.id}.${fileExt}`;
-  const filePath = `avatars/${fileName}`;
-
-  const { error: uploadError } = await supabase.storage
-    .from('avatars')
-    .upload(filePath, file, { upsert: true });
-
-  if (uploadError) {
-    console.error(uploadError);
-    return;
-  }
-
-  const { data: publicURLData } = supabase.storage
-    .from('avatars')
-    .getPublicUrl(filePath);
-
-  const publicURL = publicURLData?.publicUrl;
-
-  const { error: updateError } = await supabase
-    .from('profiles')
-    .update({ avatar_url: publicURL })
-    .eq('id', userProfile.id);
-
-  if (updateError) console.error(updateError);
-  if (updateError) {
-  console.error(updateError);
-} else {
-  // Atualiza o avatar instantaneamente no estado local
-  setUserProfile((prev: any) => ({
-    ...prev,
-    profile_photo_url: publicURL,
-  }));
-
-  // Exibe um toast de sucesso
-  toast({
-    title: "Photo updated!",
-    description: "Your profile photo has been successfully uploaded.",
-  });
-}
-};
+const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -73,6 +32,58 @@ const Dashboard = () => {, const handlePhotoUpload = async (file: File) => {
   // Celebration modal states
   const [showWelcomeCelebration, setShowWelcomeCelebration] = useState(false);
   const [showRideConfirmation, setShowRideConfirmation] = useState(false);
+
+  const handlePhotoUpload = async (file: File) => {
+    if (!userProfile?.id) return;
+    
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userProfile.id}.${fileExt}`;
+    const filePath = `avatars/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file, { upsert: true });
+
+    if (uploadError) {
+      console.error(uploadError);
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload profile photo",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const { data: publicURLData } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath);
+
+    const publicURL = publicURLData?.publicUrl;
+
+    const { error: updateError } = await supabase
+      .from('passengers')
+      .update({ profile_photo_url: publicURL })
+      .eq('id', userProfile.id);
+
+    if (updateError) {
+      console.error(updateError);
+      toast({
+        title: "Update failed", 
+        description: "Failed to update profile photo",
+        variant: "destructive",
+      });
+    } else {
+      setUserProfile((prev: any) => ({
+        ...prev,
+        profile_photo_url: publicURL,
+      }));
+
+      toast({
+        title: "Photo updated!",
+        description: "Your profile photo has been successfully uploaded.",
+      });
+    }
+  };
 
   // Authentication check and user data fetching
   useEffect(() => {
@@ -242,36 +253,28 @@ const Dashboard = () => {, const handlePhotoUpload = async (file: File) => {
         <div className="bg-card rounded-xl p-6 mb-6 shadow-lg">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center space-x-4">
-              <Avatar 
-                className="h-12 w-12 cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-                onClick={() => setProfileEditOpen(true)}
-              >
-                <AvatarImage src={userProfile?.profile_photo_url || undefined} alt="Profile" />
-                <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
-                  
-                  {userProfile?.full_name ? userProfile.full_name.charAt(0).toUpperCase() : 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <input
+              <div className="relative">
+                <Avatar 
+                  className="h-12 w-12 cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+                  onClick={() => setProfileEditOpen(true)}
+                >
+                  <AvatarImage src={userProfile?.profile_photo_url || undefined} alt="Profile" />
+                  <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
+                    {userProfile?.full_name ? userProfile.full_name.charAt(0).toUpperCase() : 'U'}
+                  </AvatarFallback>
+                </Avatar>
                 <input
-  type="file"
-  accept="image/*"
-  onChange={(e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      handlePhotoUpload(file);
-    }
-  }}
-  className="mt-2"
-/>
-  type="file"
-  accept="image/*"
-  onChange={(e) => {
-    const file = e.target.files?.[0];
-    if (file) handlePhotoUpload(file);
-  }}
-  className="mt-2"
-/>
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      handlePhotoUpload(file);
+                    }
+                  }}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+              </div>
               <div>
                 <h1 className="text-2xl font-bold text-card-foreground">Welcome back!</h1>
                 <p className="text-lg font-medium text-primary">{userProfile?.full_name || 'VIP Member'}</p>
