@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Eye, EyeOff, Mail, Lock, User, Phone, Camera, Upload } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, Phone, Camera, Upload, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -262,6 +262,19 @@ const PassengerLogin = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4">
       <div className="max-w-md mx-auto pt-8">
+        {/* Go Back Button */}
+        <div className="flex justify-start mb-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/home")}
+            className="text-muted-foreground hover:text-foreground text-base"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Go Back
+          </Button>
+        </div>
+        
         <div className="text-center mb-8 space-y-2">
           <h1 className="text-3xl font-bold text-foreground">
             {isLogin ? "Welcome Back" : "Create Account"}

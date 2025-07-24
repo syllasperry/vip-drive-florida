@@ -1,19 +1,81 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Car, Calendar, MessageCircle, DollarSign, Settings, LogOut, Clock, CheckCircle } from "lucide-react";
+import { Car, Calendar, MessageCircle, DollarSign, Settings, LogOut, Clock, CheckCircle, Plus, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { MessagingInterface } from "@/components/MessagingInterface";
 import { DriverScheduleModal } from "@/components/DriverScheduleModal";
 import { DriverSettingsModal } from "@/components/DriverSettingsModal";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const DriverDashboard = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  // State declarations
   const [activeTab, setActiveTab] = useState("rides");
   const [messagingOpen, setMessagingOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsType, setSettingsType] = useState<"notifications" | "privacy" | null>(null);
   const [isOnline, setIsOnline] = useState(true);
+  
+  // Authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [userProfile, setUserProfile] = useState<any>(null);
+
+  // Authentication check and user data fetching
+  useEffect(() => {
+    const checkAuthAndLoadData = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          // No session, redirect to driver login
+          navigate("/driver/login");
+          return;
+        }
+
+        setIsAuthenticated(true);
+        
+        // Fetch driver profile
+        const { data: driver, error } = await supabase
+          .from('drivers')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (error) {
+          console.error('Error fetching driver profile:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load driver profile",
+            variant: "destructive",
+          });
+        } else {
+          setUserProfile(driver);
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+        navigate("/driver/login");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuthAndLoadData();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) {
+        navigate("/driver/login");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate, toast]);
 
   const handleLogout = () => {
     navigate("/");
@@ -115,15 +177,41 @@ const DriverDashboard = () => {
     );
   };
 
+  // Show loading while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render dashboard if not authenticated
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
       <div className="max-w-4xl mx-auto p-4">
         {/* Header */}
         <div className="bg-card rounded-xl p-6 mb-6 shadow-lg">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-card-foreground">Driver Dashboard</h1>
-              <p className="text-muted-foreground">Manage your rides and earnings</p>
+            <div className="flex items-center space-x-4">
+              <Avatar className="h-12 w-12">
+                <AvatarImage src={userProfile?.profile_photo_url || undefined} alt="Driver Profile" />
+                <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
+                  {userProfile?.full_name ? userProfile.full_name.charAt(0).toUpperCase() : 'D'}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <h1 className="text-2xl font-bold text-card-foreground">Welcome back!</h1>
+                <p className="text-lg font-medium text-primary">{userProfile?.full_name || 'Driver'}</p>
+                <p className="text-muted-foreground">Manage your rides and earnings</p>
+              </div>
             </div>
             <div className="flex items-center space-x-2">
               <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">

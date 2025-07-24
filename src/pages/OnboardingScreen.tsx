@@ -2,6 +2,13 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { 
+  Carousel, 
+  CarouselContent, 
+  CarouselItem, 
+  CarouselNext, 
+  CarouselPrevious 
+} from "@/components/ui/carousel";
 import businessmanImg from "@/assets/onboarding-businessman.jpg";
 import womanBookingImg from "@/assets/onboarding-woman-booking.jpg";
 import chauffeurWelcomeImg from "@/assets/onboarding-chauffeur-welcome.jpg";
@@ -286,27 +293,41 @@ const OnboardingScreen = () => {
         <h3 className="text-xl font-semibold text-center mb-6 text-foreground">
           What Our Clients Say
         </h3>
-        <div className="flex overflow-x-auto space-x-4 pb-4">
-          {testimonials.map((testimonial, index) => (
-            <div key={index} className="bg-card p-4 rounded-lg shadow-lg min-w-[280px] flex-shrink-0">
-              <div className="flex items-center space-x-3 mb-3">
-                <img 
-                  src={testimonial.avatar} 
-                  alt={testimonial.name}
-                  className="w-12 h-12 rounded-full object-cover"
-                />
-                <div>
-                  <h4 className="font-medium text-card-foreground">{testimonial.name}</h4>
-                  <div className="flex space-x-1">
-                    {[...Array(testimonial.rating)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-primary text-primary" />
-                    ))}
+        <div className="max-w-5xl mx-auto">
+          <Carousel 
+            className="w-full"
+            opts={{
+              align: "start",
+              loop: true,
+            }}
+          >
+            <CarouselContent className="-ml-2 md:-ml-4">
+              {testimonials.map((testimonial, index) => (
+                <CarouselItem key={index} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/3">
+                  <div className="bg-card p-6 rounded-xl shadow-lg h-full border border-border/20">
+                    <div className="flex items-center space-x-3 mb-4">
+                      <img 
+                        src={testimonial.avatar} 
+                        alt={testimonial.name}
+                        className="w-12 h-12 rounded-full object-cover"
+                      />
+                      <div>
+                        <h4 className="font-medium text-card-foreground">{testimonial.name}</h4>
+                        <div className="flex space-x-1">
+                          {[...Array(testimonial.rating)].map((_, i) => (
+                            <Star key={i} className="w-4 h-4 fill-primary text-primary" />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-muted-foreground leading-relaxed">{testimonial.text}</p>
                   </div>
-                </div>
-              </div>
-              <p className="text-muted-foreground">{testimonial.text}</p>
-            </div>
-          ))}
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselPrevious className="hidden md:flex -left-4" />
+            <CarouselNext className="hidden md:flex -right-4" />
+          </Carousel>
         </div>
       </div>
 
