@@ -1,18 +1,20 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Calendar, MessageCircle, CreditCard, Settings, LogOut, Plus, Clock, Star } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessagingInterface } from "@/components/MessagingInterface";
 import { SettingsModal } from "@/components/SettingsModal";
 import { ProfileEditModal } from "@/components/ProfileEditModal";
 import CelebrationModal from "@/components/CelebrationModal";
 import { ReviewModal } from "@/components/ReviewModal";
+import { BottomNavigation } from "@/components/dashboard/BottomNavigation";
+import { ProfileHeader } from "@/components/dashboard/ProfileHeader";
+import { UpcomingRideCard } from "@/components/dashboard/UpcomingRideCard";
+import { BookingToggle } from "@/components/dashboard/BookingToggle";
+import { BookingCard } from "@/components/dashboard/BookingCard";
+import { FloatingActionButton } from "@/components/dashboard/FloatingActionButton";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { User, LogOut } from "lucide-react";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -22,6 +24,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("bookings");
+  const [bookingView, setBookingView] = useState<"upcoming" | "past">("upcoming");
   const [messagingOpen, setMessagingOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [settingsType, setSettingsType] = useState<"notifications" | "privacy">("notifications");
@@ -207,34 +210,45 @@ const Dashboard = () => {
       driver: null,
       paymentMethod: null,
       countdown: null
+    },
+    {
+      id: "4",
+      date: "2024-01-10",
+      time: "12:00",
+      from: "Downtown Miami",
+      to: "Miami Beach",
+      vehicle: "Tesla Model S",
+      status: "completed",
+      driver: "Carlos Martinez",
+      paymentMethod: "Credit Card",
+      countdown: null
     }
   ]);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "confirmed": return "bg-green-100 text-green-800";
-      case "pending": return "bg-yellow-100 text-yellow-800";
-      case "waiting_payment": return "bg-orange-100 text-orange-800";
-      case "payment_confirmed": return "bg-green-100 text-green-800";
-      case "completed": return "bg-blue-100 text-blue-800";
-      default: return "bg-gray-100 text-gray-800";
+  // Filter bookings based on current view
+  const filteredBookings = bookings.filter(booking => {
+    const bookingDate = new Date(booking.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (bookingView === "upcoming") {
+      return bookingDate >= today && booking.status !== "completed";
+    } else {
+      return bookingDate < today || booking.status === "completed";
     }
-  };
+  });
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "confirmed": return "Confirmed";
-      case "pending": return "Pending";
-      case "waiting_payment": return "Waiting for Payment";
-      case "payment_confirmed": return "Payment Confirmed";
-      case "completed": return "Completed";
-      default: return status;
-    }
-  };
+  // Get next upcoming ride
+  const nextRide = bookings.find(booking => {
+    const bookingDate = new Date(booking.date);
+    const today = new Date();
+    return bookingDate >= today && (booking.status === "confirmed" || booking.status === "payment_confirmed");
+  });
+
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading...</p>
@@ -248,211 +262,123 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted">
-      <div className="max-w-4xl mx-auto p-4 space-y-6">
-        {/* Header Section - Improved Mobile Layout */}
-        <Card className="shadow-lg">
-          <CardContent className="p-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-start gap-4 flex-col sm:flex-row sm:items-center">
-                <div className="relative">
-                  <Avatar 
-                    className="h-16 w-16 cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-                    onClick={() => setProfileEditOpen(true)}
-                  >
-                    <AvatarImage 
-                      src={userProfile?.profile_photo_url || undefined} 
-                      alt="Profile"
-                      className="object-cover"
-                    />
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xl font-semibold">
-                      {userProfile?.full_name ? userProfile.full_name.charAt(0).toUpperCase() : 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        handlePhotoUpload(file);
-                      }
-                    }}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  />
-                </div>
-                <div className="text-center sm:text-left">
-                  <h1 className="text-2xl font-bold text-card-foreground">Welcome back!</h1>
-                  <p className="text-lg font-medium text-primary">{userProfile?.full_name || 'VIP Member'}</p>
-                  <p className="text-muted-foreground">Manage your rides and bookings</p>
-                </div>
-              </div>
-              <Button 
-                onClick={handleNewBooking} 
-                className="w-full md:w-auto flex items-center justify-center gap-2"
-                size="lg"
-              >
-                <Plus className="h-4 w-4" />
-                <span>New Booking</span>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+    <div className="min-h-screen bg-background pb-20">
+      <div className="max-w-lg mx-auto p-4 space-y-6">
+        {/* Profile Header */}
+        <ProfileHeader 
+          userProfile={userProfile}
+          onPhotoUpload={handlePhotoUpload}
+          userType="passenger"
+        />
 
-        {/* Dashboard Content */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="bookings" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              <span className="hidden sm:inline">Bookings</span>
-            </TabsTrigger>
-            <TabsTrigger value="messages" className="flex items-center gap-2">
-              <MessageCircle className="h-4 w-4" />
-              <span className="hidden sm:inline">Messages</span>
-            </TabsTrigger>
-            <TabsTrigger value="payments" className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4" />
-              <span className="hidden sm:inline">Payments</span>
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              <span className="hidden sm:inline">Settings</span>
-            </TabsTrigger>
-          </TabsList>
+        {/* Next Upcoming Ride Card */}
+        {nextRide && activeTab === "bookings" && (
+          <UpcomingRideCard 
+            ride={nextRide}
+            userType="passenger"
+            onMessage={() => setMessagingOpen(true)}
+          />
+        )}
 
-          <TabsContent value="bookings" className="space-y-4">
-            <div className="grid gap-4">
-              {bookings.map((booking) => (
-                <Card key={booking.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Badge className={getStatusColor(booking.status)}>
-                            {getStatusText(booking.status)}
-                          </Badge>
-                          <span className="text-sm text-muted-foreground">
-                            {booking.date} at {booking.time}
-                          </span>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="font-medium">{booking.from}</p>
-                          <p className="text-sm text-muted-foreground">to {booking.to}</p>
-                          <p className="text-sm">{booking.vehicle}</p>
-                          {booking.driver && (
-                            <p className="text-sm text-muted-foreground">Driver: {booking.driver}</p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => setMessagingOpen(true)}
-                        >
-                          <MessageCircle className="h-4 w-4" />
-                        </Button>
-                        {booking.status === "completed" && (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => {
-                              setSelectedBookingForReview(booking.id);
-                              setReviewModalOpen(true);
-                            }}
-                          >
-                            <Star className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
+        {/* Tab Content */}
+        {activeTab === "bookings" && (
+          <div>
+            <BookingToggle 
+              activeView={bookingView}
+              onViewChange={setBookingView}
+            />
+            
+            <div className="space-y-4">
+              {filteredBookings.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <p className="text-muted-foreground">
+                      {bookingView === "upcoming" ? "No upcoming rides" : "No past rides"}
+                    </p>
                   </CardContent>
                 </Card>
-              ))}
+              ) : (
+                filteredBookings.map((booking) => (
+                  <BookingCard 
+                    key={booking.id}
+                    booking={booking}
+                    userType="passenger"
+                    onMessage={() => setMessagingOpen(true)}
+                    onReview={() => {
+                      setSelectedBookingForReview(booking.id);
+                      setReviewModalOpen(true);
+                    }}
+                  />
+                ))
+              )}
             </div>
-          </TabsContent>
+          </div>
+        )}
 
-          <TabsContent value="messages">
-            <Card>
-              <CardHeader>
-                <CardTitle>Messages</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">No messages yet.</p>
+        {activeTab === "messages" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Messages</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground text-center py-8">No messages yet.</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {activeTab === "payments" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Payment Methods</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground text-center py-8">Manage your payment methods here.</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {activeTab === "settings" && (
+          <div className="space-y-4">
+            <Card className="cursor-pointer hover:shadow-[var(--shadow-subtle)] transition-shadow" onClick={() => setProfileEditOpen(true)}>
+              <CardContent className="p-5">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-primary/10 rounded-full">
+                    <User className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">Profile Settings</h3>
+                    <p className="text-sm text-muted-foreground">Update your personal information</p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
-          </TabsContent>
-
-          <TabsContent value="payments">
-            <Card>
-              <CardHeader>
-                <CardTitle>Payment Methods</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Manage your payment methods here.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="settings">
-            <div className="grid gap-4">
-              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setProfileEditOpen(true)}>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <User className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <h3 className="font-medium">Profile Settings</h3>
-                      <p className="text-sm text-muted-foreground">Update your personal information</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => {
-                setSettingsType("notifications");
-                setSettingsModalOpen(true);
-              }}>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <Settings className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <h3 className="font-medium">Notifications</h3>
-                      <p className="text-sm text-muted-foreground">Manage your notification preferences</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => {
-                setSettingsType("privacy");
-                setSettingsModalOpen(true);
-              }}>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <Settings className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <h3 className="font-medium">Privacy Settings</h3>
-                      <p className="text-sm text-muted-foreground">Control your privacy preferences</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="cursor-pointer hover:shadow-md transition-shadow border-destructive/20" onClick={handleLogout}>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
+            
+            <Card className="cursor-pointer hover:shadow-[var(--shadow-subtle)] transition-shadow border-destructive/20" onClick={handleLogout}>
+              <CardContent className="p-5">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-destructive/10 rounded-full">
                     <LogOut className="h-5 w-5 text-destructive" />
-                    <div>
-                      <h3 className="font-medium text-destructive">Sign Out</h3>
-                      <p className="text-sm text-muted-foreground">Sign out of your account</p>
-                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-        </Tabs>
+                  <div>
+                    <h3 className="font-semibold text-destructive">Sign Out</h3>
+                    <p className="text-sm text-muted-foreground">Sign out of your account</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
+
+      {/* Floating Action Button */}
+      <FloatingActionButton onClick={handleNewBooking} />
+
+      {/* Bottom Navigation */}
+      <BottomNavigation 
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        userType="passenger"
+      />
 
       {/* Modals */}
       <MessagingInterface 
