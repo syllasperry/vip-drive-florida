@@ -24,7 +24,7 @@ const ForgotPassword = () => {
     setError("");
     
     if (!validateEmail(email)) {
-      setError("Please enter a valid email address");
+      setError("Oops! Something went wrong. Please double-check your email or try again later.");
       return;
     }
 
@@ -35,18 +35,17 @@ const ForgotPassword = () => {
         redirectTo: `${window.location.origin}/passenger/login`,
       });
 
-      if (error) {
-        console.error("Password reset error:", error);
-        setError("Oops! Something went wrong. Please double-check your email or try again later.");
-      } else {
-        setIsSubmitted(true);
-        // Auto-navigate back to login after 5 seconds
-        setTimeout(() => {
-          navigate("/passenger/login");
-        }, 5000);
-      }
+      // Always show success message for valid email format
+      // Never reveal whether email exists in database or not
+      setIsSubmitted(true);
+      
+      // Auto-navigate back to login after 5 seconds
+      setTimeout(() => {
+        navigate("/passenger/login");
+      }, 5000);
+      
     } catch (err) {
-      console.error("Unexpected error:", err);
+      console.error("Password reset error:", err);
       setError("Oops! Something went wrong. Please double-check your email or try again later.");
     } finally {
       setIsLoading(false);
@@ -63,10 +62,7 @@ const ForgotPassword = () => {
               Reset Link Sent!
             </h1>
             <p className="text-muted-foreground mb-4">
-              We've sent a password reset link to <strong>{email}</strong>
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Check your email and follow the instructions to reset your password.
+              We've just sent a password reset link to your email. Please check your inbox (and spam folder) and follow the instructions to reset your password.
             </p>
           </div>
         </div>
