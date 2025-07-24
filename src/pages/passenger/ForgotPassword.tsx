@@ -1,26 +1,56 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Mail, ArrowLeft, CheckCircle } from "lucide-react";
+import { Mail, ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
+  const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const validateEmail = (email: string) => {
+    return email.includes("@") && email.includes(".");
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, this would call your backend/Supabase auth API
-    console.log("Password reset requested for:", email);
-    setIsSubmitted(true);
+    setError("");
     
-    // Simulate API call delay
-    setTimeout(() => {
-      setIsSubmitted(false);
-      navigate("/passenger/login");
-    }, 3000);
+    if (!validateEmail(email)) {
+      setError("Please enter a valid email address");
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/passenger/login`,
+      });
+
+      if (error) {
+        console.error("Password reset error:", error);
+        setError("Oops! Something went wrong. Please double-check your email or try again later.");
+      } else {
+        setIsSubmitted(true);
+        // Auto-navigate back to login after 5 seconds
+        setTimeout(() => {
+          navigate("/passenger/login");
+        }, 5000);
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      setError("Oops! Something went wrong. Please double-check your email or try again later.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (isSubmitted) {
@@ -67,6 +97,13 @@ const ForgotPassword = () => {
 
         <div className="bg-card p-6 rounded-xl shadow-lg">
           <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="flex items-center space-x-2 text-destructive bg-destructive/10 p-3 rounded-md">
+                <AlertCircle className="h-4 w-4" />
+                <span className="text-sm">{error}</span>
+              </div>
+            )}
+            
             <div className="space-y-2">
               <Label htmlFor="email">
                 <Mail className="inline h-4 w-4 mr-2" />
@@ -79,12 +116,19 @@ const ForgotPassword = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email address"
                 required
+                disabled={isLoading}
                 className="h-12"
               />
             </div>
 
-            <Button type="submit" variant="luxury" size="lg" className="w-full">
-              Send Reset Link
+            <Button 
+              type="submit" 
+              variant="luxury" 
+              size="lg" 
+              className="w-full" 
+              disabled={isLoading}
+            >
+              {isLoading ? "Sending..." : "Send Reset Link"}
             </Button>
           </form>
 
