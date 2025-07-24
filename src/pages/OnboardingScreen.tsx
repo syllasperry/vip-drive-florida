@@ -209,9 +209,10 @@ const DeparturesBoard = ({ airports }: { airports: Airport[] }) => {
 
 const OnboardingScreen = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [testimonialApi, setTestimonialApi] = useState<any>();
   const navigate = useNavigate();
 
-  // Auto-play carousel every 5 seconds
+  // Auto-play image carousel every 5 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % onboardingSlides.length);
@@ -219,6 +220,17 @@ const OnboardingScreen = () => {
     
     return () => clearInterval(interval);
   }, []);
+
+  // Auto-play testimonials carousel every 4 seconds
+  useEffect(() => {
+    if (!testimonialApi) return;
+
+    const interval = setInterval(() => {
+      testimonialApi.scrollNext();
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [testimonialApi]);
 
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % onboardingSlides.length);
@@ -296,6 +308,7 @@ const OnboardingScreen = () => {
         <div className="max-w-5xl mx-auto">
           <Carousel 
             className="w-full"
+            setApi={setTestimonialApi}
             opts={{
               align: "start",
               loop: true,
