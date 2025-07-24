@@ -549,12 +549,13 @@ const DriverDashboard = () => {
         isOpen={scheduleOpen}
         onClose={() => setScheduleOpen(false)}
         isOnline={isOnline}
-        onToggleOnline={setIsOnline}
+        onToggleOnline={() => setIsOnline(!isOnline)}
       />
       
       <DriverSettingsModal 
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+        settingType={settingsType || "notifications"}
       />
     </div>
   );
