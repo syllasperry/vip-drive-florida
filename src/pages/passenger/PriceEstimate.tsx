@@ -29,7 +29,7 @@ const PriceEstimate = () => {
   };
 
   const handleGoBack = () => {
-    navigate("/passenger/dashboard");
+    navigate("/home");
   };
 
   const calculateEstimate = () => {

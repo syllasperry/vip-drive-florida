@@ -17,10 +17,9 @@ interface MessagingInterfaceProps {
   isOpen: boolean;
   onClose: () => void;
   userType: "passenger" | "driver";
-  preFilledMessage?: string;
 }
 
-export const MessagingInterface = ({ isOpen, onClose, userType, preFilledMessage }: MessagingInterfaceProps) => {
+export const MessagingInterface = ({ isOpen, onClose, userType }: MessagingInterfaceProps) => {
   // Mock user data - in real app this would come from auth/props
   const currentUser = {
     name: userType === "passenger" ? "Sarah Johnson" : "Michael Chen",
@@ -53,12 +52,25 @@ export const MessagingInterface = ({ isOpen, onClose, userType, preFilledMessage
       senderAvatar: userType === "passenger" ? otherUser.avatar : currentUser.avatar
     }
   ]);
-  const [newMessage, setNewMessage] = useState(preFilledMessage || "");
+  const [newMessage, setNewMessage] = useState("");
   const [showEmojis, setShowEmojis] = useState(false);
 
   const quickReplies = userType === "passenger" 
     ? ["Thank you!", "How long until arrival?", "I'm ready", "Delayed by 5 minutes"]
     : ["I'm at the Cell Phone Lot", "I'll be there in 5 minutes", "Please send payment confirmation", "I'm here", "On my way", "Arrived"];
+
+  const handlePaymentDetailsRequest = () => {
+    const paymentMessage = "Hi, could you please confirm your payment details so I can complete the payment?";
+    const message: Message = {
+      id: Date.now().toString(),
+      text: paymentMessage,
+      sender: userType,
+      timestamp: new Date(),
+      senderName: currentUser.name,
+      senderAvatar: currentUser.avatar
+    };
+    setMessages(prev => [...prev, message]);
+  };
 
   const emojis = ["👍", "👌", "🙏", "⏰", "🚗", "✅", "❌", "📍"];
 
@@ -180,6 +192,19 @@ export const MessagingInterface = ({ isOpen, onClose, userType, preFilledMessage
               </Button>
             ))}
           </div>
+
+          {/* Payment Details Request Button - Passenger Only */}
+          {userType === "passenger" && (
+            <div className="mb-4">
+              <Button
+                onClick={handlePaymentDetailsRequest}
+                className="w-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
+                size="sm"
+              >
+                💳 Payment details request
+              </Button>
+            </div>
+          )}
 
           {/* Send Arrival Instructions Button - Driver Only */}
           {userType === "driver" && (

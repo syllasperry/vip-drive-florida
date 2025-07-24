@@ -494,7 +494,6 @@ const Dashboard = () => {
           isOpen={messagingOpen}
           onClose={() => setMessagingOpen(false)}
           userType="passenger"
-          preFilledMessage="Hi, could you please confirm your payment details so I can complete the payment?"
         />
         
         <SettingsModal
