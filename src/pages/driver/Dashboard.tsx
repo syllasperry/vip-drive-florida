@@ -83,7 +83,7 @@ const DriverDashboard = () => {
     return () => subscription.unsubscribe();
   }, [navigate, toast]);
 
-  const handlePhotoUpload = async (file: File) => {
+  const handlePhotoUpload = async (file: File): Promise<void> => {
     if (!userProfile?.id) return;
     
     const fileExt = file.name.split('.').pop();
