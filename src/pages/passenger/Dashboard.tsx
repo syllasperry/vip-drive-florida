@@ -75,8 +75,8 @@ const Dashboard = () => {
       }));
 
       const fileExt = file.name.split(".").pop();
-      const fileName = `${userProfile.id}-${Date.now()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
+      const fileName = `${userProfile.id}.${fileExt}`;
+      const filePath = `${userProfile.id}/${fileName}`;
 
       // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
