@@ -138,6 +138,17 @@ export const DriverPreferencesModal = ({
 
     console.log('DriverPreferencesModal: Loading profile data', userProfile);
     
+    // Parse car_type back into individual fields
+    let carMake = "", carModel = "", carYear = "", carColor = "";
+    if (userProfile?.car_type) {
+      const carTypeParts = userProfile.car_type.split(' ');
+      if (carTypeParts.length >= 3) {
+        carYear = carTypeParts[0] || "";
+        carMake = carTypeParts[1] || "";
+        carModel = carTypeParts.slice(2).join(' ') || "";
+      }
+    }
+    
     setFormData({
       // Driver Information
       name: userProfile?.full_name || "",
@@ -146,10 +157,10 @@ export const DriverPreferencesModal = ({
       profilePhoto: null,
       profilePhotoUrl: userProfile?.profile_photo_url,
       // Vehicle Information
-      carMake: userProfile?.car_make || "",
-      carModel: userProfile?.car_model || "",
-      carYear: userProfile?.car_year || "",
-      carColor: userProfile?.car_color || "",
+      carMake,
+      carModel,
+      carYear,
+      carColor, // Note: color is not stored separately in current schema
       licensePlate: userProfile?.license_plate || ""
     });
   }, [isOpen, userProfile]);
