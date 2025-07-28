@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { X, Star, Upload, Camera, User } from "lucide-react";
+import { X, Star, Upload, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConsentModal } from "@/components/ConsentModal";
-import { CameraCapture } from "@/components/CameraCapture";
 import { useToast } from "@/hooks/use-toast";
 
 interface ReviewModalProps {
@@ -29,8 +28,6 @@ export const ReviewModal = ({ isOpen, onClose, bookingId }: ReviewModalProps) =>
   const [publicConsent, setPublicConsent] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [consentModalOpen, setConsentModalOpen] = useState(false);
-  const [consentType, setConsentType] = useState<"upload" | "camera">("upload");
-  const [cameraOpen, setCameraOpen] = useState(false);
   const { toast } = useToast();
 
   const questions = [
@@ -57,18 +54,13 @@ export const ReviewModal = ({ isOpen, onClose, bookingId }: ReviewModalProps) =>
     }
   };
 
-  const handlePhotoConsent = (type: "upload" | "camera") => {
-    setConsentType(type);
+  const handlePhotoConsent = () => {
     setConsentModalOpen(true);
   };
 
   const handlePhotoConsentAgree = () => {
     setConsentModalOpen(false);
-    if (consentType === "upload") {
-      document.getElementById("photo-upload")?.click();
-    } else {
-      setCameraOpen(true);
-    }
+    document.getElementById("review-photo-upload")?.click();
   };
 
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -252,7 +244,7 @@ export const ReviewModal = ({ isOpen, onClose, bookingId }: ReviewModalProps) =>
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => handlePhotoConsent("upload")}
+                          onClick={handlePhotoConsent}
                         >
                           <Upload className="h-4 w-4 mr-2" />
                           Change Photo
@@ -265,24 +257,14 @@ export const ReviewModal = ({ isOpen, onClose, bookingId }: ReviewModalProps) =>
                         <User className="h-8 w-8 text-muted-foreground" />
                       </div>
                       <div className="space-y-2">
-                        <div className="flex space-x-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handlePhotoConsent("upload")}
-                          >
-                            <Upload className="h-4 w-4 mr-2" />
-                            Upload Photo
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handlePhotoConsent("camera")}
-                          >
-                            <Camera className="h-4 w-4 mr-2" />
-                            Take Photo
-                          </Button>
-                        </div>
+                        <Button 
+                          variant="outline" 
+                          className="w-full"
+                          onClick={handlePhotoConsent}
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          Upload Photo
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -293,7 +275,7 @@ export const ReviewModal = ({ isOpen, onClose, bookingId }: ReviewModalProps) =>
                     accept="image/*"
                     onChange={handlePhotoUpload}
                     className="hidden"
-                    id="photo-upload"
+                    id="review-photo-upload"
                   />
                 </div>
 
@@ -353,19 +335,8 @@ export const ReviewModal = ({ isOpen, onClose, bookingId }: ReviewModalProps) =>
         isOpen={consentModalOpen}
         onClose={() => setConsentModalOpen(false)}
         onAgree={handlePhotoConsentAgree}
-        title={consentType === "upload" ? "Upload Photo" : "Camera Access"}
-        description={
-          consentType === "upload"
-            ? "By uploading your photo, you consent to us using it for your profile display within the app. Do you agree?"
-            : "This app needs permission to access your camera to take your profile photo. Do you agree?"
-        }
-      />
-
-      {/* Camera Capture Modal */}
-      <CameraCapture
-        isOpen={cameraOpen}
-        onClose={() => setCameraOpen(false)}
-        onCapture={handlePhotoFile}
+        title="Upload Photo"
+        description="This app needs permission to access your device storage to upload your profile photo. Do you agree?"
       />
     </div>
   );

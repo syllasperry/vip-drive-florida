@@ -1,11 +1,9 @@
 import { useState, useEffect } from "react";
-import { X, Upload, User, Camera } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { X, Upload, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ConsentModal } from "@/components/ConsentModal";
-import { CameraCapture } from "@/components/CameraCapture";
 import { useToast } from "@/hooks/use-toast";
 
 interface ProfileEditModalProps {
@@ -25,8 +23,6 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload }
   });
   const [isUploading, setIsUploading] = useState(false);
   const [consentModalOpen, setConsentModalOpen] = useState(false);
-  const [consentType, setConsentType] = useState<"upload" | "camera">("upload");
-  const [cameraOpen, setCameraOpen] = useState(false);
   const { toast } = useToast();
 
   const handleInputChange = (field: string, value: string) => {
@@ -36,18 +32,13 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload }
     }));
   };
 
-  const handlePhotoConsent = (type: "upload" | "camera") => {
-    setConsentType(type);
+  const handlePhotoConsent = () => {
     setConsentModalOpen(true);
   };
 
   const handlePhotoConsentAgree = () => {
     setConsentModalOpen(false);
-    if (consentType === "upload") {
-      document.getElementById("photo-upload")?.click();
-    } else {
-      setCameraOpen(true);
-    }
+    document.getElementById("photo-upload")?.click();
   };
 
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -126,7 +117,6 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload }
     }
   };
 
-
   // Load current user profile data when modal opens
   useEffect(() => {
     if (!isOpen || !userProfile) return;
@@ -197,26 +187,14 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload }
               )}
             </div>
             <div className="space-y-2">
-              <div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => handlePhotoConsent("upload")}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload Photo
-                </Button>
-              </div>
-              <div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => handlePhotoConsent("camera")}
-                >
-                  <Camera className="h-4 w-4 mr-2" />
-                  Take Photo
-                </Button>
-              </div>
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={handlePhotoConsent}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Photo
+              </Button>
 
               {/* Hidden file input */}
               <input
@@ -287,19 +265,8 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload }
         isOpen={consentModalOpen}
         onClose={() => setConsentModalOpen(false)}
         onAgree={handlePhotoConsentAgree}
-        title={consentType === "upload" ? "Upload Photo" : "Camera Access"}
-        description={
-          consentType === "upload"
-            ? "By uploading your photo, you consent to us using it for your profile display within the app. Do you agree?"
-            : "This app needs permission to access your camera to take your profile photo. Do you agree?"
-        }
-      />
-
-      {/* Camera Capture Modal */}
-      <CameraCapture
-        isOpen={cameraOpen}
-        onClose={() => setCameraOpen(false)}
-        onCapture={handlePhotoFile}
+        title="Upload Photo"
+        description="This app needs permission to access your device storage to upload your profile photo. Do you agree?"
       />
     </div>
   );

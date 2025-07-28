@@ -1,13 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Eye, EyeOff, Mail, Lock, User, Phone, Camera, Upload, ArrowLeft, LogOut } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, Phone, Upload, ArrowLeft, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { CameraCapture } from "@/components/CameraCapture";
 
 const PassengerLogin = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -21,7 +20,7 @@ const PassengerLogin = () => {
     hearAbout: "",
     profilePhoto: null as File | null
   });
-  const [showCamera, setShowCamera] = useState(false);
+  
   const navigate = useNavigate();
   const location = useLocation();
   const bookingData = location.state;
@@ -209,39 +208,6 @@ const PassengerLogin = () => {
     }
   };
 
-  const handleCameraCapture = (file: File) => {
-    setFormData(prev => ({ ...prev, profilePhoto: file }));
-  };
-
-  const handleTakePhoto = async () => {
-    // Check if camera is available
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      try {
-        // Test camera access first
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        stream.getTracks().forEach(track => track.stop()); // Stop the test stream
-        
-        // Open camera modal if access is granted
-        setShowCamera(true);
-      } catch (error) {
-        console.error('Camera access denied:', error);
-        toast({
-          title: "Camera Access Denied",
-          description: "Please allow camera access or use file upload instead.",
-          variant: "destructive",
-        });
-        // Fallback to file input
-        document.getElementById('camera-capture')?.click();
-      }
-    } else {
-      // Fallback for browsers without camera support
-      toast({
-        title: "Camera Not Supported",
-        description: "Camera capture is not supported on this device. Using file upload instead.",
-      });
-      document.getElementById('camera-capture')?.click();
-    }
-  };
 
   const handleGoogleAuth = async () => {
     setLoading(true);
@@ -398,7 +364,7 @@ const PassengerLogin = () => {
               <>
                 <div className="space-y-2">
                   <Label>
-                    <Camera className="inline h-4 w-4 mr-2" />
+                    <Upload className="inline h-4 w-4 mr-2" />
                     Profile Photo
                   </Label>
                   <div className="flex items-center space-x-3">
@@ -410,49 +376,27 @@ const PassengerLogin = () => {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <Camera className="h-6 w-6 text-muted-foreground" />
+                        <User className="h-6 w-6 text-muted-foreground" />
                       )}
                     </div>
                     <div className="space-y-2">
-                      <div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handlePhotoUpload}
-                          className="hidden"
-                          id="photo-upload"
-                        />
-                        <Button 
-                          type="button" 
-                          variant="outline" 
-                          size="sm" 
-                          className="cursor-pointer w-full sm:w-auto"
-                          onClick={() => document.getElementById('photo-upload')?.click()}
-                        >
-                          <Upload className="h-4 w-4 mr-1" />
-                          Upload Photo
-                        </Button>
-                      </div>
-                      <div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="user"
-                          onChange={handlePhotoUpload}
-                          className="hidden"
-                          id="camera-capture"
-                        />
-                        <Button 
-                          type="button" 
-                          variant="outline" 
-                          size="sm" 
-                          className="cursor-pointer w-full sm:w-auto"
-                          onClick={handleTakePhoto}
-                        >
-                          <Camera className="h-4 w-4 mr-1" />
-                          Take Photo
-                        </Button>
-                      </div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoUpload}
+                        className="hidden"
+                        id="photo-upload"
+                      />
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm" 
+                        className="cursor-pointer w-full"
+                        onClick={() => document.getElementById('photo-upload')?.click()}
+                      >
+                        <Upload className="h-4 w-4 mr-1" />
+                        Upload Photo
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -547,12 +491,6 @@ const PassengerLogin = () => {
           </div>
         </div>
       </div>
-      
-      <CameraCapture
-        isOpen={showCamera}
-        onClose={() => setShowCamera(false)}
-        onCapture={handleCameraCapture}
-      />
     </div>
   );
 };

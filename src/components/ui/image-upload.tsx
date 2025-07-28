@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Upload, Camera, User, X } from "lucide-react";
+import { Upload, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
@@ -10,7 +10,7 @@ interface ImageUploadProps {
   className?: string;
   size?: "sm" | "md" | "lg";
   showProgress?: boolean;
-  allowCamera?: boolean;
+  
 }
 
 export const ImageUpload = ({ 
@@ -19,7 +19,7 @@ export const ImageUpload = ({
   className,
   size = "md",
   showProgress = true,
-  allowCamera = true
+  
 }: ImageUploadProps) => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -152,17 +152,6 @@ export const ImageUpload = ({
           <Upload className="h-4 w-4 mr-2" />
           Upload
         </Button>
-        
-        {allowCamera && (
-          <Button 
-            variant="outline" 
-            size="sm"
-            disabled={isUploading}
-          >
-            <Camera className="h-4 w-4 mr-2" />
-            Camera
-          </Button>
-        )}
       </div>
     </div>
   );
