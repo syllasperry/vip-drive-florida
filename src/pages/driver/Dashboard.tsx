@@ -158,17 +158,31 @@ const DriverDashboard = () => {
   };
 
   const handleAcceptRide = async (rideId: string) => {
+    if (!userProfile?.id) {
+      toast({
+        title: "Error",
+        description: "Driver profile not loaded",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
+      // Update booking with driver_id and status
       const { error } = await supabase
         .from('bookings')
-        .update({ status: 'accepted' })
-        .eq('id', rideId);
+        .update({ 
+          status: 'accepted',
+          driver_id: userProfile.id
+        })
+        .eq('id', rideId)
+        .eq('status', 'pending'); // Only update if still pending
 
       if (error) {
         console.error('Error accepting ride:', error);
         toast({
           title: "Error",
-          description: "Failed to accept ride",
+          description: `Failed to accept ride: ${error.message}`,
           variant: "destructive",
         });
         return;
@@ -202,21 +216,28 @@ const DriverDashboard = () => {
       });
     } catch (error) {
       console.error('Error accepting ride:', error);
+      toast({
+        title: "Error",
+        description: "Failed to accept ride. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
   const handleDeclineRide = async (rideId: string) => {
     try {
+      // Update booking status to declined (no driver_id assignment needed)
       const { error } = await supabase
         .from('bookings')
         .update({ status: 'declined' })
-        .eq('id', rideId);
+        .eq('id', rideId)
+        .eq('status', 'pending'); // Only update if still pending
 
       if (error) {
         console.error('Error declining ride:', error);
         toast({
           title: "Error",
-          description: "Failed to decline ride",
+          description: `Failed to decline ride: ${error.message}`,
           variant: "destructive",
         });
         return;
@@ -235,13 +256,9 @@ const DriverDashboard = () => {
         console.error('Failed to send email notification:', emailError);
       }
 
-      // Update local state
+      // Update local state (remove from driver's list since they declined it)
       setDriverRides(prevRides => 
-        prevRides.map(ride => 
-          ride.id === rideId 
-            ? { ...ride, status: "declined" }
-            : ride
-        )
+        prevRides.filter(ride => ride.id !== rideId)
       );
 
       toast({
@@ -250,6 +267,11 @@ const DriverDashboard = () => {
       });
     } catch (error) {
       console.error('Error declining ride:', error);
+      toast({
+        title: "Error",
+        description: "Failed to decline ride. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -296,32 +318,70 @@ const DriverDashboard = () => {
       if (!userProfile?.id) return;
 
       try {
-        const { data: bookingsData, error } = await supabase
-          .from('bookings')
-          .select(`
-            *,
-            passengers:passenger_id (
-              id,
-              full_name,
-              phone,
-              email
-            ),
-            vehicles:vehicle_id (
-              id,
-              type,
-              description
-            )
-          `)
-          .eq('driver_id', userProfile.id)
-          .order('pickup_time', { ascending: true });
+        // Fetch both assigned bookings AND pending bookings that match driver's vehicle
+        const [assignedBookings, pendingBookings] = await Promise.all([
+          // Get bookings already assigned to this driver
+          supabase
+            .from('bookings')
+            .select(`
+              *,
+              passengers:passenger_id (
+                id,
+                full_name,
+                phone,
+                email
+              ),
+              vehicles:vehicle_id (
+                id,
+                type,
+                description
+              )
+            `)
+            .eq('driver_id', userProfile.id)
+            .order('pickup_time', { ascending: true }),
+          
+          // Get pending bookings that match this driver's vehicle type
+          supabase
+            .from('bookings')
+            .select(`
+              *,
+              passengers:passenger_id (
+                id,
+                full_name,
+                phone,
+                email
+              ),
+              vehicles:vehicle_id (
+                id,
+                type,
+                description
+              )
+            `)
+            .eq('status', 'pending')
+            .is('driver_id', null)
+            .or(`vehicle_type.ilike.%${userProfile.car_make} ${userProfile.car_model}%,vehicle_type.is.null`)
+            .order('pickup_time', { ascending: true })
+        ]);
 
-        if (error) {
-          console.error('Error fetching driver bookings:', error);
+        if (assignedBookings.error) {
+          console.error('Error fetching assigned bookings:', assignedBookings.error);
           return;
         }
 
+        if (pendingBookings.error) {
+          console.error('Error fetching pending bookings:', pendingBookings.error);
+        }
+
+        // Combine and deduplicate bookings
+        const allBookingsData = [
+          ...(assignedBookings.data || []),
+          ...(pendingBookings.data || [])
+        ].filter((booking, index, self) => 
+          index === self.findIndex(b => b.id === booking.id)
+        );
+
         // Transform Supabase data to match expected format
-        const transformedBookings = bookingsData.map(booking => {
+        const transformedBookings = allBookingsData.map(booking => {
           const pickupDate = new Date(booking.pickup_time);
           return {
             id: booking.id,
