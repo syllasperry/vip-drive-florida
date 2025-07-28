@@ -85,8 +85,8 @@ const handler = async (req: Request): Promise<Response> => {
 };
 
 async function sendNotificationEmails(booking: any, status: string, triggerType: string, dashboardUrl: string) {
-  const passenger = booking.passenger;
-  const driver = booking.driver;
+  const passenger = booking.passengers || booking.passenger;
+  const driver = booking.drivers || booking.driver;
   
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -103,6 +103,11 @@ async function sendNotificationEmails(booking: any, status: string, triggerType:
       minute: '2-digit',
     });
   };
+
+  if (!resend) {
+    console.log('RESEND_API_KEY not configured, skipping email sending');
+    return;
+  }
 
   switch (status) {
     case 'pending':
@@ -242,7 +247,7 @@ async function sendNotificationEmails(booking: any, status: string, triggerType:
       }
       break;
 
-    case 'canceled':
+    case 'cancelled':
       // Send to both passenger and driver
       const canceledEmails = [
         {
@@ -262,10 +267,10 @@ async function sendNotificationEmails(booking: any, status: string, triggerType:
         await resend.emails.send({
           from: "Ride Service <notifications@resend.dev>",
           to: [recipient.to],
-          subject: "Ride canceled",
+          subject: "Ride cancelled",
           html: `
             <h1>Hi ${recipient.name},</h1>
-            <p>This ride has been canceled. If this was an error, feel free to submit a new request.</p>
+            <p>This ride has been cancelled. If this was an error, feel free to submit a new request.</p>
 
             <p><a href="${dashboardUrl}" style="background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Make Another Request</a></p>
             

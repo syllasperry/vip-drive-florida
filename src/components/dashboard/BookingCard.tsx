@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CancelBookingButton } from "./CancelBookingButton";
 import { MapPin, Clock, User, Car, MessageCircle, Star, FileText } from "lucide-react";
 
 interface BookingCardProps {
@@ -9,9 +10,10 @@ interface BookingCardProps {
   onMessage?: () => void;
   onReview?: () => void;
   onViewSummary?: () => void;
+  onCancelSuccess?: () => void;
 }
 
-export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSummary }: BookingCardProps) => {
+export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSummary, onCancelSuccess }: BookingCardProps) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "confirmed": return "bg-success/10 text-success border-success/20";
@@ -95,6 +97,17 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
             </div>
           )}
         </div>
+
+        {/* Cancel Button for Passengers */}
+        {userType === "passenger" && (booking.status === "pending" || booking.status === "accepted") && (
+          <div className="mb-4">
+            <CancelBookingButton 
+              bookingId={booking.id}
+              pickupTime={`${booking.date}T${booking.time}`}
+              onCancelSuccess={onCancelSuccess}
+            />
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="flex gap-2">

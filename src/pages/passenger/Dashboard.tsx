@@ -243,73 +243,115 @@ const Dashboard = () => {
   const [bookings, setBookings] = useState<any[]>([]);
 
   // Fetch real bookings from Supabase
-  useEffect(() => {
-    const fetchBookings = async () => {
-      if (!userProfile?.id) return;
+  const fetchBookings = async () => {
+    if (!userProfile?.id) return;
 
-      try {
-        const { data: bookingsData, error } = await supabase
-          .from('bookings')
-          .select(`
-            *,
-            drivers:driver_id (
-              id,
-              full_name,
-              phone,
-              email
-            ),
-            vehicles:vehicle_id (
-              id,
-              type,
-              description,
-              image_url
-            )
-          `)
-          .eq('passenger_id', userProfile.id)
-          .order('pickup_time', { ascending: true });
+    try {
+      const { data: bookingsData, error } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          drivers:driver_id (
+            id,
+            full_name,
+            phone,
+            email
+          ),
+          vehicles:vehicle_id (
+            id,
+            type,
+            description,
+            image_url
+          )
+        `)
+        .eq('passenger_id', userProfile.id)
+        .order('pickup_time', { ascending: true });
 
-        if (error) {
-          console.error('Error fetching bookings:', error);
-          toast({
-            title: "Error",
-            description: "Failed to load bookings",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        // Transform Supabase data to match expected format
-        const transformedBookings = bookingsData.map(booking => {
-          const pickupDate = new Date(booking.pickup_time);
-          return {
-            id: booking.id,
-            date: pickupDate.toISOString().split('T')[0], // YYYY-MM-DD format
-            time: pickupDate.toLocaleTimeString('en-US', { 
-              hour: '2-digit', 
-              minute: '2-digit',
-              hour12: false 
-            }),
-            from: booking.pickup_location,
-            to: booking.dropoff_location,
-            vehicle: "Standard Vehicle",
-            vehicleModel: booking.vehicles?.type || "Tesla Model Y",
-            status: booking.status,
-            driver: booking.drivers?.full_name || null,
-            paymentMethod: booking.payment_status === 'completed' ? 'Paid' : 'Pending',
-            countdown: null,
-            flight_info: booking.flight_info,
-            passenger_count: booking.passenger_count,
-            luggage_count: booking.luggage_count
-          };
-        });
-
-        setBookings(transformedBookings);
-      } catch (error) {
+      if (error) {
         console.error('Error fetching bookings:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load bookings",
+          variant: "destructive",
+        });
+        return;
       }
-    };
 
+      // Transform Supabase data to match expected format
+      const transformedBookings = bookingsData.map(booking => {
+        const pickupDate = new Date(booking.pickup_time);
+        return {
+          id: booking.id,
+          date: pickupDate.toISOString().split('T')[0], // YYYY-MM-DD format
+          time: pickupDate.toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: false 
+          }),
+          from: booking.pickup_location,
+          to: booking.dropoff_location,
+          vehicle: "Standard Vehicle",
+          vehicleModel: booking.vehicles?.type || "Tesla Model Y",
+          status: booking.status,
+          driver: booking.drivers?.full_name || null,
+          paymentMethod: booking.payment_status === 'completed' ? 'Paid' : 'Pending',
+          countdown: null,
+          flight_info: booking.flight_info,
+          passenger_count: booking.passenger_count,
+          luggage_count: booking.luggage_count
+        };
+      });
+
+      setBookings(transformedBookings);
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+    }
+  };
+
+  useEffect(() => {
     fetchBookings();
+
+    // Set up real-time subscription for booking status updates
+    if (userProfile?.id) {
+      const channel = supabase
+        .channel('passenger-booking-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'bookings',
+            filter: `passenger_id=eq.${userProfile.id}`
+          },
+          (payload) => {
+            console.log('Booking status updated:', payload);
+            fetchBookings(); // Refresh bookings when status changes
+            
+            // Show toast notification for status changes
+            if (payload.new.status !== payload.old?.status) {
+              const statusMessages = {
+                'accepted': 'Your ride has been accepted!',
+                'declined': 'Your ride was declined.',
+                'cancelled': 'Your ride has been cancelled.',
+                'completed': 'Your ride is complete!'
+              };
+              
+              const message = statusMessages[payload.new.status as keyof typeof statusMessages];
+              if (message) {
+                toast({
+                  title: "Booking Update",
+                  description: message,
+                });
+              }
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [userProfile?.id, toast]);
 
   // Filter bookings based on current view
@@ -406,6 +448,9 @@ const Dashboard = () => {
                     onViewSummary={() => {
                       setSelectedBookingForSummary(booking);
                       setSummaryModalOpen(true);
+                    }}
+                    onCancelSuccess={() => {
+                      fetchBookings(); // Refresh bookings after cancellation
                     }}
                   />
                 ))
