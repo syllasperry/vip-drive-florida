@@ -17,9 +17,9 @@ interface ProfileEditModalProps {
 
 export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload }: ProfileEditModalProps) => {
   const [formData, setFormData] = useState({
-    name: "John Doe",
-    email: "john@example.com",
-    phone: "+1 (555) 123-4567",
+    name: "",
+    email: "",
+    phone: "",
     profilePhoto: null as File | null,
     profilePhotoUrl: null as string | null
   });
@@ -132,9 +132,9 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload }
     if (!isOpen || !userProfile) return;
 
     setFormData({
-      name: userProfile.full_name || "John Doe",
-      email: userProfile.email || "john@example.com", 
-      phone: userProfile.phone || "+1 (555) 123-4567",
+      name: userProfile.full_name || "",
+      email: userProfile.email || "", 
+      phone: userProfile.phone || "",
       profilePhoto: null,
       profilePhotoUrl: userProfile.profile_photo_url
     });
