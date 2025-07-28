@@ -111,6 +111,20 @@ const BookingForm = () => {
 
       if (error) throw error;
 
+      // Send email notification for new booking
+      try {
+        await supabase.functions.invoke('send-booking-notifications', {
+          body: {
+            bookingId: booking.id,
+            status: 'pending',
+            triggerType: 'new_booking'
+          }
+        });
+      } catch (emailError) {
+        console.error('Failed to send email notification:', emailError);
+        // Don't fail the booking creation if email fails
+      }
+
       toast({
         title: "Booking submitted!",
         description: "Your booking request has been sent to drivers.",

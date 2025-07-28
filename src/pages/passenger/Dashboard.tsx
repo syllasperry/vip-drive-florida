@@ -7,6 +7,7 @@ import { ProfileEditModal } from "@/components/ProfileEditModal";
 import CelebrationModal from "@/components/CelebrationModal";
 import { ReviewModal } from "@/components/ReviewModal";
 import { BookingSummaryModal } from "@/components/BookingSummaryModal";
+import StatusTracker, { BookingStatus } from "@/components/StatusTracker";
 import { BottomNavigation } from "@/components/dashboard/BottomNavigation";
 import { ProfileHeader } from "@/components/dashboard/ProfileHeader";
 import { UpcomingRideCard } from "@/components/dashboard/UpcomingRideCard";
@@ -356,6 +357,14 @@ const Dashboard = () => {
           onPhotoUpload={handlePhotoUpload}
           userType="passenger"
         />
+
+        {/* Status Tracker for most recent booking */}
+        {bookings.length > 0 && activeTab === "bookings" && bookingView === "upcoming" && (
+          <StatusTracker 
+            status={bookings[0]?.status as BookingStatus}
+            className="mb-4"
+          />
+        )}
 
         {/* Next Upcoming Ride Card */}
         {nextRide && activeTab === "bookings" && (

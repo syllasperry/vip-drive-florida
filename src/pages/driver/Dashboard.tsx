@@ -13,6 +13,7 @@ import { UpcomingRideCard } from "@/components/dashboard/UpcomingRideCard";
 import { BookingToggle } from "@/components/dashboard/BookingToggle";
 import { BookingCard } from "@/components/dashboard/BookingCard";
 import PendingRequestAlert from "@/components/dashboard/PendingRequestAlert";
+import StatusTracker, { BookingStatus } from "@/components/StatusTracker";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Car, DollarSign, User, LogOut, Clock, CheckCircle, Calendar, MessageCircle } from "lucide-react";
@@ -160,7 +161,7 @@ const DriverDashboard = () => {
     try {
       const { error } = await supabase
         .from('bookings')
-        .update({ status: 'confirmed' })
+        .update({ status: 'accepted' })
         .eq('id', rideId);
 
       if (error) {
@@ -173,11 +174,24 @@ const DriverDashboard = () => {
         return;
       }
 
+      // Send email notification
+      try {
+        await supabase.functions.invoke('send-booking-notifications', {
+          body: {
+            bookingId: rideId,
+            status: 'accepted',
+            triggerType: 'status_change'
+          }
+        });
+      } catch (emailError) {
+        console.error('Failed to send email notification:', emailError);
+      }
+
       // Update local state
       setDriverRides(prevRides => 
         prevRides.map(ride => 
           ride.id === rideId 
-            ? { ...ride, status: "confirmed" }
+            ? { ...ride, status: "accepted" }
             : ride
         )
       );
@@ -206,6 +220,19 @@ const DriverDashboard = () => {
           variant: "destructive",
         });
         return;
+      }
+
+      // Send email notification
+      try {
+        await supabase.functions.invoke('send-booking-notifications', {
+          body: {
+            bookingId: rideId,
+            status: 'declined',
+            triggerType: 'status_change'
+          }
+        });
+      } catch (emailError) {
+        console.error('Failed to send email notification:', emailError);
       }
 
       // Update local state
