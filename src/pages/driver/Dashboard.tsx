@@ -88,7 +88,7 @@ const DriverDashboard = () => {
     
     const fileExt = file.name.split('.').pop();
     const fileName = `${userProfile.id}.${fileExt}`;
-    const filePath = `avatars/${fileName}`;
+    const filePath = `${userProfile.id}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from('avatars')
