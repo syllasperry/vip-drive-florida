@@ -2,7 +2,8 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { Resend } from "npm:resend@2.0.0";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+const resendApiKey = Deno.env.get("RESEND_API_KEY");
+const resend = resendApiKey ? new Resend(resendApiKey) : null;
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -48,7 +49,18 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Booking details:', booking);
 
-    const dashboardUrl = `https://extdyjkfgftbokabiamc.supabase.co`;
+    if (!resend) {
+      console.warn('RESEND_API_KEY not configured, skipping email notifications');
+      return new Response(
+        JSON.stringify({ success: true, message: 'Booking updated successfully (email notifications disabled)' }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    const dashboardUrl = `https://7e830e49-c9ab-402a-82b9-2f0f8fa7d484.lovableproject.com`;
 
     // Send emails based on status and trigger type
     await sendNotificationEmails(booking, status, triggerType, dashboardUrl);
