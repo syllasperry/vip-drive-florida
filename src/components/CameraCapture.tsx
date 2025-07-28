@@ -34,19 +34,29 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
       console.log("Camera stream obtained successfully");
       setStream(mediaStream);
       
-      // Wait for next tick to ensure video element is ready
-      setTimeout(() => {
-        if (videoRef.current) {
-          console.log("Setting video stream...");
-          videoRef.current.srcObject = mediaStream;
-          
-          // Ensure video loads and plays
+      // Immediate assignment with proper async handling
+      if (videoRef.current) {
+        console.log("Setting video stream...");
+        videoRef.current.srcObject = mediaStream;
+        
+        try {
           videoRef.current.load();
-          videoRef.current.play().catch(err => {
-            console.warn("Video autoplay failed (may be expected):", err);
-          });
+          await videoRef.current.play();
+          console.log("Video started playing successfully");
+        } catch (playError) {
+          console.warn("Video autoplay failed:", playError);
+          // Still continue as some browsers block autoplay
         }
-      }, 100);
+      }
+      
+      // Fallback timeout - if video doesn't load in 5 seconds, show error
+      setTimeout(() => {
+        if (!isVideoReady && videoRef.current && videoRef.current.readyState < 3) {
+          console.error("Video failed to load within timeout");
+          setError("Camera failed to initialize. Please check your camera permissions and try again.");
+          setIsInitializing(false);
+        }
+      }, 5000);
       
     } catch (err) {
       console.error("Error accessing camera:", err);
@@ -193,10 +203,12 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
                   className="w-full h-full object-cover transform scale-x-[-1]"
                   onLoadedMetadata={() => {
                     console.log("Video metadata loaded");
-                    if (videoRef.current && videoRef.current.videoWidth > 0) {
+                    if (videoRef.current && videoRef.current.videoWidth > 0 && videoRef.current.videoHeight > 0) {
                       console.log("Video dimensions:", videoRef.current.videoWidth, "x", videoRef.current.videoHeight);
                       setIsVideoReady(true);
                       setIsInitializing(false);
+                    } else {
+                      console.log("Video dimensions are invalid:", videoRef.current?.videoWidth, videoRef.current?.videoHeight);
                     }
                   }}
                   onCanPlay={() => {
