@@ -28,6 +28,7 @@ export type Database = {
           pickup_location: string
           pickup_time: string
           status: string
+          updated_at: string | null
           vehicle_id: string | null
           vehicle_type: string | null
         }
@@ -44,6 +45,7 @@ export type Database = {
           pickup_location: string
           pickup_time: string
           status?: string
+          updated_at?: string | null
           vehicle_id?: string | null
           vehicle_type?: string | null
         }
@@ -60,6 +62,7 @@ export type Database = {
           pickup_location?: string
           pickup_time?: string
           status?: string
+          updated_at?: string | null
           vehicle_id?: string | null
           vehicle_type?: string | null
         }
