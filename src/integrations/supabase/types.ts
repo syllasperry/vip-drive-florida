@@ -28,6 +28,7 @@ export type Database = {
           pickup_location: string
           pickup_time: string
           status: string
+          vehicle_id: string | null
         }
         Insert: {
           created_at?: string
@@ -42,6 +43,7 @@ export type Database = {
           pickup_location: string
           pickup_time: string
           status?: string
+          vehicle_id?: string | null
         }
         Update: {
           created_at?: string
@@ -56,6 +58,7 @@ export type Database = {
           pickup_location?: string
           pickup_time?: string
           status?: string
+          vehicle_id?: string | null
         }
         Relationships: [
           {
@@ -70,6 +73,13 @@ export type Database = {
             columns: ["passenger_id"]
             isOneToOne: false
             referencedRelation: "passengers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
         ]

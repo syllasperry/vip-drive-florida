@@ -267,6 +267,11 @@ const DriverDashboard = () => {
               full_name,
               phone,
               email
+            ),
+            vehicles:vehicle_id (
+              id,
+              type,
+              description
             )
           `)
           .eq('driver_id', userProfile.id)
@@ -309,31 +314,43 @@ const DriverDashboard = () => {
 
     fetchDriverBookings();
 
-    // Set up real-time subscription for new bookings
-    const channel = supabase
-      .channel('driver-bookings')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'bookings',
-          filter: `driver_id=eq.${userProfile?.id}`
-        },
-        (payload) => {
-          console.log('New booking received:', payload);
-          // Refetch bookings when a new one is added
-          fetchDriverBookings();
-          
-          // Show toast notification
-          toast({
-            title: "🎉 New Ride Request!",
-            description: "You have received a new booking request.",
-            variant: "default",
-          });
-        }
-      )
-      .subscribe();
+        // Set up real-time subscription for new bookings assigned to this driver
+        const channel = supabase
+          .channel('driver-new-bookings')
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'bookings'
+            },
+            (payload) => {
+              // Check if this booking is for the current driver
+              if (payload.new.driver_id === userProfile?.id) {
+                console.log('New booking assigned to driver:', payload);
+                fetchDriverBookings();
+                
+                toast({
+                  title: "🎉 New Ride Request!",
+                  description: "You have received a new booking request.",
+                  variant: "default",
+                });
+              }
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'bookings',
+              filter: `driver_id=eq.${userProfile?.id}`
+            },
+            () => {
+              fetchDriverBookings();
+            }
+          )
+          .subscribe();
 
     return () => {
       supabase.removeChannel(channel);

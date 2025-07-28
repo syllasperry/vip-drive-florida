@@ -239,6 +239,12 @@ const Dashboard = () => {
               full_name,
               phone,
               email
+            ),
+            vehicles:vehicle_id (
+              id,
+              type,
+              description,
+              image_url
             )
           `)
           .eq('passenger_id', userProfile.id)
@@ -268,7 +274,7 @@ const Dashboard = () => {
             from: booking.pickup_location,
             to: booking.dropoff_location,
             vehicle: "Standard Vehicle",
-            vehicleModel: "Tesla Model Y", // TODO: Get real vehicle model from vehicle table
+            vehicleModel: booking.vehicles?.type || "Tesla Model Y",
             status: booking.status,
             driver: booking.drivers?.full_name || null,
             paymentMethod: booking.payment_status === 'completed' ? 'Paid' : 'Pending',
