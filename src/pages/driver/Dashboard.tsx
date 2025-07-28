@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { MessagingInterface } from "@/components/MessagingInterface";
 import { DriverScheduleModal } from "@/components/DriverScheduleModal";
 import { DriverSettingsModal } from "@/components/DriverSettingsModal";
+import { DriverPreferencesModal } from "@/components/DriverPreferencesModal";
 import { BottomNavigation } from "@/components/dashboard/BottomNavigation";
 import { ProfileHeader } from "@/components/dashboard/ProfileHeader";
 import { UpcomingRideCard } from "@/components/dashboard/UpcomingRideCard";
@@ -26,6 +27,7 @@ const DriverDashboard = () => {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsType, setSettingsType] = useState<"notifications" | "privacy" | null>(null);
+  const [driverPreferencesModalOpen, setDriverPreferencesModalOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   
   // Authentication state
@@ -679,6 +681,20 @@ const DriverDashboard = () => {
               </CardContent>
             </Card>
 
+            <Card className="cursor-pointer hover:shadow-[var(--shadow-subtle)] transition-shadow" onClick={() => setDriverPreferencesModalOpen(true)}>
+              <CardContent className="p-5">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-primary/10 rounded-full">
+                    <User className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">Driver Preferences</h3>
+                    <p className="text-sm text-muted-foreground">Edit your personal and vehicle information</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card className="cursor-pointer hover:shadow-[var(--shadow-subtle)] transition-shadow" onClick={handleLogout}>
               <CardContent className="p-5">
                 <div className="flex items-center gap-4">
@@ -721,6 +737,30 @@ const DriverDashboard = () => {
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         settingType={settingsType || "notifications"}
+      />
+
+      <DriverPreferencesModal
+        isOpen={driverPreferencesModalOpen}
+        onClose={() => setDriverPreferencesModalOpen(false)}
+        userProfile={userProfile}
+        onPhotoUpload={handlePhotoUpload}
+        onProfileUpdate={() => {
+          // Refresh driver profile after update
+          const refreshProfile = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+              const { data: driver } = await supabase
+                .from('drivers')
+                .select('*')
+                .eq('id', session.user.id)
+                .maybeSingle();
+              if (driver) {
+                setUserProfile(driver);
+              }
+            }
+          };
+          refreshProfile();
+        }}
       />
     </div>
   );
