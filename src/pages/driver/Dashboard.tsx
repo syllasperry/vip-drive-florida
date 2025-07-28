@@ -30,6 +30,7 @@ const DriverDashboard = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsType, setSettingsType] = useState<"notifications" | "privacy" | null>(null);
   const [driverPreferencesModalOpen, setDriverPreferencesModalOpen] = useState(false);
+  const [selectedBookingForMessaging, setSelectedBookingForMessaging] = useState<any>(null);
   const [isOnline, setIsOnline] = useState(true);
   
   // Authentication state
@@ -557,7 +558,10 @@ const DriverDashboard = () => {
           <UpcomingRideCard 
             ride={nextRide}
             userType="driver"
-            onMessage={() => setMessagingOpen(true)}
+            onMessage={() => {
+              setSelectedBookingForMessaging(nextRide);
+              setMessagingOpen(true);
+            }}
             onStartRide={() => {
               toast({
                 title: "Starting ride...",
@@ -701,7 +705,10 @@ const DriverDashboard = () => {
 
                       <div className="flex gap-2 mt-4">
                         <Button
-                          onClick={() => setMessagingOpen(true)}
+                          onClick={() => {
+                            setSelectedBookingForMessaging(ride);
+                            setMessagingOpen(true);
+                          }}
                           variant="outline"
                           size="sm"
                           className="flex-1 flex items-center gap-2"
@@ -750,7 +757,14 @@ const DriverDashboard = () => {
         {activeTab === "messages" && (
           <div className="space-y-4">
             <Card className="cursor-pointer hover:shadow-[var(--shadow-subtle)] transition-shadow"
-                 onClick={() => setMessagingOpen(true)}>
+                 onClick={() => {
+                   // For demo purposes, using first ride if available
+                   const firstRide = driverRides[0];
+                   if (firstRide) {
+                     setSelectedBookingForMessaging(firstRide);
+                     setMessagingOpen(true);
+                   }
+                 }}>
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
@@ -766,7 +780,14 @@ const DriverDashboard = () => {
             </Card>
             
             <Card className="cursor-pointer hover:shadow-[var(--shadow-subtle)] transition-shadow"
-                 onClick={() => setMessagingOpen(true)}>
+                 onClick={() => {
+                   // For demo purposes, using second ride if available
+                   const secondRide = driverRides[1];
+                   if (secondRide) {
+                     setSelectedBookingForMessaging(secondRide);
+                     setMessagingOpen(true);
+                   }
+                 }}>
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
@@ -838,11 +859,20 @@ const DriverDashboard = () => {
       />
 
       {/* Modals */}
-      <MessagingInterface 
-        isOpen={messagingOpen} 
-        onClose={() => setMessagingOpen(false)}
-        userType="driver"
-      />
+       <MessagingInterface 
+         isOpen={messagingOpen} 
+         onClose={() => {
+           setMessagingOpen(false);
+           setSelectedBookingForMessaging(null);
+         }}
+         userType="driver"
+         bookingId={selectedBookingForMessaging?.id || ""}
+         currentUserId={userProfile?.id || ""}
+         currentUserName={userProfile?.full_name || ""}
+         currentUserAvatar={userProfile?.profile_photo_url}
+         otherUserName={selectedBookingForMessaging?.passenger}
+         otherUserAvatar=""
+       />
       
       <DriverScheduleModal 
         isOpen={scheduleOpen}

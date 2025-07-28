@@ -35,6 +35,7 @@ const Dashboard = () => {
   const [selectedBookingForReview, setSelectedBookingForReview] = useState<string | null>(null);
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
   const [selectedBookingForSummary, setSelectedBookingForSummary] = useState<any>(null);
+  const [selectedBookingForMessaging, setSelectedBookingForMessaging] = useState<any>(null);
   const [showWelcomeCelebration, setShowWelcomeCelebration] = useState(false);
   const [showRideConfirmation, setShowRideConfirmation] = useState(false);
 
@@ -413,7 +414,10 @@ const Dashboard = () => {
           <UpcomingRideCard 
             ride={nextRide}
             userType="passenger"
-            onMessage={() => setMessagingOpen(true)}
+                     onMessage={() => {
+                       setSelectedBookingForMessaging(nextRide);
+                       setMessagingOpen(true);
+                     }}
           />
         )}
 
@@ -440,7 +444,10 @@ const Dashboard = () => {
                     key={booking.id}
                     booking={booking}
                     userType="passenger"
-                    onMessage={() => setMessagingOpen(true)}
+                     onMessage={() => {
+                       setSelectedBookingForMessaging(booking);
+                       setMessagingOpen(true);
+                     }}
                     onReview={() => {
                       setSelectedBookingForReview(booking.id);
                       setReviewModalOpen(true);
@@ -525,11 +532,20 @@ const Dashboard = () => {
       />
 
       {/* Modals */}
-      <MessagingInterface 
-        isOpen={messagingOpen} 
-        onClose={() => setMessagingOpen(false)}
-        userType="passenger"
-      />
+       <MessagingInterface 
+         isOpen={messagingOpen} 
+         onClose={() => {
+           setMessagingOpen(false);
+           setSelectedBookingForMessaging(null);
+         }}
+         userType="passenger"
+         bookingId={selectedBookingForMessaging?.id || ""}
+         currentUserId={userProfile?.id || ""}
+         currentUserName={userProfile?.full_name || ""}
+         currentUserAvatar={userProfile?.profile_photo_url}
+         otherUserName={selectedBookingForMessaging?.driver}
+         otherUserAvatar=""
+       />
       
       <SettingsModal 
         isOpen={settingsModalOpen}

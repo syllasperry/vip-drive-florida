@@ -180,6 +180,36 @@ export type Database = {
         }
         Relationships: []
       }
+      messages: {
+        Row: {
+          booking_id: string
+          created_at: string
+          id: string
+          message_text: string
+          sender_id: string
+          sender_type: string
+          updated_at: string
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          id?: string
+          message_text: string
+          sender_id: string
+          sender_type: string
+          updated_at?: string
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          id?: string
+          message_text?: string
+          sender_id?: string
+          sender_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       passengers: {
         Row: {
           created_at: string
