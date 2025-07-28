@@ -219,56 +219,70 @@ const Dashboard = () => {
     }
   }, []);
 
-  const [bookings, setBookings] = useState([
-    {
-      id: "1",
-      date: "2024-01-15",
-      time: "14:30",
-      from: "Miami International Airport",
-      to: "Brickell City Centre",
-      vehicle: "Tesla Model Y",
-      status: "confirmed",
-      driver: "John Smith",
-      paymentMethod: "Visa ending in 4532",
-      countdown: null
-    },
-    {
-      id: "2",
-      date: "2024-01-18",
-      time: "09:00",
-      from: "Fort Lauderdale Airport",
-      to: "Las Olas Boulevard",
-      vehicle: "BMW Sedan",
-      status: "payment_confirmed",
-      driver: "Mike Rodriguez",
-      paymentMethod: "Zelle",
-      countdown: null
-    },
-    {
-      id: "3",
-      date: "2024-01-20",
-      time: "16:00",
-      from: "Palm Beach Airport",
-      to: "Worth Avenue",
-      vehicle: "Mercedes Van",
-      status: "pending",
-      driver: null,
-      paymentMethod: null,
-      countdown: null
-    },
-    {
-      id: "4",
-      date: "2024-01-10",
-      time: "12:00",
-      from: "Downtown Miami",
-      to: "Miami Beach",
-      vehicle: "Tesla Model S",
-      status: "completed",
-      driver: "Carlos Martinez",
-      paymentMethod: "Credit Card",
-      countdown: null
-    }
-  ]);
+  const [bookings, setBookings] = useState<any[]>([]);
+
+  // Fetch real bookings from Supabase
+  useEffect(() => {
+    const fetchBookings = async () => {
+      if (!userProfile?.id) return;
+
+      try {
+        const { data: bookingsData, error } = await supabase
+          .from('bookings')
+          .select(`
+            *,
+            drivers:driver_id (
+              id,
+              full_name,
+              phone,
+              email
+            )
+          `)
+          .eq('passenger_id', userProfile.id)
+          .order('pickup_time', { ascending: true });
+
+        if (error) {
+          console.error('Error fetching bookings:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load bookings",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Transform Supabase data to match expected format
+        const transformedBookings = bookingsData.map(booking => {
+          const pickupDate = new Date(booking.pickup_time);
+          return {
+            id: booking.id,
+            date: pickupDate.toISOString().split('T')[0], // YYYY-MM-DD format
+            time: pickupDate.toLocaleTimeString('en-US', { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              hour12: false 
+            }),
+            from: booking.pickup_location,
+            to: booking.dropoff_location,
+            vehicle: "Standard Vehicle", // Default since we don't have vehicle details
+            status: booking.status,
+            driver: booking.drivers?.full_name || null,
+            paymentMethod: booking.payment_status === 'completed' ? 'Paid' : 'Pending',
+            countdown: null,
+            flight_info: booking.flight_info,
+            passenger_count: booking.passenger_count,
+            luggage_count: booking.luggage_count
+          };
+        });
+
+        setBookings(transformedBookings);
+      } catch (error) {
+        console.error('Error fetching bookings:', error);
+      }
+    };
+
+    fetchBookings();
+  }, [userProfile?.id, toast]);
 
   // Filter bookings based on current view
   const filteredBookings = bookings.filter(booking => {
