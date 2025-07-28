@@ -8,9 +8,10 @@ interface ProfileHeaderProps {
   onPhotoUpload: (file: File) => Promise<void>;
   userType: "passenger" | "driver";
   isOnline?: boolean;
+  onProfileUpdate?: () => void;
 }
 
-export const ProfileHeader = ({ userProfile, onPhotoUpload, userType, isOnline = true }: ProfileHeaderProps) => {
+export const ProfileHeader = ({ userProfile, onPhotoUpload, userType, isOnline = true, onProfileUpdate }: ProfileHeaderProps) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const handleEditProfile = () => {
@@ -75,6 +76,7 @@ export const ProfileHeader = ({ userProfile, onPhotoUpload, userType, isOnline =
         onClose={() => setIsEditModalOpen(false)}
         userProfile={userProfile}
         onPhotoUpload={onPhotoUpload}
+        onProfileUpdate={onProfileUpdate}
       />
     </>
   );

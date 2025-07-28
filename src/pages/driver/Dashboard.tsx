@@ -425,6 +425,23 @@ const DriverDashboard = () => {
           onPhotoUpload={handlePhotoUpload}
           userType="driver"
           isOnline={isOnline}
+          onProfileUpdate={() => {
+            // Refresh driver profile after update
+            const refreshProfile = async () => {
+              const { data: { session } } = await supabase.auth.getSession();
+              if (session) {
+                const { data: driver } = await supabase
+                  .from('drivers')
+                  .select('*')
+                  .eq('id', session.user.id)
+                  .single();
+                if (driver) {
+                  setUserProfile(driver);
+                }
+              }
+            };
+            refreshProfile();
+          }}
         />
 
         {/* Next Upcoming Ride Card */}

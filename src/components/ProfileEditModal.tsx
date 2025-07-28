@@ -12,9 +12,10 @@ interface ProfileEditModalProps {
   onClose: () => void;
   userProfile?: any;
   onPhotoUpload?: (file: File) => Promise<void>;
+  onProfileUpdate?: () => void;
 }
 
-export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload }: ProfileEditModalProps) => {
+export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload, onProfileUpdate }: ProfileEditModalProps) => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -161,10 +162,9 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload }
         description: "Your profile has been successfully updated.",
       });
 
-      // Refresh parent component data if onSave callback exists
-      if (typeof onClose === 'function') {
-        // Notify parent to refresh data
-        window.location.reload(); // Simple refresh for now
+      // Refresh parent component data
+      if (onProfileUpdate) {
+        onProfileUpdate();
       }
       
       onClose();
