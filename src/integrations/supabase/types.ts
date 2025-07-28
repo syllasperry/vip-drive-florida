@@ -19,6 +19,7 @@ export type Database = {
           created_at: string
           driver_id: string | null
           dropoff_location: string
+          flight_info: string | null
           id: string
           passenger_id: string
           payment_status: string
@@ -30,6 +31,7 @@ export type Database = {
           created_at?: string
           driver_id?: string | null
           dropoff_location: string
+          flight_info?: string | null
           id?: string
           passenger_id: string
           payment_status?: string
@@ -41,6 +43,7 @@ export type Database = {
           created_at?: string
           driver_id?: string | null
           dropoff_location?: string
+          flight_info?: string | null
           id?: string
           passenger_id?: string
           payment_status?: string
