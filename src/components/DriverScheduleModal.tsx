@@ -66,9 +66,9 @@ export const DriverScheduleModal = ({ isOpen, onClose, isOnline, onToggleOnline 
           <div className="flex items-center space-x-4">
             <h2 className="text-xl font-semibold text-card-foreground">Driver Schedule</h2>
             <div className="flex items-center space-x-2">
-              <div className={`w-3 h-3 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+              <div className={`w-3 h-3 rounded-full ${isOnline ? 'bg-success' : 'bg-muted-foreground'}`}></div>
               <Button 
-                variant={isOnline ? "outline" : "luxury"}
+                variant={isOnline ? "outline" : "default"}
                 size="sm"
                 onClick={onToggleOnline}
               >
@@ -105,14 +105,14 @@ export const DriverScheduleModal = ({ isOpen, onClose, isOnline, onToggleOnline 
                     <span className="font-medium text-card-foreground">{ride.time}</span>
                     <div className="flex items-center space-x-1">
                       {ride.status === "confirmed" ? (
-                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <CheckCircle className="h-4 w-4 text-success" />
                       ) : (
-                        <AlertCircle className="h-4 w-4 text-orange-600" />
+                        <AlertCircle className="h-4 w-4 text-destructive" />
                       )}
                       <span className={`text-xs px-2 py-1 rounded ${
                         ride.status === "confirmed" 
-                          ? "bg-green-100 text-green-800"
-                          : "bg-orange-100 text-orange-800"
+                          ? "bg-success/10 text-success"
+                          : "bg-destructive/10 text-destructive"
                       }`}>
                         {ride.status === "confirmed" ? "Confirmed" : "Waiting Payment"}
                       </span>
@@ -131,7 +131,7 @@ export const DriverScheduleModal = ({ isOpen, onClose, isOnline, onToggleOnline 
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-card-foreground">Weekly Availability</h3>
             <Button 
-              variant={editingAvailability ? "luxury" : "outline"}
+              variant={editingAvailability ? "default" : "outline"}
               size="sm"
               onClick={() => setEditingAvailability(!editingAvailability)}
             >
