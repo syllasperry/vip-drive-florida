@@ -22,6 +22,7 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
     setIsVideoReady(false);
     
     try {
+      console.log("Starting camera...");
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { 
           width: { ideal: 1280 },
@@ -30,20 +31,23 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
         }
       });
       
+      console.log("Camera stream obtained successfully");
       setStream(mediaStream);
       
-      // Ensure video element is available before setting stream
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        
-        // Force video to load and play
-        try {
-          await videoRef.current.load();
-          await videoRef.current.play();
-        } catch (playError) {
-          console.warn("Video play failed, but continuing:", playError);
+      // Wait for next tick to ensure video element is ready
+      setTimeout(() => {
+        if (videoRef.current) {
+          console.log("Setting video stream...");
+          videoRef.current.srcObject = mediaStream;
+          
+          // Ensure video loads and plays
+          videoRef.current.load();
+          videoRef.current.play().catch(err => {
+            console.warn("Video autoplay failed (may be expected):", err);
+          });
         }
-      }
+      }, 100);
+      
     } catch (err) {
       console.error("Error accessing camera:", err);
       let errorMessage = "Unable to access camera. Please check your permissions.";
@@ -188,20 +192,38 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
                   controls={false}
                   className="w-full h-full object-cover transform scale-x-[-1]"
                   onLoadedMetadata={() => {
+                    console.log("Video metadata loaded");
                     if (videoRef.current && videoRef.current.videoWidth > 0) {
+                      console.log("Video dimensions:", videoRef.current.videoWidth, "x", videoRef.current.videoHeight);
                       setIsVideoReady(true);
                       setIsInitializing(false);
                     }
                   }}
                   onCanPlay={() => {
+                    console.log("Video can play");
                     setIsVideoReady(true);
                     setIsInitializing(false);
                   }}
                   onPlaying={() => {
+                    console.log("Video is playing");
                     setIsVideoReady(true);
                     setIsInitializing(false);
                   }}
-                  onError={() => {
+                  onLoadedData={() => {
+                    console.log("Video data loaded");
+                    setIsVideoReady(true);
+                    setIsInitializing(false);
+                  }}
+                  onTimeUpdate={() => {
+                    // This fires frequently when video is playing
+                    if (!isVideoReady && videoRef.current && videoRef.current.currentTime > 0) {
+                      console.log("Video time update - setting ready");
+                      setIsVideoReady(true);
+                      setIsInitializing(false);
+                    }
+                  }}
+                  onError={(e) => {
+                    console.error("Video error:", e);
                     setError("Failed to display camera feed. Please try again.");
                     setIsInitializing(false);
                   }}
