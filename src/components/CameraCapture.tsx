@@ -12,12 +12,14 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string>("");
   const [isInitializing, setIsInitializing] = useState(false);
+  const [isVideoReady, setIsVideoReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const startCamera = useCallback(async () => {
     setIsInitializing(true);
     setError("");
+    setIsVideoReady(false);
     
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -33,15 +35,7 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
       // Wait for video element to be available and set stream
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
-        
-        // Force video to load and play
-        try {
-          await videoRef.current.load();
-          await videoRef.current.play();
-          console.log("Camera started successfully");
-        } catch (playError) {
-          console.warn("Autoplay failed, video will play on user interaction:", playError);
-        }
+        console.log("Camera stream assigned to video element");
       }
     } catch (err) {
       console.error("Error accessing camera:", err);
@@ -58,7 +52,6 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
       }
       
       setError(errorMessage);
-    } finally {
       setIsInitializing(false);
     }
   }, []);
@@ -73,12 +66,15 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
   const handleClose = useCallback(() => {
     stopCamera();
     setError("");
+    setIsVideoReady(false);
+    setIsInitializing(false);
     onClose();
   }, [stopCamera, onClose]);
 
   const capturePhoto = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) {
       console.error("Video or canvas ref not available");
+      setError("Camera components not ready. Please try again.");
       return;
     }
 
@@ -88,13 +84,19 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
 
     if (!context) {
       console.error("Canvas context not available");
+      setError("Canvas not ready. Please try again.");
       return;
     }
 
-    // Check if video has valid dimensions
-    if (video.videoWidth === 0 || video.videoHeight === 0) {
-      console.error("Video dimensions are invalid:", video.videoWidth, video.videoHeight);
-      setError("Camera not ready. Please wait for the video to load.");
+    // Check if video has valid dimensions and is ready
+    if (!isVideoReady || video.videoWidth === 0 || video.videoHeight === 0 || video.readyState < 2) {
+      console.error("Video not ready:", { 
+        isVideoReady, 
+        videoWidth: video.videoWidth, 
+        videoHeight: video.videoHeight, 
+        readyState: video.readyState 
+      });
+      setError("Camera not ready. Please wait for the video to load completely.");
       return;
     }
 
@@ -102,8 +104,11 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
-    // Draw the video frame to canvas
-    context.drawImage(video, 0, 0);
+    // Draw the video frame to canvas (mirror it back for capture)
+    context.save();
+    context.scale(-1, 1);
+    context.drawImage(video, -canvas.width, 0);
+    context.restore();
 
     console.log("Photo captured with dimensions:", canvas.width, "x", canvas.height);
 
@@ -120,7 +125,7 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
         setError("Failed to capture photo. Please try again.");
       }
     }, "image/jpeg", 0.8);
-  }, [onCapture, handleClose]);
+  }, [isVideoReady, onCapture, handleClose]);
 
   // Start camera when modal opens
   React.useEffect(() => {
@@ -178,15 +183,34 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
                     if (videoRef.current) {
                       try {
                         await videoRef.current.play();
-                        console.log("Video playing successfully");
+                        console.log("Video metadata loaded, attempting to play");
                       } catch (err) {
                         console.warn("Video play failed:", err);
                       }
                     }
                   }}
+                  onCanPlay={() => {
+                    console.log("Video can play - setting ready state");
+                    setIsVideoReady(true);
+                    setIsInitializing(false);
+                  }}
+                  onLoadedData={() => {
+                    console.log("Video data loaded");
+                    if (videoRef.current && videoRef.current.videoWidth > 0) {
+                      console.log("Video dimensions:", videoRef.current.videoWidth, "x", videoRef.current.videoHeight);
+                      setIsVideoReady(true);
+                      setIsInitializing(false);
+                    }
+                  }}
+                  onPlaying={() => {
+                    console.log("Video is now playing");
+                    setIsVideoReady(true);
+                    setIsInitializing(false);
+                  }}
                   onError={(e) => {
                     console.error("Video error:", e);
                     setError("Failed to display camera feed. Please try again.");
+                    setIsInitializing(false);
                   }}
                 />
               </div>
