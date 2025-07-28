@@ -18,7 +18,11 @@ const DriverRegister = () => {
     fullName: "",
     phone: "",
     licensePlate: "",
-    carType: ""
+    carType: "",
+    brand: "",
+    model: "",
+    year: "",
+    mileage: ""
   });
   const { toast } = useToast();
 
@@ -184,13 +188,69 @@ const DriverRegister = () => {
                   <SelectValue placeholder="Select your vehicle type" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="electric">Electric Car</SelectItem>
                   <SelectItem value="sedan">Sedan</SelectItem>
                   <SelectItem value="suv">SUV</SelectItem>
-                  <SelectItem value="luxury">Luxury Vehicle</SelectItem>
-                  <SelectItem value="van">Van</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="brand">
+                  <Car className="inline h-4 w-4 mr-2" />
+                  Brand
+                </Label>
+                <Input
+                  id="brand"
+                  value={formData.brand}
+                  onChange={(e) => handleInputChange("brand", e.target.value)}
+                  className="h-12"
+                  placeholder="Tesla, BMW, Chevrolet"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="model">
+                  <Car className="inline h-4 w-4 mr-2" />
+                  Model
+                </Label>
+                <Input
+                  id="model"
+                  value={formData.model}
+                  onChange={(e) => handleInputChange("model", e.target.value)}
+                  className="h-12"
+                  placeholder="Model Y, 7 Series, Escalade"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="year">
+                  <FileText className="inline h-4 w-4 mr-2" />
+                  Year
+                </Label>
+                <Input
+                  id="year"
+                  value={formData.year}
+                  onChange={(e) => handleInputChange("year", e.target.value)}
+                  className="h-12"
+                  placeholder="2022"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="mileage">
+                  <FileText className="inline h-4 w-4 mr-2" />
+                  Mileage
+                </Label>
+                <Input
+                  id="mileage"
+                  value={formData.mileage}
+                  onChange={(e) => handleInputChange("mileage", e.target.value)}
+                  className="h-12"
+                  placeholder="34,000 miles"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
