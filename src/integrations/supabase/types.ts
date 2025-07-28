@@ -21,6 +21,8 @@ export type Database = {
           dropoff_location: string
           flight_info: string | null
           id: string
+          luggage_count: number
+          passenger_count: number
           passenger_id: string
           payment_status: string
           pickup_location: string
@@ -33,6 +35,8 @@ export type Database = {
           dropoff_location: string
           flight_info?: string | null
           id?: string
+          luggage_count?: number
+          passenger_count?: number
           passenger_id: string
           payment_status?: string
           pickup_location: string
@@ -45,6 +49,8 @@ export type Database = {
           dropoff_location?: string
           flight_info?: string | null
           id?: string
+          luggage_count?: number
+          passenger_count?: number
           passenger_id?: string
           payment_status?: string
           pickup_location?: string
