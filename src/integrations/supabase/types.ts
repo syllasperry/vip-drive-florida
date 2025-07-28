@@ -131,7 +131,11 @@ export type Database = {
       }
       drivers: {
         Row: {
+          car_color: string | null
+          car_make: string | null
+          car_model: string | null
           car_type: string | null
+          car_year: string | null
           created_at: string
           email: string
           full_name: string
@@ -141,7 +145,11 @@ export type Database = {
           profile_photo_url: string | null
         }
         Insert: {
+          car_color?: string | null
+          car_make?: string | null
+          car_model?: string | null
           car_type?: string | null
+          car_year?: string | null
           created_at?: string
           email: string
           full_name: string
@@ -151,7 +159,11 @@ export type Database = {
           profile_photo_url?: string | null
         }
         Update: {
+          car_color?: string | null
+          car_make?: string | null
+          car_model?: string | null
           car_type?: string | null
+          car_year?: string | null
           created_at?: string
           email?: string
           full_name?: string

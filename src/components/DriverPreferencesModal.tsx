@@ -138,17 +138,6 @@ export const DriverPreferencesModal = ({
 
     console.log('DriverPreferencesModal: Loading profile data', userProfile);
     
-    // Parse car_type back into individual fields
-    let carMake = "", carModel = "", carYear = "", carColor = "";
-    if (userProfile?.car_type) {
-      const carTypeParts = userProfile.car_type.split(' ');
-      if (carTypeParts.length >= 3) {
-        carYear = carTypeParts[0] || "";
-        carMake = carTypeParts[1] || "";
-        carModel = carTypeParts.slice(2).join(' ') || "";
-      }
-    }
-    
     setFormData({
       // Driver Information
       name: userProfile?.full_name || "",
@@ -156,11 +145,11 @@ export const DriverPreferencesModal = ({
       phone: userProfile?.phone || "",
       profilePhoto: null,
       profilePhotoUrl: userProfile?.profile_photo_url,
-      // Vehicle Information
-      carMake,
-      carModel,
-      carYear,
-      carColor, // Note: color is not stored separately in current schema
+      // Vehicle Information - now using separate fields
+      carMake: userProfile?.car_make || "",
+      carModel: userProfile?.car_model || "",
+      carYear: userProfile?.car_year || "",
+      carColor: userProfile?.car_color || "",
       licensePlate: userProfile?.license_plate || ""
     });
   }, [isOpen, userProfile]);
@@ -180,13 +169,17 @@ export const DriverPreferencesModal = ({
     try {
       console.log('Saving driver preferences:', formData, 'for user:', userProfile.id);
       
-      // Update driver profile in database
+      // Update driver profile in database with separate vehicle fields
       const { error } = await supabase
         .from('drivers')
         .update({
           full_name: formData.name,
           email: formData.email,
           phone: formData.phone,
+          car_make: formData.carMake,
+          car_model: formData.carModel,
+          car_year: formData.carYear,
+          car_color: formData.carColor,
           car_type: `${formData.carYear} ${formData.carMake} ${formData.carModel}`.trim(),
           license_plate: formData.licensePlate
         })
