@@ -49,42 +49,78 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
         videoRef.current.setAttribute('playsinline', 'true');
         videoRef.current.setAttribute('webkit-playsinline', 'true');
         
-        // Wait for video to be ready
+        // Enhanced mobile compatibility setup
+        const video = videoRef.current;
+        video.playsInline = true;
+        video.muted = true;
+        video.controls = false;
+        video.style.width = '100%';
+        video.style.height = '100%';
+        video.style.objectFit = 'cover';
+        
+        // For iOS Safari compatibility
+        video.setAttribute('webkit-playsinline', 'true');
+        video.setAttribute('playsinline', 'true');
+        video.setAttribute('autoplay', 'true');
+        video.setAttribute('muted', 'true');
+        
+        // Enhanced promise with better mobile handling
         const waitForVideo = new Promise((resolve, reject) => {
-          if (!videoRef.current) {
-            reject(new Error("Video element not available"));
-            return;
-          }
-          
-          const video = videoRef.current;
           let resolved = false;
+          let attempts = 0;
+          const maxAttempts = 5;
           
           const cleanup = () => {
             video.removeEventListener('loadedmetadata', onLoadedMetadata);
+            video.removeEventListener('loadeddata', onLoadedData);
             video.removeEventListener('canplay', onCanPlay);
+            video.removeEventListener('playing', onPlaying);
             video.removeEventListener('error', onError);
           };
           
-          const onLoadedMetadata = () => {
-            console.log("Video metadata loaded - dimensions:", video.videoWidth, "x", video.videoHeight);
-            if (!resolved && video.videoWidth > 0 && video.videoHeight > 0) {
+          const checkVideoReady = () => {
+            if (resolved) return;
+            
+            const hasValidDimensions = video.videoWidth > 0 && video.videoHeight > 0;
+            const isReadyToPlay = video.readyState >= 2; // HAVE_CURRENT_DATA
+            
+            console.log("Video check:", {
+              videoWidth: video.videoWidth,
+              videoHeight: video.videoHeight,
+              readyState: video.readyState,
+              hasValidDimensions,
+              isReadyToPlay
+            });
+            
+            if (hasValidDimensions && isReadyToPlay) {
               resolved = true;
               cleanup();
               resolve(undefined);
             }
+          };
+          
+          const onLoadedMetadata = () => {
+            console.log("Video metadata loaded");
+            checkVideoReady();
+          };
+          
+          const onLoadedData = () => {
+            console.log("Video data loaded");
+            checkVideoReady();
           };
           
           const onCanPlay = () => {
             console.log("Video can play");
-            if (!resolved) {
-              resolved = true;
-              cleanup();
-              resolve(undefined);
-            }
+            checkVideoReady();
+          };
+          
+          const onPlaying = () => {
+            console.log("Video is playing");
+            checkVideoReady();
           };
           
           const onError = (e: Event) => {
-            console.error("Video load error:", e);
+            console.error("Video error:", e);
             if (!resolved) {
               resolved = true;
               cleanup();
@@ -93,18 +129,42 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
           };
           
           video.addEventListener('loadedmetadata', onLoadedMetadata);
+          video.addEventListener('loadeddata', onLoadedData);
           video.addEventListener('canplay', onCanPlay);
+          video.addEventListener('playing', onPlaying);
           video.addEventListener('error', onError);
           
-          // Timeout fallback
+          // Retry mechanism for mobile
+          const retrySetup = () => {
+            attempts++;
+            console.log(`Setting up video, attempt ${attempts}`);
+            
+            // Force video to load stream again
+            video.srcObject = null;
+            setTimeout(() => {
+              video.srcObject = mediaStream;
+              video.load();
+              video.play().catch(e => console.warn("Play attempt failed:", e));
+            }, 100);
+            
+            if (attempts < maxAttempts) {
+              setTimeout(retrySetup, 1000);
+            }
+          };
+          
+          // Initial setup
+          retrySetup();
+          
+          // Timeout fallback - be more generous for mobile
           setTimeout(() => {
             if (!resolved) {
-              console.log("Video load timeout, trying to continue anyway");
+              console.log("Video setup timeout, attempting to continue");
               resolved = true;
               cleanup();
+              // Don't reject, try to continue anyway
               resolve(undefined);
             }
-          }, 3000);
+          }, 8000);
         });
         
         await waitForVideo;
