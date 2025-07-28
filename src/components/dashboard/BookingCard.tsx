@@ -1,16 +1,17 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, User, Car, MessageCircle, Star } from "lucide-react";
+import { MapPin, Clock, User, Car, MessageCircle, Star, FileText } from "lucide-react";
 
 interface BookingCardProps {
   booking: any;
   userType: "passenger" | "driver";
   onMessage?: () => void;
   onReview?: () => void;
+  onViewSummary?: () => void;
 }
 
-export const BookingCard = ({ booking, userType, onMessage, onReview }: BookingCardProps) => {
+export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSummary }: BookingCardProps) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "confirmed": return "bg-success/10 text-success border-success/20";
@@ -106,6 +107,18 @@ export const BookingCard = ({ booking, userType, onMessage, onReview }: BookingC
             <MessageCircle className="h-4 w-4" />
             Message
           </Button>
+
+          {onViewSummary && (
+            <Button
+              onClick={onViewSummary}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <FileText className="h-4 w-4" />
+              Summary
+            </Button>
+          )}
 
           {booking.status === "completed" && onReview && (
             <Button

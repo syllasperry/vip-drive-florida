@@ -6,6 +6,7 @@ import { SettingsModal } from "@/components/SettingsModal";
 import { ProfileEditModal } from "@/components/ProfileEditModal";
 import CelebrationModal from "@/components/CelebrationModal";
 import { ReviewModal } from "@/components/ReviewModal";
+import { BookingSummaryModal } from "@/components/BookingSummaryModal";
 import { BottomNavigation } from "@/components/dashboard/BottomNavigation";
 import { ProfileHeader } from "@/components/dashboard/ProfileHeader";
 import { UpcomingRideCard } from "@/components/dashboard/UpcomingRideCard";
@@ -31,6 +32,8 @@ const Dashboard = () => {
   const [profileEditOpen, setProfileEditOpen] = useState(false);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [selectedBookingForReview, setSelectedBookingForReview] = useState<string | null>(null);
+  const [summaryModalOpen, setSummaryModalOpen] = useState(false);
+  const [selectedBookingForSummary, setSelectedBookingForSummary] = useState<any>(null);
   const [showWelcomeCelebration, setShowWelcomeCelebration] = useState(false);
   const [showRideConfirmation, setShowRideConfirmation] = useState(false);
 
@@ -264,7 +267,8 @@ const Dashboard = () => {
             }),
             from: booking.pickup_location,
             to: booking.dropoff_location,
-            vehicle: "Standard Vehicle", // Default since we don't have vehicle details
+            vehicle: "Standard Vehicle",
+            vehicleModel: "Tesla Model Y", // TODO: Get real vehicle model from vehicle table
             status: booking.status,
             driver: booking.drivers?.full_name || null,
             paymentMethod: booking.payment_status === 'completed' ? 'Paid' : 'Pending',
@@ -367,6 +371,10 @@ const Dashboard = () => {
                       setSelectedBookingForReview(booking.id);
                       setReviewModalOpen(true);
                     }}
+                    onViewSummary={() => {
+                      setSelectedBookingForSummary(booking);
+                      setSummaryModalOpen(true);
+                    }}
                   />
                 ))
               )}
@@ -463,6 +471,12 @@ const Dashboard = () => {
         isOpen={reviewModalOpen}
         onClose={() => setReviewModalOpen(false)}
         bookingId={selectedBookingForReview}
+      />
+
+      <BookingSummaryModal 
+        isOpen={summaryModalOpen}
+        onClose={() => setSummaryModalOpen(false)}
+        booking={selectedBookingForSummary || {}}
       />
 
       <CelebrationModal 

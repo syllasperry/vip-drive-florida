@@ -145,89 +145,203 @@ const DriverDashboard = () => {
     }
   };
 
-  const handleAcceptRide = (rideId: string) => {
-    setMockRides(prevRides => 
-      prevRides.map(ride => 
-        ride.id === rideId 
-          ? { ...ride, status: "waiting_payment", countdown: 24 }
-          : ride
-      )
-    );
-  };
+  const handleAcceptRide = async (rideId: string) => {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status: 'confirmed' })
+        .eq('id', rideId);
 
-  const handleDeclineRide = (rideId: string) => {
-    setMockRides(prevRides => 
-      prevRides.map(ride => 
-        ride.id === rideId 
-          ? { ...ride, status: "declined" }
-          : ride
-      )
-    );
-  };
+      if (error) {
+        console.error('Error accepting ride:', error);
+        toast({
+          title: "Error",
+          description: "Failed to accept ride",
+          variant: "destructive",
+        });
+        return;
+      }
 
-  const handleConfirmPaymentReceived = (rideId: string) => {
-    setMockRides(prevRides => 
-      prevRides.map(ride => 
-        ride.id === rideId 
-          ? { ...ride, status: "confirmed" }
-          : ride
-      )
-    );
-  };
+      // Update local state
+      setDriverRides(prevRides => 
+        prevRides.map(ride => 
+          ride.id === rideId 
+            ? { ...ride, status: "confirmed" }
+            : ride
+        )
+      );
 
-  const [mockRides, setMockRides] = useState([
-    {
-      id: "1",
-      date: "2024-01-15",
-      time: "14:30",
-      from: "Miami International Airport",
-      to: "Brickell City Centre",
-      passenger: "Sarah Johnson",
-      status: "confirmed",
-      payment: "$85.00",
-      paymentMethod: "Visa ending in 4532",
-      countdown: null
-    },
-    {
-      id: "2", 
-      date: "2024-01-18",
-      time: "09:00",
-      from: "Fort Lauderdale Airport", 
-      to: "Las Olas Boulevard",
-      passenger: "Mike Chen",
-      status: "payment_confirmed",
-      payment: "$95.00",
-      paymentMethod: "Zelle",
-      countdown: 18 // hours remaining
-    },
-    {
-      id: "3",
-      date: "2024-01-20",
-      time: "16:00",
-      from: "Palm Beach Airport",
-      to: "Worth Avenue",
-      passenger: "Emma Davis",
-      status: "pending",
-      payment: "$120.00",
-      paymentMethod: null,
-      countdown: null
-    },
-    {
-      id: "4",
-      date: "2024-01-10",
-      time: "12:00",
-      from: "Downtown Miami",
-      to: "Miami Beach",
-      passenger: "Carlos Martinez",
-      status: "completed",
-      payment: "$75.00",
-      paymentMethod: "Credit Card",
-      countdown: null
+      toast({
+        title: "Ride Accepted!",
+        description: "The passenger has been notified.",
+      });
+    } catch (error) {
+      console.error('Error accepting ride:', error);
     }
-  ]);
+  };
+
+  const handleDeclineRide = async (rideId: string) => {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status: 'declined' })
+        .eq('id', rideId);
+
+      if (error) {
+        console.error('Error declining ride:', error);
+        toast({
+          title: "Error",
+          description: "Failed to decline ride",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Update local state
+      setDriverRides(prevRides => 
+        prevRides.map(ride => 
+          ride.id === rideId 
+            ? { ...ride, status: "declined" }
+            : ride
+        )
+      );
+
+      toast({
+        title: "Ride Declined",
+        description: "The booking has been declined.",
+      });
+    } catch (error) {
+      console.error('Error declining ride:', error);
+    }
+  };
+
+  const handleConfirmPaymentReceived = async (rideId: string) => {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ payment_status: 'completed', status: 'payment_confirmed' })
+        .eq('id', rideId);
+
+      if (error) {
+        console.error('Error confirming payment:', error);
+        toast({
+          title: "Error",
+          description: "Failed to confirm payment",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Update local state
+      setDriverRides(prevRides => 
+        prevRides.map(ride => 
+          ride.id === rideId 
+            ? { ...ride, status: "payment_confirmed", paymentMethod: "Completed" }
+            : ride
+        )
+      );
+
+      toast({
+        title: "Payment Confirmed!",
+        description: "The booking is now confirmed.",
+      });
+    } catch (error) {
+      console.error('Error confirming payment:', error);
+    }
+  };
+
+  const [driverRides, setDriverRides] = useState<any[]>([]);
+
+  // Fetch real bookings for the driver
+  useEffect(() => {
+    const fetchDriverBookings = async () => {
+      if (!userProfile?.id) return;
+
+      try {
+        const { data: bookingsData, error } = await supabase
+          .from('bookings')
+          .select(`
+            *,
+            passengers:passenger_id (
+              id,
+              full_name,
+              phone,
+              email
+            )
+          `)
+          .eq('driver_id', userProfile.id)
+          .order('pickup_time', { ascending: true });
+
+        if (error) {
+          console.error('Error fetching driver bookings:', error);
+          return;
+        }
+
+        // Transform Supabase data to match expected format
+        const transformedBookings = bookingsData.map(booking => {
+          const pickupDate = new Date(booking.pickup_time);
+          return {
+            id: booking.id,
+            date: pickupDate.toISOString().split('T')[0],
+            time: pickupDate.toLocaleTimeString('en-US', { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              hour12: false 
+            }),
+            from: booking.pickup_location,
+            to: booking.dropoff_location,
+            passenger: booking.passengers?.full_name || 'Unknown Passenger',
+            status: booking.status,
+            payment: "$120.00", // TODO: Calculate real price
+            paymentMethod: booking.payment_status === 'completed' ? 'Completed' : null,
+            countdown: null,
+            flight_info: booking.flight_info,
+            passenger_count: booking.passenger_count,
+            luggage_count: booking.luggage_count
+          };
+        });
+
+        setDriverRides(transformedBookings);
+      } catch (error) {
+        console.error('Error fetching driver bookings:', error);
+      }
+    };
+
+    fetchDriverBookings();
+
+    // Set up real-time subscription for new bookings
+    const channel = supabase
+      .channel('driver-bookings')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'bookings',
+          filter: `driver_id=eq.${userProfile?.id}`
+        },
+        (payload) => {
+          console.log('New booking received:', payload);
+          // Refetch bookings when a new one is added
+          fetchDriverBookings();
+          
+          // Show toast notification
+          toast({
+            title: "🎉 New Ride Request!",
+            description: "You have received a new booking request.",
+            variant: "default",
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userProfile?.id, toast]);
 
   // Filter rides based on current view
-  const filteredRides = mockRides.filter(ride => {
+  const filteredRides = driverRides.filter(ride => {
     const rideDate = new Date(ride.date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -240,7 +354,7 @@ const DriverDashboard = () => {
   });
 
   // Get next upcoming ride
-  const nextRide = mockRides.find(ride => {
+  const nextRide = driverRides.find(ride => {
     const rideDate = new Date(ride.date);
     const today = new Date();
     return rideDate >= today && (ride.status === "confirmed" || ride.status === "payment_confirmed");
@@ -336,7 +450,9 @@ const DriverDashboard = () => {
                 </Card>
               ) : (
                 filteredRides.map((ride) => (
-                  <Card key={ride.id} className="hover:shadow-[var(--shadow-subtle)] transition-all duration-300 border-border/50">
+                  <Card key={ride.id} className={`hover:shadow-[var(--shadow-subtle)] transition-all duration-300 border-border/50 ${
+                    ride.status === "pending" ? "ring-2 ring-warning/50 animate-pulse" : ""
+                  }`}>
                     <CardContent className="p-5">
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
@@ -354,9 +470,16 @@ const DriverDashboard = () => {
                             )}
                           </div>
                         </div>
-                        <Badge className={getStatusColor(ride.status)}>
-                          {getStatusText(ride.status)}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          {ride.status === "pending" && (
+                            <Badge className="bg-warning/20 text-warning border-warning/30 animate-pulse">
+                              🆕 New Request
+                            </Badge>
+                          )}
+                          <Badge className={getStatusColor(ride.status)}>
+                            {getStatusText(ride.status)}
+                          </Badge>
+                        </div>
                       </div>
 
                       <div className="space-y-3 mb-4">
