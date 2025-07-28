@@ -34,24 +34,55 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
       console.log("Camera stream obtained successfully");
       setStream(mediaStream);
       
-      // Wait for video element to be ready, then assign stream
+      // Wait a moment for component to be ready
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       if (videoRef.current) {
         console.log("Setting video stream to element...");
         videoRef.current.srcObject = mediaStream;
         
-        // Force video to load and play
-        videoRef.current.load();
+        // Wait for the video to be loaded
+        await new Promise((resolve, reject) => {
+          if (!videoRef.current) {
+            reject(new Error("Video element not available"));
+            return;
+          }
+          
+          const video = videoRef.current;
+          
+          const onLoadedMetadata = () => {
+            console.log("Video metadata loaded - dimensions:", video.videoWidth, "x", video.videoHeight);
+            video.removeEventListener('loadedmetadata', onLoadedMetadata);
+            video.removeEventListener('error', onError);
+            resolve(undefined);
+          };
+          
+          const onError = (e: Event) => {
+            console.error("Video load error:", e);
+            video.removeEventListener('loadedmetadata', onLoadedMetadata);
+            video.removeEventListener('error', onError);
+            reject(new Error("Video failed to load"));
+          };
+          
+          video.addEventListener('loadedmetadata', onLoadedMetadata);
+          video.addEventListener('error', onError);
+          
+          // Start loading the video
+          video.load();
+        });
         
+        // Try to play the video
         try {
           await videoRef.current.play();
           console.log("Video playing successfully");
-          // Set ready immediately after successful play
-          setIsVideoReady(true);
-          setIsInitializing(false);
         } catch (playError) {
-          console.warn("Video autoplay failed, will try to detect ready state:", playError);
-          // Continue - ready state will be detected by event handlers
+          console.warn("Video autoplay failed:", playError);
         }
+        
+        // Set ready state
+        setIsVideoReady(true);
+        setIsInitializing(false);
+        console.log("Camera initialization complete");
       }
       
     } catch (err) {

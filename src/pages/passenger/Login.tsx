@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Eye, EyeOff, Mail, Lock, User, Phone, Camera, Upload, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, Phone, Camera, Upload, ArrowLeft, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,13 +27,36 @@ const PassengerLogin = () => {
   const bookingData = location.state;
   const { toast } = useToast();
 
+  const handleForceLogout = async () => {
+    try {
+      await supabase.auth.signOut({ scope: 'global' });
+      localStorage.clear();
+      sessionStorage.clear();
+      toast({
+        title: "Logged out",
+        description: "Session cleared successfully.",
+      });
+      window.location.reload();
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Force clear even if logout fails
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.reload();
+    }
+  };
+
   useEffect(() => {
     // Check if user is already logged in
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        navigate(bookingData ? "/passenger/choose-vehicle" : "/passenger/dashboard", 
-               { state: bookingData });
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          navigate(bookingData ? "/passenger/choose-vehicle" : "/passenger/dashboard", 
+                 { state: bookingData });
+        }
+      } catch (error) {
+        console.error("Auth check error:", error);
       }
     };
     checkAuth();
@@ -262,8 +285,8 @@ const PassengerLogin = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4">
       <div className="max-w-md mx-auto pt-8">
-        {/* Go Back Button */}
-        <div className="flex justify-start mb-4">
+        {/* Header with Go Back and Force Logout */}
+        <div className="flex justify-between items-center mb-4">
           <Button
             variant="ghost"
             size="sm"
@@ -272,6 +295,17 @@ const PassengerLogin = () => {
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Go Back
+          </Button>
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleForceLogout}
+            className="text-muted-foreground hover:text-destructive text-base"
+            title="Clear session and logout"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Clear Session
           </Button>
         </div>
         
