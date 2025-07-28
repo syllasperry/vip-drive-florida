@@ -29,6 +29,7 @@ export type Database = {
           pickup_time: string
           status: string
           vehicle_id: string | null
+          vehicle_type: string | null
         }
         Insert: {
           created_at?: string
@@ -44,6 +45,7 @@ export type Database = {
           pickup_time: string
           status?: string
           vehicle_id?: string | null
+          vehicle_type?: string | null
         }
         Update: {
           created_at?: string
@@ -59,6 +61,7 @@ export type Database = {
           pickup_time?: string
           status?: string
           vehicle_id?: string | null
+          vehicle_type?: string | null
         }
         Relationships: [
           {
@@ -283,6 +286,33 @@ export type Database = {
         }
         Relationships: []
       }
+      vehicle_types: {
+        Row: {
+          code_name: string
+          created_at: string | null
+          id: string
+          make: string
+          model: string
+          vehicle_name: string
+        }
+        Insert: {
+          code_name: string
+          created_at?: string | null
+          id?: string
+          make: string
+          model: string
+          vehicle_name: string
+        }
+        Update: {
+          code_name?: string
+          created_at?: string | null
+          id?: string
+          make?: string
+          model?: string
+          vehicle_name?: string
+        }
+        Relationships: []
+      }
       vehicles: {
         Row: {
           available: boolean
@@ -318,7 +348,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      find_matching_drivers: {
+        Args: { p_vehicle_make: string; p_vehicle_model: string }
+        Returns: {
+          driver_id: string
+          driver_name: string
+          driver_email: string
+          driver_phone: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
