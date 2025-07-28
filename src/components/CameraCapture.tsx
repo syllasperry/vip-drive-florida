@@ -26,16 +26,23 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
         video: { 
           width: { ideal: 1280 },
           height: { ideal: 720 },
-          facingMode: "user" // Front camera for profile photos
+          facingMode: "user"
         }
       });
       
       setStream(mediaStream);
       
-      // Wait for video element to be available and set stream
+      // Ensure video element is available before setting stream
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
-        console.log("Camera stream assigned to video element");
+        
+        // Force video to load and play
+        try {
+          await videoRef.current.load();
+          await videoRef.current.play();
+        } catch (playError) {
+          console.warn("Video play failed, but continuing:", playError);
+        }
       }
     } catch (err) {
       console.error("Error accessing camera:", err);
@@ -178,46 +185,34 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
                   autoPlay
                   playsInline
                   muted
+                  controls={false}
                   className="w-full h-full object-cover transform scale-x-[-1]"
-                  onLoadedMetadata={async () => {
-                    if (videoRef.current) {
-                      try {
-                        await videoRef.current.play();
-                        console.log("Video metadata loaded, attempting to play");
-                      } catch (err) {
-                        console.warn("Video play failed:", err);
-                      }
-                    }
-                  }}
-                  onCanPlay={() => {
-                    console.log("Video can play - setting ready state");
-                    setIsVideoReady(true);
-                    setIsInitializing(false);
-                  }}
-                  onLoadedData={() => {
-                    console.log("Video data loaded");
+                  onLoadedMetadata={() => {
                     if (videoRef.current && videoRef.current.videoWidth > 0) {
-                      console.log("Video dimensions:", videoRef.current.videoWidth, "x", videoRef.current.videoHeight);
                       setIsVideoReady(true);
                       setIsInitializing(false);
                     }
                   }}
-                  onPlaying={() => {
-                    console.log("Video is now playing");
+                  onCanPlay={() => {
                     setIsVideoReady(true);
                     setIsInitializing(false);
                   }}
-                  onError={(e) => {
-                    console.error("Video error:", e);
+                  onPlaying={() => {
+                    setIsVideoReady(true);
+                    setIsInitializing(false);
+                  }}
+                  onError={() => {
                     setError("Failed to display camera feed. Please try again.");
                     setIsInitializing(false);
                   }}
                 />
               </div>
-              <Button onClick={capturePhoto} variant="luxury" size="lg">
-                <Camera className="h-5 w-5 mr-2" />
-                Capture Photo
-              </Button>
+              {isVideoReady && (
+                <Button onClick={capturePhoto} variant="luxury" size="lg">
+                  <Camera className="h-5 w-5 mr-2" />
+                  Capture Photo
+                </Button>
+              )}
             </div>
           ) : null}
           
