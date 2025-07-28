@@ -23,66 +23,111 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
     
     try {
       console.log("Starting camera...");
+      
+      // Check if getUserMedia is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Camera not supported on this device");
+      }
+      
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { 
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          width: { min: 320, ideal: 640, max: 1280 },
+          height: { min: 240, ideal: 480, max: 720 },
           facingMode: "user"
-        }
+        },
+        audio: false
       });
       
       console.log("Camera stream obtained successfully");
       setStream(mediaStream);
       
-      // Wait a moment for component to be ready
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
       if (videoRef.current) {
         console.log("Setting video stream to element...");
         videoRef.current.srcObject = mediaStream;
         
-        // Wait for the video to be loaded
-        await new Promise((resolve, reject) => {
+        // Set video attributes for better mobile compatibility
+        videoRef.current.setAttribute('playsinline', 'true');
+        videoRef.current.setAttribute('webkit-playsinline', 'true');
+        
+        // Wait for video to be ready
+        const waitForVideo = new Promise((resolve, reject) => {
           if (!videoRef.current) {
             reject(new Error("Video element not available"));
             return;
           }
           
           const video = videoRef.current;
+          let resolved = false;
+          
+          const cleanup = () => {
+            video.removeEventListener('loadedmetadata', onLoadedMetadata);
+            video.removeEventListener('canplay', onCanPlay);
+            video.removeEventListener('error', onError);
+          };
           
           const onLoadedMetadata = () => {
             console.log("Video metadata loaded - dimensions:", video.videoWidth, "x", video.videoHeight);
-            video.removeEventListener('loadedmetadata', onLoadedMetadata);
-            video.removeEventListener('error', onError);
-            resolve(undefined);
+            if (!resolved && video.videoWidth > 0 && video.videoHeight > 0) {
+              resolved = true;
+              cleanup();
+              resolve(undefined);
+            }
+          };
+          
+          const onCanPlay = () => {
+            console.log("Video can play");
+            if (!resolved) {
+              resolved = true;
+              cleanup();
+              resolve(undefined);
+            }
           };
           
           const onError = (e: Event) => {
             console.error("Video load error:", e);
-            video.removeEventListener('loadedmetadata', onLoadedMetadata);
-            video.removeEventListener('error', onError);
-            reject(new Error("Video failed to load"));
+            if (!resolved) {
+              resolved = true;
+              cleanup();
+              reject(new Error("Video failed to load"));
+            }
           };
           
           video.addEventListener('loadedmetadata', onLoadedMetadata);
+          video.addEventListener('canplay', onCanPlay);
           video.addEventListener('error', onError);
           
-          // Start loading the video
-          video.load();
+          // Timeout fallback
+          setTimeout(() => {
+            if (!resolved) {
+              console.log("Video load timeout, trying to continue anyway");
+              resolved = true;
+              cleanup();
+              resolve(undefined);
+            }
+          }, 3000);
         });
+        
+        await waitForVideo;
         
         // Try to play the video
         try {
           await videoRef.current.play();
           console.log("Video playing successfully");
         } catch (playError) {
-          console.warn("Video autoplay failed:", playError);
+          console.warn("Video autoplay failed, will try manual interaction:", playError);
+          // For mobile Safari, we might need user interaction
         }
         
-        // Set ready state
-        setIsVideoReady(true);
+        // Double check video is ready
+        if (videoRef.current.videoWidth > 0 && videoRef.current.videoHeight > 0) {
+          setIsVideoReady(true);
+          console.log("Camera initialization complete");
+        } else {
+          console.log("Video dimensions still 0, but continuing...");
+          setIsVideoReady(true);
+        }
+        
         setIsInitializing(false);
-        console.log("Camera initialization complete");
       }
       
     } catch (err) {
