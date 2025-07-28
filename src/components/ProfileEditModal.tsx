@@ -121,21 +121,34 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload, 
 
   // Load current user profile data when modal opens
   useEffect(() => {
-    if (!isOpen || !userProfile) return;
+    if (!isOpen) return;
 
+    console.log('ProfileEditModal: Loading profile data', userProfile);
+    
     setFormData({
-      name: userProfile.full_name || "",
-      email: userProfile.email || "", 
-      phone: userProfile.phone || "",
+      name: userProfile?.full_name || "",
+      email: userProfile?.email || "", 
+      phone: userProfile?.phone || "",
       profilePhoto: null,
-      profilePhotoUrl: userProfile.profile_photo_url
+      profilePhotoUrl: userProfile?.profile_photo_url
     });
   }, [isOpen, userProfile]);
 
   const handleSave = async () => {
-    if (!userProfile?.id) return;
+    if (!userProfile?.id) {
+      toast({
+        title: "Error",
+        description: "User profile not found",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsUploading(true);
     
     try {
+      console.log('Saving profile data:', formData, 'for user:', userProfile.id);
+      
       // Update driver profile in database
       const { error } = await supabase
         .from('drivers')
@@ -150,7 +163,7 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload, 
         console.error('Error updating profile:', error);
         toast({
           title: "Update failed",
-          description: "Failed to save profile changes",
+          description: `Failed to save profile changes: ${error.message}`,
           variant: "destructive"
         });
         return;
@@ -175,6 +188,8 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload, 
         description: "An unexpected error occurred",
         variant: "destructive"
       });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -201,7 +216,7 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload, 
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto overscroll-behavior-contain">
-          <div className="p-6 space-y-6 pb-8">
+          <div className="p-6 space-y-6 pb-24">
             {/* Profile Photo */}
             <div className="flex flex-col items-center space-y-4">
               <div className="relative w-20 h-20 bg-muted rounded-full flex items-center justify-center">
@@ -303,8 +318,12 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload, 
           <Button onClick={onClose} variant="outline" className="flex-1">
             Cancel
           </Button>
-          <Button onClick={handleSave} className="flex-1">
-            Save Changes
+          <Button 
+            onClick={handleSave} 
+            className="flex-1" 
+            disabled={isUploading}
+          >
+            {isUploading ? "Saving..." : "Save Changes"}
           </Button>
         </div>
       </div>

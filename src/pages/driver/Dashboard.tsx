@@ -51,14 +51,22 @@ const DriverDashboard = () => {
           .from('drivers')
           .select('*')
           .eq('id', session.user.id)
-          .single();
+          .maybeSingle();
 
         if (error) {
           console.error('Error fetching driver profile:', error);
           toast({
-            title: "Error",
+            title: "Error", 
             description: "Failed to load driver profile",
             variant: "destructive",
+          });
+        } else if (!driver) {
+          // No driver profile found, this might be a new user
+          console.log('No driver profile found for user:', session.user.id);
+          toast({
+            title: "Profile Setup Required",
+            description: "Please complete your driver profile setup",
+            variant: "default",
           });
         } else {
           setUserProfile(driver);
@@ -434,7 +442,7 @@ const DriverDashboard = () => {
                   .from('drivers')
                   .select('*')
                   .eq('id', session.user.id)
-                  .single();
+                  .maybeSingle();
                 if (driver) {
                   setUserProfile(driver);
                 }
