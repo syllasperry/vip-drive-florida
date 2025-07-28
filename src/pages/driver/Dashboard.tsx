@@ -12,6 +12,7 @@ import { ProfileHeader } from "@/components/dashboard/ProfileHeader";
 import { UpcomingRideCard } from "@/components/dashboard/UpcomingRideCard";
 import { BookingToggle } from "@/components/dashboard/BookingToggle";
 import { BookingCard } from "@/components/dashboard/BookingCard";
+import PendingRequestAlert from "@/components/dashboard/PendingRequestAlert";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Car, DollarSign, User, LogOut, Clock, CheckCircle, Calendar, MessageCircle } from "lucide-react";
@@ -312,7 +313,8 @@ const DriverDashboard = () => {
             countdown: null,
             flight_info: booking.flight_info,
             passenger_count: booking.passenger_count,
-            luggage_count: booking.luggage_count
+            luggage_count: booking.luggage_count,
+            vehicle_type: booking.vehicle_type || 'Vehicle'
           };
         });
 
@@ -340,11 +342,20 @@ const DriverDashboard = () => {
                 console.log('New booking assigned to driver:', payload);
                 fetchDriverBookings();
                 
+                // Show visual and audio notification
                 toast({
-                  title: "🎉 New Ride Request!",
-                  description: "You have received a new booking request.",
+                  title: "🚨 NEW RIDE REQUEST!",
+                  description: `New ${payload.new.vehicle_type} booking request received!`,
                   variant: "default",
                 });
+
+                // Play notification sound (if supported)
+                try {
+                  const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmgfCEWW4+XNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmgfCEWW4+XNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmgfCEWW4+XNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmgfCEWW4+XNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmgfCEWW4+XNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmgfCEWW4+XNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmgfCEWW4+XNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmgfCEWW4+XNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmgfCEWW4+XNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmgfCEWW4+XNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmgfCEWW4+XNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmgfCEWW4+XNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmgfCEWW4+XNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmgfCEWW4+XNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmgfCEWW4+XNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmgfCEWW4+XNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmgfCEWW4+XNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmgfCEWW4+XNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmgfCEWW4+XNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmgfCE');
+                  audio.play();
+                } catch (e) {
+                  console.log('Audio notification not supported');
+                }
               }
             }
           )
@@ -472,6 +483,26 @@ const DriverDashboard = () => {
                 description: "Redirecting to maps...",
               });
             }}
+          />
+        )}
+
+        {/* Pending Requests Alert */}
+        {activeTab === "rides" && (
+          <PendingRequestAlert 
+            requests={driverRides.filter(ride => ride.status === "pending").map(ride => ({
+              id: ride.id,
+              passenger: ride.passenger,
+              from: ride.from,
+              to: ride.to,
+              time: ride.time,
+              date: ride.date,
+              vehicle_type: ride.vehicle_type,
+              passenger_count: ride.passenger_count,
+              luggage_count: ride.luggage_count,
+              flight_info: ride.flight_info
+            }))}
+            onAccept={handleAcceptRide}
+            onDecline={handleDeclineRide}
           />
         )}
 

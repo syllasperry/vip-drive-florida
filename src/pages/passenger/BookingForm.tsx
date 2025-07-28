@@ -52,17 +52,57 @@ const BookingForm = () => {
       // Combine date and time for pickup_time
       const pickupDateTime = new Date(`${formData.date}T${formData.time}`);
 
-      // Create booking in database
+      // Get vehicle details from the selected vehicle
+      const vehicleMapping = {
+        'tesla-y': { make: 'Tesla', model: 'Model Y' },
+        'bmw-sedan': { make: 'BMW', model: '5 Series' },
+        'chevrolet-suv': { make: 'Chevrolet', model: 'Tahoe' },
+        'mercedes-van': { make: 'Mercedes-Benz', model: 'Sprinter' }
+      };
+
+      const vehicleInfo = vehicleMapping[selectedVehicle?.id as keyof typeof vehicleMapping];
+      if (!vehicleInfo) {
+        throw new Error('Invalid vehicle selection');
+      }
+
+      // Find matching drivers first
+      const { data: matchingDrivers, error: matchError } = await supabase
+        .rpc('find_matching_drivers', {
+          p_vehicle_make: vehicleInfo.make,
+          p_vehicle_model: vehicleInfo.model
+        });
+
+      if (matchError) {
+        console.error('Error finding matching drivers:', matchError);
+        throw new Error('Failed to find matching drivers');
+      }
+
+      if (!matchingDrivers || matchingDrivers.length === 0) {
+        toast({
+          title: "No Available Drivers",
+          description: `No drivers with ${vehicleInfo.make} ${vehicleInfo.model} are currently available.`,
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      // For now, assign to the first matching driver (later can implement smart assignment)
+      const assignedDriver = matchingDrivers[0];
+
+      // Create booking in database with assigned driver
       const { data: booking, error } = await supabase
         .from('bookings')
         .insert({
           passenger_id: session.user.id,
+          driver_id: assignedDriver.driver_id,
           pickup_location: pickup,
           dropoff_location: dropoff,
           pickup_time: pickupDateTime.toISOString(),
           passenger_count: parseInt(formData.passengers),
           luggage_count: parseInt(formData.luggage),
           flight_info: formData.flightInfo || '',
+          vehicle_type: `${vehicleInfo.make} ${vehicleInfo.model}`,
           status: 'pending',
           payment_status: 'pending'
         })
