@@ -29,12 +29,35 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
       });
       
       setStream(mediaStream);
+      
+      // Wait for video element to be available and set stream
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
+        
+        // Force video to load and play
+        try {
+          await videoRef.current.load();
+          await videoRef.current.play();
+          console.log("Camera started successfully");
+        } catch (playError) {
+          console.warn("Autoplay failed, video will play on user interaction:", playError);
+        }
       }
     } catch (err) {
       console.error("Error accessing camera:", err);
-      setError("Unable to access camera. Please check your permissions.");
+      let errorMessage = "Unable to access camera. Please check your permissions.";
+      
+      if (err instanceof Error) {
+        if (err.name === "NotAllowedError") {
+          errorMessage = "Camera access denied. Please allow camera permissions and try again.";
+        } else if (err.name === "NotFoundError") {
+          errorMessage = "No camera found on this device.";
+        } else if (err.name === "NotReadableError") {
+          errorMessage = "Camera is already in use by another application.";
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsInitializing(false);
     }
@@ -47,14 +70,33 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
     }
   }, [stream]);
 
+  const handleClose = useCallback(() => {
+    stopCamera();
+    setError("");
+    onClose();
+  }, [stopCamera, onClose]);
+
   const capturePhoto = useCallback(() => {
-    if (!videoRef.current || !canvasRef.current) return;
+    if (!videoRef.current || !canvasRef.current) {
+      console.error("Video or canvas ref not available");
+      return;
+    }
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const context = canvas.getContext("2d");
 
-    if (!context) return;
+    if (!context) {
+      console.error("Canvas context not available");
+      return;
+    }
+
+    // Check if video has valid dimensions
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      console.error("Video dimensions are invalid:", video.videoWidth, video.videoHeight);
+      setError("Camera not ready. Please wait for the video to load.");
+      return;
+    }
 
     // Set canvas dimensions to match video
     canvas.width = video.videoWidth;
@@ -63,22 +105,22 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
     // Draw the video frame to canvas
     context.drawImage(video, 0, 0);
 
+    console.log("Photo captured with dimensions:", canvas.width, "x", canvas.height);
+
     // Convert canvas to blob
     canvas.toBlob((blob) => {
       if (blob) {
+        console.log("Blob created successfully:", blob.size, "bytes");
         // Create a File object from the blob
         const file = new File([blob], "camera-photo.jpg", { type: "image/jpeg" });
         onCapture(file);
         handleClose();
+      } else {
+        console.error("Failed to create blob from canvas");
+        setError("Failed to capture photo. Please try again.");
       }
     }, "image/jpeg", 0.8);
-  }, [onCapture]);
-
-  const handleClose = useCallback(() => {
-    stopCamera();
-    setError("");
-    onClose();
-  }, [stopCamera, onClose]);
+  }, [onCapture, handleClose]);
 
   // Start camera when modal opens
   React.useEffect(() => {
@@ -131,11 +173,20 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
                   autoPlay
                   playsInline
                   muted
-                  className="w-full h-full object-cover"
-                  onLoadedMetadata={() => {
+                  className="w-full h-full object-cover transform scale-x-[-1]"
+                  onLoadedMetadata={async () => {
                     if (videoRef.current) {
-                      videoRef.current.play();
+                      try {
+                        await videoRef.current.play();
+                        console.log("Video playing successfully");
+                      } catch (err) {
+                        console.warn("Video play failed:", err);
+                      }
                     }
+                  }}
+                  onError={(e) => {
+                    console.error("Video error:", e);
+                    setError("Failed to display camera feed. Please try again.");
                   }}
                 />
               </div>
