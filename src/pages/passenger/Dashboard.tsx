@@ -198,11 +198,28 @@ const Dashboard = () => {
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
-      navigate("/");
+      // Clear all auth state first
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      Object.keys(sessionStorage || {}).forEach((key) => {
+        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+
+      // Sign out with global scope
+      await supabase.auth.signOut({ scope: 'global' });
+      
+      // Force complete page reload to clear all state
+      window.location.href = "/passenger/login";
     } catch (error) {
       console.error("Logout error:", error);
-      navigate("/");
+      // Force reload even on error
+      window.location.href = "/passenger/login";
     }
   };
 
