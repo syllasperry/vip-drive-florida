@@ -140,9 +140,9 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload }
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-card rounded-xl w-full max-w-md shadow-xl">
+      <div className="bg-card rounded-xl w-full max-w-md shadow-xl max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-border">
+        <div className="flex items-center justify-between p-6 border-b border-border flex-shrink-0">
           <div className="flex items-center space-x-2">
             <User className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold text-card-foreground">Edit Profile</h2>
@@ -152,105 +152,107 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload }
           </Button>
         </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-6">
-          {/* Profile Photo */}
-          <div className="flex flex-col items-center space-y-4">
-            <div className="relative w-20 h-20 bg-muted rounded-full flex items-center justify-center">
-              {isUploading ? (
-                <div className="w-full h-full rounded-full bg-muted flex items-center justify-center relative">
-                  <div className="absolute inset-0 bg-primary/10 rounded-full animate-pulse" />
-                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                </div>
-              ) : formData.profilePhotoUrl ? (
-                <img 
-                  src={formData.profilePhotoUrl} 
-                  alt="Profile" 
-                  className="w-full h-full object-cover rounded-full transition-opacity duration-300"
-                  onError={() => {
-                    setFormData(prev => ({ ...prev, profilePhotoUrl: null }));
-                  }}
-                />
-              ) : userProfile?.profile_photo_url ? (
-                <img 
-                  src={userProfile.profile_photo_url} 
-                  alt="Profile" 
-                  className="w-full h-full object-cover rounded-full transition-opacity duration-300"
-                  onError={() => {
-                    setFormData(prev => ({ ...prev, profilePhotoUrl: null }));
-                  }}
-                />
-              ) : (
-                <div className="w-full h-full rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
-                  <User className="h-8 w-8 text-primary" />
-                </div>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Button 
-                variant="outline" 
-                className="w-full"
-                onClick={handlePhotoConsent}
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Upload Photo
-              </Button>
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-6 space-y-6">
+            {/* Profile Photo */}
+            <div className="flex flex-col items-center space-y-4">
+              <div className="relative w-20 h-20 bg-muted rounded-full flex items-center justify-center">
+                {isUploading ? (
+                  <div className="w-full h-full rounded-full bg-muted flex items-center justify-center relative">
+                    <div className="absolute inset-0 bg-primary/10 rounded-full animate-pulse" />
+                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : formData.profilePhotoUrl ? (
+                  <img 
+                    src={formData.profilePhotoUrl} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover rounded-full transition-opacity duration-300"
+                    onError={() => {
+                      setFormData(prev => ({ ...prev, profilePhotoUrl: null }));
+                    }}
+                  />
+                ) : userProfile?.profile_photo_url ? (
+                  <img 
+                    src={userProfile.profile_photo_url} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover rounded-full transition-opacity duration-300"
+                    onError={() => {
+                      setFormData(prev => ({ ...prev, profilePhotoUrl: null }));
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+                    <User className="h-8 w-8 text-primary" />
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={handlePhotoConsent}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload Photo
+                </Button>
 
-              {/* Hidden file input */}
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoUpload}
-                className="hidden"
-                id="photo-upload"
-              />
+                {/* Hidden file input */}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                  id="photo-upload"
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Form Fields */}
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="name" className="text-card-foreground">
-                Full Name
-              </Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => handleInputChange("name", e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="email" className="text-card-foreground">
-                Email Address
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleInputChange("email", e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="phone" className="text-card-foreground">
-                Phone Number
-              </Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => handleInputChange("phone", e.target.value)}
-                className="mt-1"
-              />
+            {/* Form Fields */}
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="name" className="text-card-foreground">
+                  Full Name
+                </Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange("name", e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="email" className="text-card-foreground">
+                  Email Address
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="phone" className="text-card-foreground">
+                  Phone Number
+                </Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => handleInputChange("phone", e.target.value)}
+                  className="mt-1"
+                />
+              </div>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-border flex space-x-3">
+        <div className="p-6 border-t border-border flex space-x-3 flex-shrink-0">
           <Button onClick={onClose} variant="outline" className="flex-1">
             Cancel
           </Button>
