@@ -14,6 +14,7 @@ export const ProfileHeader = ({ userProfile, onPhotoUpload, userType, isOnline =
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const handleEditProfile = () => {
+    console.log("ProfileHeader: Change button clicked, opening modal");
     setIsEditModalOpen(true);
   };
 

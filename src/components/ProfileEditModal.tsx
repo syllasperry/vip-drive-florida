@@ -136,7 +136,12 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload }
     onClose();
   };
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    console.log("ProfileEditModal: Modal is closed, not rendering");
+    return null;
+  }
+  
+  console.log("ProfileEditModal: Modal is open, rendering modal");
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
