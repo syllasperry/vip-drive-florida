@@ -276,7 +276,7 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload }
           <Button onClick={onClose} variant="outline" className="flex-1">
             Cancel
           </Button>
-          <Button onClick={handleSave} variant="luxury" className="flex-1">
+          <Button onClick={handleSave} className="flex-1">
             Save Changes
           </Button>
         </div>
