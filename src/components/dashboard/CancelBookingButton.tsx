@@ -36,10 +36,10 @@ export const CancelBookingButton = ({ bookingId, pickupTime, onCancelSuccess }: 
     setLoading(true);
     
     try {
-      // Update booking status to cancelled
+      // Update booking status to canceled
       const { error: updateError } = await supabase
         .from('bookings')
-        .update({ status: 'cancelled' })
+        .update({ status: 'canceled' })
         .eq('id', bookingId)
         .in('status', ['pending', 'accepted']); // Only allow cancellation for these statuses
 
@@ -58,7 +58,7 @@ export const CancelBookingButton = ({ bookingId, pickupTime, onCancelSuccess }: 
         await supabase.functions.invoke('send-booking-notifications', {
           body: {
             bookingId: bookingId,
-            status: 'cancelled',
+            status: 'canceled',
             triggerType: 'status_change'
           }
         });
