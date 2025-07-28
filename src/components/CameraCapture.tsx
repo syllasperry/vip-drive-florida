@@ -34,29 +34,25 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
       console.log("Camera stream obtained successfully");
       setStream(mediaStream);
       
-      // Immediate assignment with proper async handling
+      // Wait for video element to be ready, then assign stream
       if (videoRef.current) {
-        console.log("Setting video stream...");
+        console.log("Setting video stream to element...");
         videoRef.current.srcObject = mediaStream;
         
+        // Force video to load and play
+        videoRef.current.load();
+        
         try {
-          videoRef.current.load();
           await videoRef.current.play();
-          console.log("Video started playing successfully");
+          console.log("Video playing successfully");
+          // Set ready immediately after successful play
+          setIsVideoReady(true);
+          setIsInitializing(false);
         } catch (playError) {
-          console.warn("Video autoplay failed:", playError);
-          // Still continue as some browsers block autoplay
+          console.warn("Video autoplay failed, will try to detect ready state:", playError);
+          // Continue - ready state will be detected by event handlers
         }
       }
-      
-      // Fallback timeout - if video doesn't load in 5 seconds, show error
-      setTimeout(() => {
-        if (!isVideoReady && videoRef.current && videoRef.current.readyState < 3) {
-          console.error("Video failed to load within timeout");
-          setError("Camera failed to initialize. Please check your camera permissions and try again.");
-          setIsInitializing(false);
-        }
-      }, 5000);
       
     } catch (err) {
       console.error("Error accessing camera:", err);
@@ -155,6 +151,21 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
     }
   }, [isOpen, stream, isInitializing, startCamera]);
 
+  // Timeout fallback to handle stuck initialization
+  React.useEffect(() => {
+    if (isInitializing && !isVideoReady) {
+      const timeout = setTimeout(() => {
+        if (isInitializing && !isVideoReady) {
+          console.error("Camera initialization timeout");
+          setError("Camera failed to initialize. Please try again.");
+          setIsInitializing(false);
+        }
+      }, 8000); // 8 second timeout
+
+      return () => clearTimeout(timeout);
+    }
+  }, [isInitializing, isVideoReady]);
+
   // Cleanup on unmount
   React.useEffect(() => {
     return () => {
@@ -207,32 +218,12 @@ export const CameraCapture = ({ isOpen, onClose, onCapture }: CameraCaptureProps
                       console.log("Video dimensions:", videoRef.current.videoWidth, "x", videoRef.current.videoHeight);
                       setIsVideoReady(true);
                       setIsInitializing(false);
-                    } else {
-                      console.log("Video dimensions are invalid:", videoRef.current?.videoWidth, videoRef.current?.videoHeight);
                     }
                   }}
                   onCanPlay={() => {
-                    console.log("Video can play");
+                    console.log("Video can play - setting ready");
                     setIsVideoReady(true);
                     setIsInitializing(false);
-                  }}
-                  onPlaying={() => {
-                    console.log("Video is playing");
-                    setIsVideoReady(true);
-                    setIsInitializing(false);
-                  }}
-                  onLoadedData={() => {
-                    console.log("Video data loaded");
-                    setIsVideoReady(true);
-                    setIsInitializing(false);
-                  }}
-                  onTimeUpdate={() => {
-                    // This fires frequently when video is playing
-                    if (!isVideoReady && videoRef.current && videoRef.current.currentTime > 0) {
-                      console.log("Video time update - setting ready");
-                      setIsVideoReady(true);
-                      setIsInitializing(false);
-                    }
                   }}
                   onError={(e) => {
                     console.error("Video error:", e);
