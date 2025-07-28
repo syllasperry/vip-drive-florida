@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ConsentModal } from "@/components/ConsentModal";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ProfileEditModalProps {
   isOpen: boolean;
@@ -130,10 +131,51 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload }
     });
   }, [isOpen, userProfile]);
 
-  const handleSave = () => {
-    // Save logic here
-    console.log("Saving profile:", formData);
-    onClose();
+  const handleSave = async () => {
+    if (!userProfile?.id) return;
+    
+    try {
+      // Update driver profile in database
+      const { error } = await supabase
+        .from('drivers')
+        .update({
+          full_name: formData.name,
+          email: formData.email,
+          phone: formData.phone
+        })
+        .eq('id', userProfile.id);
+
+      if (error) {
+        console.error('Error updating profile:', error);
+        toast({
+          title: "Update failed",
+          description: "Failed to save profile changes",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Success feedback
+      toast({
+        title: "Profile updated!",
+        description: "Your profile has been successfully updated.",
+      });
+
+      // Refresh parent component data if onSave callback exists
+      if (typeof onClose === 'function') {
+        // Notify parent to refresh data
+        window.location.reload(); // Simple refresh for now
+      }
+      
+      onClose();
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    }
   };
 
   if (!isOpen) {
@@ -145,7 +187,7 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload }
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-card rounded-xl w-full max-w-md shadow-xl max-h-[90vh] flex flex-col">
+      <div className="bg-card rounded-xl w-full max-w-md shadow-xl max-h-[90vh] flex flex-col relative">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border flex-shrink-0">
           <div className="flex items-center space-x-2">
@@ -158,8 +200,8 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload }
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto overscroll-behavior-contain">
+          <div className="p-6 space-y-6 pb-8">
             {/* Profile Photo */}
             <div className="flex flex-col items-center space-y-4">
               <div className="relative w-20 h-20 bg-muted rounded-full flex items-center justify-center">
