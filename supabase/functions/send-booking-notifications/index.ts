@@ -138,6 +138,35 @@ async function sendNotificationEmails(booking: any, status: string, triggerType:
       });
       break;
 
+    case 'price_proposed':
+      // Send notification to passenger about fare proposal
+      await resend.emails.send({
+        from: "Ride Service <notifications@resend.dev>",
+        to: [passenger.email],
+        subject: "Driver has proposed a fare for your ride",
+        html: `
+          <h1>Hi ${passenger.full_name},</h1>
+          <p>Good news! Your driver ${driver.full_name} has accepted your ride request and proposed a fare.</p>
+          <p><strong>Proposed Fare: $${booking.final_price?.toFixed(2)}</strong></p>
+          <p>You have 1 hour to accept or decline this fare. Please respond quickly to secure your ride.</p>
+          
+          <h3>Ride Details:</h3>
+          <ul>
+            <li><strong>Driver:</strong> ${driver.full_name}</li>
+            <li><strong>Pickup:</strong> ${booking.pickup_location}</li>
+            <li><strong>Dropoff:</strong> ${booking.dropoff_location}</li>
+            <li><strong>Date:</strong> ${formatDate(booking.pickup_time)}</li>
+            <li><strong>Time:</strong> ${formatTime(booking.pickup_time)}</li>
+            ${driver.car_make && driver.car_model ? `<li><strong>Vehicle:</strong> ${driver.car_make} ${driver.car_model}</li>` : ''}
+          </ul>
+
+          <p><a href="${dashboardUrl}" style="background: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Accept or Decline Fare</a></p>
+          
+          <p>Best regards,<br>Your Ride Service Team</p>
+        `,
+      });
+      break;
+
     case 'accepted':
       // Send notification to passenger
       await resend.emails.send({
@@ -208,6 +237,68 @@ async function sendNotificationEmails(booking: any, status: string, triggerType:
           <p>You can submit a new request anytime.</p>
           
           <p><a href="${dashboardUrl}" style="background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Make Another Request</a></p>
+          
+          <p>Best regards,<br>Your Ride Service Team</p>
+        `,
+      });
+      break;
+
+    case 'rejected_by_passenger':
+      // Send notification to driver
+      await resend.emails.send({
+        from: "Ride Service <notifications@resend.dev>",
+        to: [driver.email],
+        subject: "Passenger declined your fare proposal",
+        html: `
+          <h1>Hi ${driver.full_name},</h1>
+          <p>The passenger ${passenger.full_name} has declined your fare proposal of $${booking.final_price?.toFixed(2)}.</p>
+          <p>You can view other available ride requests in your dashboard.</p>
+          
+          <p><a href="${dashboardUrl}" style="background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">View Dashboard</a></p>
+          
+          <p>Best regards,<br>Your Ride Service Team</p>
+        `,
+      });
+      break;
+
+    case 'payment_confirmed':
+      // Send notifications to both passenger and driver
+      await resend.emails.send({
+        from: "Ride Service <notifications@resend.dev>",
+        to: [passenger.email],
+        subject: "Payment confirmed - Your ride is confirmed!",
+        html: `
+          <h1>Hi ${passenger.full_name},</h1>
+          <p>Great! You've accepted the fare and your ride is now confirmed.</p>
+          <p><strong>Final Price: $${booking.final_price?.toFixed(2)}</strong></p>
+          <p>Please proceed with payment to complete your booking.</p>
+          
+          <h3>Ride Details:</h3>
+          <ul>
+            <li><strong>Driver:</strong> ${driver.full_name}</li>
+            <li><strong>Pickup:</strong> ${booking.pickup_location}</li>
+            <li><strong>Dropoff:</strong> ${booking.dropoff_location}</li>
+            <li><strong>Date:</strong> ${formatDate(booking.pickup_time)}</li>
+            <li><strong>Time:</strong> ${formatTime(booking.pickup_time)}</li>
+            ${driver.car_make && driver.car_model ? `<li><strong>Vehicle:</strong> ${driver.car_make} ${driver.car_model}</li>` : ''}
+          </ul>
+
+          <p><a href="${dashboardUrl}" style="background: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Complete Payment</a></p>
+          
+          <p>Best regards,<br>Your Ride Service Team</p>
+        `,
+      });
+
+      await resend.emails.send({
+        from: "Ride Service <notifications@resend.dev>",
+        to: [driver.email],
+        subject: "Passenger accepted your fare!",
+        html: `
+          <h1>Hi ${driver.full_name},</h1>
+          <p>Great news! ${passenger.full_name} has accepted your fare proposal of $${booking.final_price?.toFixed(2)}.</p>
+          <p>They are now proceeding with payment. You'll be notified once payment is complete.</p>
+          
+          <p><a href="${dashboardUrl}" style="background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">View Dashboard</a></p>
           
           <p>Best regards,<br>Your Ride Service Team</p>
         `,

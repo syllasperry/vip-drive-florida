@@ -71,6 +71,15 @@ const Dashboard = () => {
           message_text: `I've accepted the fare of $${pendingFareBooking?.final_price?.toFixed(2)}. Proceeding with payment.`
         });
 
+      // Send notification
+      await supabase.functions.invoke('send-booking-notifications', {
+        body: {
+          bookingId: bookingId,
+          status: 'payment_confirmed',
+          triggerType: 'status_change'
+        }
+      });
+
       setPendingFareBooking(null);
       fetchBookings();
 
@@ -114,6 +123,15 @@ const Dashboard = () => {
           sender_type: 'passenger',
           message_text: `I've declined the proposed fare of $${pendingFareBooking?.final_price?.toFixed(2)}. Please contact me to discuss.`
         });
+
+      // Send notification
+      await supabase.functions.invoke('send-booking-notifications', {
+        body: {
+          bookingId: bookingId,
+          status: 'rejected_by_passenger',
+          triggerType: 'status_change'
+        }
+      });
 
       setPendingFareBooking(null);
       fetchBookings();
