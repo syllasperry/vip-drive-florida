@@ -97,16 +97,29 @@ const PendingRequestAlert = ({ requests, onAccept, onDecline }: PendingRequestAl
     try {
       const price = suggestedPrices[requestId];
       
-      // Update booking with new price
+      // Update booking with new price and correct status
       const { error } = await supabase
         .from('bookings')
         .update({ 
           final_price: price,
-          status: 'awaiting_passenger_confirmation' 
+          status: 'price_proposed' 
         })
         .eq('id', requestId);
 
       if (error) throw error;
+
+      // Send automatic message to passenger about the price
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData?.session?.user?.id) {
+        await supabase
+          .from('messages')
+          .insert({
+            booking_id: requestId,
+            sender_id: sessionData.session.user.id,
+            sender_type: 'driver',
+            message_text: `I've proposed a price of $${price} for your ride. Please confirm to proceed with the booking.`
+          });
+      }
 
       toast({
         title: "Price sent to passenger",
@@ -115,6 +128,7 @@ const PendingRequestAlert = ({ requests, onAccept, onDecline }: PendingRequestAl
 
       setEditingPrice(prev => ({ ...prev, [requestId]: false }));
     } catch (error) {
+      console.error('Error sending price to passenger:', error);
       toast({
         title: "Error",
         description: "Failed to send price to passenger.",
