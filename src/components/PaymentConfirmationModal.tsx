@@ -14,6 +14,8 @@ interface PaymentConfirmationModalProps {
       full_name: string;
       payment_methods_accepted?: string[];
       cancellation_policy?: string;
+      preferred_payment_method?: string;
+      payment_instructions?: string;
     };
   };
   userType: 'passenger' | 'driver';
@@ -70,18 +72,45 @@ export const PaymentConfirmationModal = ({
           </Card>
 
           {/* Driver Payment Info */}
-          {isPassenger && bookingData.driver.payment_methods_accepted && (
+          {isPassenger && (
             <Card>
-              <CardContent className="p-4 space-y-3">
-                <h4 className="font-semibold flex items-center gap-2">
-                  <CreditCard className="h-4 w-4" />
-                  Payment Methods Accepted
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  {bookingData.driver.payment_methods_accepted.map((method, index) => (
-                    <Badge key={index} variant="outline">{method}</Badge>
-                  ))}
-                </div>
+              <CardContent className="p-4 space-y-4">
+                {/* Preferred Payment Method */}
+                {bookingData.driver.preferred_payment_method && (
+                  <div>
+                    <h4 className="font-semibold flex items-center gap-2 mb-3">
+                      <CreditCard className="h-4 w-4" />
+                      Payment Method
+                    </h4>
+                    <div className="bg-primary/5 p-3 rounded-lg">
+                      <div className="font-medium text-primary mb-2">
+                        {bookingData.driver.preferred_payment_method === 'zelle' && 'Zelle'}
+                        {bookingData.driver.preferred_payment_method === 'payment_link' && 'Payment Link'}
+                        {bookingData.driver.preferred_payment_method === 'cash' && 'Cash'}
+                        {bookingData.driver.preferred_payment_method === 'other' && 'Other Method'}
+                      </div>
+                      {bookingData.driver.payment_instructions && (
+                        <div className="text-sm whitespace-pre-line">
+                          {bookingData.driver.payment_instructions}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Additional Payment Methods */}
+                {bookingData.driver.payment_methods_accepted && bookingData.driver.payment_methods_accepted.length > 0 && (
+                  <div>
+                    <h5 className="font-medium text-sm mb-2">Additional Options:</h5>
+                    <div className="flex flex-wrap gap-2">
+                      {bookingData.driver.payment_methods_accepted.map((method, index) => (
+                        <Badge key={index} variant="outline">{method}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Cancellation Policy */}
                 {bookingData.driver.cancellation_policy && (
                   <div className="pt-2 border-t">
                     <h5 className="font-medium text-sm mb-1">Cancellation Policy:</h5>
