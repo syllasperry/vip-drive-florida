@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Clock, MapPin, User, Car, MessageCircle, Navigation } from "lucide-react";
 import PassengerPreferencesCard from "@/components/PassengerPreferencesCard";
 
@@ -74,6 +75,39 @@ export const UpcomingRideCard = ({ ride, userType, onMessage, onNavigate }: Upco
                 <p className="text-sm font-medium text-foreground">Passenger: {ride.passenger}</p>
                 <p className="text-xs text-muted-foreground">{ride.payment}</p>
               </div>
+            </div>
+          )}
+
+          {/* Enhanced Passenger Information for Drivers */}
+          {userType === "driver" && ride.passengers && (
+            <div className="bg-gradient-to-r from-primary/5 to-primary-glow/5 border border-primary/20 rounded-lg p-4 mt-3">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage 
+                    src={ride.passengers?.profile_photo_url} 
+                    alt={ride.passengers?.full_name}
+                  />
+                  <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                    {ride.passengers?.full_name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'P'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <p className="font-semibold text-foreground">
+                    {ride.passengers?.full_name || 'Passenger'}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {ride.passengers?.phone || 'No phone provided'}
+                  </p>
+                  <p className="text-xs text-primary font-medium">
+                    {ride.payment}
+                  </p>
+                </div>
+              </div>
+              {!ride.passengers?.full_name && (
+                <div className="mt-2 text-xs text-amber-600 bg-amber-50 rounded p-2">
+                  ⚠️ Passenger information not available - please verify identity before pickup
+                </div>
+              )}
             </div>
           )}
         </div>

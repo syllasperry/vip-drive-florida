@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CancelBookingButton } from "./CancelBookingButton";
 import { MapPin, Clock, User, Car, MessageCircle, Star, FileText } from "lucide-react";
 
@@ -84,6 +85,41 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
               </span>
             </div>
           </div>
+
+          {/* Enhanced Passenger Information for Drivers (after booking acceptance) */}
+          {userType === "driver" && booking.passengers && (booking.status === "accepted" || booking.status === "confirmed" || booking.status === "payment_confirmed" || booking.status === "ready_to_go") && (
+            <div className="bg-gradient-to-r from-primary/5 to-primary-glow/5 border border-primary/20 rounded-lg p-4 mt-4">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage 
+                    src={booking.passengers?.profile_photo_url} 
+                    alt={booking.passengers?.full_name}
+                  />
+                  <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                    {booking.passengers?.full_name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'P'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <p className="font-semibold text-foreground">
+                    {booking.passengers?.full_name || 'Passenger'}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {booking.passengers?.phone || 'No phone provided'}
+                  </p>
+                  {booking.passengers?.email && (
+                    <p className="text-xs text-muted-foreground">
+                      {booking.passengers?.email}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {!booking.passengers?.full_name && (
+                <div className="mt-2 text-xs text-amber-600 bg-amber-50 rounded p-2">
+                  ⚠️ Passenger information not available - please verify identity before pickup
+                </div>
+              )}
+            </div>
+          )}
 
           {booking.vehicle && (
             <div className="flex items-center gap-3">
