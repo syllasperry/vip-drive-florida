@@ -575,27 +575,27 @@ const DriverDashboard = () => {
           // Get pending bookings that match this driver's vehicle type OR are assigned to this driver
           supabase
             .from('bookings')
-            .select(`
-              *,
-               passengers:passenger_id!inner (
-                id,
-                full_name,
-                phone,
-                email,
-                profile_photo_url,
-                preferred_temperature,
-                music_preference,
-                music_playlist_link,
-                interaction_preference,
-                trip_purpose,
-                additional_notes
-              ),
-              vehicles:vehicle_id (
-                id,
-                type,
-                description
-              )
-            `)
+             .select(`
+               *,
+                passengers:passenger_id (
+                 id,
+                 full_name,
+                 phone,
+                 email,
+                 profile_photo_url,
+                 preferred_temperature,
+                 music_preference,
+                 music_playlist_link,
+                 interaction_preference,
+                 trip_purpose,
+                 additional_notes
+               ),
+               vehicles:vehicle_id (
+                 id,
+                 type,
+                 description
+               )
+             `)
             .eq('status', 'pending')
             .or(`and(driver_id.is.null,vehicle_type.eq.${userProfile.car_make} ${userProfile.car_model}),driver_id.eq.${userProfile.id}`)
             .order('pickup_time', { ascending: true })
