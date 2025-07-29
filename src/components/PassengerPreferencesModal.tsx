@@ -25,10 +25,10 @@ const PassengerPreferencesModal: React.FC<PassengerPreferencesModalProps> = ({
 }) => {
   const [formData, setFormData] = useState({
     preferred_temperature: 72,
-    music_preference: '',
+    music_preference: 'none',
     music_playlist_link: '',
     interaction_preference: '',
-    trip_purpose: '',
+    trip_purpose: 'none',
     additional_notes: ''
   });
 
@@ -36,10 +36,10 @@ const PassengerPreferencesModal: React.FC<PassengerPreferencesModalProps> = ({
     if (userProfile) {
       setFormData({
         preferred_temperature: userProfile.preferred_temperature || 72,
-        music_preference: userProfile.music_preference || '',
+        music_preference: userProfile.music_preference || 'none',
         music_playlist_link: userProfile.music_playlist_link || '',
         interaction_preference: userProfile.interaction_preference || '',
-        trip_purpose: userProfile.trip_purpose || '',
+        trip_purpose: userProfile.trip_purpose || 'none',
         additional_notes: userProfile.additional_notes || ''
       });
     }
@@ -106,7 +106,7 @@ const PassengerPreferencesModal: React.FC<PassengerPreferencesModalProps> = ({
                 <SelectValue placeholder="Select music preference" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No preference</SelectItem>
+                <SelectItem value="none">No preference</SelectItem>
                 <SelectItem value="no_sound">🔇 Sound off</SelectItem>
                 <SelectItem value="ambient">🎵 Ambient music</SelectItem>
                 <SelectItem value="radio">📻 Local radio</SelectItem>
@@ -156,7 +156,7 @@ const PassengerPreferencesModal: React.FC<PassengerPreferencesModalProps> = ({
                 <SelectValue placeholder="Select purpose" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No preference</SelectItem>
+                <SelectItem value="none">No preference</SelectItem>
                 <SelectItem value="work">Work</SelectItem>
                 <SelectItem value="leisure">Leisure</SelectItem>
                 <SelectItem value="airport">Airport transfer</SelectItem>
