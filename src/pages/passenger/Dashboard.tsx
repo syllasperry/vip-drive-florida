@@ -846,6 +846,8 @@ const Dashboard = () => {
         isOpen={settingsModalOpen}
         onClose={() => setSettingsModalOpen(false)}
         type={settingsType}
+        userId={userProfile?.id}
+        userType="passenger"
       />
       
       <ProfileEditModal 

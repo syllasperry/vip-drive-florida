@@ -1,23 +1,26 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Bell, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   type: "notifications" | "privacy";
+  userId?: string;
+  userType?: 'passenger' | 'driver';
 }
 
-export const SettingsModal = ({ isOpen, onClose, type }: SettingsModalProps) => {
+export const SettingsModal = ({ isOpen, onClose, type, userId, userType }: SettingsModalProps) => {
   const [settings, setSettings] = useState({
     notifications: {
       bookingUpdates: true,
       driverMessages: true,
       promotions: false,
       emailNotifications: true,
-      smsNotifications: true
     },
     privacy: {
       shareLocation: true,
@@ -27,15 +30,87 @@ export const SettingsModal = ({ isOpen, onClose, type }: SettingsModalProps) => 
       thirdPartySharing: false
     }
   });
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
-  const handleToggle = (category: "notifications" | "privacy", setting: string) => {
+  // Load notification preferences from database
+  useEffect(() => {
+    if (isOpen && type === 'notifications' && userId && userType) {
+      loadNotificationPreferences();
+    }
+  }, [isOpen, type, userId, userType]);
+
+  const loadNotificationPreferences = async () => {
+    try {
+      const { data } = await supabase
+        .from('notification_preferences')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('user_type', userType)
+        .single();
+
+      if (data) {
+        setSettings(prev => ({
+          ...prev,
+          notifications: {
+            bookingUpdates: data.booking_updates_enabled ?? true,
+            driverMessages: data.driver_messages_enabled ?? true,
+            promotions: data.promotions_enabled ?? false,
+            emailNotifications: data.email_enabled ?? true,
+          }
+        }));
+      }
+    } catch (error) {
+      console.error('Error loading notification preferences:', error);
+    }
+  };
+
+  const handleToggle = async (category: "notifications" | "privacy", setting: string) => {
+    const newValue = !settings[category][setting as keyof typeof settings[typeof category]];
+    
     setSettings(prev => ({
       ...prev,
       [category]: {
         ...prev[category],
-        [setting]: !prev[category][setting as keyof typeof prev[typeof category]]
+        [setting]: newValue
       }
     }));
+
+    // Save notification preferences to database
+    if (category === 'notifications' && userId && userType) {
+      try {
+        const updateData: any = {
+          user_id: userId,
+          user_type: userType,
+        };
+
+        switch (setting) {
+          case 'bookingUpdates':
+            updateData.booking_updates_enabled = newValue;
+            break;
+          case 'driverMessages':
+            updateData.driver_messages_enabled = newValue;
+            break;
+          case 'promotions':
+            updateData.promotions_enabled = newValue;
+            break;
+          case 'emailNotifications':
+            updateData.email_enabled = newValue;
+            break;
+        }
+
+        await supabase
+          .from('notification_preferences')
+          .upsert(updateData);
+      } catch (error) {
+        console.error('Error saving notification preferences:', error);
+        toast({
+          title: "Error",
+          description: "Failed to save notification preferences",
+          variant: "destructive",
+        });
+      }
+    }
   };
 
   if (!isOpen) return null;
@@ -104,16 +179,6 @@ export const SettingsModal = ({ isOpen, onClose, type }: SettingsModalProps) => 
                   onCheckedChange={() => handleToggle("notifications", "emailNotifications")}
                 />
               </div>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="sms-notifications" className="text-card-foreground">
-                  SMS Notifications
-                </Label>
-                <Switch
-                  id="sms-notifications"
-                  checked={settings.notifications.smsNotifications}
-                  onCheckedChange={() => handleToggle("notifications", "smsNotifications")}
-                />
-              </div>
             </>
           )}
 
@@ -175,8 +240,13 @@ export const SettingsModal = ({ isOpen, onClose, type }: SettingsModalProps) => 
 
         {/* Footer */}
         <div className="p-6 border-t border-border">
-          <Button onClick={onClose} variant="luxury" className="w-full">
-            Save Changes
+          <Button 
+            onClick={onClose} 
+            variant="luxury" 
+            className="w-full"
+            disabled={loading}
+          >
+            {loading ? "Saving..." : "Close"}
           </Button>
         </div>
       </div>
