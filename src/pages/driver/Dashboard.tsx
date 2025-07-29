@@ -572,7 +572,7 @@ const DriverDashboard = () => {
             .eq('driver_id', userProfile.id)
             .order('pickup_time', { ascending: true }),
           
-          // Get pending bookings that match this driver's vehicle type
+          // Get pending bookings that match this driver's vehicle type OR are assigned to this driver
           supabase
             .from('bookings')
             .select(`
@@ -597,8 +597,7 @@ const DriverDashboard = () => {
               )
             `)
             .eq('status', 'pending')
-            .is('driver_id', null)
-            .or(`vehicle_type.eq.${userProfile.car_make} ${userProfile.car_model},vehicle_type.is.null`)
+            .or(`driver_id.is.null.and.vehicle_type.eq.${userProfile.car_make} ${userProfile.car_model},driver_id.eq.${userProfile.id}`)
             .order('pickup_time', { ascending: true })
         ]);
 
