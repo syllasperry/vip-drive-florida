@@ -597,7 +597,7 @@ const DriverDashboard = () => {
               )
             `)
             .eq('status', 'pending')
-            .or(`driver_id.is.null.and.vehicle_type.eq.${userProfile.car_make} ${userProfile.car_model},driver_id.eq.${userProfile.id}`)
+            .or(`and(driver_id.is.null,vehicle_type.eq.${userProfile.car_make} ${userProfile.car_model}),driver_id.eq.${userProfile.id}`)
             .order('pickup_time', { ascending: true })
         ]);
 
@@ -608,6 +608,9 @@ const DriverDashboard = () => {
 
         if (pendingBookings.error) {
           console.error('Error fetching pending bookings:', pendingBookings.error);
+        } else {
+          console.log('✅ Pending bookings found:', pendingBookings.data?.length || 0);
+          console.log('📋 Pending bookings data:', pendingBookings.data);
         }
 
         // Combine and deduplicate bookings
