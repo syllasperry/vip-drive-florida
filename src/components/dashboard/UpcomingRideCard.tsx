@@ -14,6 +14,8 @@ interface UpcomingRideCardProps {
 
 export const UpcomingRideCard = ({ ride, userType, onMessage, onNavigate }: UpcomingRideCardProps) => {
   if (!ride) return null;
+  
+  const isNewRequest = ride.status === "pending" && userType === "driver";
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -25,8 +27,39 @@ export const UpcomingRideCard = ({ ride, userType, onMessage, onNavigate }: Upco
   };
 
   return (
-    <Card className="bg-gradient-to-br from-primary/5 to-primary-glow/5 border-primary/20 shadow-[var(--shadow-luxury)] mb-6">
+    <Card className={`bg-gradient-to-br from-primary/5 to-primary-glow/5 border-primary/20 shadow-[var(--shadow-luxury)] mb-6 ${isNewRequest ? 'animate-pulse border-success' : ''}`}>
       <CardContent className="p-6">
+        
+        {/* Flashing notification banner for new requests */}
+        {isNewRequest && (
+          <div className="mb-4 p-2 bg-success/20 border border-success/40 rounded-lg">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-success animate-pulse">
+                🚨 NEW RIDE REQUEST
+              </span>
+              <span className="text-xs text-success">
+                Tap to respond
+              </span>
+            </div>
+          </div>
+        )}
+        
+        {/* Dynamic fare display for new requests */}
+        {isNewRequest && (
+          <div className="mb-4 p-3 bg-warning/10 border border-warning/20 rounded-lg">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Suggested Fare:</span>
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold text-primary">
+                  {ride.payment || "$120.00"}
+                </span>
+                <Button variant="outline" size="sm" className="text-xs">
+                  Edit
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary/10 rounded-full">
@@ -68,27 +101,23 @@ export const UpcomingRideCard = ({ ride, userType, onMessage, onNavigate }: Upco
             </div>
           )}
 
-          {userType === "driver" && ride.passengers && ride.passengers.full_name ? (
+          {userType === "driver" && (
             <div className="flex items-center gap-3">
               <Avatar className="h-10 w-10">
-                <AvatarImage src={ride.passengers.profile_photo_url} alt={ride.passengers.full_name} />
+                <AvatarImage 
+                  src={ride.passengers?.profile_photo_url} 
+                  alt={ride.passengers?.full_name || 'Passenger'} 
+                />
                 <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                  {ride.passengers.full_name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                  {ride.passengers?.full_name 
+                    ? ride.passengers.full_name.split(' ').map(n => n[0]).join('').toUpperCase()
+                    : 'P'
+                  }
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
                 <p className="text-sm font-medium text-foreground">
-                  {ride.passengers.full_name}
-                </p>
-                <p className="text-xs text-muted-foreground">{ride.payment}</p>
-              </div>
-            </div>
-          ) : userType === "driver" && (
-            <div className="flex items-center gap-3">
-              <User className="h-4 w-4 text-primary" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-foreground">
-                  Passenger: {ride.passengers?.full_name || ride.passenger || 'Unknown Passenger'}
+                  {ride.passengers?.full_name || ride.passenger || 'Passenger'}
                 </p>
                 <p className="text-xs text-muted-foreground">{ride.payment}</p>
               </div>
