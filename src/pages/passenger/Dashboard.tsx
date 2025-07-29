@@ -609,8 +609,8 @@ const Dashboard = () => {
           />
         )}
 
-        {/* Payment Status Cards for confirmed bookings */}
-        {bookingView === "upcoming" && 
+        {/* Payment Status Cards for confirmed bookings - Only show on Bookings tab */}
+        {activeTab === "bookings" && bookingView === "upcoming" && 
           bookings
             .filter(booking => 
               booking.status === 'payment_confirmed' || 
@@ -737,32 +737,34 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {bookings.filter(booking => booking.drivers).length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">No messages yet.</p>
+                {bookings.filter(booking => booking.drivers && booking.status !== 'completed' && booking.status !== 'cancelled').length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">No active conversations.</p>
                 ) : (
                   <div className="space-y-3">
-                    {bookings.filter(booking => booking.drivers).map((booking) => (
-                      <Card key={booking.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => {
-                        setSelectedBookingForMessaging(booking);
-                        setMessagingOpen(true);
-                      }}>
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-10 w-10">
-                              <AvatarImage src={booking.drivers?.profile_photo_url || ""} alt={booking.driver || 'Driver'} />
-                              <AvatarFallback>
-                                <User className="h-5 w-5" />
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1">
-                              <p className="font-medium text-foreground">{booking.driver}</p>
-                              <p className="text-sm text-muted-foreground">{booking.date} • {booking.from}</p>
+                    {bookings
+                      .filter(booking => booking.drivers && booking.status !== 'completed' && booking.status !== 'cancelled')
+                      .map((booking) => (
+                        <Card key={booking.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => {
+                          setSelectedBookingForMessaging(booking);
+                          setMessagingOpen(true);
+                        }}>
+                          <CardContent className="p-4">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-10 w-10">
+                                <AvatarImage src={booking.drivers?.profile_photo_url || ""} alt={booking.driver || 'Driver'} />
+                                <AvatarFallback>
+                                  <User className="h-5 w-5" />
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1">
+                                <p className="font-medium text-foreground">{booking.driver}</p>
+                                <p className="text-sm text-muted-foreground">Active booking conversation</p>
+                              </div>
+                              <MessageCircle className="h-5 w-5 text-muted-foreground" />
                             </div>
-                            <MessageCircle className="h-5 w-5 text-muted-foreground" />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      ))}
                   </div>
                 )}
               </div>
