@@ -57,6 +57,11 @@ export const MessagingInterface = ({
     if (isOpen && bookingId) {
       loadMessages();
       
+      // Mark chat as read when opened
+      if ((window as any)[`markChatAsRead_${bookingId}`]) {
+        (window as any)[`markChatAsRead_${bookingId}`]();
+      }
+      
       // Set up real-time subscription
       const channel = supabase
         .channel('messages')

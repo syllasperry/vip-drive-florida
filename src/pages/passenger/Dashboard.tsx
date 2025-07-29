@@ -15,6 +15,9 @@ import { BookingToggle } from "@/components/dashboard/BookingToggle";
 import { BookingCard } from "@/components/dashboard/BookingCard";
 import { FloatingActionButton } from "@/components/dashboard/FloatingActionButton";
 import { FareConfirmationAlert } from "@/components/FareConfirmationAlert";
+import { PaymentConfirmationModal } from "@/components/PaymentConfirmationModal";
+import { NotificationManager } from "@/components/NotificationManager";
+import { ChatNotificationBadge } from "@/components/ChatNotificationBadge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { User, LogOut } from "lucide-react";
@@ -40,6 +43,8 @@ const Dashboard = () => {
   const [showWelcomeCelebration, setShowWelcomeCelebration] = useState(false);
   const [showRideConfirmation, setShowRideConfirmation] = useState(false);
   const [pendingFareBooking, setPendingFareBooking] = useState<any>(null);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [selectedBookingForPayment, setSelectedBookingForPayment] = useState<any>(null);
 
   const handleAcceptFare = async (bookingId: string) => {
     try {
@@ -85,13 +90,64 @@ const Dashboard = () => {
 
       toast({
         title: "Fare Accepted!",
-        description: "Redirecting to payment...",
+        description: "Please proceed with payment.",
       });
 
-      // TODO: Redirect to payment page
-      console.log("Redirect to payment with fare:", pendingFareBooking?.final_price);
+      // Open payment modal
+      setSelectedBookingForPayment(pendingFareBooking);
+      setPaymentModalOpen(true);
     } catch (error) {
       console.error('Error accepting fare:', error);
+    }
+  };
+
+  const handlePaymentConfirmation = async () => {
+    if (!selectedBookingForPayment) return;
+
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          payment_status: 'passenger_confirmed'
+        })
+        .eq('id', selectedBookingForPayment.id);
+
+      if (error) {
+        console.error('Error confirming payment:', error);
+        toast({
+          title: "Error",
+          description: "Failed to confirm payment",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Send confirmation message
+      await supabase
+        .from('messages')
+        .insert({
+          booking_id: selectedBookingForPayment.id,
+          sender_id: userProfile?.id,
+          sender_type: 'passenger',
+          message_text: `I've completed the payment of $${selectedBookingForPayment?.final_price?.toFixed(2)}. Please confirm receipt.`
+        });
+
+      // Send notification
+      await supabase.functions.invoke('send-booking-notifications', {
+        body: {
+          bookingId: selectedBookingForPayment.id,
+          status: 'payment_confirmed',
+          triggerType: 'status_change'
+        }
+      });
+
+      fetchBookings();
+      toast({
+        title: "Payment Confirmed!",
+        description: "Waiting for driver confirmation.",
+      });
+    } catch (error) {
+      console.error('Error confirming payment:', error);
     }
   };
 
@@ -544,6 +600,14 @@ const Dashboard = () => {
           />
         )}
 
+        {/* Notification Manager */}
+        {userProfile?.id && (
+          <NotificationManager 
+            userId={userProfile.id}
+            userType="passenger"
+          />
+        )}
+
         {/* Tab Content */}
         {activeTab === "bookings" && (
           <div>
@@ -700,12 +764,27 @@ const Dashboard = () => {
         onClose={() => setShowWelcomeCelebration(false)}
       />
 
-      <CelebrationModal 
-        isOpen={showRideConfirmation}
-        onClose={() => setShowRideConfirmation(false)}
-      />
-    </div>
-  );
-};
+       <CelebrationModal 
+         isOpen={showRideConfirmation}
+         onClose={() => setShowRideConfirmation(false)}
+       />
 
-export default Dashboard;
+       {/* Payment Confirmation Modal */}
+       {selectedBookingForPayment && (
+         <PaymentConfirmationModal
+           isOpen={paymentModalOpen}
+           onClose={() => {
+             setPaymentModalOpen(false);
+             setSelectedBookingForPayment(null);
+           }}
+           bookingData={selectedBookingForPayment}
+           userType="passenger"
+           onConfirmPayment={handlePaymentConfirmation}
+           paymentStatus={selectedBookingForPayment.payment_status || 'pending'}
+         />
+       )}
+     </div>
+   );
+ };
+
+ export default Dashboard;

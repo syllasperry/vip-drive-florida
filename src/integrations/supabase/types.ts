@@ -152,6 +152,7 @@ export type Database = {
       }
       drivers: {
         Row: {
+          cancellation_policy: string | null
           car_color: string | null
           car_make: string | null
           car_model: string | null
@@ -162,10 +163,12 @@ export type Database = {
           full_name: string
           id: string
           license_plate: string | null
+          payment_methods_accepted: string[] | null
           phone: string | null
           profile_photo_url: string | null
         }
         Insert: {
+          cancellation_policy?: string | null
           car_color?: string | null
           car_make?: string | null
           car_model?: string | null
@@ -176,10 +179,12 @@ export type Database = {
           full_name: string
           id?: string
           license_plate?: string | null
+          payment_methods_accepted?: string[] | null
           phone?: string | null
           profile_photo_url?: string | null
         }
         Update: {
+          cancellation_policy?: string | null
           car_color?: string | null
           car_make?: string | null
           car_model?: string | null
@@ -190,8 +195,39 @@ export type Database = {
           full_name?: string
           id?: string
           license_plate?: string | null
+          payment_methods_accepted?: string[] | null
           phone?: string | null
           profile_photo_url?: string | null
+        }
+        Relationships: []
+      }
+      message_status: {
+        Row: {
+          booking_id: string
+          created_at: string | null
+          id: string
+          last_read_at: string | null
+          unread_count: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string | null
+          id?: string
+          last_read_at?: string | null
+          unread_count?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string | null
+          id?: string
+          last_read_at?: string | null
+          unread_count?: number | null
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -222,6 +258,39 @@ export type Database = {
           sender_id?: string
           sender_type?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      notification_preferences: {
+        Row: {
+          created_at: string | null
+          email_enabled: boolean | null
+          id: string
+          push_enabled: boolean | null
+          sound_enabled: boolean | null
+          updated_at: string | null
+          user_id: string
+          user_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          email_enabled?: boolean | null
+          id?: string
+          push_enabled?: boolean | null
+          sound_enabled?: boolean | null
+          updated_at?: string | null
+          user_id: string
+          user_type: string
+        }
+        Update: {
+          created_at?: string | null
+          email_enabled?: boolean | null
+          id?: string
+          push_enabled?: boolean | null
+          sound_enabled?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+          user_type?: string
         }
         Relationships: []
       }

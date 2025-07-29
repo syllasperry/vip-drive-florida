@@ -8,6 +8,10 @@ import { PriceEditModal } from "@/components/PriceEditModal";
 import { DriverScheduleModal } from "@/components/DriverScheduleModal";
 import { DriverSettingsModal } from "@/components/DriverSettingsModal";
 import { DriverPreferencesModal } from "@/components/DriverPreferencesModal";
+import { PaymentConfirmationModal } from "@/components/PaymentConfirmationModal";
+import { DriverPaymentSettingsModal } from "@/components/DriverPaymentSettingsModal";
+import { NotificationManager } from "@/components/NotificationManager";
+import { ChatNotificationBadge } from "@/components/ChatNotificationBadge";
 import { BottomNavigation } from "@/components/dashboard/BottomNavigation";
 import { ProfileHeader } from "@/components/dashboard/ProfileHeader";
 import { UpcomingRideCard } from "@/components/dashboard/UpcomingRideCard";
@@ -35,6 +39,9 @@ const DriverDashboard = () => {
   const [isOnline, setIsOnline] = useState(true);
   const [passengerProfile, setPassengerProfile] = useState<any>(null);
   const [priceEditModal, setPriceEditModal] = useState<{ isOpen: boolean; booking: any }>({ isOpen: false, booking: null });
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [selectedBookingForPayment, setSelectedBookingForPayment] = useState<any>(null);
+  const [paymentSettingsOpen, setPaymentSettingsOpen] = useState(false);
   
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -279,12 +286,26 @@ const DriverDashboard = () => {
     }
   };
 
-  const handleConfirmPaymentReceived = async (rideId: string) => {
+  const handlePaymentConfirmation = async () => {
+    if (!selectedBookingForPayment) return;
+
     try {
+      const currentStatus = selectedBookingForPayment.payment_status;
+      let newStatus;
+      
+      if (currentStatus === 'passenger_confirmed') {
+        newStatus = 'both_confirmed';
+      } else {
+        newStatus = 'driver_confirmed';
+      }
+
       const { error } = await supabase
         .from('bookings')
-        .update({ payment_status: 'completed', status: 'payment_confirmed' })
-        .eq('id', rideId);
+        .update({ 
+          payment_status: newStatus,
+          status: newStatus === 'both_confirmed' ? 'ready_to_go' : 'payment_confirmed'
+        })
+        .eq('id', selectedBookingForPayment.id);
 
       if (error) {
         console.error('Error confirming payment:', error);
@@ -296,18 +317,42 @@ const DriverDashboard = () => {
         return;
       }
 
+      // Send confirmation message
+      await supabase
+        .from('messages')
+        .insert({
+          booking_id: selectedBookingForPayment.id,
+          sender_id: userProfile?.id,
+          sender_type: 'driver',
+          message_text: `I've confirmed receiving the payment of $${selectedBookingForPayment?.final_price?.toFixed(2)}.${newStatus === 'both_confirmed' ? ' Ready to go!' : ' Waiting for passenger confirmation.'}`
+        });
+
+      // Send notification
+      await supabase.functions.invoke('send-booking-notifications', {
+        body: {
+          bookingId: selectedBookingForPayment.id,
+          status: newStatus === 'both_confirmed' ? 'ready_to_go' : 'payment_confirmed',
+          triggerType: 'status_change'
+        }
+      });
+
       // Update local state
       setDriverRides(prevRides => 
         prevRides.map(ride => 
-          ride.id === rideId 
-            ? { ...ride, status: "payment_confirmed", paymentMethod: "Completed" }
+          ride.id === selectedBookingForPayment.id 
+            ? { 
+                ...ride, 
+                status: newStatus === 'both_confirmed' ? 'ready_to_go' : 'payment_confirmed', 
+                payment_status: newStatus,
+                paymentMethod: newStatus === 'both_confirmed' ? 'Completed' : 'Confirming'
+              }
             : ride
         )
       );
 
       toast({
         title: "Payment Confirmed!",
-        description: "The booking is now confirmed.",
+        description: newStatus === 'both_confirmed' ? "Both parties confirmed. Ready to go!" : "Waiting for passenger confirmation.",
       });
     } catch (error) {
       console.error('Error confirming payment:', error);
@@ -687,6 +732,14 @@ const DriverDashboard = () => {
           />
         )}
 
+        {/* Notification Manager */}
+        {userProfile?.id && (
+          <NotificationManager 
+            userId={userProfile.id}
+            userType="driver"
+          />
+        )}
+
         {/* Pending Requests Alert */}
         {activeTab === "rides" && (
           <PendingRequestAlert 
@@ -758,29 +811,63 @@ const DriverDashboard = () => {
                         </div>
                       </div>
 
-                      <div className="space-y-3 mb-4">
-                        <div className="flex items-start gap-3">
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4 text-primary" />
-                            <span className="text-sm font-medium text-foreground">{ride.passenger}</span>
-                          </div>
-                          <div className="ml-auto flex items-center gap-2">
-                        <p className="text-lg font-semibold text-primary">
-                          {ride.final_price ? `$${ride.final_price.toFixed(2)}` : ride.payment}
-                        </p>
-                            {(ride.status === "pending" || ride.status === "accepted") && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setPriceEditModal({ isOpen: true, booking: ride })}
-                                className="h-6 w-6 p-0 text-muted-foreground hover:text-primary"
-                                title="Click here if you want to customize the ride price"
-                              >
-                                <Edit className="h-3 w-3" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
+                       <div className="space-y-3 mb-4">
+                         <div className="flex items-start gap-3">
+                           <div className="flex items-center gap-2">
+                             <User className="h-4 w-4 text-primary" />
+                             <span className="text-sm font-medium text-foreground">{ride.passenger}</span>
+                           </div>
+                           <div className="ml-auto flex items-center gap-2">
+                             <p className="text-lg font-semibold text-primary">
+                               {ride.final_price ? `$${ride.final_price.toFixed(2)}` : ride.payment}
+                             </p>
+                             {(ride.status === "pending" || ride.status === "accepted") && (
+                               <Button
+                                 variant="ghost"
+                                 size="sm"
+                                 onClick={() => setPriceEditModal({ isOpen: true, booking: ride })}
+                                 className="h-6 w-6 p-0 text-muted-foreground hover:text-primary"
+                                 title="Click here if you want to customize the ride price"
+                               >
+                                 <Edit className="h-3 w-3" />
+                               </Button>
+                             )}
+                           </div>
+                         </div>
+                       </div>
+
+                         {/* Payment Status Indicators for confirmed payments */}
+                         {(ride.status === "payment_confirmed" || ride.payment_status === "passenger_confirmed" || ride.payment_status === "driver_confirmed" || ride.payment_status === "both_confirmed") && (
+                           <div className="p-3 bg-green-50/50 rounded-lg border border-green-200/50 mt-3">
+                             <div className="flex items-center justify-between">
+                               <div>
+                                 <h4 className="font-semibold text-green-800 mb-1">Payment Status</h4>
+                                 <p className="text-sm text-green-700">
+                                   {ride.payment_status === 'both_confirmed' 
+                                     ? 'Both parties confirmed payment - Ready to go!' 
+                                     : ride.payment_status === 'passenger_confirmed'
+                                     ? 'Passenger confirmed payment. Please confirm receipt.'
+                                     : ride.payment_status === 'driver_confirmed'
+                                     ? 'You confirmed payment. Waiting for passenger.'
+                                     : 'Payment confirmation in progress.'
+                                   }
+                                 </p>
+                               </div>
+                               {ride.payment_status !== 'both_confirmed' && (
+                                 <Button
+                                   size="sm"
+                                   onClick={() => {
+                                     setSelectedBookingForPayment(ride);
+                                     setPaymentModalOpen(true);
+                                   }}
+                                   className="bg-green-600 hover:bg-green-700 text-white"
+                                 >
+                                   {ride.payment_status === 'passenger_confirmed' ? 'Confirm Receipt' : 'View Payment'}
+                                 </Button>
+                               )}
+                             </div>
+                           </div>
+                          )}
 
                         <div className="text-sm text-foreground space-y-1">
                           <p><span className="text-muted-foreground">From:</span> {ride.from}</p>
@@ -789,7 +876,6 @@ const DriverDashboard = () => {
                             <p><span className="text-muted-foreground">Payment:</span> {ride.paymentMethod}</p>
                           )}
                         </div>
-                      </div>
 
                       {ride.status === "pending" && (
                         <div className="flex gap-2">
@@ -810,21 +896,13 @@ const DriverDashboard = () => {
                         </div>
                       )}
 
-                      {ride.status === "waiting_payment" && (
-                        <div className="p-3 bg-orange-50/50 rounded-lg border border-orange-200/50">
-                          <p className="text-sm text-orange-800 mb-2">
-                            Passenger needs to complete payment within 24 hours.
-                          </p>
-                          <Button 
-                            size="sm" 
-                            className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary-glow"
-                            onClick={() => handleConfirmPaymentReceived(ride.id)}
-                          >
-                            <CheckCircle className="h-3 w-3" />
-                            <span>Confirm Payment Received</span>
-                          </Button>
-                        </div>
-                      )}
+                       {ride.status === "price_proposed" && (
+                         <div className="p-3 bg-blue-50/50 rounded-lg border border-blue-200/50">
+                           <p className="text-sm text-blue-800 mb-2">
+                             Price proposal sent to passenger. Waiting for their response.
+                           </p>
+                         </div>
+                       )}
 
                       {ride.status === "awaiting_driver_confirmation" && (
                         <div className="p-3 bg-warning/5 rounded-lg border border-warning/20 mt-3">
@@ -1026,6 +1104,20 @@ const DriverDashboard = () => {
               </CardContent>
             </Card>
 
+            <Card className="cursor-pointer hover:shadow-[var(--shadow-subtle)] transition-shadow" onClick={() => setPaymentSettingsOpen(true)}>
+              <CardContent className="p-5">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-primary/10 rounded-full">
+                    <DollarSign className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">Payment Settings</h3>
+                    <p className="text-sm text-muted-foreground">Manage accepted payment methods and policies</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card className="cursor-pointer hover:shadow-[var(--shadow-subtle)] transition-shadow" onClick={handleLogout}>
               <CardContent className="p-5">
                 <div className="flex items-center gap-4">
@@ -1113,6 +1205,49 @@ const DriverDashboard = () => {
             handlePriceUpdate(priceEditModal.booking.id, newPrice);
           }
           setPriceEditModal({ isOpen: false, booking: null });
+        }}
+      />
+
+      {/* Payment Confirmation Modal */}
+      {selectedBookingForPayment && (
+        <PaymentConfirmationModal
+          isOpen={paymentModalOpen}
+          onClose={() => {
+            setPaymentModalOpen(false);
+            setSelectedBookingForPayment(null);
+          }}
+          bookingData={selectedBookingForPayment}
+          userType="driver"
+          onConfirmPayment={handlePaymentConfirmation}
+          paymentStatus={selectedBookingForPayment.payment_status || 'pending'}
+        />
+      )}
+
+      {/* Driver Payment Settings Modal */}
+      <DriverPaymentSettingsModal
+        isOpen={paymentSettingsOpen}
+        onClose={() => setPaymentSettingsOpen(false)}
+        driverId={userProfile?.id || ''}
+        currentData={{
+          payment_methods_accepted: userProfile?.payment_methods_accepted,
+          cancellation_policy: userProfile?.cancellation_policy
+        }}
+        onUpdate={() => {
+          // Refresh driver profile after update
+          const refreshProfile = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+              const { data: driver } = await supabase
+                .from('drivers')
+                .select('*')
+                .eq('id', session.user.id)
+                .maybeSingle();
+              if (driver) {
+                setUserProfile(driver);
+              }
+            }
+          };
+          refreshProfile();
         }}
       />
     </div>
