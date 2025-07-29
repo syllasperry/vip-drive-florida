@@ -805,41 +805,226 @@ const DriverDashboard = () => {
 
         {/* Tab Content */}
         {activeTab === "rides" && (
-          <OrganizedBookingsList
-            bookings={driverRides}
-            userType="driver"
-            onMessage={(booking) => {
-              setSelectedBookingForMessaging(booking);
-              // Fetch passenger profile
-              if (booking.passenger_id) {
-                supabase
-                  .from('passengers')
-                  .select('*')
-                  .eq('id', booking.passenger_id)
-                  .maybeSingle()
-                  .then(({ data: passenger, error }) => {
-                    if (passenger && !error) {
-                      setPassengerProfile(passenger);
-                    }
-                  });
-              }
-              setMessagingOpen(true);
-            }}
-            onNavigate={(booking) => {
-              // Handle navigation with external apps
-              const pickup = encodeURIComponent(booking.from);
-              const dropoff = encodeURIComponent(booking.to);
-              
-              // For now, open Google Maps. Could be enhanced to show options
-              const url = `https://www.google.com/maps/dir/${pickup}/${dropoff}`;
-              window.open(url, '_blank');
-              
-              toast({
-                title: "Opening Google Maps",
-                description: "Navigation opened in new tab.",
-              });
-            }}
-          />
+          <div className="space-y-6">
+            {/* Rides Header with Tabs */}
+            <div className="bg-card rounded-xl p-1 shadow-sm border">
+              <div className="flex">
+                <button
+                  onClick={() => setRideView("upcoming")}
+                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-all ${
+                    rideView === "upcoming"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  New Requests
+                </button>
+                <button
+                  onClick={() => setRideView("past")}
+                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-all ${
+                    rideView === "past"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Past Rides
+                </button>
+              </div>
+            </div>
+
+            {/* Rides List */}
+            {rideView === "upcoming" && (
+              <div className="space-y-4">
+                {driverRides.filter(ride => ride.status === "pending" || ride.status === "accepted" || ride.status === "confirmed" || ride.status === "payment_confirmed").length === 0 ? (
+                  <Card>
+                    <CardContent className="p-8 text-center">
+                      <Car className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="font-semibold text-foreground mb-2">No new requests</h3>
+                      <p className="text-sm text-muted-foreground">
+                        New ride requests will appear here when passengers book.
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  driverRides
+                    .filter(ride => ride.status === "pending" || ride.status === "accepted" || ride.status === "confirmed" || ride.status === "payment_confirmed")
+                    .map((ride) => {
+                      const isExpiringSoon = ride.status === "pending" && ride.payment_expires_at && 
+                        new Date(ride.payment_expires_at).getTime() - Date.now() < 60 * 60 * 1000; // 1 hour
+
+                      return (
+                        <Card key={ride.id} className="hover:shadow-[var(--shadow-subtle)] transition-all duration-300 border-border/50">
+                          <CardContent className="p-5">
+                            {/* Expiry Warning */}
+                            {isExpiringSoon && (
+                              <div className="bg-orange-50 text-orange-800 px-3 py-2 rounded-lg mb-4 text-sm font-medium">
+                                Request expires soon
+                              </div>
+                            )}
+
+                            {/* Date and Time */}
+                            <div className="flex items-center gap-2 mb-4">
+                              <Clock className="h-4 w-4 text-primary" />
+                              <span className="text-sm font-medium text-foreground">
+                                {ride.pickup_time ? new Date(ride.pickup_time).toLocaleDateString() : ''} at {ride.pickup_time ? new Date(ride.pickup_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}
+                              </span>
+                            </div>
+
+                            {/* Locations */}
+                            <div className="space-y-3 mb-4">
+                              <div className="flex items-start gap-3">
+                                <div className="w-3 h-3 bg-success rounded-full mt-1.5 flex-shrink-0"></div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-foreground truncate">
+                                    {ride.pickup_location || 'Pickup location'}
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center gap-3 pl-1.5">
+                                <div className="w-0.5 h-6 bg-border"></div>
+                                <Car className="h-3 w-3 text-muted-foreground" />
+                              </div>
+                              
+                              <div className="flex items-start gap-3">
+                                <div className="w-3 h-3 bg-destructive rounded-full mt-1.5 flex-shrink-0"></div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm text-muted-foreground truncate">
+                                    {ride.dropoff_location || 'Dropoff location'}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Passenger Info */}
+                            <div className="flex items-center gap-3 mb-4">
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage 
+                                  src={ride.passengers?.profile_photo_url} 
+                                  alt={ride.passengers?.full_name}
+                                />
+                                <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                                  {ride.passengers?.full_name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'P'}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-foreground">
+                                  {ride.passengers?.full_name || 'Passenger'}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {ride.passenger_count || 1} passenger{(ride.passenger_count || 1) > 1 ? 's' : ''}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Suggested Fare */}
+                            <div className="flex items-center justify-between mb-4">
+                              <span className="text-sm font-medium text-foreground">Suggested fare</span>
+                              <span className="text-lg font-bold text-foreground">
+                                ${ride.final_price || ride.estimated_price || '85.00'}
+                              </span>
+                            </div>
+
+                            {/* Action Buttons */}
+                            {ride.status === "pending" && (
+                              <div className="flex gap-3">
+                                <Button
+                                  variant="outline"
+                                  className="flex-1"
+                                  onClick={() => handleDeclineRide(ride.id)}
+                                >
+                                  Decline
+                                </Button>
+                                <Button
+                                  className="flex-1"
+                                  onClick={() => handleAcceptRide(ride.id)}
+                                >
+                                  Accept
+                                </Button>
+                              </div>
+                            )}
+
+                            {ride.status === "accepted" && (
+                              <div className="flex gap-3">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex-1 flex items-center gap-2"
+                                  onClick={() => {
+                                    setSelectedBookingForMessaging(ride);
+                                    if (ride.passenger_id) {
+                                      supabase
+                                        .from('passengers')
+                                        .select('*')
+                                        .eq('id', ride.passenger_id)
+                                        .maybeSingle()
+                                        .then(({ data: passenger, error }) => {
+                                          if (passenger && !error) {
+                                            setPassengerProfile(passenger);
+                                          }
+                                        });
+                                    }
+                                    setMessagingOpen(true);
+                                  }}
+                                >
+                                  <MessageCircle className="h-4 w-4" />
+                                  Message
+                                </Button>
+                                <Badge className="bg-success/10 text-success border-success/20">
+                                  Accepted
+                                </Badge>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      );
+                    })
+                )}
+              </div>
+            )}
+
+            {rideView === "past" && (
+              <div className="space-y-4">
+                {driverRides.filter(ride => ride.status === "completed" || ride.status === "cancelled").length === 0 ? (
+                  <Card>
+                    <CardContent className="p-8 text-center">
+                      <CheckCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="font-semibold text-foreground mb-2">No past rides</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Your completed rides will appear here.
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  driverRides
+                    .filter(ride => ride.status === "completed" || ride.status === "cancelled")
+                    .map((ride) => (
+                      <BookingCard
+                        key={ride.id}
+                        booking={ride}
+                        userType="driver"
+                        onMessage={() => {
+                          setSelectedBookingForMessaging(ride);
+                          if (ride.passenger_id) {
+                            supabase
+                              .from('passengers')
+                              .select('*')
+                              .eq('id', ride.passenger_id)
+                              .maybeSingle()
+                              .then(({ data: passenger, error }) => {
+                                if (passenger && !error) {
+                                  setPassengerProfile(passenger);
+                                }
+                              });
+                          }
+                          setMessagingOpen(true);
+                        }}
+                      />
+                    ))
+                )}
+              </div>
+            )}
+          </div>
         )}
 
         {activeTab === "earnings" && (
