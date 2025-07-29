@@ -68,12 +68,12 @@ export const UpcomingRideCard = ({ ride, userType, onMessage, onNavigate }: Upco
             </div>
           )}
 
-          {userType === "driver" && ride.passengers ? (
+          {userType === "driver" && ride.passengers && ride.passengers.full_name ? (
             <div className="flex items-center gap-3">
               <Avatar className="h-10 w-10">
-                <AvatarImage src={ride.passengers.profile_photo_url} />
-                <AvatarFallback>
-                  {ride.passengers.full_name?.split(' ').map(n => n[0]).join('') || 'P'}
+                <AvatarImage src={ride.passengers.profile_photo_url} alt={ride.passengers.full_name} />
+                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                  {ride.passengers.full_name.split(' ').map(n => n[0]).join('').toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
@@ -83,11 +83,13 @@ export const UpcomingRideCard = ({ ride, userType, onMessage, onNavigate }: Upco
                 <p className="text-xs text-muted-foreground">{ride.payment}</p>
               </div>
             </div>
-          ) : userType === "driver" && ride.passenger && (
+          ) : userType === "driver" && (
             <div className="flex items-center gap-3">
               <User className="h-4 w-4 text-primary" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-foreground">Passenger: {ride.passenger}</p>
+                <p className="text-sm font-medium text-foreground">
+                  Passenger: {ride.passengers?.full_name || ride.passenger || 'Unknown Passenger'}
+                </p>
                 <p className="text-xs text-muted-foreground">{ride.payment}</p>
               </div>
             </div>

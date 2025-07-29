@@ -77,12 +77,12 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
           </div>
 
           <div className="flex items-center gap-3">
-            {userType === "driver" && booking.passengers ? (
+            {userType === "driver" && booking.passengers && booking.passengers.full_name ? (
               <div className="flex items-center gap-3">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={booking.passengers.profile_photo_url} />
-                  <AvatarFallback>
-                    {booking.passengers.full_name?.split(' ').map(n => n[0]).join('') || 'P'}
+                  <AvatarImage src={booking.passengers.profile_photo_url} alt={booking.passengers.full_name} />
+                  <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                    {booking.passengers.full_name.split(' ').map(n => n[0]).join('').toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div>
@@ -99,7 +99,7 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
                 <User className="h-4 w-4 text-primary" />
                 <span className="text-sm text-foreground">
                   {userType === "passenger" && booking.driver && `Driver: ${booking.driver}`}
-                  {userType === "driver" && booking.passenger && `Passenger: ${booking.passenger}`}
+                  {userType === "driver" && `Passenger: ${booking.passengers?.full_name || booking.passenger || 'Unknown Passenger'}`}
                 </span>
               </div>
             )}
