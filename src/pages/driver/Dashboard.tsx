@@ -1231,7 +1231,9 @@ const DriverDashboard = () => {
         driverId={userProfile?.id || ''}
         currentData={{
           payment_methods_accepted: userProfile?.payment_methods_accepted,
-          cancellation_policy: userProfile?.cancellation_policy
+          cancellation_policy: userProfile?.cancellation_policy,
+          preferred_payment_method: userProfile?.preferred_payment_method,
+          payment_instructions: userProfile?.payment_instructions
         }}
         onUpdate={() => {
           // Refresh driver profile after update

@@ -163,8 +163,10 @@ export type Database = {
           full_name: string
           id: string
           license_plate: string | null
+          payment_instructions: string | null
           payment_methods_accepted: string[] | null
           phone: string | null
+          preferred_payment_method: string | null
           profile_photo_url: string | null
         }
         Insert: {
@@ -179,8 +181,10 @@ export type Database = {
           full_name: string
           id?: string
           license_plate?: string | null
+          payment_instructions?: string | null
           payment_methods_accepted?: string[] | null
           phone?: string | null
+          preferred_payment_method?: string | null
           profile_photo_url?: string | null
         }
         Update: {
@@ -195,8 +199,10 @@ export type Database = {
           full_name?: string
           id?: string
           license_plate?: string | null
+          payment_instructions?: string | null
           payment_methods_accepted?: string[] | null
           phone?: string | null
+          preferred_payment_method?: string | null
           profile_photo_url?: string | null
         }
         Relationships: []
