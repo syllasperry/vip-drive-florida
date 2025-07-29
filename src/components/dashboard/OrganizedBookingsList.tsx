@@ -22,11 +22,12 @@ const OrganizedBookingsList: React.FC<OrganizedBookingsListProps> = ({
   onCancelSuccess,
   onNavigate
 }) => {
-  // Sort all bookings by pickup_time descending (most recent first)
+  // Sort all bookings by updated_at descending (most recent updates first)
   const sortedBookings = [...bookings].sort((a, b) => {
-    const dateA = new Date(a.date + ' ' + a.time);
-    const dateB = new Date(b.date + ' ' + b.time);
-    return dateB.getTime() - dateA.getTime();
+    // If we have updated_at timestamp, use it; otherwise fall back to pickup time
+    const timestampA = a.updated_at || (a.date + ' ' + a.time);
+    const timestampB = b.updated_at || (b.date + ' ' + b.time);
+    return new Date(timestampB).getTime() - new Date(timestampA).getTime();
   });
 
   // Group bookings by status

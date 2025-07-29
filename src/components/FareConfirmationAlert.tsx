@@ -48,9 +48,23 @@ export const FareConfirmationAlert = ({
 
   if (!isVisible) return null;
 
+  const isExpired = timeLeft === "Expired";
+
   return (
-    <Card className="bg-primary/5 border-primary/20 animate-pulse">
+    <Card className="bg-primary/5 border-primary/20 animate-pulse relative">
       <CardContent className="p-4">
+        {/* Close button when expired */}
+        {isExpired && (
+          <Button
+            onClick={onDecline}
+            variant="ghost"
+            size="sm"
+            className="absolute top-2 right-2 h-8 w-8 p-0 hover:bg-destructive/10"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+        
         <div className="flex items-start gap-3">
           <div className="p-2 bg-primary/10 rounded-full">
             <CheckCircle className="h-5 w-5 text-primary" />
@@ -73,11 +87,12 @@ export const FareConfirmationAlert = ({
               </span>
             </div>
             
-            <div className="flex gap-2">
+            {/* Mobile-responsive button layout */}
+            <div className="flex flex-col sm:flex-row gap-2 w-full">
               <Button 
                 onClick={onAccept}
-                className="flex-1 bg-primary hover:bg-primary/90"
-                disabled={timeLeft === "Expired"}
+                className="w-full sm:flex-1 bg-primary hover:bg-primary/90 text-sm"
+                disabled={isExpired}
               >
                 <CheckCircle className="h-4 w-4 mr-2" />
                 ✅ Accept Price
@@ -85,8 +100,8 @@ export const FareConfirmationAlert = ({
               <Button 
                 onClick={onDecline}
                 variant="outline"
-                className="flex-1 border-destructive text-destructive hover:bg-destructive/10"
-                disabled={timeLeft === "Expired"}
+                className="w-full sm:flex-1 border-destructive text-destructive hover:bg-destructive/10 text-sm"
+                disabled={isExpired}
               >
                 <X className="h-4 w-4 mr-2" />
                 ❌ Decline Ride

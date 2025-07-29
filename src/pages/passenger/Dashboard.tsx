@@ -435,7 +435,7 @@ const Dashboard = () => {
           )
         `)
         .eq('passenger_id', userProfile.id)
-        .order('pickup_time', { ascending: true });
+        .order('updated_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching bookings:', error);
@@ -472,7 +472,8 @@ const Dashboard = () => {
           luggage_count: booking.luggage_count,
           final_price: booking.final_price,
           payment_expires_at: booking.payment_expires_at,
-          payment_status: booking.payment_status
+          payment_status: booking.payment_status,
+          updated_at: booking.updated_at // Include updated_at for proper sorting
         };
       });
 
@@ -709,25 +710,52 @@ const Dashboard = () => {
 
         {/* Tab Content */}
         {activeTab === "bookings" && (
-          <OrganizedBookingsList
-            bookings={bookings}
-            userType="passenger"
-            onMessage={(booking) => {
-              setSelectedBookingForMessaging(booking);
-              setMessagingOpen(true);
-            }}
-            onReview={(bookingId) => {
-              setSelectedBookingForReview(bookingId);
-              setReviewModalOpen(true);
-            }}
-            onViewSummary={(booking) => {
-              setSelectedBookingForSummary(booking);
-              setSummaryModalOpen(true);
-            }}
-            onCancelSuccess={() => {
-              fetchBookings(); // Refresh bookings after cancellation
-            }}
-          />
+          <div className="space-y-4">
+            {/* Booking View Toggle */}
+            <div className="flex bg-muted rounded-lg p-1">
+              <Button
+                onClick={() => setBookingView("upcoming")}
+                variant={bookingView === "upcoming" ? "default" : "ghost"}
+                className="flex-1 h-9"
+              >
+                Upcoming
+              </Button>
+              <Button
+                onClick={() => setBookingView("past")}
+                variant={bookingView === "past" ? "default" : "ghost"}
+                className="flex-1 h-9"
+              >
+                Past Rides
+              </Button>
+            </div>
+            
+            <OrganizedBookingsList
+              bookings={bookingView === "upcoming" 
+                ? bookings.filter(booking => 
+                    !['completed', 'cancelled', 'declined', 'rejected_by_passenger'].includes(booking.status)
+                  )
+                : bookings.filter(booking => 
+                    ['completed', 'cancelled', 'declined', 'rejected_by_passenger'].includes(booking.status)
+                  )
+              }
+              userType="passenger"
+              onMessage={(booking) => {
+                setSelectedBookingForMessaging(booking);
+                setMessagingOpen(true);
+              }}
+              onReview={(bookingId) => {
+                setSelectedBookingForReview(bookingId);
+                setReviewModalOpen(true);
+              }}
+              onViewSummary={(booking) => {
+                setSelectedBookingForSummary(booking);
+                setSummaryModalOpen(true);
+              }}
+              onCancelSuccess={() => {
+                fetchBookings(); // Refresh bookings after cancellation
+              }}
+            />
+          </div>
         )}
 
         {activeTab === "messages" && (
