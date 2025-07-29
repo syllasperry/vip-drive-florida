@@ -122,14 +122,23 @@ export const MessagingInterface = ({
       if (userType === "passenger" && messages.length === 0) {
         setTimeout(async () => {
           try {
-            await supabase
-              .from('messages')
-              .insert({
-                booking_id: bookingId,
-                sender_id: otherUserName || "driver", // This would be the driver's ID in a real scenario
-                sender_type: "driver",
-                message_text: "Thanks for choosing VIP Chauffeur in South Florida! I'll get back to you as soon as I see your message. Feel free to share any details while I'm on the way."
-              });
+            // Get the driver ID from the booking
+            const { data: booking, error: bookingError } = await supabase
+              .from('bookings')
+              .select('driver_id')
+              .eq('id', bookingId)
+              .single();
+
+            if (!bookingError && booking?.driver_id) {
+              await supabase
+                .from('messages')
+                .insert({
+                  booking_id: bookingId,
+                  sender_id: booking.driver_id,
+                  sender_type: "driver",
+                  message_text: "Thanks for choosing VIP Chauffeur in South Florida! I'll get back to you as soon as I see your message. Feel free to share any details while I'm on the way."
+                });
+            }
           } catch (autoReplyError) {
             console.error('Error sending auto-reply:', autoReplyError);
           }
@@ -339,7 +348,7 @@ export const MessagingInterface = ({
             <Button 
               onClick={handleSendMessage} 
               size="sm" 
-              variant="luxury"
+              variant="default"
               disabled={loading || !newMessage.trim()}
             >
               <Send className="h-4 w-4" />

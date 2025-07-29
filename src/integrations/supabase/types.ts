@@ -19,14 +19,19 @@ export type Database = {
           created_at: string
           driver_id: string | null
           dropoff_location: string
+          estimated_price: number | null
+          final_price: number | null
           flight_info: string | null
           id: string
           luggage_count: number
           passenger_count: number
           passenger_id: string
+          payment_expires_at: string | null
+          payment_method: string | null
           payment_status: string
           pickup_location: string
           pickup_time: string
+          price_confirmed_at: string | null
           status: string
           updated_at: string | null
           vehicle_id: string | null
@@ -36,14 +41,19 @@ export type Database = {
           created_at?: string
           driver_id?: string | null
           dropoff_location: string
+          estimated_price?: number | null
+          final_price?: number | null
           flight_info?: string | null
           id?: string
           luggage_count?: number
           passenger_count?: number
           passenger_id: string
+          payment_expires_at?: string | null
+          payment_method?: string | null
           payment_status?: string
           pickup_location: string
           pickup_time: string
+          price_confirmed_at?: string | null
           status?: string
           updated_at?: string | null
           vehicle_id?: string | null
@@ -53,14 +63,19 @@ export type Database = {
           created_at?: string
           driver_id?: string | null
           dropoff_location?: string
+          estimated_price?: number | null
+          final_price?: number | null
           flight_info?: string | null
           id?: string
           luggage_count?: number
           passenger_count?: number
           passenger_id?: string
+          payment_expires_at?: string | null
+          payment_method?: string | null
           payment_status?: string
           pickup_location?: string
           pickup_time?: string
+          price_confirmed_at?: string | null
           status?: string
           updated_at?: string | null
           vehicle_id?: string | null

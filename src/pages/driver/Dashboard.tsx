@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MessagingInterface } from "@/components/MessagingInterface";
+import { PriceEditModal } from "@/components/PriceEditModal";
 import { DriverScheduleModal } from "@/components/DriverScheduleModal";
 import { DriverSettingsModal } from "@/components/DriverSettingsModal";
 import { DriverPreferencesModal } from "@/components/DriverPreferencesModal";
@@ -16,7 +17,7 @@ import PendingRequestAlert from "@/components/dashboard/PendingRequestAlert";
 import StatusTracker, { BookingStatus } from "@/components/StatusTracker";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Car, DollarSign, User, LogOut, Clock, CheckCircle, Calendar, MessageCircle } from "lucide-react";
+import { Car, DollarSign, User, LogOut, Clock, CheckCircle, Calendar, MessageCircle, Edit } from "lucide-react";
 
 const DriverDashboard = () => {
   const navigate = useNavigate();
@@ -33,6 +34,7 @@ const DriverDashboard = () => {
   const [selectedBookingForMessaging, setSelectedBookingForMessaging] = useState<any>(null);
   const [isOnline, setIsOnline] = useState(true);
   const [passengerProfile, setPassengerProfile] = useState<any>(null);
+  const [priceEditModal, setPriceEditModal] = useState<{ isOpen: boolean; booking: any }>({ isOpen: false, booking: null });
   
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -309,6 +311,45 @@ const DriverDashboard = () => {
       });
     } catch (error) {
       console.error('Error confirming payment:', error);
+    }
+  };
+
+  const handlePriceUpdate = async (bookingId: string, newPrice: number) => {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          final_price: newPrice,
+          status: 'price_proposed',
+          payment_expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString() // 1 hour from now
+        })
+        .eq('id', bookingId);
+
+      if (error) {
+        console.error('Error updating price:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update price",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Update local state
+      setDriverRides(prevRides => 
+        prevRides.map(ride => 
+          ride.id === bookingId 
+            ? { ...ride, payment: `$${newPrice.toFixed(2)}`, status: "price_proposed" }
+            : ride
+        )
+      );
+
+      toast({
+        title: "Price Updated!",
+        description: "The passenger will be notified of the new price.",
+      });
+    } catch (error) {
+      console.error('Error updating price:', error);
     }
   };
 
@@ -671,8 +712,19 @@ const DriverDashboard = () => {
                             <User className="h-4 w-4 text-primary" />
                             <span className="text-sm font-medium text-foreground">{ride.passenger}</span>
                           </div>
-                          <div className="ml-auto">
+                          <div className="ml-auto flex items-center gap-2">
                             <p className="text-lg font-semibold text-primary">{ride.payment}</p>
+                            {(ride.status === "pending" || ride.status === "accepted") && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setPriceEditModal({ isOpen: true, booking: ride })}
+                                className="h-6 w-6 p-0 text-muted-foreground hover:text-primary"
+                                title="Click here if you want to customize the ride price"
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                            )}
                           </div>
                         </div>
 
@@ -974,6 +1026,18 @@ const DriverDashboard = () => {
             }
           };
           refreshProfile();
+        }}
+      />
+
+      <PriceEditModal
+        isOpen={priceEditModal.isOpen}
+        onClose={() => setPriceEditModal({ isOpen: false, booking: null })}
+        currentPrice={parseFloat(priceEditModal.booking?.payment?.replace('$', '') || '0')}
+        onPriceUpdate={(newPrice) => {
+          if (priceEditModal.booking) {
+            handlePriceUpdate(priceEditModal.booking.id, newPrice);
+          }
+          setPriceEditModal({ isOpen: false, booking: null });
         }}
       />
     </div>
