@@ -550,7 +550,7 @@ const DriverDashboard = () => {
             .from('bookings')
             .select(`
               *,
-              passengers:passenger_id (
+               passengers:passenger_id!inner (
                 id,
                 full_name,
                 phone,
@@ -577,7 +577,7 @@ const DriverDashboard = () => {
             .from('bookings')
             .select(`
               *,
-              passengers:passenger_id (
+               passengers:passenger_id!inner (
                 id,
                 full_name,
                 phone,
