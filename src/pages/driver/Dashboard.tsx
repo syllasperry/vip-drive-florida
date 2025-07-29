@@ -18,6 +18,7 @@ import { UpcomingRideCard } from "@/components/dashboard/UpcomingRideCard";
 import { EarningsSection } from "@/components/dashboard/EarningsSection";
 import { BookingToggle } from "@/components/dashboard/BookingToggle";
 import { BookingCard } from "@/components/dashboard/BookingCard";
+import OrganizedBookingsList from "@/components/dashboard/OrganizedBookingsList";
 import PendingRequestAlert from "@/components/dashboard/PendingRequestAlert";
 import StatusTracker, { BookingStatus } from "@/components/StatusTracker";
 import { supabase } from "@/integrations/supabase/client";
@@ -470,7 +471,13 @@ const DriverDashboard = () => {
                 full_name,
                 phone,
                 email,
-                profile_photo_url
+                profile_photo_url,
+                preferred_temperature,
+                music_preference,
+                music_playlist_link,
+                interaction_preference,
+                trip_purpose,
+                additional_notes
               ),
               vehicles:vehicle_id (
                 id,
@@ -491,7 +498,13 @@ const DriverDashboard = () => {
                 full_name,
                 phone,
                 email,
-                profile_photo_url
+                profile_photo_url,
+                preferred_temperature,
+                music_preference,
+                music_playlist_link,
+                interaction_preference,
+                trip_purpose,
+                additional_notes
               ),
               vehicles:vehicle_id (
                 id,
@@ -783,210 +796,41 @@ const DriverDashboard = () => {
 
         {/* Tab Content */}
         {activeTab === "rides" && (
-          <div>
-            <BookingToggle 
-              activeView={rideView}
-              onViewChange={setRideView}
-            />
-            
-            <div className="space-y-4">
-              {filteredRides.length === 0 ? (
-                <Card>
-                  <CardContent className="p-8 text-center">
-                    <p className="text-muted-foreground">
-                      {rideView === "upcoming" ? "No upcoming rides" : "No past rides"}
-                    </p>
-                  </CardContent>
-                </Card>
-              ) : (
-                filteredRides.map((ride) => (
-                  <Card key={ride.id} className={`hover:shadow-[var(--shadow-subtle)] transition-all duration-300 border-border/50 ${
-                    ride.status === "pending" ? "ring-2 ring-warning/50 animate-pulse" : ""
-                  }`}>
-                    <CardContent className="p-5">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-primary/10 rounded-full">
-                            <Clock className="h-4 w-4 text-primary" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-foreground">
-                              {ride.date} at {ride.time}
-                            </p>
-                            {ride.countdown && (
-                              <p className="text-xs text-orange-600 font-medium">
-                                {ride.countdown}h remaining
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {ride.status === "pending" && (
-                            <Badge className="bg-warning/20 text-warning border-warning/30 animate-pulse">
-                              🆕 New Request
-                            </Badge>
-                          )}
-                          <Badge className={getStatusColor(ride.status)}>
-                            {getStatusText(ride.status)}
-                          </Badge>
-                        </div>
-                      </div>
-
-                       <div className="space-y-3 mb-4">
-                         <div className="flex items-start gap-3">
-                           <div className="flex items-center gap-2">
-                             <Avatar className="h-8 w-8">
-                               <AvatarImage src={ride.passengers?.profile_photo_url || ""} alt={ride.passenger || 'Passenger'} />
-                               <AvatarFallback>
-                                 <User className="h-4 w-4" />
-                               </AvatarFallback>
-                             </Avatar>
-                             <span className="text-sm font-medium text-foreground">{ride.passenger}</span>
-                           </div>
-                           <div className="ml-auto flex items-center gap-2">
-                             <p className="text-lg font-semibold text-primary">
-                               {ride.final_price ? `$${ride.final_price.toFixed(2)}` : ride.payment}
-                             </p>
-                             {(ride.status === "pending" || ride.status === "accepted") && (
-                               <Button
-                                 variant="ghost"
-                                 size="sm"
-                                 onClick={() => setPriceEditModal({ isOpen: true, booking: ride })}
-                                 className="h-6 w-6 p-0 text-muted-foreground hover:text-primary"
-                                 title="Click here if you want to customize the ride price"
-                               >
-                                 <Edit className="h-3 w-3" />
-                               </Button>
-                             )}
-                           </div>
-                         </div>
-                       </div>
-
-                         {/* Payment Status Indicators for confirmed payments */}
-                         {(ride.status === "payment_confirmed" || ride.payment_status === "passenger_confirmed" || ride.payment_status === "driver_confirmed" || ride.payment_status === "both_confirmed") && (
-                           <div className="p-3 bg-green-50/50 rounded-lg border border-green-200/50 mt-3">
-                             <div className="flex items-center justify-between">
-                               <div>
-                                 <h4 className="font-semibold text-green-800 mb-1">Payment Status</h4>
-                                 <p className="text-sm text-green-700">
-                                   {ride.payment_status === 'both_confirmed' 
-                                     ? 'Both parties confirmed payment - Ready to go!' 
-                                     : ride.payment_status === 'passenger_confirmed'
-                                     ? 'Passenger confirmed payment. Please confirm receipt.'
-                                     : ride.payment_status === 'driver_confirmed'
-                                     ? 'You confirmed payment. Waiting for passenger.'
-                                     : 'Payment confirmation in progress.'
-                                   }
-                                 </p>
-                               </div>
-                               {ride.payment_status !== 'both_confirmed' && (
-                                 <Button
-                                   size="sm"
-                                   onClick={() => {
-                                     setSelectedBookingForPayment(ride);
-                                     setPaymentModalOpen(true);
-                                   }}
-                                   className="bg-green-600 hover:bg-green-700 text-white"
-                                 >
-                                   {ride.payment_status === 'passenger_confirmed' ? 'Confirm Receipt' : 'View Payment'}
-                                 </Button>
-                               )}
-                             </div>
-                           </div>
-                          )}
-
-                        <div className="text-sm text-foreground space-y-1">
-                          <p><span className="text-muted-foreground">From:</span> {ride.from}</p>
-                          <p><span className="text-muted-foreground">To:</span> {ride.to}</p>
-                          {ride.paymentMethod && (
-                            <p><span className="text-muted-foreground">Payment:</span> {ride.paymentMethod}</p>
-                          )}
-                        </div>
-
-                      {ride.status === "pending" && (
-                        <div className="flex gap-2">
-                          <Button 
-                            size="sm" 
-                            onClick={() => handleAcceptRide(ride.id)}
-                            className="flex-1 bg-gradient-to-r from-primary to-primary-glow"
-                          >
-                            Accept
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleDeclineRide(ride.id)}
-                          >
-                            Decline
-                          </Button>
-                        </div>
-                      )}
-
-                       {ride.status === "price_proposed" && (
-                         <div className="p-3 bg-blue-50/50 rounded-lg border border-blue-200/50">
-                           <p className="text-sm text-blue-800 mb-2">
-                             Price proposal sent to passenger. Waiting for their response.
-                           </p>
-                         </div>
-                       )}
-
-                      {ride.status === "awaiting_driver_confirmation" && (
-                        <div className="p-3 bg-warning/5 rounded-lg border border-warning/20 mt-3">
-                          <p className="text-sm text-foreground mb-2">
-                            Price updated to ${ride.final_price?.toFixed(2)}. Click Accept to confirm and notify the passenger.
-                          </p>
-                          <Button 
-                            size="sm" 
-                            className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary-glow"
-                            onClick={() => handleConfirmPrice(ride.id)}
-                          >
-                            <CheckCircle className="h-3 w-3" />
-                            <span>Accept Price Change</span>
-                          </Button>
-                        </div>
-                      )}
-
-                      <div className="flex gap-2 mt-4">
-                        <Button
-                          onClick={async () => {
-                            setSelectedBookingForMessaging(ride);
-                            // Fetch passenger profile using the correct field from the booking
-                            try {
-                              const { data: booking, error: bookingError } = await supabase
-                                .from('bookings')
-                                .select(`
-                                  *,
-                                  passengers:passenger_id (
-                                    id,
-                                    full_name,
-                                    profile_photo_url
-                                  )
-                                `)
-                                .eq('id', ride.id)
-                                .single();
-                                
-                              if (booking && !bookingError && booking.passengers) {
-                                setPassengerProfile(booking.passengers);
-                              }
-                            } catch (error) {
-                              console.error('Error fetching passenger profile:', error);
-                            }
-                            setMessagingOpen(true);
-                          }}
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 flex items-center gap-2"
-                        >
-                          <MessageCircle className="h-4 w-4" />
-                          Message
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
-              )}
-            </div>
-          </div>
+          <OrganizedBookingsList
+            bookings={driverRides}
+            userType="driver"
+            onMessage={(booking) => {
+              setSelectedBookingForMessaging(booking);
+              // Fetch passenger profile
+              if (booking.passenger_id) {
+                supabase
+                  .from('passengers')
+                  .select('*')
+                  .eq('id', booking.passenger_id)
+                  .maybeSingle()
+                  .then(({ data: passenger, error }) => {
+                    if (passenger && !error) {
+                      setPassengerProfile(passenger);
+                    }
+                  });
+              }
+              setMessagingOpen(true);
+            }}
+            onNavigate={(booking) => {
+              // Handle navigation with external apps
+              const pickup = encodeURIComponent(booking.from);
+              const dropoff = encodeURIComponent(booking.to);
+              
+              // For now, open Google Maps. Could be enhanced to show options
+              const url = `https://www.google.com/maps/dir/${pickup}/${dropoff}`;
+              window.open(url, '_blank');
+              
+              toast({
+                title: "Opening Google Maps",
+                description: "Navigation opened in new tab.",
+              });
+            }}
+          />
         )}
 
         {activeTab === "earnings" && (

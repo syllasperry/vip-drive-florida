@@ -302,28 +302,46 @@ export type Database = {
       }
       passengers: {
         Row: {
+          additional_notes: string | null
           created_at: string
           email: string
           full_name: string
           id: string
+          interaction_preference: string | null
+          music_playlist_link: string | null
+          music_preference: string | null
           phone: string | null
+          preferred_temperature: number | null
           profile_photo_url: string | null
+          trip_purpose: string | null
         }
         Insert: {
+          additional_notes?: string | null
           created_at?: string
           email: string
           full_name: string
           id?: string
+          interaction_preference?: string | null
+          music_playlist_link?: string | null
+          music_preference?: string | null
           phone?: string | null
+          preferred_temperature?: number | null
           profile_photo_url?: string | null
+          trip_purpose?: string | null
         }
         Update: {
+          additional_notes?: string | null
           created_at?: string
           email?: string
           full_name?: string
           id?: string
+          interaction_preference?: string | null
+          music_playlist_link?: string | null
+          music_preference?: string | null
           phone?: string | null
+          preferred_temperature?: number | null
           profile_photo_url?: string | null
+          trip_purpose?: string | null
         }
         Relationships: []
       }

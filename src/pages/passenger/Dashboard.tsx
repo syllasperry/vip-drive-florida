@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessagingInterface } from "@/components/MessagingInterface";
 import { SettingsModal } from "@/components/SettingsModal";
 import { ProfileEditModal } from "@/components/ProfileEditModal";
+import PassengerPreferencesModal from "@/components/PassengerPreferencesModal";
+import OrganizedBookingsList from "@/components/dashboard/OrganizedBookingsList";
 import CelebrationModal from "@/components/CelebrationModal";
 import { ReviewModal } from "@/components/ReviewModal";
 import { BookingSummaryModal } from "@/components/BookingSummaryModal";
@@ -48,6 +50,7 @@ const Dashboard = () => {
   const [pendingFareBooking, setPendingFareBooking] = useState<any>(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedBookingForPayment, setSelectedBookingForPayment] = useState<any>(null);
+  const [preferencesModalOpen, setPreferencesModalOpen] = useState(false);
 
   const handleAcceptFare = async (bookingId: string) => {
     try {
@@ -706,47 +709,25 @@ const Dashboard = () => {
 
         {/* Tab Content */}
         {activeTab === "bookings" && (
-          <div>
-            <BookingToggle 
-              activeView={bookingView}
-              onViewChange={setBookingView}
-            />
-            
-            <div className="space-y-4">
-              {filteredBookings.length === 0 ? (
-                <Card>
-                  <CardContent className="p-8 text-center">
-                    <p className="text-muted-foreground">
-                      {bookingView === "upcoming" ? "No upcoming rides" : "No past rides"}
-                    </p>
-                  </CardContent>
-                </Card>
-              ) : (
-                filteredBookings.map((booking) => (
-                  <BookingCard 
-                    key={booking.id}
-                    booking={booking}
-                    userType="passenger"
-                     onMessage={() => {
-                       setSelectedBookingForMessaging(booking);
-                       setMessagingOpen(true);
-                     }}
-                    onReview={() => {
-                      setSelectedBookingForReview(booking.id);
-                      setReviewModalOpen(true);
-                    }}
-                    onViewSummary={() => {
-                      setSelectedBookingForSummary(booking);
-                      setSummaryModalOpen(true);
-                    }}
-                    onCancelSuccess={() => {
-                      fetchBookings(); // Refresh bookings after cancellation
-                    }}
-                  />
-                ))
-              )}
-            </div>
-          </div>
+          <OrganizedBookingsList
+            bookings={bookings}
+            userType="passenger"
+            onMessage={(booking) => {
+              setSelectedBookingForMessaging(booking);
+              setMessagingOpen(true);
+            }}
+            onReview={(bookingId) => {
+              setSelectedBookingForReview(bookingId);
+              setReviewModalOpen(true);
+            }}
+            onViewSummary={(booking) => {
+              setSelectedBookingForSummary(booking);
+              setSummaryModalOpen(true);
+            }}
+            onCancelSuccess={() => {
+              fetchBookings(); // Refresh bookings after cancellation
+            }}
+          />
         )}
 
         {activeTab === "messages" && (
@@ -780,8 +761,39 @@ const Dashboard = () => {
                     <User className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground">Profile Settings</h3>
+                    <h3 className="font-semibold text-foreground">Edit Profile</h3>
                     <p className="text-sm text-muted-foreground">Update your personal information</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="cursor-pointer hover:shadow-[var(--shadow-subtle)] transition-shadow" onClick={() => setPreferencesModalOpen(true)}>
+              <CardContent className="p-5">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-blue-500/10 rounded-full">
+                    <Clock className="h-5 w-5 text-blue-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">Ride Preferences</h3>
+                    <p className="text-sm text-muted-foreground">Set your ride preferences for drivers</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="cursor-pointer hover:shadow-[var(--shadow-subtle)] transition-shadow" onClick={() => {
+              setSettingsType("notifications");
+              setSettingsModalOpen(true);
+            }}>
+              <CardContent className="p-5">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-green-500/10 rounded-full">
+                    <MessageCircle className="h-5 w-5 text-green-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">Notification Settings</h3>
+                    <p className="text-sm text-muted-foreground">Manage your notification preferences</p>
                   </div>
                 </div>
               </CardContent>
@@ -878,7 +890,15 @@ const Dashboard = () => {
            onConfirmPayment={handlePaymentConfirmation}
            paymentStatus={selectedBookingForPayment.payment_status || 'pending'}
          />
-       )}
+        )}
+
+        {/* Passenger Preferences Modal */}
+        <PassengerPreferencesModal
+          isOpen={preferencesModalOpen}
+          onClose={() => setPreferencesModalOpen(false)}
+          userProfile={userProfile}
+          onUpdate={fetchBookings}
+        />
      </div>
    );
  };

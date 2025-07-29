@@ -11,9 +11,10 @@ interface BookingCardProps {
   onReview?: () => void;
   onViewSummary?: () => void;
   onCancelSuccess?: () => void;
+  onNavigate?: () => void;
 }
 
-export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSummary, onCancelSuccess }: BookingCardProps) => {
+export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSummary, onCancelSuccess, onNavigate }: BookingCardProps) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "confirmed": return "bg-success/10 text-success border-success/20";
