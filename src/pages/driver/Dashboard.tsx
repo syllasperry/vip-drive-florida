@@ -22,6 +22,7 @@ import StatusTracker, { BookingStatus } from "@/components/StatusTracker";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Car, DollarSign, User, LogOut, Clock, CheckCircle, Calendar, MessageCircle, Edit } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const DriverDashboard = () => {
   const navigate = useNavigate();
@@ -467,7 +468,8 @@ const DriverDashboard = () => {
                 id,
                 full_name,
                 phone,
-                email
+                email,
+                profile_photo_url
               ),
               vehicles:vehicle_id (
                 id,
@@ -487,7 +489,8 @@ const DriverDashboard = () => {
                 id,
                 full_name,
                 phone,
-                email
+                email,
+                profile_photo_url
               ),
               vehicles:vehicle_id (
                 id,
@@ -532,6 +535,7 @@ const DriverDashboard = () => {
             from: booking.pickup_location,
             to: booking.dropoff_location,
             passenger: booking.passengers?.full_name || 'Unknown Passenger',
+            passengers: booking.passengers, // Include full passenger data for avatar
             status: booking.status,
             payment: "$120.00", // TODO: Calculate real price
             paymentMethod: booking.payment_status === 'completed' ? 'Completed' : null,
@@ -541,7 +545,8 @@ const DriverDashboard = () => {
             luggage_count: booking.luggage_count,
             vehicle_type: booking.vehicle_type || 'Vehicle',
             final_price: booking.final_price,
-            passenger_id: booking.passenger_id
+            passenger_id: booking.passenger_id,
+            payment_status: booking.payment_status
           };
         });
 
@@ -814,7 +819,12 @@ const DriverDashboard = () => {
                        <div className="space-y-3 mb-4">
                          <div className="flex items-start gap-3">
                            <div className="flex items-center gap-2">
-                             <User className="h-4 w-4 text-primary" />
+                             <Avatar className="h-8 w-8">
+                               <AvatarImage src={ride.passengers?.profile_photo_url || ""} alt={ride.passenger || 'Passenger'} />
+                               <AvatarFallback>
+                                 <User className="h-4 w-4" />
+                               </AvatarFallback>
+                             </Avatar>
                              <span className="text-sm font-medium text-foreground">{ride.passenger}</span>
                            </div>
                            <div className="ml-auto flex items-center gap-2">
