@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MessagingInterface } from "@/components/MessagingInterface";
+import { MessagesTab } from "@/components/dashboard/MessagesTab";
 import { PriceEditModal } from "@/components/PriceEditModal";
 import { DriverScheduleModal } from "@/components/DriverScheduleModal";
 import { DriverSettingsModal } from "@/components/DriverSettingsModal";
@@ -838,86 +839,16 @@ const DriverDashboard = () => {
           <EarningsSection driverId={userProfile?.id} />
         )}
 
-        {activeTab === "messages" && (
-          <div className="space-y-4">
-            <Card className="cursor-pointer hover:shadow-[var(--shadow-subtle)] transition-shadow"
-                 onClick={async () => {
-                   // For demo purposes, using first ride if available
-                   const firstRide = driverRides[0];
-                   if (firstRide) {
-                     setSelectedBookingForMessaging(firstRide);
-                     // Fetch passenger profile
-                     if (firstRide.passenger_id) {
-                       try {
-                         const { data: passenger, error } = await supabase
-                           .from('passengers')
-                           .select('*')
-                           .eq('id', firstRide.passenger_id)
-                           .maybeSingle();
-                           
-                         if (passenger && !error) {
-                           setPassengerProfile(passenger);
-                         }
-                       } catch (error) {
-                         console.error('Error fetching passenger profile:', error);
-                       }
-                     }
-                     setMessagingOpen(true);
-                   }
-                 }}>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                    <span className="text-sm font-medium text-primary">SJ</span>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-medium text-foreground">Sarah Johnson</h3>
-                    <p className="text-sm text-muted-foreground">Could you please confirm your payment details?</p>
-                  </div>
-                  <div className="text-xs text-muted-foreground">2:30 PM</div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="cursor-pointer hover:shadow-[var(--shadow-subtle)] transition-shadow"
-                 onClick={async () => {
-                   // For demo purposes, using second ride if available
-                   const secondRide = driverRides[1];
-                   if (secondRide) {
-                     setSelectedBookingForMessaging(secondRide);
-                     // Fetch passenger profile
-                     if (secondRide.passenger_id) {
-                       try {
-                         const { data: passenger, error } = await supabase
-                           .from('passengers')
-                           .select('*')
-                           .eq('id', secondRide.passenger_id)
-                           .maybeSingle();
-                           
-                         if (passenger && !error) {
-                           setPassengerProfile(passenger);
-                         }
-                       } catch (error) {
-                         console.error('Error fetching passenger profile:', error);
-                       }
-                     }
-                     setMessagingOpen(true);
-                   }
-                 }}>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                    <span className="text-sm font-medium text-primary">MC</span>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-medium text-foreground">Mike Chen</h3>
-                    <p className="text-sm text-muted-foreground">Hi, I'm ready for pickup!</p>
-                  </div>
-                  <div className="text-xs text-muted-foreground">1:45 PM</div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+        {activeTab === "messages" && userProfile?.id && (
+          <MessagesTab 
+            userType="driver"
+            userId={userProfile.id}
+            onSelectChat={(booking, otherUser) => {
+              setSelectedBookingForMessaging(booking);
+              setPassengerProfile(otherUser);
+              setMessagingOpen(true);
+            }}
+          />
         )}
 
         {activeTab === "settings" && (
