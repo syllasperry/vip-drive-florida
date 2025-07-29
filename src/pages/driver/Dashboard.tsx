@@ -635,7 +635,7 @@ const DriverDashboard = () => {
             passenger: booking.passengers?.full_name || 'Unknown Passenger',
             passengers: booking.passengers, // Include full passenger data for avatar
             status: booking.status,
-            payment: "$120.00", // TODO: Calculate real price
+            payment: booking.final_price ? `$${booking.final_price.toFixed(2)}` : "$120.00",
             paymentMethod: booking.payment_status === 'completed' ? 'Completed' : null,
             countdown: null,
             flight_info: booking.flight_info,
