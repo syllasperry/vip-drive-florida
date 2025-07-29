@@ -67,11 +67,29 @@ const PassengerLogin = () => {
 
     try {
       if (isLogin) {
+        // Clean up any existing session before signing in
+        try {
+          await supabase.auth.signOut({ scope: 'global' });
+        } catch (cleanupError) {
+          console.log('Session cleanup (expected):', cleanupError);
+        }
+
+        // Clear any local storage auth data
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+            localStorage.removeItem(key);
+          }
+        });
+
+        console.log('🔐 Attempting login with:', { email: formData.email, passwordLength: formData.password.length });
+
         // Sign in existing user
         const { data, error } = await supabase.auth.signInWithPassword({
           email: formData.email,
           password: formData.password,
         });
+
+        console.log('🔐 Login response:', { data: data?.user?.email, error: error?.message });
 
         if (error) throw error;
 
