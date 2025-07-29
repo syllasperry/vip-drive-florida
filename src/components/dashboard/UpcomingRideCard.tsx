@@ -1,17 +1,16 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, MapPin, User, Car, MessageCircle, Navigation, Play } from "lucide-react";
+import { Clock, MapPin, User, Car, MessageCircle, Navigation } from "lucide-react";
 
 interface UpcomingRideCardProps {
   ride: any;
   userType: "passenger" | "driver";
   onMessage?: () => void;
-  onStartRide?: () => void;
-  onNavigate?: () => void;
+  onNavigate?: (navApp: string) => void;
 }
 
-export const UpcomingRideCard = ({ ride, userType, onMessage, onStartRide, onNavigate }: UpcomingRideCardProps) => {
+export const UpcomingRideCard = ({ ride, userType, onMessage, onNavigate }: UpcomingRideCardProps) => {
   if (!ride) return null;
 
   const getStatusColor = (status: string) => {
@@ -91,24 +90,38 @@ export const UpcomingRideCard = ({ ride, userType, onMessage, onStartRide, onNav
           </Button>
 
           {userType === "driver" && (
-            <>
+            <div className="flex gap-1">
               <Button
-                onClick={onStartRide}
-                size="sm"
-                className="flex-1 flex items-center gap-2 bg-gradient-to-r from-primary to-primary-glow"
-              >
-                <Play className="h-4 w-4" />
-                Start Ride
-              </Button>
-              <Button
-                onClick={onNavigate}
+                onClick={() => onNavigate?.('google')}
                 variant="outline"
                 size="sm"
-                className="flex items-center gap-2"
+                className="flex-1 flex items-center gap-2"
+                title="Navigate with Google Maps"
               >
                 <Navigation className="h-4 w-4" />
+                Google
               </Button>
-            </>
+              <Button
+                onClick={() => onNavigate?.('apple')}
+                variant="outline"
+                size="sm"
+                className="flex-1 flex items-center gap-2"
+                title="Navigate with Apple Maps"
+              >
+                <Navigation className="h-4 w-4" />
+                Apple
+              </Button>
+              <Button
+                onClick={() => onNavigate?.('waze')}
+                variant="outline"
+                size="sm"
+                className="flex-1 flex items-center gap-2"
+                title="Navigate with Waze"
+              >
+                <Navigation className="h-4 w-4" />
+                Waze
+              </Button>
+            </div>
           )}
         </div>
       </CardContent>

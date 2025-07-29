@@ -20,7 +20,10 @@ import { NotificationManager } from "@/components/NotificationManager";
 import { ChatNotificationBadge } from "@/components/ChatNotificationBadge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { User, LogOut } from "lucide-react";
+import { User, LogOut, Clock, MessageCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -418,7 +421,8 @@ const Dashboard = () => {
             id,
             full_name,
             phone,
-            email
+            email,
+            profile_photo_url
           ),
           vehicles:vehicle_id (
             id,
@@ -457,13 +461,15 @@ const Dashboard = () => {
           vehicleModel: booking.vehicles?.type || "Tesla Model Y",
           status: booking.status,
           driver: booking.drivers?.full_name || null,
+          drivers: booking.drivers, // Include full driver data for avatar
           paymentMethod: booking.payment_status === 'completed' ? 'Paid' : 'Pending',
           countdown: null,
           flight_info: booking.flight_info,
           passenger_count: booking.passenger_count,
           luggage_count: booking.luggage_count,
           final_price: booking.final_price,
-          payment_expires_at: booking.payment_expires_at
+          payment_expires_at: booking.payment_expires_at,
+          payment_status: booking.payment_status
         };
       });
 
@@ -599,6 +605,96 @@ const Dashboard = () => {
             expiresAt={new Date(pendingFareBooking.payment_expires_at)}
           />
         )}
+
+        {/* Payment Status Cards for confirmed bookings */}
+        {bookingView === "upcoming" && 
+          bookings
+            .filter(booking => 
+              booking.status === 'payment_confirmed' || 
+              booking.status === 'ready_to_go' ||
+              (booking.status === 'accepted' && booking.final_price)
+            )
+            .map((booking) => (
+              <Card key={booking.id} className="bg-gradient-to-br from-success/5 to-success-glow/5 border-success/20 shadow-[var(--shadow-luxury)] mb-4">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-primary/10 rounded-full">
+                        <Clock className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">
+                          {booking.date} at {booking.time}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge className={
+                      booking.status === 'ready_to_go' 
+                        ? "bg-success/10 text-success border-success/20"
+                        : "bg-primary/10 text-primary border-primary/20"
+                    }>
+                      {booking.status === 'ready_to_go' ? 'Ready to Go!' : 'Payment Confirmed'}
+                    </Badge>
+                  </div>
+
+                  <div className="flex items-center gap-3 mb-4">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={booking.drivers?.profile_photo_url || ""} alt={booking.driver || 'Driver'} />
+                      <AvatarFallback>
+                        <User className="h-5 w-5" />
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">
+                        Driver: {booking.driver || 'Unknown Driver'}
+                      </p>
+                      <p className="text-xl font-bold text-foreground">${booking.final_price?.toFixed(2)}</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-success/10 border border-success/20 rounded-lg p-4 mb-4">
+                    <h4 className="text-success font-semibold mb-2">Payment Status</h4>
+                    <p className="text-sm text-success">
+                      {booking.status === 'ready_to_go' 
+                        ? "Payment confirmed by both parties."
+                        : "Payment confirmation in progress."
+                      }
+                    </p>
+                  </div>
+
+                  <div className="space-y-2 mb-4 text-sm text-muted-foreground">
+                    <p><strong>From:</strong> {booking.from}</p>
+                    <p><strong>To:</strong> {booking.to}</p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    {booking.status !== 'ready_to_go' && (
+                      <Button
+                        onClick={() => {
+                          setSelectedBookingForPayment(booking);
+                          setPaymentModalOpen(true);
+                        }}
+                        className="flex-1 bg-gradient-to-r from-success to-success-glow text-white"
+                      >
+                        View Payment
+                      </Button>
+                    )}
+                    <Button
+                      onClick={() => {
+                        setSelectedBookingForMessaging(booking);
+                        setMessagingOpen(true);
+                      }}
+                      variant="outline"
+                      className="flex-1 flex items-center gap-2"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      Message
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+        }
 
         {/* Notification Manager */}
         {userProfile?.id && (
