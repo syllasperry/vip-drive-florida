@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, CreditCard, DollarSign, Clock, AlertCircle, Smartphone } from "lucide-react";
+import { CheckCircle, CreditCard, DollarSign, Clock, AlertCircle } from "lucide-react";
 
 interface PaymentConfirmationModalProps {
   isOpen: boolean;
@@ -13,16 +13,7 @@ interface PaymentConfirmationModalProps {
     driver: {
       full_name: string;
       payment_methods_accepted?: string[];
-      payment_methods_credit_cards?: string[];
-      payment_methods_digital?: string[];
       cancellation_policy?: string;
-      preferred_payment_method?: string;
-      payment_instructions?: string;
-      zelle_info?: string;
-      venmo_info?: string;
-      apple_pay_info?: string;
-      google_pay_info?: string;
-      payment_link_info?: string;
     };
   };
   userType: 'passenger' | 'driver';
@@ -78,101 +69,19 @@ export const PaymentConfirmationModal = ({
             </CardContent>
           </Card>
 
-          {/* Payment Information */}
-          {isPassenger && (
+          {/* Driver Payment Info */}
+          {isPassenger && bookingData.driver.payment_methods_accepted && (
             <Card>
-              <CardContent className="p-4 space-y-4">
-                <h4 className="font-semibold flex items-center gap-2 mb-3">
+              <CardContent className="p-4 space-y-3">
+                <h4 className="font-semibold flex items-center gap-2">
                   <CreditCard className="h-4 w-4" />
-                  💳 Payment Information
+                  Payment Methods Accepted
                 </h4>
-                
-                <p className="text-sm text-muted-foreground mb-4">
-                  Payment is made directly to the driver. We accept:
-                </p>
-
-                {/* Credit Cards */}
-                {bookingData.driver.payment_methods_credit_cards && bookingData.driver.payment_methods_credit_cards.length > 0 && (
-                  <div className="mb-4">
-                    <h5 className="font-medium text-sm mb-2 flex items-center gap-1">
-                      <CreditCard className="h-3 w-3" />
-                      Credit Cards
-                    </h5>
-                    <div className="grid grid-cols-2 gap-1 text-sm text-muted-foreground">
-                      {bookingData.driver.payment_methods_credit_cards.map((card, index) => (
-                        <div key={index}>• {card}</div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Digital Payments */}
-                {bookingData.driver.payment_methods_digital && bookingData.driver.payment_methods_digital.length > 0 && (
-                  <div className="mb-4">
-                    <h5 className="font-medium text-sm mb-2 flex items-center gap-1">
-                      <Smartphone className="h-3 w-3" />
-                      Digital Payments
-                    </h5>
-                    <div className="grid grid-cols-2 gap-1 text-sm text-muted-foreground">
-                      {bookingData.driver.payment_methods_digital.map((payment, index) => (
-                        <div key={index}>• {payment}</div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Preferred Payment Method */}
-                {bookingData.driver.preferred_payment_method && (
-                  <div className="bg-primary/5 p-3 rounded-lg">
-                    <div className="font-medium text-primary mb-2">
-                      Preferred: {bookingData.driver.preferred_payment_method}
-                    </div>
-                    {bookingData.driver.payment_instructions && (
-                      <div className="text-sm whitespace-pre-line">
-                        {bookingData.driver.payment_instructions}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Specific Payment Details */}
-                <div className="space-y-2 border-t pt-3">
-                  {bookingData.driver.zelle_info && (
-                    <div className="text-sm">
-                      <span className="font-medium">Zelle:</span> {bookingData.driver.zelle_info}
-                    </div>
-                  )}
-                  {bookingData.driver.venmo_info && (
-                    <div className="text-sm">
-                      <span className="font-medium">Venmo:</span> {bookingData.driver.venmo_info}
-                    </div>
-                  )}
-                  {bookingData.driver.apple_pay_info && (
-                    <div className="text-sm">
-                      <span className="font-medium">Apple Pay:</span> {bookingData.driver.apple_pay_info}
-                    </div>
-                  )}
-                  {bookingData.driver.google_pay_info && (
-                    <div className="text-sm">
-                      <span className="font-medium">Google Pay:</span> {bookingData.driver.google_pay_info}
-                    </div>
-                  )}
-                  {bookingData.driver.payment_link_info && (
-                    <div className="text-sm">
-                      <span className="font-medium">Payment Link:</span>{" "}
-                      <a 
-                        href={bookingData.driver.payment_link_info} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline"
-                      >
-                        Click here to pay
-                      </a>
-                    </div>
-                  )}
+                <div className="flex flex-wrap gap-2">
+                  {bookingData.driver.payment_methods_accepted.map((method, index) => (
+                    <Badge key={index} variant="outline">{method}</Badge>
+                  ))}
                 </div>
-
-                {/* Cancellation Policy */}
                 {bookingData.driver.cancellation_policy && (
                   <div className="pt-2 border-t">
                     <h5 className="font-medium text-sm mb-1">Cancellation Policy:</h5>

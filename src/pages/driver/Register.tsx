@@ -22,16 +22,7 @@ const DriverRegister = () => {
     brand: "",
     model: "",
     year: "",
-    mileage: "",
-    creditCards: [] as string[],
-    digitalPayments: [] as string[],
-    preferredPayment: "",
-    paymentInstructions: "",
-    zelleInfo: "",
-    venmoInfo: "",
-    applePayInfo: "",
-    googlePayInfo: "",
-    paymentLinkInfo: ""
+    mileage: ""
   });
   const { toast } = useToast();
 
@@ -66,18 +57,6 @@ const DriverRegister = () => {
             phone: formData.phone,
             license_plate: formData.licensePlate,
             car_type: formData.carType,
-            car_make: formData.brand,
-            car_model: formData.model,
-            car_year: formData.year,
-            payment_methods_credit_cards: formData.creditCards,
-            payment_methods_digital: formData.digitalPayments,
-            preferred_payment_method: formData.preferredPayment,
-            payment_instructions: formData.paymentInstructions,
-            zelle_info: formData.zelleInfo,
-            venmo_info: formData.venmoInfo,
-            apple_pay_info: formData.applePayInfo,
-            google_pay_info: formData.googlePayInfo,
-            payment_link_info: formData.paymentLinkInfo,
             profile_photo_url: null
           });
 

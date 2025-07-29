@@ -7,7 +7,6 @@ import { MessagingInterface } from "@/components/MessagingInterface";
 import { PriceEditModal } from "@/components/PriceEditModal";
 import { DriverScheduleModal } from "@/components/DriverScheduleModal";
 import { DriverSettingsModal } from "@/components/DriverSettingsModal";
-import { DriverPaymentMethodsModal } from "@/components/DriverPaymentMethodsModal";
 import { DriverPreferencesModal } from "@/components/DriverPreferencesModal";
 import { PaymentConfirmationModal } from "@/components/PaymentConfirmationModal";
 import { DriverPaymentSettingsModal } from "@/components/DriverPaymentSettingsModal";
@@ -16,16 +15,13 @@ import { ChatNotificationBadge } from "@/components/ChatNotificationBadge";
 import { BottomNavigation } from "@/components/dashboard/BottomNavigation";
 import { ProfileHeader } from "@/components/dashboard/ProfileHeader";
 import { UpcomingRideCard } from "@/components/dashboard/UpcomingRideCard";
-import { EarningsSection } from "@/components/dashboard/EarningsSection";
 import { BookingToggle } from "@/components/dashboard/BookingToggle";
 import { BookingCard } from "@/components/dashboard/BookingCard";
-import OrganizedBookingsList from "@/components/dashboard/OrganizedBookingsList";
 import PendingRequestAlert from "@/components/dashboard/PendingRequestAlert";
 import StatusTracker, { BookingStatus } from "@/components/StatusTracker";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Car, DollarSign, User, LogOut, Clock, CheckCircle, Calendar, MessageCircle, Edit, CreditCard, Settings } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Car, DollarSign, User, LogOut, Clock, CheckCircle, Calendar, MessageCircle, Edit } from "lucide-react";
 
 const DriverDashboard = () => {
   const navigate = useNavigate();
@@ -369,7 +365,7 @@ const DriverDashboard = () => {
         .from('bookings')
         .update({ 
           final_price: newPrice,
-          status: 'price_proposed',
+          status: 'awaiting_driver_confirmation',
           payment_expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString() // 1 hour from now
         })
         .eq('id', bookingId);
@@ -388,14 +384,14 @@ const DriverDashboard = () => {
       setDriverRides(prevRides => 
         prevRides.map(ride => 
           ride.id === bookingId 
-            ? { ...ride, payment: `$${newPrice.toFixed(2)}`, status: "price_proposed", final_price: newPrice }
+            ? { ...ride, payment: `$${newPrice.toFixed(2)}`, status: "awaiting_driver_confirmation", final_price: newPrice }
             : ride
         )
       );
 
       toast({
         title: "Price Updated!",
-        description: "Price proposal sent to passenger. Awaiting their confirmation.",
+        description: "Click Accept to confirm the price change and notify the passenger.",
       });
     } catch (error) {
       console.error('Error updating price:', error);
@@ -453,89 +449,6 @@ const DriverDashboard = () => {
   };
 
   const [driverRides, setDriverRides] = useState<any[]>([]);
-  const [driverConversations, setDriverConversations] = useState<any[]>([]);
-
-  // Fetch real conversations for the driver
-  useEffect(() => {
-    const fetchDriverConversations = async () => {
-      if (!userProfile?.id) return;
-
-      try {
-        // Get all bookings for this driver that have messages
-        const { data: conversations, error } = await supabase
-          .from('messages')
-          .select(`
-            booking_id,
-            created_at,
-            message_text,
-            bookings:booking_id (
-              id,
-              pickup_location,
-              dropoff_location,
-              pickup_time,
-              passenger_id,
-              passengers:passenger_id (
-                id,
-                full_name,
-                profile_photo_url,
-                phone,
-                email
-              )
-            )
-          `)
-          .eq('bookings.driver_id', userProfile.id)
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          console.error('Error fetching conversations:', error);
-          return;
-        }
-
-        // Group messages by booking_id and get the latest message for each conversation
-        const groupedConversations = conversations.reduce((acc: any, message: any) => {
-          const bookingId = message.booking_id;
-          if (!acc[bookingId] || new Date(message.created_at) > new Date(acc[bookingId].lastMessage.created_at)) {
-            acc[bookingId] = {
-              booking_id: bookingId,
-              booking: message.bookings,
-              passenger: message.bookings?.passengers,
-              lastMessage: {
-                message_text: message.message_text,
-                created_at: message.created_at
-              }
-            };
-          }
-          return acc;
-        }, {});
-
-        setDriverConversations(Object.values(groupedConversations));
-      } catch (error) {
-        console.error('Error fetching driver conversations:', error);
-      }
-    };
-
-    fetchDriverConversations();
-
-    // Set up real-time subscription for new messages
-    const channel = supabase
-      .channel('driver-messages')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages'
-        },
-        () => {
-          fetchDriverConversations();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [userProfile?.id]);
 
   // Fetch real bookings for the driver
   useEffect(() => {
@@ -550,18 +463,11 @@ const DriverDashboard = () => {
             .from('bookings')
             .select(`
               *,
-               passengers:passenger_id!inner (
+              passengers:passenger_id (
                 id,
                 full_name,
                 phone,
-                email,
-                profile_photo_url,
-                preferred_temperature,
-                music_preference,
-                music_playlist_link,
-                interaction_preference,
-                trip_purpose,
-                additional_notes
+                email
               ),
               vehicles:vehicle_id (
                 id,
@@ -572,32 +478,26 @@ const DriverDashboard = () => {
             .eq('driver_id', userProfile.id)
             .order('pickup_time', { ascending: true }),
           
-          // Get pending bookings that match this driver's vehicle type OR are assigned to this driver
+          // Get pending bookings that match this driver's vehicle type
           supabase
             .from('bookings')
-             .select(`
-               *,
-                passengers:passenger_id (
-                 id,
-                 full_name,
-                 phone,
-                 email,
-                 profile_photo_url,
-                 preferred_temperature,
-                 music_preference,
-                 music_playlist_link,
-                 interaction_preference,
-                 trip_purpose,
-                 additional_notes
-               ),
-               vehicles:vehicle_id (
-                 id,
-                 type,
-                 description
-               )
-             `)
+            .select(`
+              *,
+              passengers:passenger_id (
+                id,
+                full_name,
+                phone,
+                email
+              ),
+              vehicles:vehicle_id (
+                id,
+                type,
+                description
+              )
+            `)
             .eq('status', 'pending')
-            .or(`and(driver_id.is.null,vehicle_type.eq.${userProfile.car_make} ${userProfile.car_model}),driver_id.eq.${userProfile.id}`)
+            .is('driver_id', null)
+            .or(`vehicle_type.ilike.%${userProfile.car_make} ${userProfile.car_model}%,vehicle_type.is.null`)
             .order('pickup_time', { ascending: true })
         ]);
 
@@ -608,9 +508,6 @@ const DriverDashboard = () => {
 
         if (pendingBookings.error) {
           console.error('Error fetching pending bookings:', pendingBookings.error);
-        } else {
-          console.log('✅ Pending bookings found:', pendingBookings.data?.length || 0);
-          console.log('📋 Pending bookings data:', pendingBookings.data);
         }
 
         // Combine and deduplicate bookings
@@ -635,9 +532,8 @@ const DriverDashboard = () => {
             from: booking.pickup_location,
             to: booking.dropoff_location,
             passenger: booking.passengers?.full_name || 'Unknown Passenger',
-            passengers: booking.passengers, // Include full passenger data for avatar
             status: booking.status,
-            payment: booking.final_price ? `$${booking.final_price.toFixed(2)}` : "$120.00",
+            payment: "$120.00", // TODO: Calculate real price
             paymentMethod: booking.payment_status === 'completed' ? 'Completed' : null,
             countdown: null,
             flight_info: booking.flight_info,
@@ -645,8 +541,7 @@ const DriverDashboard = () => {
             luggage_count: booking.luggage_count,
             vehicle_type: booking.vehicle_type || 'Vehicle',
             final_price: booking.final_price,
-            passenger_id: booking.passenger_id,
-            payment_status: booking.payment_status
+            passenger_id: booking.passenger_id
           };
         });
 
@@ -727,13 +622,7 @@ const DriverDashboard = () => {
   const nextRide = driverRides.find(ride => {
     const rideDate = new Date(ride.date);
     const today = new Date();
-    return rideDate >= today && (
-      ride.status === "confirmed" || 
-      ride.status === "payment_confirmed" || 
-      ride.status === "pending" ||
-      ride.status === "price_proposed" ||
-      ride.status === "accepted"
-    );
+    return rideDate >= today && (ride.status === "confirmed" || ride.status === "payment_confirmed");
   });
 
   const getStatusColor = (status: string) => {
@@ -743,8 +632,6 @@ const DriverDashboard = () => {
       case "waiting_payment": return "bg-orange-100/80 text-orange-800 border-orange-200";
       case "payment_confirmed": return "bg-success/10 text-success border-success/20";
       case "completed": return "bg-primary/10 text-primary border-primary/20";
-      case "price_proposed": return "bg-blue-100/80 text-blue-800 border-blue-200";
-      case "accepted": return "bg-green-100/80 text-green-800 border-green-200";
       default: return "bg-muted/10 text-muted-foreground border-border";
     }
   };
@@ -756,8 +643,6 @@ const DriverDashboard = () => {
       case "waiting_payment": return "Awaiting Payment";
       case "payment_confirmed": return "Payment Confirmed";
       case "completed": return "Completed";
-      case "price_proposed": return "Awaiting Passenger Response";
-      case "accepted": return "Accepted";
       default: return status;
     }
   };
@@ -832,31 +717,16 @@ const DriverDashboard = () => {
               }
               setMessagingOpen(true);
             }}
-            onNavigate={(navApp: string) => {
-              // Open navigation with pickup and dropoff locations
-              const pickup = encodeURIComponent(nextRide.from);
-              const dropoff = encodeURIComponent(nextRide.to);
-              
-              let url = '';
-              switch (navApp) {
-                case 'google':
-                  url = `https://www.google.com/maps/dir/${pickup}/${dropoff}`;
-                  break;
-                case 'apple':
-                  url = `http://maps.apple.com/?saddr=${pickup}&daddr=${dropoff}&dirflg=d`;
-                  break;
-                case 'waze':
-                  url = `https://waze.com/ul?ll=${pickup}&navigate=yes&to=ll.${dropoff}`;
-                  break;
-                default:
-                  url = `https://www.google.com/maps/dir/${pickup}/${dropoff}`;
-              }
-              
-              window.open(url, '_blank');
-              
+            onStartRide={() => {
               toast({
-                title: `Opening ${navApp === 'apple' ? 'Apple Maps' : navApp === 'waze' ? 'Waze' : 'Google Maps'}`,
-                description: "Navigation opened in new tab.",
+                title: "Starting ride...",
+                description: "Navigation will begin shortly.",
+              });
+            }}
+            onNavigate={() => {
+              toast({
+                title: "Opening navigation",
+                description: "Redirecting to maps...",
               });
             }}
           />
@@ -892,107 +762,315 @@ const DriverDashboard = () => {
 
         {/* Tab Content */}
         {activeTab === "rides" && (
-          <OrganizedBookingsList
-            bookings={driverRides}
-            userType="driver"
-            onMessage={(booking) => {
-              setSelectedBookingForMessaging(booking);
-              // Fetch passenger profile
-              if (booking.passenger_id) {
-                supabase
-                  .from('passengers')
-                  .select('*')
-                  .eq('id', booking.passenger_id)
-                  .maybeSingle()
-                  .then(({ data: passenger, error }) => {
-                    if (passenger && !error) {
-                      setPassengerProfile(passenger);
-                    }
-                  });
-              }
-              setMessagingOpen(true);
-            }}
-            onNavigate={(booking) => {
-              // Handle navigation with external apps
-              const pickup = encodeURIComponent(booking.from);
-              const dropoff = encodeURIComponent(booking.to);
-              
-              // For now, open Google Maps. Could be enhanced to show options
-              const url = `https://www.google.com/maps/dir/${pickup}/${dropoff}`;
-              window.open(url, '_blank');
-              
-              toast({
-                title: "Opening Google Maps",
-                description: "Navigation opened in new tab.",
-              });
-            }}
-            onFareUpdate={handlePriceUpdate}
-          />
+          <div>
+            <BookingToggle 
+              activeView={rideView}
+              onViewChange={setRideView}
+            />
+            
+            <div className="space-y-4">
+              {filteredRides.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <p className="text-muted-foreground">
+                      {rideView === "upcoming" ? "No upcoming rides" : "No past rides"}
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                filteredRides.map((ride) => (
+                  <Card key={ride.id} className={`hover:shadow-[var(--shadow-subtle)] transition-all duration-300 border-border/50 ${
+                    ride.status === "pending" ? "ring-2 ring-warning/50 animate-pulse" : ""
+                  }`}>
+                    <CardContent className="p-5">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-primary/10 rounded-full">
+                            <Clock className="h-4 w-4 text-primary" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">
+                              {ride.date} at {ride.time}
+                            </p>
+                            {ride.countdown && (
+                              <p className="text-xs text-orange-600 font-medium">
+                                {ride.countdown}h remaining
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {ride.status === "pending" && (
+                            <Badge className="bg-warning/20 text-warning border-warning/30 animate-pulse">
+                              🆕 New Request
+                            </Badge>
+                          )}
+                          <Badge className={getStatusColor(ride.status)}>
+                            {getStatusText(ride.status)}
+                          </Badge>
+                        </div>
+                      </div>
+
+                       <div className="space-y-3 mb-4">
+                         <div className="flex items-start gap-3">
+                           <div className="flex items-center gap-2">
+                             <User className="h-4 w-4 text-primary" />
+                             <span className="text-sm font-medium text-foreground">{ride.passenger}</span>
+                           </div>
+                           <div className="ml-auto flex items-center gap-2">
+                             <p className="text-lg font-semibold text-primary">
+                               {ride.final_price ? `$${ride.final_price.toFixed(2)}` : ride.payment}
+                             </p>
+                             {(ride.status === "pending" || ride.status === "accepted") && (
+                               <Button
+                                 variant="ghost"
+                                 size="sm"
+                                 onClick={() => setPriceEditModal({ isOpen: true, booking: ride })}
+                                 className="h-6 w-6 p-0 text-muted-foreground hover:text-primary"
+                                 title="Click here if you want to customize the ride price"
+                               >
+                                 <Edit className="h-3 w-3" />
+                               </Button>
+                             )}
+                           </div>
+                         </div>
+                       </div>
+
+                         {/* Payment Status Indicators for confirmed payments */}
+                         {(ride.status === "payment_confirmed" || ride.payment_status === "passenger_confirmed" || ride.payment_status === "driver_confirmed" || ride.payment_status === "both_confirmed") && (
+                           <div className="p-3 bg-green-50/50 rounded-lg border border-green-200/50 mt-3">
+                             <div className="flex items-center justify-between">
+                               <div>
+                                 <h4 className="font-semibold text-green-800 mb-1">Payment Status</h4>
+                                 <p className="text-sm text-green-700">
+                                   {ride.payment_status === 'both_confirmed' 
+                                     ? 'Both parties confirmed payment - Ready to go!' 
+                                     : ride.payment_status === 'passenger_confirmed'
+                                     ? 'Passenger confirmed payment. Please confirm receipt.'
+                                     : ride.payment_status === 'driver_confirmed'
+                                     ? 'You confirmed payment. Waiting for passenger.'
+                                     : 'Payment confirmation in progress.'
+                                   }
+                                 </p>
+                               </div>
+                               {ride.payment_status !== 'both_confirmed' && (
+                                 <Button
+                                   size="sm"
+                                   onClick={() => {
+                                     setSelectedBookingForPayment(ride);
+                                     setPaymentModalOpen(true);
+                                   }}
+                                   className="bg-green-600 hover:bg-green-700 text-white"
+                                 >
+                                   {ride.payment_status === 'passenger_confirmed' ? 'Confirm Receipt' : 'View Payment'}
+                                 </Button>
+                               )}
+                             </div>
+                           </div>
+                          )}
+
+                        <div className="text-sm text-foreground space-y-1">
+                          <p><span className="text-muted-foreground">From:</span> {ride.from}</p>
+                          <p><span className="text-muted-foreground">To:</span> {ride.to}</p>
+                          {ride.paymentMethod && (
+                            <p><span className="text-muted-foreground">Payment:</span> {ride.paymentMethod}</p>
+                          )}
+                        </div>
+
+                      {ride.status === "pending" && (
+                        <div className="flex gap-2">
+                          <Button 
+                            size="sm" 
+                            onClick={() => handleAcceptRide(ride.id)}
+                            className="flex-1 bg-gradient-to-r from-primary to-primary-glow"
+                          >
+                            Accept
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleDeclineRide(ride.id)}
+                          >
+                            Decline
+                          </Button>
+                        </div>
+                      )}
+
+                       {ride.status === "price_proposed" && (
+                         <div className="p-3 bg-blue-50/50 rounded-lg border border-blue-200/50">
+                           <p className="text-sm text-blue-800 mb-2">
+                             Price proposal sent to passenger. Waiting for their response.
+                           </p>
+                         </div>
+                       )}
+
+                      {ride.status === "awaiting_driver_confirmation" && (
+                        <div className="p-3 bg-warning/5 rounded-lg border border-warning/20 mt-3">
+                          <p className="text-sm text-foreground mb-2">
+                            Price updated to ${ride.final_price?.toFixed(2)}. Click Accept to confirm and notify the passenger.
+                          </p>
+                          <Button 
+                            size="sm" 
+                            className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary-glow"
+                            onClick={() => handleConfirmPrice(ride.id)}
+                          >
+                            <CheckCircle className="h-3 w-3" />
+                            <span>Accept Price Change</span>
+                          </Button>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2 mt-4">
+                        <Button
+                          onClick={async () => {
+                            setSelectedBookingForMessaging(ride);
+                            // Fetch passenger profile using the correct field from the booking
+                            try {
+                              const { data: booking, error: bookingError } = await supabase
+                                .from('bookings')
+                                .select(`
+                                  *,
+                                  passengers:passenger_id (
+                                    id,
+                                    full_name,
+                                    profile_photo_url
+                                  )
+                                `)
+                                .eq('id', ride.id)
+                                .single();
+                                
+                              if (booking && !bookingError && booking.passengers) {
+                                setPassengerProfile(booking.passengers);
+                              }
+                            } catch (error) {
+                              console.error('Error fetching passenger profile:', error);
+                            }
+                            setMessagingOpen(true);
+                          }}
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 flex items-center gap-2"
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                          Message
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </div>
         )}
 
         {activeTab === "earnings" && (
-          <EarningsSection driverId={userProfile?.id} />
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 gap-4">
+              <Card className="bg-gradient-to-br from-primary/5 to-primary-glow/5 border-primary/20">
+                <CardContent className="p-6">
+                  <h3 className="text-sm text-muted-foreground mb-2">Today's Earnings</h3>
+                  <p className="text-3xl font-bold text-primary">$180.00</p>
+                  <p className="text-xs text-muted-foreground mt-1">+15% from yesterday</p>
+                </CardContent>
+              </Card>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <Card>
+                  <CardContent className="p-4">
+                    <h3 className="text-sm text-muted-foreground">This Week</h3>
+                    <p className="text-2xl font-bold text-foreground">$950.00</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <h3 className="text-sm text-muted-foreground">This Month</h3>
+                    <p className="text-2xl font-bold text-foreground">$3,750.00</p>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
         )}
 
         {activeTab === "messages" && (
           <div className="space-y-4">
-            {driverConversations.length === 0 ? (
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                  <h3 className="font-medium text-foreground mb-1">No Messages Yet</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Your conversations with passengers will appear here
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              driverConversations.map((conversation) => (
-                <Card 
-                  key={conversation.booking_id} 
-                  className="cursor-pointer hover:shadow-[var(--shadow-subtle)] transition-shadow"
-                  onClick={() => {
-                    setSelectedBookingForMessaging(conversation.booking);
-                    setPassengerProfile(conversation.passenger);
-                    setMessagingOpen(true);
-                  }}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={conversation.passenger?.profile_photo_url} />
-                        <AvatarFallback>
-                          {conversation.passenger?.full_name?.split(' ').map(n => n[0]).join('') || 'P'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-foreground truncate">
-                          {conversation.passenger?.full_name || 'Unknown Passenger'}
-                        </h3>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {conversation.lastMessage?.message_text || 'No messages yet'}
-                        </p>
-                      </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <div className="text-xs text-muted-foreground">
-                          {conversation.lastMessage?.created_at ? 
-                            new Date(conversation.lastMessage.created_at).toLocaleTimeString('en-US', { 
-                              hour: 'numeric', 
-                              minute: '2-digit' 
-                            }) : ''
-                          }
-                        </div>
-                        <ChatNotificationBadge 
-                          bookingId={conversation.booking_id}
-                          userId={userProfile?.id || ''}
-                          className="text-xs"
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
+            <Card className="cursor-pointer hover:shadow-[var(--shadow-subtle)] transition-shadow"
+                 onClick={async () => {
+                   // For demo purposes, using first ride if available
+                   const firstRide = driverRides[0];
+                   if (firstRide) {
+                     setSelectedBookingForMessaging(firstRide);
+                     // Fetch passenger profile
+                     if (firstRide.passenger_id) {
+                       try {
+                         const { data: passenger, error } = await supabase
+                           .from('passengers')
+                           .select('*')
+                           .eq('id', firstRide.passenger_id)
+                           .maybeSingle();
+                           
+                         if (passenger && !error) {
+                           setPassengerProfile(passenger);
+                         }
+                       } catch (error) {
+                         console.error('Error fetching passenger profile:', error);
+                       }
+                     }
+                     setMessagingOpen(true);
+                   }
+                 }}>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                    <span className="text-sm font-medium text-primary">SJ</span>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium text-foreground">Sarah Johnson</h3>
+                    <p className="text-sm text-muted-foreground">Could you please confirm your payment details?</p>
+                  </div>
+                  <div className="text-xs text-muted-foreground">2:30 PM</div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="cursor-pointer hover:shadow-[var(--shadow-subtle)] transition-shadow"
+                 onClick={async () => {
+                   // For demo purposes, using second ride if available
+                   const secondRide = driverRides[1];
+                   if (secondRide) {
+                     setSelectedBookingForMessaging(secondRide);
+                     // Fetch passenger profile
+                     if (secondRide.passenger_id) {
+                       try {
+                         const { data: passenger, error } = await supabase
+                           .from('passengers')
+                           .select('*')
+                           .eq('id', secondRide.passenger_id)
+                           .maybeSingle();
+                           
+                         if (passenger && !error) {
+                           setPassengerProfile(passenger);
+                         }
+                       } catch (error) {
+                         console.error('Error fetching passenger profile:', error);
+                       }
+                     }
+                     setMessagingOpen(true);
+                   }
+                 }}>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                    <span className="text-sm font-medium text-primary">MC</span>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium text-foreground">Mike Chen</h3>
+                    <p className="text-sm text-muted-foreground">Hi, I'm ready for pickup!</p>
+                  </div>
+                  <div className="text-xs text-muted-foreground">1:45 PM</div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
 
@@ -1152,9 +1230,7 @@ const DriverDashboard = () => {
         driverId={userProfile?.id || ''}
         currentData={{
           payment_methods_accepted: userProfile?.payment_methods_accepted,
-          cancellation_policy: userProfile?.cancellation_policy,
-          preferred_payment_method: userProfile?.preferred_payment_method,
-          payment_instructions: userProfile?.payment_instructions
+          cancellation_policy: userProfile?.cancellation_policy
         }}
         onUpdate={() => {
           // Refresh driver profile after update

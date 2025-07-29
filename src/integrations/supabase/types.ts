@@ -152,7 +152,6 @@ export type Database = {
       }
       drivers: {
         Row: {
-          apple_pay_info: string | null
           cancellation_policy: string | null
           car_color: string | null
           car_make: string | null
@@ -162,22 +161,13 @@ export type Database = {
           created_at: string
           email: string
           full_name: string
-          google_pay_info: string | null
           id: string
           license_plate: string | null
-          payment_instructions: string | null
-          payment_link_info: string | null
           payment_methods_accepted: string[] | null
-          payment_methods_credit_cards: string[] | null
-          payment_methods_digital: string[] | null
           phone: string | null
-          preferred_payment_method: string | null
           profile_photo_url: string | null
-          venmo_info: string | null
-          zelle_info: string | null
         }
         Insert: {
-          apple_pay_info?: string | null
           cancellation_policy?: string | null
           car_color?: string | null
           car_make?: string | null
@@ -187,22 +177,13 @@ export type Database = {
           created_at?: string
           email: string
           full_name: string
-          google_pay_info?: string | null
           id?: string
           license_plate?: string | null
-          payment_instructions?: string | null
-          payment_link_info?: string | null
           payment_methods_accepted?: string[] | null
-          payment_methods_credit_cards?: string[] | null
-          payment_methods_digital?: string[] | null
           phone?: string | null
-          preferred_payment_method?: string | null
           profile_photo_url?: string | null
-          venmo_info?: string | null
-          zelle_info?: string | null
         }
         Update: {
-          apple_pay_info?: string | null
           cancellation_policy?: string | null
           car_color?: string | null
           car_make?: string | null
@@ -212,19 +193,11 @@ export type Database = {
           created_at?: string
           email?: string
           full_name?: string
-          google_pay_info?: string | null
           id?: string
           license_plate?: string | null
-          payment_instructions?: string | null
-          payment_link_info?: string | null
           payment_methods_accepted?: string[] | null
-          payment_methods_credit_cards?: string[] | null
-          payment_methods_digital?: string[] | null
           phone?: string | null
-          preferred_payment_method?: string | null
           profile_photo_url?: string | null
-          venmo_info?: string | null
-          zelle_info?: string | null
         }
         Relationships: []
       }
@@ -290,12 +263,9 @@ export type Database = {
       }
       notification_preferences: {
         Row: {
-          booking_updates_enabled: boolean | null
           created_at: string | null
-          driver_messages_enabled: boolean | null
           email_enabled: boolean | null
           id: string
-          promotions_enabled: boolean | null
           push_enabled: boolean | null
           sound_enabled: boolean | null
           updated_at: string | null
@@ -303,12 +273,9 @@ export type Database = {
           user_type: string
         }
         Insert: {
-          booking_updates_enabled?: boolean | null
           created_at?: string | null
-          driver_messages_enabled?: boolean | null
           email_enabled?: boolean | null
           id?: string
-          promotions_enabled?: boolean | null
           push_enabled?: boolean | null
           sound_enabled?: boolean | null
           updated_at?: string | null
@@ -316,12 +283,9 @@ export type Database = {
           user_type: string
         }
         Update: {
-          booking_updates_enabled?: boolean | null
           created_at?: string | null
-          driver_messages_enabled?: boolean | null
           email_enabled?: boolean | null
           id?: string
-          promotions_enabled?: boolean | null
           push_enabled?: boolean | null
           sound_enabled?: boolean | null
           updated_at?: string | null
@@ -332,46 +296,28 @@ export type Database = {
       }
       passengers: {
         Row: {
-          additional_notes: string | null
           created_at: string
           email: string
           full_name: string
           id: string
-          interaction_preference: string | null
-          music_playlist_link: string | null
-          music_preference: string | null
           phone: string | null
-          preferred_temperature: number | null
           profile_photo_url: string | null
-          trip_purpose: string | null
         }
         Insert: {
-          additional_notes?: string | null
           created_at?: string
           email: string
           full_name: string
           id?: string
-          interaction_preference?: string | null
-          music_playlist_link?: string | null
-          music_preference?: string | null
           phone?: string | null
-          preferred_temperature?: number | null
           profile_photo_url?: string | null
-          trip_purpose?: string | null
         }
         Update: {
-          additional_notes?: string | null
           created_at?: string
           email?: string
           full_name?: string
           id?: string
-          interaction_preference?: string | null
-          music_playlist_link?: string | null
-          music_preference?: string | null
           phone?: string | null
-          preferred_temperature?: number | null
           profile_photo_url?: string | null
-          trip_purpose?: string | null
         }
         Relationships: []
       }

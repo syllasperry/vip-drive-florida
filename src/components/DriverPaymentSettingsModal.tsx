@@ -5,8 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { X, Plus, CreditCard, FileText, DollarSign } from "lucide-react";
+import { X, Plus, CreditCard, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -17,8 +16,6 @@ interface DriverPaymentSettingsModalProps {
   currentData?: {
     payment_methods_accepted?: string[];
     cancellation_policy?: string;
-    preferred_payment_method?: string;
-    payment_instructions?: string;
   };
   onUpdate: () => void;
 }
@@ -33,8 +30,6 @@ export const DriverPaymentSettingsModal = ({
   const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
   const [newPaymentMethod, setNewPaymentMethod] = useState("");
   const [cancellationPolicy, setCancellationPolicy] = useState("");
-  const [preferredPaymentMethod, setPreferredPaymentMethod] = useState("");
-  const [paymentInstructions, setPaymentInstructions] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -42,8 +37,6 @@ export const DriverPaymentSettingsModal = ({
     if (currentData) {
       setPaymentMethods(currentData.payment_methods_accepted || []);
       setCancellationPolicy(currentData.cancellation_policy || "");
-      setPreferredPaymentMethod(currentData.preferred_payment_method || "");
-      setPaymentInstructions(currentData.payment_instructions || "");
     }
   }, [currentData]);
 
@@ -65,9 +58,7 @@ export const DriverPaymentSettingsModal = ({
         .from('drivers')
         .update({
           payment_methods_accepted: paymentMethods,
-          cancellation_policy: cancellationPolicy || null,
-          preferred_payment_method: preferredPaymentMethod || null,
-          payment_instructions: paymentInstructions || null
+          cancellation_policy: cancellationPolicy || null
         })
         .eq('id', driverId);
 
@@ -103,55 +94,11 @@ export const DriverPaymentSettingsModal = ({
         </DialogHeader>
         
         <div className="space-y-6 py-4">
-          {/* Preferred Payment Method */}
-          <div className="space-y-3">
-            <Label className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4" />
-              Preferred Payment Method
-            </Label>
-            <Select value={preferredPaymentMethod} onValueChange={setPreferredPaymentMethod}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select your preferred payment method" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="zelle">Zelle</SelectItem>
-                <SelectItem value="payment_link">Payment Link</SelectItem>
-                <SelectItem value="cash">Cash</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Payment Instructions */}
-          <div className="space-y-3">
-            <Label className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Payment Instructions
-            </Label>
-            <Textarea
-              value={paymentInstructions}
-              onChange={(e) => setPaymentInstructions(e.target.value)}
-              placeholder={
-                preferredPaymentMethod === "zelle" 
-                  ? "Enter your Zelle email and/or phone number\nExample: myemail@example.com or (555) 123-4567"
-                  : preferredPaymentMethod === "payment_link"
-                  ? "Enter your payment link\nExample: https://paypal.me/yourname"
-                  : preferredPaymentMethod === "cash"
-                  ? "Specify cash payment details\nExample: Exact change preferred"
-                  : "Enter specific payment instructions"
-              }
-              rows={4}
-            />
-            <p className="text-sm text-muted-foreground">
-              Provide clear instructions for passengers on how to send payment using your preferred method.
-            </p>
-          </div>
-
-          {/* Additional Payment Methods */}
+          {/* Payment Methods */}
           <div className="space-y-3">
             <Label className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
-              Additional Payment Methods (Optional)
+              Accepted Payment Methods
             </Label>
             
             <div className="flex gap-2">
@@ -188,7 +135,7 @@ export const DriverPaymentSettingsModal = ({
             )}
             
             <p className="text-sm text-muted-foreground">
-              Add any additional payment methods you accept beyond your preferred method.
+              Add the payment methods you accept. Passengers will see these options before booking.
             </p>
           </div>
 
@@ -218,7 +165,7 @@ export const DriverPaymentSettingsModal = ({
             <Button 
               onClick={handleSave} 
               className="flex-1"
-              disabled={isLoading || !preferredPaymentMethod || !paymentInstructions.trim()}
+              disabled={isLoading || paymentMethods.length === 0}
             >
               {isLoading ? "Saving..." : "Save Settings"}
             </Button>

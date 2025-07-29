@@ -4,8 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessagingInterface } from "@/components/MessagingInterface";
 import { SettingsModal } from "@/components/SettingsModal";
 import { ProfileEditModal } from "@/components/ProfileEditModal";
-import PassengerPreferencesModal from "@/components/PassengerPreferencesModal";
-import OrganizedBookingsList from "@/components/dashboard/OrganizedBookingsList";
 import CelebrationModal from "@/components/CelebrationModal";
 import { ReviewModal } from "@/components/ReviewModal";
 import { BookingSummaryModal } from "@/components/BookingSummaryModal";
@@ -22,10 +20,7 @@ import { NotificationManager } from "@/components/NotificationManager";
 import { ChatNotificationBadge } from "@/components/ChatNotificationBadge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { User, LogOut, Clock, MessageCircle, CreditCard } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { User, LogOut } from "lucide-react";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -50,7 +45,6 @@ const Dashboard = () => {
   const [pendingFareBooking, setPendingFareBooking] = useState<any>(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedBookingForPayment, setSelectedBookingForPayment] = useState<any>(null);
-  const [preferencesModalOpen, setPreferencesModalOpen] = useState(false);
 
   const handleAcceptFare = async (bookingId: string) => {
     try {
@@ -424,8 +418,7 @@ const Dashboard = () => {
             id,
             full_name,
             phone,
-            email,
-            profile_photo_url
+            email
           ),
           vehicles:vehicle_id (
             id,
@@ -464,15 +457,13 @@ const Dashboard = () => {
           vehicleModel: booking.vehicles?.type || "Tesla Model Y",
           status: booking.status,
           driver: booking.drivers?.full_name || null,
-          drivers: booking.drivers, // Include full driver data for avatar
           paymentMethod: booking.payment_status === 'completed' ? 'Paid' : 'Pending',
           countdown: null,
           flight_info: booking.flight_info,
           passenger_count: booking.passenger_count,
           luggage_count: booking.luggage_count,
           final_price: booking.final_price,
-          payment_expires_at: booking.payment_expires_at,
-          payment_status: booking.payment_status
+          payment_expires_at: booking.payment_expires_at
         };
       });
 
@@ -609,96 +600,6 @@ const Dashboard = () => {
           />
         )}
 
-        {/* Payment Status Cards for confirmed bookings - Only show on Bookings tab */}
-        {activeTab === "bookings" && bookingView === "upcoming" && 
-          bookings
-            .filter(booking => 
-              booking.status === 'payment_confirmed' || 
-              booking.status === 'ready_to_go' ||
-              (booking.status === 'accepted' && booking.final_price)
-            )
-            .map((booking) => (
-              <Card key={booking.id} className="bg-gradient-to-br from-success/5 to-success-glow/5 border-success/20 shadow-[var(--shadow-luxury)] mb-4">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-primary/10 rounded-full">
-                        <Clock className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">
-                          {booking.date} at {booking.time}
-                        </p>
-                      </div>
-                    </div>
-                    <Badge className={
-                      booking.status === 'ready_to_go' 
-                        ? "bg-success/10 text-success border-success/20"
-                        : "bg-primary/10 text-primary border-primary/20"
-                    }>
-                      {booking.status === 'ready_to_go' ? 'Ready to Go!' : 'Payment Confirmed'}
-                    </Badge>
-                  </div>
-
-                  <div className="flex items-center gap-3 mb-4">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={booking.drivers?.profile_photo_url || ""} alt={booking.driver || 'Driver'} />
-                      <AvatarFallback>
-                        <User className="h-5 w-5" />
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-foreground">
-                        Driver: {booking.driver || 'Unknown Driver'}
-                      </p>
-                      <p className="text-xl font-bold text-foreground">${booking.final_price?.toFixed(2)}</p>
-                    </div>
-                  </div>
-
-                  <div className="bg-success/10 border border-success/20 rounded-lg p-4 mb-4">
-                    <h4 className="text-success font-semibold mb-2">Payment Status</h4>
-                    <p className="text-sm text-success">
-                      {booking.status === 'ready_to_go' 
-                        ? "Payment confirmed by both parties."
-                        : "Payment confirmation in progress."
-                      }
-                    </p>
-                  </div>
-
-                  <div className="space-y-2 mb-4 text-sm text-muted-foreground">
-                    <p><strong>From:</strong> {booking.from}</p>
-                    <p><strong>To:</strong> {booking.to}</p>
-                  </div>
-
-                  <div className="flex gap-2">
-                    {booking.status !== 'ready_to_go' && (
-                      <Button
-                        onClick={() => {
-                          setSelectedBookingForPayment(booking);
-                          setPaymentModalOpen(true);
-                        }}
-                        className="flex-1 bg-gradient-to-r from-success to-success-glow text-white"
-                      >
-                        View Payment
-                      </Button>
-                    )}
-                    <Button
-                      onClick={() => {
-                        setSelectedBookingForMessaging(booking);
-                        setMessagingOpen(true);
-                      }}
-                      variant="outline"
-                      className="flex-1 flex items-center gap-2"
-                    >
-                      <MessageCircle className="h-4 w-4" />
-                      Message
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-        }
-
         {/* Notification Manager */}
         {userProfile?.id && (
           <NotificationManager 
@@ -709,25 +610,47 @@ const Dashboard = () => {
 
         {/* Tab Content */}
         {activeTab === "bookings" && (
-          <OrganizedBookingsList
-            bookings={bookings}
-            userType="passenger"
-            onMessage={(booking) => {
-              setSelectedBookingForMessaging(booking);
-              setMessagingOpen(true);
-            }}
-            onReview={(bookingId) => {
-              setSelectedBookingForReview(bookingId);
-              setReviewModalOpen(true);
-            }}
-            onViewSummary={(booking) => {
-              setSelectedBookingForSummary(booking);
-              setSummaryModalOpen(true);
-            }}
-            onCancelSuccess={() => {
-              fetchBookings(); // Refresh bookings after cancellation
-            }}
-          />
+          <div>
+            <BookingToggle 
+              activeView={bookingView}
+              onViewChange={setBookingView}
+            />
+            
+            <div className="space-y-4">
+              {filteredBookings.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <p className="text-muted-foreground">
+                      {bookingView === "upcoming" ? "No upcoming rides" : "No past rides"}
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                filteredBookings.map((booking) => (
+                  <BookingCard 
+                    key={booking.id}
+                    booking={booking}
+                    userType="passenger"
+                     onMessage={() => {
+                       setSelectedBookingForMessaging(booking);
+                       setMessagingOpen(true);
+                     }}
+                    onReview={() => {
+                      setSelectedBookingForReview(booking.id);
+                      setReviewModalOpen(true);
+                    }}
+                    onViewSummary={() => {
+                      setSelectedBookingForSummary(booking);
+                      setSummaryModalOpen(true);
+                    }}
+                    onCancelSuccess={() => {
+                      fetchBookings(); // Refresh bookings after cancellation
+                    }}
+                  />
+                ))
+              )}
+            </div>
+          </div>
         )}
 
         {activeTab === "messages" && (
@@ -736,38 +659,7 @@ const Dashboard = () => {
               <CardTitle>Messages</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {bookings.filter(booking => booking.drivers && booking.status !== 'completed' && booking.status !== 'cancelled').length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">No active conversations.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {bookings
-                      .filter(booking => booking.drivers && booking.status !== 'completed' && booking.status !== 'cancelled')
-                      .map((booking) => (
-                        <Card key={booking.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => {
-                          setSelectedBookingForMessaging(booking);
-                          setMessagingOpen(true);
-                        }}>
-                          <CardContent className="p-4">
-                            <div className="flex items-center gap-3">
-                              <Avatar className="h-10 w-10">
-                                <AvatarImage src={booking.drivers?.profile_photo_url || ""} alt={booking.driver || 'Driver'} />
-                                <AvatarFallback>
-                                  <User className="h-5 w-5" />
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex-1">
-                                <p className="font-medium text-foreground">{booking.driver}</p>
-                                <p className="text-sm text-muted-foreground">Active booking conversation</p>
-                              </div>
-                              <MessageCircle className="h-5 w-5 text-muted-foreground" />
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                  </div>
-                )}
-              </div>
+              <p className="text-muted-foreground text-center py-8">No messages yet.</p>
             </CardContent>
           </Card>
         )}
@@ -775,55 +667,10 @@ const Dashboard = () => {
         {activeTab === "payments" && (
           <Card>
             <CardHeader>
-              <CardTitle>Payments</CardTitle>
+              <CardTitle>Payment Methods</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {bookings.filter(booking => booking.payment_status === 'completed' || booking.status === 'ready_to_go').length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">No payment history yet.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {bookings
-                      .filter(booking => booking.payment_status === 'completed' || booking.status === 'ready_to_go')
-                      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                      .map((booking) => (
-                        <Card key={booking.id} className="border-success/20">
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center gap-3">
-                                <div className="p-2 bg-success/10 rounded-full">
-                                  <CreditCard className="h-4 w-4 text-success" />
-                                </div>
-                                <div>
-                                  <p className="font-medium text-foreground">Payment Completed</p>
-                                  <p className="text-sm text-muted-foreground">{booking.date} at {booking.time}</p>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-lg font-bold text-foreground">${booking.final_price?.toFixed(2)}</p>
-                                <Badge variant="outline" className="bg-success/10 text-success border-success/20">
-                                  Paid
-                                </Badge>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 mb-2">
-                              <Avatar className="h-6 w-6">
-                                <AvatarImage src={booking.drivers?.profile_photo_url || ""} alt={booking.driver || 'Driver'} />
-                                <AvatarFallback>
-                                  <User className="h-3 w-3" />
-                                </AvatarFallback>
-                              </Avatar>
-                              <p className="text-sm text-muted-foreground">Driver: {booking.driver}</p>
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              <p>{booking.from} → {booking.to}</p>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                  </div>
-                )}
-              </div>
+              <p className="text-muted-foreground text-center py-8">Manage your payment methods here.</p>
             </CardContent>
           </Card>
         )}
@@ -837,39 +684,8 @@ const Dashboard = () => {
                     <User className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground">Edit Profile</h3>
+                    <h3 className="font-semibold text-foreground">Profile Settings</h3>
                     <p className="text-sm text-muted-foreground">Update your personal information</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="cursor-pointer hover:shadow-[var(--shadow-subtle)] transition-shadow" onClick={() => setPreferencesModalOpen(true)}>
-              <CardContent className="p-5">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-blue-500/10 rounded-full">
-                    <Clock className="h-5 w-5 text-blue-500" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground">Ride Preferences</h3>
-                    <p className="text-sm text-muted-foreground">Set your ride preferences for drivers</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="cursor-pointer hover:shadow-[var(--shadow-subtle)] transition-shadow" onClick={() => {
-              setSettingsType("notifications");
-              setSettingsModalOpen(true);
-            }}>
-              <CardContent className="p-5">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-green-500/10 rounded-full">
-                    <MessageCircle className="h-5 w-5 text-green-500" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground">Notification Settings</h3>
-                    <p className="text-sm text-muted-foreground">Manage your notification preferences</p>
                   </div>
                 </div>
               </CardContent>
@@ -922,8 +738,6 @@ const Dashboard = () => {
         isOpen={settingsModalOpen}
         onClose={() => setSettingsModalOpen(false)}
         type={settingsType}
-        userId={userProfile?.id}
-        userType="passenger"
       />
       
       <ProfileEditModal 
@@ -968,29 +782,7 @@ const Dashboard = () => {
            onConfirmPayment={handlePaymentConfirmation}
            paymentStatus={selectedBookingForPayment.payment_status || 'pending'}
          />
-        )}
-
-         {/* Passenger Preferences Modal */}
-         <PassengerPreferencesModal
-           isOpen={preferencesModalOpen}
-           onClose={() => setPreferencesModalOpen(false)}
-           userProfile={userProfile}
-           onUpdate={() => {
-             // Refresh user profile to reflect changes
-             if (userProfile?.id) {
-               supabase
-                 .from('passengers')
-                 .select('*')
-                 .eq('id', userProfile.id)
-                 .single()
-                 .then(({ data }) => {
-                   if (data) {
-                     setUserProfile(data);
-                   }
-                 });
-             }
-           }}
-         />
+       )}
      </div>
    );
  };
