@@ -48,7 +48,7 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
             </div>
             <div>
               <p className="text-sm font-medium text-foreground">
-                {booking.date} at {booking.time}
+                {booking.pickup_time ? new Date(booking.pickup_time).toLocaleDateString() : ''} at {booking.pickup_time ? new Date(booking.pickup_time).toLocaleTimeString() : ''}
               </p>
               {booking.countdown && (
                 <p className="text-xs text-orange-600 font-medium">
@@ -66,13 +66,13 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
           <div className="flex items-start gap-3">
             <MapPin className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">{booking.from}</p>
+              <p className="text-sm font-medium text-foreground truncate">{booking.pickup_location || 'Pickup location'}</p>
               <div className="flex items-center gap-2 my-1">
                 <div className="h-px bg-border flex-1"></div>
                 <Car className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                 <div className="h-px bg-border flex-1"></div>
               </div>
-              <p className="text-sm text-muted-foreground truncate">{booking.to}</p>
+              <p className="text-sm text-muted-foreground truncate">{booking.dropoff_location || 'Dropoff location'}</p>
             </div>
           </div>
 
@@ -80,8 +80,10 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
             <div className="flex items-center gap-2">
               <User className="h-4 w-4 text-primary" />
               <span className="text-sm text-foreground">
-                {userType === "passenger" && booking.driver && `Driver: ${booking.driver}`}
-                {userType === "driver" && booking.passenger && `Passenger: ${booking.passenger}`}
+                {userType === "passenger" && booking.drivers && `Driver: ${booking.drivers.full_name}`}
+                {userType === "driver" && booking.passengers && `Passenger: ${booking.passengers.full_name}`}
+                {userType === "passenger" && !booking.drivers && "Driver: Not assigned"}
+                {userType === "driver" && !booking.passengers && "Passenger: Not found"}
               </span>
             </div>
           </div>
@@ -121,16 +123,16 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
             </div>
           )}
 
-          {booking.vehicle && (
+          {(booking.vehicle_type || booking.vehicles) && (
             <div className="flex items-center gap-3">
               <Car className="h-4 w-4 text-primary" />
-              <span className="text-sm text-foreground">{booking.vehicle}</span>
+              <span className="text-sm text-foreground">{booking.vehicle_type || booking.vehicles?.type || 'Vehicle'}</span>
             </div>
           )}
 
-          {booking.payment && userType === "driver" && (
+          {(booking.final_price || booking.estimated_price) && userType === "driver" && (
             <div className="text-right">
-              <p className="text-lg font-semibold text-primary">{booking.payment}</p>
+              <p className="text-lg font-semibold text-primary">${booking.final_price || booking.estimated_price}</p>
             </div>
           )}
         </div>
@@ -140,7 +142,7 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
           <div className="mb-4">
             <CancelBookingButton 
               bookingId={booking.id}
-              pickupTime={`${booking.date}T${booking.time}`}
+              pickupTime={booking.pickup_time}
               onCancelSuccess={onCancelSuccess}
             />
           </div>

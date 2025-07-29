@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Bell, Shield, Star } from "lucide-react";
+import { X, Bell, Shield, Star, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SettingsModal } from "./SettingsModal";
@@ -121,7 +121,38 @@ export const EnhancedSettingsModal = ({ isOpen, onClose, userId, userType }: Enh
           </div>
 
           {/* Footer */}
-          <div className="p-6 border-t border-border">
+          <div className="p-6 border-t border-border space-y-3">
+            <Button 
+              variant="destructive" 
+              onClick={async () => {
+                try {
+                  // Clean up auth state
+                  Object.keys(localStorage).forEach((key) => {
+                    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+                      localStorage.removeItem(key);
+                    }
+                  });
+                  
+                  Object.keys(sessionStorage || {}).forEach((key) => {
+                    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+                      sessionStorage.removeItem(key);
+                    }
+                  });
+
+                  // Import supabase here to avoid circular imports
+                  const { supabase } = await import("@/integrations/supabase/client");
+                  await supabase.auth.signOut({ scope: 'global' });
+                  window.location.href = "/passenger/login";
+                } catch (error) {
+                  console.error("Logout error:", error);
+                  window.location.href = "/passenger/login";
+                }
+              }}
+              className="w-full"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
             <Button variant="outline" onClick={onClose} className="w-full">
               Close
             </Button>
