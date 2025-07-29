@@ -118,6 +118,24 @@ export const MessagingInterface = ({
 
       if (error) throw error;
 
+      // If this is the first message from a passenger to driver, send auto-reply
+      if (userType === "passenger" && messages.length === 0) {
+        setTimeout(async () => {
+          try {
+            await supabase
+              .from('messages')
+              .insert({
+                booking_id: bookingId,
+                sender_id: otherUserName || "driver", // This would be the driver's ID in a real scenario
+                sender_type: "driver",
+                message_text: "Thanks for choosing VIP Chauffeur in South Florida! I'll get back to you as soon as I see your message. Feel free to share any details while I'm on the way."
+              });
+          } catch (autoReplyError) {
+            console.error('Error sending auto-reply:', autoReplyError);
+          }
+        }, 1000);
+      }
+
       setNewMessage("");
     } catch (error) {
       console.error('Error sending message:', error);

@@ -32,6 +32,7 @@ const DriverDashboard = () => {
   const [driverPreferencesModalOpen, setDriverPreferencesModalOpen] = useState(false);
   const [selectedBookingForMessaging, setSelectedBookingForMessaging] = useState<any>(null);
   const [isOnline, setIsOnline] = useState(true);
+  const [passengerProfile, setPassengerProfile] = useState<any>(null);
   
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -558,8 +559,24 @@ const DriverDashboard = () => {
           <UpcomingRideCard 
             ride={nextRide}
             userType="driver"
-            onMessage={() => {
+            onMessage={async () => {
               setSelectedBookingForMessaging(nextRide);
+              // Fetch passenger profile
+              if (nextRide.passenger_id) {
+                try {
+                  const { data: passenger, error } = await supabase
+                    .from('passengers')
+                    .select('*')
+                    .eq('id', nextRide.passenger_id)
+                    .maybeSingle();
+                    
+                  if (passenger && !error) {
+                    setPassengerProfile(passenger);
+                  }
+                } catch (error) {
+                  console.error('Error fetching passenger profile:', error);
+                }
+              }
               setMessagingOpen(true);
             }}
             onStartRide={() => {
@@ -705,8 +722,24 @@ const DriverDashboard = () => {
 
                       <div className="flex gap-2 mt-4">
                         <Button
-                          onClick={() => {
+                          onClick={async () => {
                             setSelectedBookingForMessaging(ride);
+                            // Fetch passenger profile
+                            if (ride.passenger_id) {
+                              try {
+                                const { data: passenger, error } = await supabase
+                                  .from('passengers')
+                                  .select('*')
+                                  .eq('id', ride.passenger_id)
+                                  .maybeSingle();
+                                  
+                                if (passenger && !error) {
+                                  setPassengerProfile(passenger);
+                                }
+                              } catch (error) {
+                                console.error('Error fetching passenger profile:', error);
+                              }
+                            }
                             setMessagingOpen(true);
                           }}
                           variant="outline"
@@ -757,11 +790,27 @@ const DriverDashboard = () => {
         {activeTab === "messages" && (
           <div className="space-y-4">
             <Card className="cursor-pointer hover:shadow-[var(--shadow-subtle)] transition-shadow"
-                 onClick={() => {
+                 onClick={async () => {
                    // For demo purposes, using first ride if available
                    const firstRide = driverRides[0];
                    if (firstRide) {
                      setSelectedBookingForMessaging(firstRide);
+                     // Fetch passenger profile
+                     if (firstRide.passenger_id) {
+                       try {
+                         const { data: passenger, error } = await supabase
+                           .from('passengers')
+                           .select('*')
+                           .eq('id', firstRide.passenger_id)
+                           .maybeSingle();
+                           
+                         if (passenger && !error) {
+                           setPassengerProfile(passenger);
+                         }
+                       } catch (error) {
+                         console.error('Error fetching passenger profile:', error);
+                       }
+                     }
                      setMessagingOpen(true);
                    }
                  }}>
@@ -780,11 +829,27 @@ const DriverDashboard = () => {
             </Card>
             
             <Card className="cursor-pointer hover:shadow-[var(--shadow-subtle)] transition-shadow"
-                 onClick={() => {
+                 onClick={async () => {
                    // For demo purposes, using second ride if available
                    const secondRide = driverRides[1];
                    if (secondRide) {
                      setSelectedBookingForMessaging(secondRide);
+                     // Fetch passenger profile
+                     if (secondRide.passenger_id) {
+                       try {
+                         const { data: passenger, error } = await supabase
+                           .from('passengers')
+                           .select('*')
+                           .eq('id', secondRide.passenger_id)
+                           .maybeSingle();
+                           
+                         if (passenger && !error) {
+                           setPassengerProfile(passenger);
+                         }
+                       } catch (error) {
+                         console.error('Error fetching passenger profile:', error);
+                       }
+                     }
                      setMessagingOpen(true);
                    }
                  }}>
@@ -864,14 +929,15 @@ const DriverDashboard = () => {
          onClose={() => {
            setMessagingOpen(false);
            setSelectedBookingForMessaging(null);
+           setPassengerProfile(null);
          }}
          userType="driver"
          bookingId={selectedBookingForMessaging?.id || ""}
          currentUserId={userProfile?.id || ""}
          currentUserName={userProfile?.full_name || ""}
          currentUserAvatar={userProfile?.profile_photo_url}
-         otherUserName={selectedBookingForMessaging?.passenger}
-         otherUserAvatar=""
+         otherUserName={passengerProfile?.full_name || "Passenger"}
+         otherUserAvatar={passengerProfile?.profile_photo_url}
        />
       
       <DriverScheduleModal 
