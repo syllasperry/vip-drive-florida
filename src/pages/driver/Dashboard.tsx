@@ -916,6 +916,7 @@ const DriverDashboard = () => {
                 description: "Navigation opened in new tab.",
               });
             }}
+            onFareUpdate={handlePriceUpdate}
           />
         )}
 

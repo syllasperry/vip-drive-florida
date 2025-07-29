@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookingCard } from './BookingCard';
+import { UpcomingRideCard } from './UpcomingRideCard';
 import { Badge } from "@/components/ui/badge";
 
 interface OrganizedBookingsListProps {
@@ -11,6 +12,7 @@ interface OrganizedBookingsListProps {
   onViewSummary?: (booking: any) => void;
   onCancelSuccess?: () => void;
   onNavigate?: (booking: any) => void;
+  onFareUpdate?: (rideId: string, newFare: number) => void;
 }
 
 const OrganizedBookingsList: React.FC<OrganizedBookingsListProps> = ({
@@ -20,7 +22,8 @@ const OrganizedBookingsList: React.FC<OrganizedBookingsListProps> = ({
   onReview,
   onViewSummary,
   onCancelSuccess,
-  onNavigate
+  onNavigate,
+  onFareUpdate
 }) => {
   // Sort all bookings by pickup_time descending (most recent first)
   const sortedBookings = [...bookings].sort((a, b) => {
@@ -118,15 +121,25 @@ const OrganizedBookingsList: React.FC<OrganizedBookingsListProps> = ({
             <div className="space-y-3">
               {bookings.map((booking) => (
                 <div key={booking.id} className="border border-border/50 rounded-lg overflow-hidden shadow-sm">
-                  <BookingCard
-                    booking={booking}
-                    userType={userType}
-                    onMessage={() => onMessage(booking)}
-                    onReview={onReview ? () => onReview(booking.id) : undefined}
-                    onViewSummary={onViewSummary ? () => onViewSummary(booking) : undefined}
-                    onCancelSuccess={onCancelSuccess}
-                    onNavigate={onNavigate ? () => onNavigate(booking) : undefined}
-                  />
+                  {status === 'pending' && userType === 'driver' ? (
+                    <UpcomingRideCard
+                      ride={booking}
+                      userType={userType}
+                      onMessage={() => onMessage(booking)}
+                      onNavigate={onNavigate ? (navApp: string) => onNavigate(booking) : undefined}
+                      onFareUpdate={onFareUpdate}
+                    />
+                  ) : (
+                    <BookingCard
+                      booking={booking}
+                      userType={userType}
+                      onMessage={() => onMessage(booking)}
+                      onReview={onReview ? () => onReview(booking.id) : undefined}
+                      onViewSummary={onViewSummary ? () => onViewSummary(booking) : undefined}
+                      onCancelSuccess={onCancelSuccess}
+                      onNavigate={onNavigate ? () => onNavigate(booking) : undefined}
+                    />
+                  )}
                 </div>
               ))}
             </div>
