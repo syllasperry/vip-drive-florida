@@ -394,6 +394,28 @@ const Dashboard = () => {
     }
   };
 
+  // Handle tab navigation
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    
+    switch (tab) {
+      case 'bookings':
+        // Already on bookings page
+        break;
+      case 'messages':
+        setMessagingOpen(true);
+        break;
+      case 'payments':
+        setSettingsType('notifications');
+        setSettingsModalOpen(true);
+        break;
+      case 'settings':
+        setSettingsType('privacy');
+        setSettingsModalOpen(true);
+        break;
+    }
+  };
+
   useEffect(() => {
     const isNewAccount = localStorage.getItem("show_welcome_celebration");
     if (isNewAccount === "true") {
@@ -656,8 +678,8 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* New Booking Button - Airbnb Style */}
-        <div className="p-4">
+        {/* New Booking Button - Airbnb Style - Above Bottom Navigation */}
+        <div className="p-4 pb-20">
           <Button 
             onClick={handleNewBooking}
             className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-medium rounded-xl shadow-lg transition-all duration-200 hover:shadow-xl"
@@ -671,7 +693,7 @@ const Dashboard = () => {
         {/* Bottom Navigation */}
         <BottomNavigation
           activeTab={activeTab}
-          onTabChange={setActiveTab}
+          onTabChange={handleTabChange}
           userType="passenger"
         />
       </div>
