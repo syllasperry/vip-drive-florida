@@ -173,7 +173,7 @@ const DriverDashboard = () => {
     }
   };
 
-  const handleAcceptRide = async (rideId: string) => {
+  const handleAcceptRide = async (rideId: string, price?: number) => {
     if (!userProfile?.id) {
       toast({
         title: "Error",
@@ -184,13 +184,19 @@ const DriverDashboard = () => {
     }
 
     try {
-      // Update booking with driver_id and status
+      // Update booking with driver_id, status, and price if provided
+      const updateData: any = { 
+        status: 'accepted',
+        driver_id: userProfile.id
+      };
+      
+      if (price) {
+        updateData.final_price = price;
+      }
+
       const { error } = await supabase
         .from('bookings')
-        .update({ 
-          status: 'accepted',
-          driver_id: userProfile.id
-        })
+        .update(updateData)
         .eq('id', rideId)
         .eq('status', 'pending'); // Only update if still pending
 
@@ -782,6 +788,7 @@ const DriverDashboard = () => {
             requests={driverRides.filter(ride => ride.status === "pending").map(ride => ({
               id: ride.id,
               passenger: ride.passenger,
+              passengers: ride.passengers,
               from: ride.from,
               to: ride.to,
               time: ride.time,
