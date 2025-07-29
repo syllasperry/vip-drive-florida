@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Clock, MapPin, User, Car, MessageCircle, Navigation } from "lucide-react";
 import PassengerPreferencesCard from "@/components/PassengerPreferencesCard";
 
@@ -67,7 +68,22 @@ export const UpcomingRideCard = ({ ride, userType, onMessage, onNavigate }: Upco
             </div>
           )}
 
-          {userType === "driver" && ride.passenger && (
+          {userType === "driver" && ride.passengers ? (
+            <div className="flex items-center gap-3">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={ride.passengers.profile_photo_url} />
+                <AvatarFallback>
+                  {ride.passengers.full_name?.split(' ').map(n => n[0]).join('') || 'P'}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">
+                  {ride.passengers.full_name}
+                </p>
+                <p className="text-xs text-muted-foreground">{ride.payment}</p>
+              </div>
+            </div>
+          ) : userType === "driver" && ride.passenger && (
             <div className="flex items-center gap-3">
               <User className="h-4 w-4 text-primary" />
               <div className="flex-1">
