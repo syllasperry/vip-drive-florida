@@ -55,32 +55,34 @@ export const UpcomingRideCard = ({ ride, userType, onMessage, onNavigate, onFare
   };
 
   return (
-    <Card className={`bg-gradient-to-br from-primary/5 to-primary-glow/5 border-primary/20 shadow-[var(--shadow-luxury)] mb-6 ${isNewRequest ? 'animate-pulse border-success' : ''}`}>
+    <Card className={`bg-gradient-to-br from-primary/5 to-primary-glow/5 border-primary/20 shadow-[var(--shadow-luxury)] mb-6 ${isNewRequest ? 'animate-pulse border-4 border-success shadow-[0_0_20px_rgba(34,197,94,0.5)]' : ''}`}>
       <CardContent className="p-6">
         
-        {/* Flashing notification banner for new requests */}
+        {/* Enhanced blinking notification banner for new requests */}
         {isNewRequest && (
-          <div className="mb-4 p-2 bg-success/20 border border-success/40 rounded-lg">
+          <div className="mb-4 p-3 bg-gradient-to-r from-success/30 via-success/20 to-success/30 border-2 border-success/60 rounded-lg animate-pulse shadow-[0_0_15px_rgba(34,197,94,0.3)]">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-success animate-pulse">
-                🚨 NEW RIDE REQUEST
+              <span className="text-base font-bold text-success animate-bounce">
+                🚨 NEW RIDE REQUEST - RESPOND NOW!
               </span>
-              <span className="text-xs text-success">
-                Tap to respond
-              </span>
+              <Badge className="bg-success text-success-foreground animate-pulse">
+                LIVE
+              </Badge>
             </div>
           </div>
         )}
         
-        {/* Dynamic fare display for new requests */}
+        {/* Always show fare for pending requests - enhanced visibility */}
         {isNewRequest && (
-          <div className="mb-4 p-4 bg-gradient-to-r from-warning/20 via-warning/10 to-warning/20 border-2 border-warning/40 rounded-lg animate-pulse">
+          <div className="mb-4 p-4 bg-gradient-to-r from-primary/20 via-primary-glow/15 to-primary/20 border-3 border-primary/50 rounded-xl shadow-[0_0_20px_rgba(var(--primary),0.2)]">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-warning animate-bounce" />
-                <span className="text-sm font-semibold text-warning">Platform Suggested Fare</span>
+                <div className="p-2 bg-primary/20 rounded-full animate-pulse">
+                  <DollarSign className="h-5 w-5 text-primary animate-bounce" />
+                </div>
+                <span className="text-base font-bold text-primary">Suggested Fare - Click to Edit</span>
               </div>
-              <Badge variant="secondary" className="animate-pulse">
+              <Badge variant="secondary" className="animate-pulse bg-warning/20 text-warning border-warning/40">
                 Editable
               </Badge>
             </div>
@@ -88,28 +90,31 @@ export const UpcomingRideCard = ({ ride, userType, onMessage, onNavigate, onFare
             <div className="flex items-center justify-between">
               {!isEditingFare ? (
                 <>
-                  <span className="text-2xl font-bold text-primary">
+                  <button 
+                    onClick={handleFareEdit}
+                    className="text-3xl font-bold text-primary hover:text-primary/80 transition-colors cursor-pointer bg-primary/5 px-4 py-2 rounded-lg border-2 border-dashed border-primary/30 hover:border-primary/60"
+                  >
                     ${editedFare.toFixed(2)}
-                  </span>
+                  </button>
                   <Button 
                     onClick={handleFareEdit}
-                    variant="outline" 
+                    variant="default" 
                     size="sm" 
-                    className="flex items-center gap-2 hover-scale"
+                    className="flex items-center gap-2 hover-scale bg-primary hover:bg-primary/90"
                   >
                     <Edit3 className="h-4 w-4" />
-                    Edit Fare
+                    Edit Price
                   </Button>
                 </>
               ) : (
                 <div className="flex items-center gap-3 w-full">
                   <div className="flex items-center gap-2 flex-1">
-                    <DollarSign className="h-5 w-5 text-muted-foreground" />
+                    <DollarSign className="h-6 w-6 text-primary" />
                     <Input
                       type="number"
                       value={editedFare}
                       onChange={(e) => setEditedFare(Number(e.target.value))}
-                      className="w-24 text-lg font-bold"
+                      className="w-32 text-xl font-bold border-2 border-primary/40 focus:border-primary"
                       step="0.01"
                       min="0"
                       autoFocus
@@ -119,7 +124,7 @@ export const UpcomingRideCard = ({ ride, userType, onMessage, onNavigate, onFare
                     <Button 
                       onClick={handleFareSave}
                       size="sm" 
-                      className="flex items-center gap-2 bg-success hover:bg-success/90"
+                      className="flex items-center gap-2 bg-success hover:bg-success/90 px-4"
                     >
                       <Send className="h-4 w-4" />
                       Send to Passenger
@@ -137,8 +142,8 @@ export const UpcomingRideCard = ({ ride, userType, onMessage, onNavigate, onFare
             </div>
             
             {!isEditingFare && (
-              <p className="text-xs text-muted-foreground mt-2">
-                💡 You can adjust this fare before accepting the ride
+              <p className="text-sm text-primary/70 mt-3 font-medium">
+                💡 Click the price above to modify the fare before accepting
               </p>
             )}
           </div>
