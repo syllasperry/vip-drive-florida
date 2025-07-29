@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Clock, MapPin, User, Car, MessageCircle, Navigation } from "lucide-react";
+import PassengerPreferencesCard from "@/components/PassengerPreferencesCard";
 
 interface UpcomingRideCardProps {
   ride: any;
@@ -124,6 +125,11 @@ export const UpcomingRideCard = ({ ride, userType, onMessage, onNavigate }: Upco
             </div>
           )}
         </div>
+
+        {/* Passenger Preferences for drivers */}
+        {userType === "driver" && ride.passengers && (
+          <PassengerPreferencesCard preferences={ride.passengers} />
+        )}
       </CardContent>
     </Card>
   );
