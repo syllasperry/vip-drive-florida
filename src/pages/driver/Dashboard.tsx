@@ -15,6 +15,7 @@ import { ChatNotificationBadge } from "@/components/ChatNotificationBadge";
 import { BottomNavigation } from "@/components/dashboard/BottomNavigation";
 import { ProfileHeader } from "@/components/dashboard/ProfileHeader";
 import { UpcomingRideCard } from "@/components/dashboard/UpcomingRideCard";
+import { EarningsSection } from "@/components/dashboard/EarningsSection";
 import { BookingToggle } from "@/components/dashboard/BookingToggle";
 import { BookingCard } from "@/components/dashboard/BookingCard";
 import PendingRequestAlert from "@/components/dashboard/PendingRequestAlert";
@@ -722,16 +723,31 @@ const DriverDashboard = () => {
               }
               setMessagingOpen(true);
             }}
-            onStartRide={() => {
+            onNavigate={(navApp: string) => {
+              // Open navigation with pickup and dropoff locations
+              const pickup = encodeURIComponent(nextRide.from);
+              const dropoff = encodeURIComponent(nextRide.to);
+              
+              let url = '';
+              switch (navApp) {
+                case 'google':
+                  url = `https://www.google.com/maps/dir/${pickup}/${dropoff}`;
+                  break;
+                case 'apple':
+                  url = `http://maps.apple.com/?saddr=${pickup}&daddr=${dropoff}&dirflg=d`;
+                  break;
+                case 'waze':
+                  url = `https://waze.com/ul?ll=${pickup}&navigate=yes&to=ll.${dropoff}`;
+                  break;
+                default:
+                  url = `https://www.google.com/maps/dir/${pickup}/${dropoff}`;
+              }
+              
+              window.open(url, '_blank');
+              
               toast({
-                title: "Starting ride...",
-                description: "Navigation will begin shortly.",
-              });
-            }}
-            onNavigate={() => {
-              toast({
-                title: "Opening navigation",
-                description: "Redirecting to maps...",
+                title: `Opening ${navApp === 'apple' ? 'Apple Maps' : navApp === 'waze' ? 'Waze' : 'Google Maps'}`,
+                description: "Navigation opened in new tab.",
               });
             }}
           />
@@ -974,32 +990,7 @@ const DriverDashboard = () => {
         )}
 
         {activeTab === "earnings" && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 gap-4">
-              <Card className="bg-gradient-to-br from-primary/5 to-primary-glow/5 border-primary/20">
-                <CardContent className="p-6">
-                  <h3 className="text-sm text-muted-foreground mb-2">Today's Earnings</h3>
-                  <p className="text-3xl font-bold text-primary">$180.00</p>
-                  <p className="text-xs text-muted-foreground mt-1">+15% from yesterday</p>
-                </CardContent>
-              </Card>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <Card>
-                  <CardContent className="p-4">
-                    <h3 className="text-sm text-muted-foreground">This Week</h3>
-                    <p className="text-2xl font-bold text-foreground">$950.00</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <h3 className="text-sm text-muted-foreground">This Month</h3>
-                    <p className="text-2xl font-bold text-foreground">$3,750.00</p>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </div>
+          <EarningsSection driverId={userProfile?.id} />
         )}
 
         {activeTab === "messages" && (
