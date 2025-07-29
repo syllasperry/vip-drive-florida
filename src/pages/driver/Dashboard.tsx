@@ -7,6 +7,7 @@ import { MessagingInterface } from "@/components/MessagingInterface";
 import { PriceEditModal } from "@/components/PriceEditModal";
 import { DriverScheduleModal } from "@/components/DriverScheduleModal";
 import { DriverSettingsModal } from "@/components/DriverSettingsModal";
+import { DriverPaymentMethodsModal } from "@/components/DriverPaymentMethodsModal";
 import { DriverPreferencesModal } from "@/components/DriverPreferencesModal";
 import { PaymentConfirmationModal } from "@/components/PaymentConfirmationModal";
 import { DriverPaymentSettingsModal } from "@/components/DriverPaymentSettingsModal";
@@ -23,7 +24,7 @@ import PendingRequestAlert from "@/components/dashboard/PendingRequestAlert";
 import StatusTracker, { BookingStatus } from "@/components/StatusTracker";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Car, DollarSign, User, LogOut, Clock, CheckCircle, Calendar, MessageCircle, Edit } from "lucide-react";
+import { Car, DollarSign, User, LogOut, Clock, CheckCircle, Calendar, MessageCircle, Edit, CreditCard, Settings } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const DriverDashboard = () => {
