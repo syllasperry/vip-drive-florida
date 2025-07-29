@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessagingInterface } from "@/components/MessagingInterface";
-import { SettingsModal } from "@/components/SettingsModal";
+import { EnhancedSettingsModal } from "@/components/EnhancedSettingsModal";
+import { PaymentsTab } from "@/components/PaymentsTab";
 import { ProfileEditModal } from "@/components/ProfileEditModal";
 import PassengerPreferencesModal from "@/components/PassengerPreferencesModal";
 import OrganizedBookingsList from "@/components/dashboard/OrganizedBookingsList";
@@ -20,9 +21,10 @@ import { FareConfirmationAlert } from "@/components/FareConfirmationAlert";
 import { PaymentConfirmationModal } from "@/components/PaymentConfirmationModal";
 import { NotificationManager } from "@/components/NotificationManager";
 import { ChatNotificationBadge } from "@/components/ChatNotificationBadge";
+import { MessagesTab } from "@/components/dashboard/MessagesTab";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { User, LogOut, Clock, MessageCircle, CreditCard, Settings, Car, CalendarDays, History } from "lucide-react";
+import { User, LogOut, Clock, MessageCircle, CreditCard, Settings, Car, CalendarDays, History, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -34,24 +36,40 @@ const Dashboard = () => {
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [passenger, setPassenger] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("bookings");
   const [bookingView, setBookingView] = useState<"upcoming" | "past">("upcoming");
   const [messagingOpen, setMessagingOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
-  const [settingsType, setSettingsType] = useState<"notifications" | "privacy">("notifications");
   const [profileEditOpen, setProfileEditOpen] = useState(false);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [selectedBookingForReview, setSelectedBookingForReview] = useState<string | null>(null);
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
   const [selectedBookingForSummary, setSelectedBookingForSummary] = useState<any>(null);
-  const [selectedBookingForMessaging, setSelectedBookingForMessaging] = useState<any>(null);
+  const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [showWelcomeCelebration, setShowWelcomeCelebration] = useState(false);
   const [showRideConfirmation, setShowRideConfirmation] = useState(false);
   const [pendingFareBooking, setPendingFareBooking] = useState<any>(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedBookingForPayment, setSelectedBookingForPayment] = useState<any>(null);
   const [preferencesModalOpen, setPreferencesModalOpen] = useState(false);
+  const [bookings, setBookings] = useState<any[]>([]);
+
+  // Group bookings
+  const groupedBookings = {
+    upcoming: bookings.filter(booking => {
+      const bookingDate = new Date(booking.pickup_time);
+      const now = new Date();
+      return ['pending', 'accepted', 'confirmed', 'price_proposed', 'payment_confirmed', 'ready_to_go'].includes(booking.status) ||
+             (bookingDate >= now && !['completed', 'cancelled', 'declined', 'rejected_by_passenger'].includes(booking.status));
+    }),
+    pastRides: bookings.filter(booking => {
+      const bookingDate = new Date(booking.pickup_time);
+      const now = new Date();
+      return ['completed', 'cancelled', 'declined', 'rejected_by_passenger'].includes(booking.status) ||
+             (bookingDate < now && !['pending', 'accepted', 'confirmed', 'price_proposed', 'payment_confirmed', 'ready_to_go'].includes(booking.status));
+    })
+  };
 
   const handleAcceptFare = async (bookingId: string) => {
     try {
@@ -78,19 +96,10 @@ const Dashboard = () => {
         .from('messages')
         .insert({
           booking_id: bookingId,
-          sender_id: userProfile?.id,
+          sender_id: passenger?.id,
           sender_type: 'passenger',
           message_text: `I've accepted the fare of $${pendingFareBooking?.final_price?.toFixed(2)}. Proceeding with payment.`
         });
-
-      // Send notification
-      await supabase.functions.invoke('send-booking-notifications', {
-        body: {
-          bookingId: bookingId,
-          status: 'payment_confirmed',
-          triggerType: 'status_change'
-        }
-      });
 
       setPendingFareBooking(null);
       fetchBookings();
@@ -105,56 +114,6 @@ const Dashboard = () => {
       setPaymentModalOpen(true);
     } catch (error) {
       console.error('Error accepting fare:', error);
-    }
-  };
-
-  const handlePaymentConfirmation = async () => {
-    if (!selectedBookingForPayment) return;
-
-    try {
-      const { error } = await supabase
-        .from('bookings')
-        .update({ 
-          payment_status: 'passenger_confirmed'
-        })
-        .eq('id', selectedBookingForPayment.id);
-
-      if (error) {
-        console.error('Error confirming payment:', error);
-        toast({
-          title: "Error",
-          description: "Failed to confirm payment",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Send confirmation message
-      await supabase
-        .from('messages')
-        .insert({
-          booking_id: selectedBookingForPayment.id,
-          sender_id: userProfile?.id,
-          sender_type: 'passenger',
-          message_text: `I've completed the payment of $${selectedBookingForPayment?.final_price?.toFixed(2)}. Please confirm receipt.`
-        });
-
-      // Send notification
-      await supabase.functions.invoke('send-booking-notifications', {
-        body: {
-          bookingId: selectedBookingForPayment.id,
-          status: 'payment_confirmed',
-          triggerType: 'status_change'
-        }
-      });
-
-      fetchBookings();
-      toast({
-        title: "Payment Confirmed!",
-        description: "Waiting for driver confirmation.",
-      });
-    } catch (error) {
-      console.error('Error confirming payment:', error);
     }
   };
 
@@ -177,25 +136,6 @@ const Dashboard = () => {
         return;
       }
 
-      // Send decline message
-      await supabase
-        .from('messages')
-        .insert({
-          booking_id: bookingId,
-          sender_id: userProfile?.id,
-          sender_type: 'passenger',
-          message_text: `I've declined the proposed fare of $${pendingFareBooking?.final_price?.toFixed(2)}. Please contact me to discuss.`
-        });
-
-      // Send notification
-      await supabase.functions.invoke('send-booking-notifications', {
-        body: {
-          bookingId: bookingId,
-          status: 'rejected_by_passenger',
-          triggerType: 'status_change'
-        }
-      });
-
       setPendingFareBooking(null);
       fetchBookings();
 
@@ -208,107 +148,25 @@ const Dashboard = () => {
     }
   };
 
-  const handlePhotoUpload = async (file: File) => {
-    if (!userProfile?.id) {
+  const handleCancelBooking = async (bookingId: string) => {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status: 'cancelled' })
+        .eq('id', bookingId);
+
+      if (error) throw error;
+
+      fetchBookings();
+      toast({
+        title: "Booking Cancelled",
+        description: "Your booking has been cancelled successfully.",
+      });
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
       toast({
         title: "Error",
-        description: "User profile not loaded",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      toast({
-        title: "Invalid file type",
-        description: "Please upload a valid image (JPG, PNG, GIF).",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validate file size (5MB limit)
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "File too large",
-        description: "File size must be less than 5MB.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      // Show uploading state immediately
-      const optimisticUrl = URL.createObjectURL(file);
-      const previousUrl = userProfile.profile_photo_url;
-      
-      setUserProfile((prev: any) => ({
-        ...prev,
-        profile_photo_url: optimisticUrl,
-      }));
-
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${userProfile.id}.${fileExt}`;
-      const filePath = `${userProfile.id}/${fileName}`;
-
-      // Upload to Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(filePath, file, { upsert: true });
-
-      if (uploadError) {
-        throw new Error(`Upload failed: ${uploadError.message}`);
-      }
-
-      // Get public URL
-      const { data: publicURLData } = supabase.storage
-        .from("avatars")
-        .getPublicUrl(filePath);
-
-      const publicURL = publicURLData?.publicUrl;
-      if (!publicURL) {
-        throw new Error("Failed to get public URL");
-      }
-
-      // Update database
-      const { error: updateError } = await supabase
-        .from("passengers")
-        .update({ profile_photo_url: publicURL })
-        .eq("id", userProfile.id);
-
-      if (updateError) {
-        throw new Error(`Database update failed: ${updateError.message}`);
-      }
-
-      // Update state with final URL
-      setUserProfile((prev: any) => ({
-        ...prev,
-        profile_photo_url: publicURL,
-      }));
-
-      // Clean up old URL if it exists and is a blob
-      if (previousUrl && previousUrl.startsWith("blob:")) {
-        URL.revokeObjectURL(previousUrl);
-      }
-
-      toast({
-        title: "Photo updated!",
-        description: "Your profile photo has been successfully uploaded.",
-      });
-
-    } catch (error) {
-      console.error("Photo upload error:", error);
-      
-      // Revert optimistic update on error
-      setUserProfile((prev: any) => ({
-        ...prev,
-        profile_photo_url: userProfile.profile_photo_url,
-      }));
-
-      toast({
-        title: "Upload failed",
-        description: error instanceof Error ? error.message : "Failed to upload profile photo",
+        description: "Failed to cancel booking",
         variant: "destructive",
       });
     }
@@ -326,7 +184,7 @@ const Dashboard = () => {
 
         setIsAuthenticated(true);
 
-        const { data: passenger, error } = await supabase
+        const { data: passengerData, error } = await supabase
           .from("passengers")
           .select("*")
           .eq("id", session.user.id)
@@ -340,9 +198,7 @@ const Dashboard = () => {
             variant: "destructive",
           });
         } else {
-          setUserProfile(passenger);
-          // Debug log as requested
-          console.log(passenger);
+          setPassenger(passengerData);
         }
       } catch (error) {
         console.error("Auth check error:", error);
@@ -369,7 +225,6 @@ const Dashboard = () => {
 
   const handleLogout = async () => {
     try {
-      // Clear all auth state first
       Object.keys(localStorage).forEach((key) => {
         if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
           localStorage.removeItem(key);
@@ -382,14 +237,10 @@ const Dashboard = () => {
         }
       });
 
-      // Sign out with global scope
       await supabase.auth.signOut({ scope: 'global' });
-      
-      // Force complete page reload to clear all state
       window.location.href = "/passenger/login";
     } catch (error) {
       console.error("Logout error:", error);
-      // Force reload even on error
       window.location.href = "/passenger/login";
     }
   };
@@ -400,43 +251,23 @@ const Dashboard = () => {
     
     switch (tab) {
       case 'bookings':
-        // Already on bookings page
+        // Already on bookings page - just update active tab
         break;
       case 'messages':
-        setMessagingOpen(true);
+        // Messages tab will be handled by the tab content
         break;
       case 'payments':
-        setSettingsType('notifications');
-        setSettingsModalOpen(true);
+        // Payments tab will be handled by the tab content
         break;
       case 'settings':
-        setSettingsType('privacy');
         setSettingsModalOpen(true);
         break;
     }
   };
 
-  useEffect(() => {
-    const isNewAccount = localStorage.getItem("show_welcome_celebration");
-    if (isNewAccount === "true") {
-      setShowWelcomeCelebration(true);
-      localStorage.removeItem("show_welcome_celebration");
-    }
-  }, []);
-
-  useEffect(() => {
-    const rideConfirmed = localStorage.getItem("ride_confirmed");
-    if (rideConfirmed === "true") {
-      setShowRideConfirmation(true);
-      localStorage.removeItem("ride_confirmed");
-    }
-  }, []);
-
-  const [bookings, setBookings] = useState<any[]>([]);
-
   // Fetch real bookings from Supabase
   const fetchBookings = async () => {
-    if (!userProfile?.id) return;
+    if (!passenger?.id) return;
 
     try {
       const { data: bookingsData, error } = await supabase
@@ -457,52 +288,18 @@ const Dashboard = () => {
             image_url
           )
         `)
-        .eq('passenger_id', userProfile.id)
+        .eq('passenger_id', passenger.id)
         .order('updated_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching bookings:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load bookings",
-          variant: "destructive",
-        });
         return;
       }
 
-      // Transform Supabase data to match expected format
-      const transformedBookings = bookingsData.map(booking => {
-        const pickupDate = new Date(booking.pickup_time);
-        return {
-          id: booking.id,
-          date: pickupDate.toISOString().split('T')[0], // YYYY-MM-DD format
-          time: pickupDate.toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
-            minute: '2-digit',
-            hour12: false 
-          }),
-          from: booking.pickup_location,
-          to: booking.dropoff_location,
-          vehicle: "Standard Vehicle",
-          vehicleModel: booking.vehicles?.type || "Tesla Model Y",
-          status: booking.status,
-          driver: booking.drivers?.full_name || null,
-          drivers: booking.drivers, // Include full driver data for avatar
-          paymentMethod: booking.payment_status === 'completed' ? 'Paid' : 'Pending',
-          countdown: null,
-          flight_info: booking.flight_info,
-          passenger_count: booking.passenger_count,
-          luggage_count: booking.luggage_count,
-          final_price: booking.final_price,
-          payment_expires_at: booking.payment_expires_at,
-          payment_status: booking.payment_status
-        };
-      });
-
-      setBookings(transformedBookings);
+      setBookings(bookingsData || []);
       
       // Check for pending fare confirmation
-      const pendingBooking = transformedBookings.find(booking => booking.status === 'price_proposed');
+      const pendingBooking = bookingsData?.find(booking => booking.status === 'price_proposed');
       setPendingFareBooking(pendingBooking || null);
     } catch (error) {
       console.error('Error fetching bookings:', error);
@@ -513,7 +310,7 @@ const Dashboard = () => {
     fetchBookings();
 
     // Set up real-time subscription for booking status updates
-    if (userProfile?.id) {
+    if (passenger?.id) {
       const channel = supabase
         .channel('passenger-booking-updates')
         .on(
@@ -522,7 +319,7 @@ const Dashboard = () => {
             event: 'UPDATE',
             schema: 'public',
             table: 'bookings',
-            filter: `passenger_id=eq.${userProfile.id}`
+            filter: `passenger_id=eq.${passenger.id}`
           },
           (payload) => {
             console.log('Booking update received:', payload);
@@ -535,20 +332,7 @@ const Dashboard = () => {
         supabase.removeChannel(channel);
       };
     }
-  }, [userProfile]);
-
-  const filteredBookings = bookings.filter(booking => {
-    const bookingDate = new Date(booking.date + ' ' + booking.time);
-    const now = new Date();
-    
-    if (bookingView === "upcoming") {
-      return ['pending', 'accepted', 'confirmed', 'price_proposed', 'payment_confirmed', 'ready_to_go'].includes(booking.status) ||
-             (bookingDate >= now && !['completed', 'cancelled', 'declined', 'rejected_by_passenger'].includes(booking.status));
-    } else {
-      return ['completed', 'cancelled', 'declined', 'rejected_by_passenger'].includes(booking.status) ||
-             (bookingDate < now && !['pending', 'accepted', 'confirmed', 'price_proposed', 'payment_confirmed', 'ready_to_go'].includes(booking.status));
-    }
-  });
+  }, [passenger]);
 
   if (loading) {
     return (
@@ -567,9 +351,9 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {userProfile?.id && (
+      {passenger?.id && (
         <NotificationManager 
-          userId={userProfile.id}
+          userId={passenger.id}
           userType="passenger"
         />
       )}
@@ -580,7 +364,12 @@ const Dashboard = () => {
         {/* Header Section */}
         <div className="p-4 bg-background">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-bold text-foreground">Bookings</h1>
+            <h1 className="text-2xl font-bold text-foreground">
+              {activeTab === 'bookings' && 'Bookings'}
+              {activeTab === 'messages' && 'Messages'}
+              {activeTab === 'payments' && 'Payments'}
+              {activeTab === 'settings' && 'Settings'}
+            </h1>
             <div className="flex items-center gap-3">
               <Button
                 onClick={() => setProfileEditOpen(true)}
@@ -590,42 +379,43 @@ const Dashboard = () => {
               >
                 <Avatar className="h-8 w-8">
                   <AvatarImage 
-                    src={userProfile?.profile_photo_url} 
-                    alt={userProfile?.full_name || "Profile"} 
+                    src={passenger?.profile_photo_url} 
+                    alt={passenger?.full_name || "Profile"} 
                   />
                   <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                    {userProfile?.full_name ? userProfile.full_name.charAt(0).toUpperCase() : "U"}
+                    {passenger?.full_name ? passenger.full_name.charAt(0).toUpperCase() : "U"}
                   </AvatarFallback>
                 </Avatar>
               </Button>
             </div>
           </div>
 
-          {/* Clean Tab Navigation */}
-          <div className="flex bg-muted/30 p-1 rounded-lg mb-4">
-            <Button
-              variant={bookingView === "upcoming" ? "default" : "ghost"}
-              size="sm"
-              className="flex-1 text-sm font-medium h-9 rounded-md"
-              onClick={() => setBookingView("upcoming")}
-            >
-              Upcoming
-            </Button>
-            <Button
-              variant={bookingView === "past" ? "default" : "ghost"}
-              size="sm"
-              className="flex-1 text-sm font-medium h-9 rounded-md"
-              onClick={() => setBookingView("past")}
-            >
-              Past Rides
-            </Button>
-          </div>
+          {/* Tab Navigation - Only for Bookings */}
+          {activeTab === "bookings" && (
+            <div className="flex bg-muted/30 p-1 rounded-lg mb-4">
+              <Button
+                variant={bookingView === "upcoming" ? "default" : "ghost"}
+                size="sm"
+                className="flex-1 text-sm font-medium h-9 rounded-md"
+                onClick={() => setBookingView("upcoming")}
+              >
+                Upcoming
+              </Button>
+              <Button
+                variant={bookingView === "past" ? "default" : "ghost"}
+                size="sm"
+                className="flex-1 text-sm font-medium h-9 rounded-md"
+                onClick={() => setBookingView("past")}
+              >
+                Past Rides
+              </Button>
+            </div>
+          )}
         </div>
 
-        {/* Content Area */}
-        <div className="flex-1 px-4 space-y-4">
-          {/* Active Fare Confirmation Alert - Always at Top */}
-          {pendingFareBooking && (
+        {/* Fare Confirmation Alert - Always at Top when present */}
+        {pendingFareBooking && activeTab === "bookings" && (
+          <div className="px-4 mb-4">
             <FareConfirmationAlert
               isVisible={true}
               fareAmount={pendingFareBooking.final_price || 0}
@@ -637,58 +427,137 @@ const Dashboard = () => {
                 new Date(Date.now() + 15 * 60 * 1000)
               }
             />
+          </div>
+        )}
+
+        {/* Main Content */}
+        <div className="flex-1 overflow-auto">
+          {activeTab === "bookings" && (
+            <div className="p-4 space-y-4">
+              {bookingView === "upcoming" && groupedBookings.upcoming.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground mb-3">Upcoming</h3>
+                  <div className="space-y-3">
+                    {groupedBookings.upcoming.map((booking) => (
+                      <BookingCard 
+                        key={booking.id} 
+                        booking={booking} 
+                        userType="passenger"
+                        onMessage={() => {
+                          setSelectedBooking(booking);
+                          setMessagingOpen(true);
+                        }}
+                        onCancelSuccess={() => fetchBookings()}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {bookingView === "past" && groupedBookings.pastRides.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground mb-3">Past Rides</h3>
+                  <div className="space-y-3">
+                    {groupedBookings.pastRides.map((booking) => (
+                      <BookingCard 
+                        key={booking.id} 
+                        booking={booking} 
+                        userType="passenger"
+                        onMessage={() => {
+                          setSelectedBooking(booking);
+                          setMessagingOpen(true);
+                        }}
+                        onReview={booking.status === 'completed' ? () => {
+                          setSelectedBookingForReview(booking.id);
+                          setReviewModalOpen(true);
+                        } : undefined}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {((bookingView === "upcoming" && groupedBookings.upcoming.length === 0) || 
+                (bookingView === "past" && groupedBookings.pastRides.length === 0)) && (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span className="text-2xl">🚗</span>
+                  </div>
+                  <h3 className="font-medium text-foreground mb-2">
+                    {bookingView === "upcoming" ? "No upcoming rides" : "No past rides"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-6">
+                    {bookingView === "upcoming" ? "Book your first ride to get started" : "Your completed rides will appear here"}
+                  </p>
+                  {bookingView === "upcoming" && (
+                    <Button 
+                      onClick={handleNewBooking}
+                      className="bg-primary hover:bg-primary/90 text-white"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Book Now
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
           )}
 
-          {/* Bookings List */}
-          <div className="space-y-3">
-            {filteredBookings.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-4xl mb-4">
-                  {bookingView === "upcoming" ? "🚗" : "📋"}
+          {activeTab === "messages" && (
+            <div className="p-4">
+              <MessagesTab
+                userType="passenger"
+                userId={passenger?.id || ""}
+                onSelectChat={(booking, otherUser) => {
+                  setSelectedBooking(booking);
+                  setMessagingOpen(true);
+                }}
+              />
+            </div>
+          )}
+
+          {activeTab === "payments" && (
+            <div className="p-4">
+              <PaymentsTab
+                userId={passenger?.id || ""}
+                userType="passenger"
+              />
+            </div>
+          )}
+
+          {activeTab === "settings" && (
+            <div className="p-4">
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-2xl">⚙️</span>
                 </div>
-                <p className="text-muted-foreground text-sm">
-                  {bookingView === "upcoming" ? "No upcoming rides" : "No past rides"}
+                <h3 className="font-medium text-foreground mb-2">Settings</h3>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Manage your account preferences and settings
                 </p>
+                <Button 
+                  onClick={() => setSettingsModalOpen(true)}
+                  className="bg-primary hover:bg-primary/90 text-white"
+                >
+                  Open Settings
+                </Button>
               </div>
-            ) : (
-              filteredBookings.map((booking) => (
-                <Card key={booking.id} className="border border-border/40 shadow-sm hover:shadow-md transition-all duration-200 rounded-xl overflow-hidden">
-                  <BookingCard
-                    booking={booking}
-                    userType="passenger"
-                    onMessage={() => {
-                      setSelectedBookingForMessaging(booking);
-                      setMessagingOpen(true);
-                    }}
-                    onReview={() => {
-                      setSelectedBookingForReview(booking.id);
-                      setReviewModalOpen(true);
-                    }}
-                    onViewSummary={() => {
-                      setSelectedBookingForSummary(booking);
-                      setSummaryModalOpen(true);
-                    }}
-                    onCancelSuccess={() => {
-                      fetchBookings();
-                    }}
-                  />
-                </Card>
-              ))
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
-        {/* New Booking Button - Airbnb Style - Above Bottom Navigation */}
-        <div className="p-4 pb-20">
-          <Button 
-            onClick={handleNewBooking}
-            className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-medium rounded-xl shadow-lg transition-all duration-200 hover:shadow-xl"
-            size="lg"
-          >
-            <span className="text-xl mr-2">+</span>
-            New Booking
-          </Button>
-        </div>
+        {/* New Booking Button - Only show on bookings tab */}
+        {activeTab === "bookings" && (
+          <div className="p-4 pb-20">
+            <Button 
+              onClick={handleNewBooking}
+              className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-medium rounded-xl shadow-lg transition-all duration-200 hover:shadow-xl"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              New Booking
+            </Button>
+          </div>
+        )}
 
         {/* Bottom Navigation */}
         <BottomNavigation
@@ -699,34 +568,35 @@ const Dashboard = () => {
       </div>
 
       {/* Modals */}
-      {selectedBookingForMessaging && (
+      {selectedBooking && (
         <MessagingInterface 
           isOpen={messagingOpen}
           onClose={() => {
             setMessagingOpen(false);
-            setSelectedBookingForMessaging(null);
+            setSelectedBooking(null);
           }}
-          bookingId={selectedBookingForMessaging.id}
-          currentUserId={userProfile?.id || ""}
-          currentUserName={userProfile?.full_name || ""}
-          currentUserAvatar={userProfile?.profile_photo_url}
-          otherUserName={selectedBookingForMessaging.driver}
-          otherUserAvatar={selectedBookingForMessaging.drivers?.profile_photo_url}
+          bookingId={selectedBooking.id}
+          currentUserId={passenger?.id || ""}
+          currentUserName={passenger?.full_name || ""}
+          currentUserAvatar={passenger?.profile_photo_url}
+          otherUserName={selectedBooking.drivers?.full_name || "Driver"}
+          otherUserAvatar={selectedBooking.drivers?.profile_photo_url}
           userType="passenger"
         />
       )}
       
-      <SettingsModal 
+      <EnhancedSettingsModal
         isOpen={settingsModalOpen}
         onClose={() => setSettingsModalOpen(false)}
-        type={settingsType}
+        userId={passenger?.id}
+        userType="passenger"
       />
       
       <ProfileEditModal 
         isOpen={profileEditOpen}
         onClose={() => setProfileEditOpen(false)}
-        userProfile={userProfile}
-        onPhotoUpload={handlePhotoUpload}
+        userProfile={passenger}
+        onPhotoUpload={async () => {}} // Add photo upload handler if needed
       />
 
       <ReviewModal 
@@ -746,49 +616,49 @@ const Dashboard = () => {
         onClose={() => setShowWelcomeCelebration(false)}
       />
 
-       <CelebrationModal 
-         isOpen={showRideConfirmation}
-         onClose={() => setShowRideConfirmation(false)}
-       />
+      <CelebrationModal 
+        isOpen={showRideConfirmation}
+        onClose={() => setShowRideConfirmation(false)}
+      />
 
-       {/* Payment Confirmation Modal */}
-       {selectedBookingForPayment && (
-         <PaymentConfirmationModal
-           isOpen={paymentModalOpen}
-           onClose={() => {
-             setPaymentModalOpen(false);
-             setSelectedBookingForPayment(null);
-           }}
-           bookingData={selectedBookingForPayment}
-           userType="passenger"
-           onConfirmPayment={handlePaymentConfirmation}
-           paymentStatus={selectedBookingForPayment.payment_status || 'pending'}
-         />
-        )}
+      {/* Payment Confirmation Modal */}
+      {selectedBookingForPayment && (
+        <PaymentConfirmationModal
+          isOpen={paymentModalOpen}
+          onClose={() => {
+            setPaymentModalOpen(false);
+            setSelectedBookingForPayment(null);
+          }}
+          bookingData={selectedBookingForPayment}
+          userType="passenger"
+          onConfirmPayment={() => {}}
+          paymentStatus={selectedBookingForPayment.payment_status || 'pending'}
+        />
+      )}
 
-         {/* Passenger Preferences Modal */}
-         <PassengerPreferencesModal
-           isOpen={preferencesModalOpen}
-           onClose={() => setPreferencesModalOpen(false)}
-           userProfile={userProfile}
-           onUpdate={() => {
-             // Refresh user profile to reflect changes
-             if (userProfile?.id) {
-               supabase
-                 .from('passengers')
-                 .select('*')
-                 .eq('id', userProfile.id)
-                 .single()
-                 .then(({ data }) => {
-                   if (data) {
-                     setUserProfile(data);
-                   }
-                 });
-             }
-           }}
-         />
-     </div>
-   );
- };
+      {/* Passenger Preferences Modal */}
+      <PassengerPreferencesModal
+        isOpen={preferencesModalOpen}
+        onClose={() => setPreferencesModalOpen(false)}
+        userProfile={passenger}
+        onUpdate={() => {
+          // Refresh user profile to reflect changes
+          if (passenger?.id) {
+            supabase
+              .from('passengers')
+              .select('*')
+              .eq('id', passenger.id)
+              .single()
+              .then(({ data }) => {
+                if (data) {
+                  setPassenger(data);
+                }
+              });
+          }
+        }}
+      />
+    </div>
+  );
+};
 
- export default Dashboard;
+export default Dashboard;
