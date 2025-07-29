@@ -14,7 +14,7 @@ interface PassengerPreferencesCardProps {
 }
 
 const PassengerPreferencesCard: React.FC<PassengerPreferencesCardProps> = ({ preferences }) => {
-  const hasPreferences = Object.values(preferences).some(value => value && value !== '');
+  const hasPreferences = Object.values(preferences).some(value => value && value !== '' && value !== 'none');
   
   if (!hasPreferences) return null;
 
@@ -50,7 +50,7 @@ const PassengerPreferencesCard: React.FC<PassengerPreferencesCardProps> = ({ pre
           </div>
         )}
         
-        {preferences.music_preference && (
+        {preferences.music_preference && preferences.music_preference !== 'none' && (
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Music:</span>
             <Badge variant="secondary">{getMusicPreferenceText(preferences.music_preference)}</Badge>
@@ -74,7 +74,7 @@ const PassengerPreferencesCard: React.FC<PassengerPreferencesCardProps> = ({ pre
           </div>
         )}
         
-        {preferences.trip_purpose && (
+        {preferences.trip_purpose && preferences.trip_purpose !== 'none' && (
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Purpose:</span>
             <Badge variant="secondary">{preferences.trip_purpose}</Badge>
