@@ -50,6 +50,8 @@ export const UpcomingRideCard = ({ ride, userType, onMessage, onNavigate, onFare
       case "confirmed": return "bg-success/10 text-success border-success/20";
       case "pending": return "bg-warning/10 text-warning border-warning/20";
       case "payment_confirmed": return "bg-success/10 text-success border-success/20";
+      case "price_proposed": return "bg-blue-100/80 text-blue-800 border-blue-200";
+      case "accepted": return "bg-green-100/80 text-green-800 border-green-200";
       default: return "bg-muted/10 text-muted-foreground border-border";
     }
   };
@@ -161,7 +163,10 @@ export const UpcomingRideCard = ({ ride, userType, onMessage, onNavigate, onFare
             </div>
           </div>
           <Badge className={getStatusColor(ride.status)}>
-            {ride.status === "confirmed" ? "Confirmed" : ride.status}
+            {ride.status === "confirmed" ? "Confirmed" : 
+             ride.status === "price_proposed" ? "Awaiting Passenger Response" :
+             ride.status === "accepted" ? "Accepted" :
+             ride.status}
           </Badge>
         </div>
 

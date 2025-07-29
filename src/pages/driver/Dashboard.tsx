@@ -369,7 +369,7 @@ const DriverDashboard = () => {
         .from('bookings')
         .update({ 
           final_price: newPrice,
-          status: 'awaiting_driver_confirmation',
+          status: 'price_proposed',
           payment_expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString() // 1 hour from now
         })
         .eq('id', bookingId);
@@ -388,14 +388,14 @@ const DriverDashboard = () => {
       setDriverRides(prevRides => 
         prevRides.map(ride => 
           ride.id === bookingId 
-            ? { ...ride, payment: `$${newPrice.toFixed(2)}`, status: "awaiting_driver_confirmation", final_price: newPrice }
+            ? { ...ride, payment: `$${newPrice.toFixed(2)}`, status: "price_proposed", final_price: newPrice }
             : ride
         )
       );
 
       toast({
         title: "Price Updated!",
-        description: "Click Accept to confirm the price change and notify the passenger.",
+        description: "Price proposal sent to passenger. Awaiting their confirmation.",
       });
     } catch (error) {
       console.error('Error updating price:', error);
@@ -727,7 +727,13 @@ const DriverDashboard = () => {
   const nextRide = driverRides.find(ride => {
     const rideDate = new Date(ride.date);
     const today = new Date();
-    return rideDate >= today && (ride.status === "confirmed" || ride.status === "payment_confirmed");
+    return rideDate >= today && (
+      ride.status === "confirmed" || 
+      ride.status === "payment_confirmed" || 
+      ride.status === "pending" ||
+      ride.status === "price_proposed" ||
+      ride.status === "accepted"
+    );
   });
 
   const getStatusColor = (status: string) => {
@@ -737,6 +743,8 @@ const DriverDashboard = () => {
       case "waiting_payment": return "bg-orange-100/80 text-orange-800 border-orange-200";
       case "payment_confirmed": return "bg-success/10 text-success border-success/20";
       case "completed": return "bg-primary/10 text-primary border-primary/20";
+      case "price_proposed": return "bg-blue-100/80 text-blue-800 border-blue-200";
+      case "accepted": return "bg-green-100/80 text-green-800 border-green-200";
       default: return "bg-muted/10 text-muted-foreground border-border";
     }
   };
@@ -748,6 +756,8 @@ const DriverDashboard = () => {
       case "waiting_payment": return "Awaiting Payment";
       case "payment_confirmed": return "Payment Confirmed";
       case "completed": return "Completed";
+      case "price_proposed": return "Awaiting Passenger Response";
+      case "accepted": return "Accepted";
       default: return status;
     }
   };
