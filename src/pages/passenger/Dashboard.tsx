@@ -14,6 +14,7 @@ import { UpcomingRideCard } from "@/components/dashboard/UpcomingRideCard";
 import { BookingToggle } from "@/components/dashboard/BookingToggle";
 import { BookingCard } from "@/components/dashboard/BookingCard";
 import { FloatingActionButton } from "@/components/dashboard/FloatingActionButton";
+import { FareConfirmationAlert } from "@/components/FareConfirmationAlert";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { User, LogOut } from "lucide-react";
@@ -38,6 +39,93 @@ const Dashboard = () => {
   const [selectedBookingForMessaging, setSelectedBookingForMessaging] = useState<any>(null);
   const [showWelcomeCelebration, setShowWelcomeCelebration] = useState(false);
   const [showRideConfirmation, setShowRideConfirmation] = useState(false);
+  const [pendingFareBooking, setPendingFareBooking] = useState<any>(null);
+
+  const handleAcceptFare = async (bookingId: string) => {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          status: 'payment_confirmed',
+          payment_status: 'pending_payment'
+        })
+        .eq('id', bookingId);
+
+      if (error) {
+        console.error('Error accepting fare:', error);
+        toast({
+          title: "Error",
+          description: "Failed to accept fare",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Send confirmation message
+      await supabase
+        .from('messages')
+        .insert({
+          booking_id: bookingId,
+          sender_id: userProfile?.id,
+          sender_type: 'passenger',
+          message_text: `I've accepted the fare of $${pendingFareBooking?.final_price?.toFixed(2)}. Proceeding with payment.`
+        });
+
+      setPendingFareBooking(null);
+      fetchBookings();
+
+      toast({
+        title: "Fare Accepted!",
+        description: "Redirecting to payment...",
+      });
+
+      // TODO: Redirect to payment page
+      console.log("Redirect to payment with fare:", pendingFareBooking?.final_price);
+    } catch (error) {
+      console.error('Error accepting fare:', error);
+    }
+  };
+
+  const handleDeclineFare = async (bookingId: string) => {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          status: 'rejected_by_passenger'
+        })
+        .eq('id', bookingId);
+
+      if (error) {
+        console.error('Error declining fare:', error);
+        toast({
+          title: "Error",
+          description: "Failed to decline fare",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Send decline message
+      await supabase
+        .from('messages')
+        .insert({
+          booking_id: bookingId,
+          sender_id: userProfile?.id,
+          sender_type: 'passenger',
+          message_text: `I've declined the proposed fare of $${pendingFareBooking?.final_price?.toFixed(2)}. Please contact me to discuss.`
+        });
+
+      setPendingFareBooking(null);
+      fetchBookings();
+
+      toast({
+        title: "Fare Declined",
+        description: "The driver has been notified.",
+      });
+    } catch (error) {
+      console.error('Error declining fare:', error);
+    }
+  };
 
   const handlePhotoUpload = async (file: File) => {
     if (!userProfile?.id) {
@@ -299,11 +387,17 @@ const Dashboard = () => {
           countdown: null,
           flight_info: booking.flight_info,
           passenger_count: booking.passenger_count,
-          luggage_count: booking.luggage_count
+          luggage_count: booking.luggage_count,
+          final_price: booking.final_price,
+          payment_expires_at: booking.payment_expires_at
         };
       });
 
       setBookings(transformedBookings);
+      
+      // Check for pending fare confirmation
+      const pendingBooking = transformedBookings.find(booking => booking.status === 'price_proposed');
+      setPendingFareBooking(pendingBooking || null);
     } catch (error) {
       console.error('Error fetching bookings:', error);
     }
@@ -418,6 +512,17 @@ const Dashboard = () => {
                        setSelectedBookingForMessaging(nextRide);
                        setMessagingOpen(true);
                      }}
+          />
+        )}
+
+        {/* Fare Confirmation Alert */}
+        {pendingFareBooking && (
+          <FareConfirmationAlert 
+            isVisible={true}
+            fareAmount={pendingFareBooking.final_price || 0}
+            onAccept={() => handleAcceptFare(pendingFareBooking.id)}
+            onDecline={() => handleDeclineFare(pendingFareBooking.id)}
+            expiresAt={new Date(pendingFareBooking.payment_expires_at)}
           />
         )}
 

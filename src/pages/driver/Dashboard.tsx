@@ -320,7 +320,7 @@ const DriverDashboard = () => {
         .from('bookings')
         .update({ 
           final_price: newPrice,
-          status: 'price_proposed',
+          status: 'awaiting_driver_confirmation',
           payment_expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString() // 1 hour from now
         })
         .eq('id', bookingId);
@@ -339,17 +339,67 @@ const DriverDashboard = () => {
       setDriverRides(prevRides => 
         prevRides.map(ride => 
           ride.id === bookingId 
-            ? { ...ride, payment: `$${newPrice.toFixed(2)}`, status: "price_proposed" }
+            ? { ...ride, payment: `$${newPrice.toFixed(2)}`, status: "awaiting_driver_confirmation", final_price: newPrice }
             : ride
         )
       );
 
       toast({
         title: "Price Updated!",
-        description: "The passenger will be notified of the new price.",
+        description: "Click Accept to confirm the price change and notify the passenger.",
       });
     } catch (error) {
       console.error('Error updating price:', error);
+    }
+  };
+
+  const handleConfirmPrice = async (bookingId: string) => {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          status: 'price_proposed'
+        })
+        .eq('id', bookingId);
+
+      if (error) {
+        console.error('Error confirming price:', error);
+        toast({
+          title: "Error",
+          description: "Failed to confirm price",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Update local state
+      setDriverRides(prevRides => 
+        prevRides.map(ride => 
+          ride.id === bookingId 
+            ? { ...ride, status: "price_proposed" }
+            : ride
+        )
+      );
+
+      // Send automatic message to passenger
+      const ride = driverRides.find(r => r.id === bookingId);
+      if (ride && ride.final_price) {
+        await supabase
+          .from('messages')
+          .insert({
+            booking_id: bookingId,
+            sender_id: userProfile?.id,
+            sender_type: 'driver',
+            message_text: `I've confirmed the ride price at $${ride.final_price.toFixed(2)}. Please confirm the payment to proceed with your booking.`
+          });
+      }
+
+      toast({
+        title: "Price Confirmed!",
+        description: "The passenger will be notified to confirm payment.",
+      });
+    } catch (error) {
+      console.error('Error confirming price:', error);
     }
   };
 
@@ -444,7 +494,9 @@ const DriverDashboard = () => {
             flight_info: booking.flight_info,
             passenger_count: booking.passenger_count,
             luggage_count: booking.luggage_count,
-            vehicle_type: booking.vehicle_type || 'Vehicle'
+            vehicle_type: booking.vehicle_type || 'Vehicle',
+            final_price: booking.final_price,
+            passenger_id: booking.passenger_id
           };
         });
 
@@ -713,7 +765,9 @@ const DriverDashboard = () => {
                             <span className="text-sm font-medium text-foreground">{ride.passenger}</span>
                           </div>
                           <div className="ml-auto flex items-center gap-2">
-                            <p className="text-lg font-semibold text-primary">{ride.payment}</p>
+                        <p className="text-lg font-semibold text-primary">
+                          {ride.final_price ? `$${ride.final_price.toFixed(2)}` : ride.payment}
+                        </p>
                             {(ride.status === "pending" || ride.status === "accepted") && (
                               <Button
                                 variant="ghost"
@@ -772,25 +826,46 @@ const DriverDashboard = () => {
                         </div>
                       )}
 
+                      {ride.status === "awaiting_driver_confirmation" && (
+                        <div className="p-3 bg-warning/5 rounded-lg border border-warning/20 mt-3">
+                          <p className="text-sm text-foreground mb-2">
+                            Price updated to ${ride.final_price?.toFixed(2)}. Click Accept to confirm and notify the passenger.
+                          </p>
+                          <Button 
+                            size="sm" 
+                            className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary-glow"
+                            onClick={() => handleConfirmPrice(ride.id)}
+                          >
+                            <CheckCircle className="h-3 w-3" />
+                            <span>Accept Price Change</span>
+                          </Button>
+                        </div>
+                      )}
+
                       <div className="flex gap-2 mt-4">
                         <Button
                           onClick={async () => {
                             setSelectedBookingForMessaging(ride);
-                            // Fetch passenger profile
-                            if (ride.passenger_id) {
-                              try {
-                                const { data: passenger, error } = await supabase
-                                  .from('passengers')
-                                  .select('*')
-                                  .eq('id', ride.passenger_id)
-                                  .maybeSingle();
-                                  
-                                if (passenger && !error) {
-                                  setPassengerProfile(passenger);
-                                }
-                              } catch (error) {
-                                console.error('Error fetching passenger profile:', error);
+                            // Fetch passenger profile using the correct field from the booking
+                            try {
+                              const { data: booking, error: bookingError } = await supabase
+                                .from('bookings')
+                                .select(`
+                                  *,
+                                  passengers:passenger_id (
+                                    id,
+                                    full_name,
+                                    profile_photo_url
+                                  )
+                                `)
+                                .eq('id', ride.id)
+                                .single();
+                                
+                              if (booking && !bookingError && booking.passengers) {
+                                setPassengerProfile(booking.passengers);
                               }
+                            } catch (error) {
+                              console.error('Error fetching passenger profile:', error);
                             }
                             setMessagingOpen(true);
                           }}
