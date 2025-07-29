@@ -22,8 +22,30 @@ const OrganizedBookingsList: React.FC<OrganizedBookingsListProps> = ({
   onCancelSuccess,
   onNavigate
 }) => {
-  // Sort all bookings by pickup_time descending (most recent first)
+  // Sort all bookings by updated_at and pickup_time to prioritize most recent activity
   const sortedBookings = [...bookings].sort((a, b) => {
+    // First, prioritize by status importance (newer activity first)
+    const statusPriority = {
+      'price_proposed': 1,
+      'pending': 2,
+      'accepted': 3,
+      'confirmed': 3,
+      'payment_confirmed': 4,
+      'ready_to_go': 5,
+      'completed': 6,
+      'cancelled': 7,
+      'declined': 7,
+      'rejected_by_passenger': 7
+    };
+    
+    const priorityA = statusPriority[a.status as keyof typeof statusPriority] || 8;
+    const priorityB = statusPriority[b.status as keyof typeof statusPriority] || 8;
+    
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB;
+    }
+    
+    // Then sort by pickup time (most recent first)
     const dateA = new Date(a.date + ' ' + a.time);
     const dateB = new Date(b.date + ' ' + b.time);
     return dateB.getTime() - dateA.getTime();

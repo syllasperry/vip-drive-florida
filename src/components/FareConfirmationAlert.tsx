@@ -9,6 +9,7 @@ interface FareConfirmationAlertProps {
   fareAmount: number;
   onAccept: () => void;
   onDecline: () => void;
+  onClose?: () => void;
   expiresAt: Date;
 }
 
@@ -17,6 +18,7 @@ export const FareConfirmationAlert = ({
   fareAmount, 
   onAccept, 
   onDecline, 
+  onClose,
   expiresAt 
 }: FareConfirmationAlertProps) => {
   const [timeLeft, setTimeLeft] = useState<string>("");
@@ -49,16 +51,28 @@ export const FareConfirmationAlert = ({
   if (!isVisible) return null;
 
   return (
-    <Card className="bg-primary/5 border-primary/20 animate-pulse">
+    <Card className="bg-primary/5 border-primary/20 animate-pulse relative max-w-full mx-auto">
       <CardContent className="p-4">
+        {/* Close button for expired state */}
+        {timeLeft === "Expired" && onClose && (
+          <Button
+            onClick={onClose}
+            variant="ghost"
+            size="sm"
+            className="absolute top-2 right-2 h-8 w-8 p-0 hover:bg-destructive/10"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+        
         <div className="flex items-start gap-3">
-          <div className="p-2 bg-primary/10 rounded-full">
+          <div className="p-2 bg-primary/10 rounded-full flex-shrink-0">
             <CheckCircle className="h-5 w-5 text-primary" />
           </div>
           
-          <div className="flex-1 space-y-3">
+          <div className="flex-1 space-y-3 min-w-0">
             <div>
-              <h3 className="font-semibold text-foreground">
+              <h3 className="font-semibold text-foreground text-sm sm:text-base">
                 🔔 Your driver has accepted your request and proposed a fare. Do you confirm?
               </h3>
               <p className="text-lg font-bold text-primary mt-1">
@@ -66,30 +80,31 @@ export const FareConfirmationAlert = ({
               </p>
             </div>
             
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
+            <div className="flex items-center gap-2 flex-wrap">
+              <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               <span className="text-sm text-muted-foreground">
-                ⏳ Time left to respond: <Badge variant="secondary">{timeLeft}</Badge>
+                ⏳ Time left to respond: <Badge variant="secondary" className="text-xs">{timeLeft}</Badge>
               </span>
             </div>
             
-            <div className="flex gap-2">
+            {/* Mobile-optimized button layout */}
+            <div className="flex flex-col sm:flex-row gap-2 w-full">
               <Button 
                 onClick={onAccept}
-                className="flex-1 bg-primary hover:bg-primary/90"
+                className="w-full sm:flex-1 bg-primary hover:bg-primary/90 text-sm"
                 disabled={timeLeft === "Expired"}
               >
-                <CheckCircle className="h-4 w-4 mr-2" />
-                ✅ Accept Price
+                <CheckCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+                <span className="truncate">✅ Accept Price</span>
               </Button>
               <Button 
                 onClick={onDecline}
                 variant="outline"
-                className="flex-1 border-destructive text-destructive hover:bg-destructive/10"
+                className="w-full sm:flex-1 border-destructive text-destructive hover:bg-destructive/10 text-sm"
                 disabled={timeLeft === "Expired"}
               >
-                <X className="h-4 w-4 mr-2" />
-                ❌ Decline Ride
+                <X className="h-4 w-4 mr-2 flex-shrink-0" />
+                <span className="truncate">❌ Decline Ride</span>
               </Button>
             </div>
           </div>

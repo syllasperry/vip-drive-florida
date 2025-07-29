@@ -605,6 +605,7 @@ const Dashboard = () => {
             fareAmount={pendingFareBooking.final_price || 0}
             onAccept={() => handleAcceptFare(pendingFareBooking.id)}
             onDecline={() => handleDeclineFare(pendingFareBooking.id)}
+            onClose={() => setPendingFareBooking(null)}
             expiresAt={new Date(pendingFareBooking.payment_expires_at)}
           />
         )}
@@ -709,25 +710,47 @@ const Dashboard = () => {
 
         {/* Tab Content */}
         {activeTab === "bookings" && (
-          <OrganizedBookingsList
-            bookings={bookings}
-            userType="passenger"
-            onMessage={(booking) => {
-              setSelectedBookingForMessaging(booking);
-              setMessagingOpen(true);
-            }}
-            onReview={(bookingId) => {
-              setSelectedBookingForReview(bookingId);
-              setReviewModalOpen(true);
-            }}
-            onViewSummary={(booking) => {
-              setSelectedBookingForSummary(booking);
-              setSummaryModalOpen(true);
-            }}
-            onCancelSuccess={() => {
-              fetchBookings(); // Refresh bookings after cancellation
-            }}
-          />
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold">Your Bookings</h2>
+            
+            {/* Tabs for Upcoming and Past Rides */}
+            <div className="flex bg-muted rounded-lg p-1">
+              <Button
+                variant={bookingView === "upcoming" ? "default" : "ghost"}
+                className="flex-1 text-sm"
+                onClick={() => setBookingView("upcoming")}
+              >
+                📅 Upcoming
+              </Button>
+              <Button
+                variant={bookingView === "past" ? "default" : "ghost"}
+                className="flex-1 text-sm"
+                onClick={() => setBookingView("past")}
+              >
+                📚 Past Rides
+              </Button>
+            </div>
+
+            <OrganizedBookingsList
+              bookings={filteredBookings}
+              userType="passenger"
+              onMessage={(booking) => {
+                setSelectedBookingForMessaging(booking);
+                setMessagingOpen(true);
+              }}
+              onReview={(bookingId) => {
+                setSelectedBookingForReview(bookingId);
+                setReviewModalOpen(true);
+              }}
+              onViewSummary={(booking) => {
+                setSelectedBookingForSummary(booking);
+                setSummaryModalOpen(true);
+              }}
+              onCancelSuccess={() => {
+                fetchBookings(); // Refresh bookings after cancellation
+              }}
+            />
+          </div>
         )}
 
         {activeTab === "messages" && (
