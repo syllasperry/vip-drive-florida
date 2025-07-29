@@ -2,20 +2,48 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Clock, MapPin, User, Car, MessageCircle, Navigation } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Clock, MapPin, User, Car, MessageCircle, Navigation, DollarSign, Edit3, Send } from "lucide-react";
 import PassengerPreferencesCard from "@/components/PassengerPreferencesCard";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 interface UpcomingRideCardProps {
   ride: any;
   userType: "passenger" | "driver";
   onMessage?: () => void;
   onNavigate?: (navApp: string) => void;
+  onFareUpdate?: (rideId: string, newFare: number) => void;
 }
 
-export const UpcomingRideCard = ({ ride, userType, onMessage, onNavigate }: UpcomingRideCardProps) => {
+export const UpcomingRideCard = ({ ride, userType, onMessage, onNavigate, onFareUpdate }: UpcomingRideCardProps) => {
   if (!ride) return null;
   
   const isNewRequest = ride.status === "pending" && userType === "driver";
+  const [isEditingFare, setIsEditingFare] = useState(false);
+  const [editedFare, setEditedFare] = useState(ride.final_price || 120);
+  const { toast } = useToast();
+  
+  const handleFareEdit = () => {
+    setIsEditingFare(true);
+  };
+  
+  const handleFareSave = () => {
+    if (onFareUpdate) {
+      onFareUpdate(ride.id, editedFare);
+      toast({
+        title: "Fare Updated",
+        description: `New fare of $${editedFare.toFixed(2)} sent to passenger for approval`,
+        duration: 3000,
+      });
+    }
+    setIsEditingFare(false);
+  };
+  
+  const handleFareCancel = () => {
+    setEditedFare(ride.final_price || 120);
+    setIsEditingFare(false);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -46,18 +74,73 @@ export const UpcomingRideCard = ({ ride, userType, onMessage, onNavigate }: Upco
         
         {/* Dynamic fare display for new requests */}
         {isNewRequest && (
-          <div className="mb-4 p-3 bg-warning/10 border border-warning/20 rounded-lg">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Suggested Fare:</span>
+          <div className="mb-4 p-4 bg-gradient-to-r from-warning/20 via-warning/10 to-warning/20 border-2 border-warning/40 rounded-lg animate-pulse">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <span className="text-lg font-bold text-primary">
-                  {ride.payment || "$120.00"}
-                </span>
-                <Button variant="outline" size="sm" className="text-xs">
-                  Edit
-                </Button>
+                <DollarSign className="h-5 w-5 text-warning animate-bounce" />
+                <span className="text-sm font-semibold text-warning">Platform Suggested Fare</span>
               </div>
+              <Badge variant="secondary" className="animate-pulse">
+                Editable
+              </Badge>
             </div>
+            
+            <div className="flex items-center justify-between">
+              {!isEditingFare ? (
+                <>
+                  <span className="text-2xl font-bold text-primary">
+                    ${editedFare.toFixed(2)}
+                  </span>
+                  <Button 
+                    onClick={handleFareEdit}
+                    variant="outline" 
+                    size="sm" 
+                    className="flex items-center gap-2 hover-scale"
+                  >
+                    <Edit3 className="h-4 w-4" />
+                    Edit Fare
+                  </Button>
+                </>
+              ) : (
+                <div className="flex items-center gap-3 w-full">
+                  <div className="flex items-center gap-2 flex-1">
+                    <DollarSign className="h-5 w-5 text-muted-foreground" />
+                    <Input
+                      type="number"
+                      value={editedFare}
+                      onChange={(e) => setEditedFare(Number(e.target.value))}
+                      className="w-24 text-lg font-bold"
+                      step="0.01"
+                      min="0"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={handleFareSave}
+                      size="sm" 
+                      className="flex items-center gap-2 bg-success hover:bg-success/90"
+                    >
+                      <Send className="h-4 w-4" />
+                      Send to Passenger
+                    </Button>
+                    <Button 
+                      onClick={handleFareCancel}
+                      variant="outline" 
+                      size="sm"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {!isEditingFare && (
+              <p className="text-xs text-muted-foreground mt-2">
+                💡 You can adjust this fare before accepting the ride
+              </p>
+            )}
           </div>
         )}
         <div className="flex items-center justify-between mb-4">
