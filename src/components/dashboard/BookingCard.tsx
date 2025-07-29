@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CancelBookingButton } from "./CancelBookingButton";
 import { MapPin, Clock, User, Car, MessageCircle, Star, FileText } from "lucide-react";
 
@@ -76,13 +77,32 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-primary" />
-              <span className="text-sm text-foreground">
-                {userType === "passenger" && booking.driver && `Driver: ${booking.driver}`}
-                {userType === "driver" && booking.passenger && `Passenger: ${booking.passenger}`}
-              </span>
-            </div>
+            {userType === "driver" && booking.passengers ? (
+              <div className="flex items-center gap-3">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={booking.passengers.profile_photo_url} />
+                  <AvatarFallback>
+                    {booking.passengers.full_name?.split(' ').map(n => n[0]).join('') || 'P'}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    {booking.passengers.full_name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Passenger
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-primary" />
+                <span className="text-sm text-foreground">
+                  {userType === "passenger" && booking.driver && `Driver: ${booking.driver}`}
+                  {userType === "driver" && booking.passenger && `Passenger: ${booking.passenger}`}
+                </span>
+              </div>
+            )}
           </div>
 
           {booking.vehicle && (

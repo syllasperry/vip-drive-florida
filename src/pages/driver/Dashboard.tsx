@@ -453,6 +453,89 @@ const DriverDashboard = () => {
   };
 
   const [driverRides, setDriverRides] = useState<any[]>([]);
+  const [driverConversations, setDriverConversations] = useState<any[]>([]);
+
+  // Fetch real conversations for the driver
+  useEffect(() => {
+    const fetchDriverConversations = async () => {
+      if (!userProfile?.id) return;
+
+      try {
+        // Get all bookings for this driver that have messages
+        const { data: conversations, error } = await supabase
+          .from('messages')
+          .select(`
+            booking_id,
+            created_at,
+            message_text,
+            bookings:booking_id (
+              id,
+              pickup_location,
+              dropoff_location,
+              pickup_time,
+              passenger_id,
+              passengers:passenger_id (
+                id,
+                full_name,
+                profile_photo_url,
+                phone,
+                email
+              )
+            )
+          `)
+          .eq('bookings.driver_id', userProfile.id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching conversations:', error);
+          return;
+        }
+
+        // Group messages by booking_id and get the latest message for each conversation
+        const groupedConversations = conversations.reduce((acc: any, message: any) => {
+          const bookingId = message.booking_id;
+          if (!acc[bookingId] || new Date(message.created_at) > new Date(acc[bookingId].lastMessage.created_at)) {
+            acc[bookingId] = {
+              booking_id: bookingId,
+              booking: message.bookings,
+              passenger: message.bookings?.passengers,
+              lastMessage: {
+                message_text: message.message_text,
+                created_at: message.created_at
+              }
+            };
+          }
+          return acc;
+        }, {});
+
+        setDriverConversations(Object.values(groupedConversations));
+      } catch (error) {
+        console.error('Error fetching driver conversations:', error);
+      }
+    };
+
+    fetchDriverConversations();
+
+    // Set up real-time subscription for new messages
+    const channel = supabase
+      .channel('driver-messages')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages'
+        },
+        () => {
+          fetchDriverConversations();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userProfile?.id]);
 
   // Fetch real bookings for the driver
   useEffect(() => {
@@ -840,83 +923,63 @@ const DriverDashboard = () => {
 
         {activeTab === "messages" && (
           <div className="space-y-4">
-            <Card className="cursor-pointer hover:shadow-[var(--shadow-subtle)] transition-shadow"
-                 onClick={async () => {
-                   // For demo purposes, using first ride if available
-                   const firstRide = driverRides[0];
-                   if (firstRide) {
-                     setSelectedBookingForMessaging(firstRide);
-                     // Fetch passenger profile
-                     if (firstRide.passenger_id) {
-                       try {
-                         const { data: passenger, error } = await supabase
-                           .from('passengers')
-                           .select('*')
-                           .eq('id', firstRide.passenger_id)
-                           .maybeSingle();
-                           
-                         if (passenger && !error) {
-                           setPassengerProfile(passenger);
-                         }
-                       } catch (error) {
-                         console.error('Error fetching passenger profile:', error);
-                       }
-                     }
-                     setMessagingOpen(true);
-                   }
-                 }}>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                    <span className="text-sm font-medium text-primary">SJ</span>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-medium text-foreground">Sarah Johnson</h3>
-                    <p className="text-sm text-muted-foreground">Could you please confirm your payment details?</p>
-                  </div>
-                  <div className="text-xs text-muted-foreground">2:30 PM</div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="cursor-pointer hover:shadow-[var(--shadow-subtle)] transition-shadow"
-                 onClick={async () => {
-                   // For demo purposes, using second ride if available
-                   const secondRide = driverRides[1];
-                   if (secondRide) {
-                     setSelectedBookingForMessaging(secondRide);
-                     // Fetch passenger profile
-                     if (secondRide.passenger_id) {
-                       try {
-                         const { data: passenger, error } = await supabase
-                           .from('passengers')
-                           .select('*')
-                           .eq('id', secondRide.passenger_id)
-                           .maybeSingle();
-                           
-                         if (passenger && !error) {
-                           setPassengerProfile(passenger);
-                         }
-                       } catch (error) {
-                         console.error('Error fetching passenger profile:', error);
-                       }
-                     }
-                     setMessagingOpen(true);
-                   }
-                 }}>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                    <span className="text-sm font-medium text-primary">MC</span>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-medium text-foreground">Mike Chen</h3>
-                    <p className="text-sm text-muted-foreground">Hi, I'm ready for pickup!</p>
-                  </div>
-                  <div className="text-xs text-muted-foreground">1:45 PM</div>
-                </div>
-              </CardContent>
-            </Card>
+            {driverConversations.length === 0 ? (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                  <h3 className="font-medium text-foreground mb-1">No Messages Yet</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Your conversations with passengers will appear here
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              driverConversations.map((conversation) => (
+                <Card 
+                  key={conversation.booking_id} 
+                  className="cursor-pointer hover:shadow-[var(--shadow-subtle)] transition-shadow"
+                  onClick={() => {
+                    setSelectedBookingForMessaging(conversation.booking);
+                    setPassengerProfile(conversation.passenger);
+                    setMessagingOpen(true);
+                  }}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={conversation.passenger?.profile_photo_url} />
+                        <AvatarFallback>
+                          {conversation.passenger?.full_name?.split(' ').map(n => n[0]).join('') || 'P'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-foreground truncate">
+                          {conversation.passenger?.full_name || 'Unknown Passenger'}
+                        </h3>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {conversation.lastMessage?.message_text || 'No messages yet'}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <div className="text-xs text-muted-foreground">
+                          {conversation.lastMessage?.created_at ? 
+                            new Date(conversation.lastMessage.created_at).toLocaleTimeString('en-US', { 
+                              hour: 'numeric', 
+                              minute: '2-digit' 
+                            }) : ''
+                          }
+                        </div>
+                        <ChatNotificationBadge 
+                          bookingId={conversation.booking_id}
+                          userId={userProfile?.id || ''}
+                          className="text-xs"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         )}
 
