@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ConversationDetails } from "./ConversationDetails";
 import { QuickActionsSheet } from "./QuickActionsSheet";
+import { MessageFilePreview } from "./MessageFilePreview";
 
 interface Message {
   id: string;
@@ -221,40 +222,6 @@ export const ConversationScreen = ({
     }
   };
 
-  // Component to render message content with clickable links
-  const MessageContent = ({ message }: { message: string }) => {
-    // Function to detect and convert URLs to clickable links
-    const renderMessageWithLinks = (text: string) => {
-      const urlRegex = /(https?:\/\/[^\s]+)/g;
-      const parts = text.split(urlRegex);
-      
-      return parts.map((part, index) => {
-        if (urlRegex.test(part)) {
-          return (
-            <a
-              key={index}
-              href={part}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-500 underline hover:text-blue-600 break-words"
-              onClick={(e) => {
-                e.stopPropagation();
-              }}
-            >
-              {part}
-            </a>
-          );
-        }
-        return part;
-      });
-    };
-
-    return (
-      <p className="text-sm leading-relaxed">
-        {renderMessageWithLinks(message)}
-      </p>
-    );
-  };
 
   return (
     <div className="h-full bg-background flex flex-col">
@@ -354,7 +321,10 @@ export const ConversationScreen = ({
                         : "bg-muted text-muted-foreground rounded-bl-md"
                     }`}
                   >
-                    <MessageContent message={message.message_text} />
+                    <MessageFilePreview 
+                      message={message.message_text} 
+                      isCurrentUser={sender.isCurrentUser}
+                    />
                   </div>
                   
                   {/* Timestamp */}
