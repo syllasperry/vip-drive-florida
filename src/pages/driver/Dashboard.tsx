@@ -377,7 +377,7 @@ const DriverDashboard = () => {
       const { data, error } = await supabase
         .from('bookings')
         .update({ 
-          status: 'all_set',
+          status: 'completed',
           ride_status: 'paid',
           payment_confirmation_status: 'all_set',
           driver_payment_confirmed_at: new Date().toISOString()
