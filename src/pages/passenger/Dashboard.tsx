@@ -452,18 +452,22 @@ const Dashboard = () => {
                 <div>
                   <h3 className="text-lg font-semibold text-foreground mb-3">Upcoming</h3>
                   <div className="space-y-3">
-                    {groupedBookings.upcoming.map((booking) => (
-                      <BookingCard 
-                        key={booking.id} 
-                        booking={booking} 
-                        userType="passenger"
-                        onMessage={() => {
-                          setSelectedBooking(booking);
-                          setMessagingOpen(true);
-                        }}
-                        onCancelSuccess={() => fetchBookings()}
-                      />
-                    ))}
+                     {groupedBookings.upcoming.map((booking) => (
+                       <BookingCard 
+                         key={booking.id} 
+                         booking={booking} 
+                         userType="passenger"
+                         onMessage={() => {
+                           setSelectedBooking(booking);
+                           setMessagingOpen(true);
+                         }}
+                         onViewSummary={() => {
+                           setSelectedBookingForSummary(booking);
+                           setSummaryModalOpen(true);
+                         }}
+                         onCancelSuccess={() => fetchBookings()}
+                       />
+                     ))}
                   </div>
                 </div>
               )}
@@ -472,21 +476,25 @@ const Dashboard = () => {
                 <div>
                   <h3 className="text-lg font-semibold text-foreground mb-3">Past Rides</h3>
                   <div className="space-y-3">
-                    {groupedBookings.pastRides.map((booking) => (
-                      <BookingCard 
-                        key={booking.id} 
-                        booking={booking} 
-                        userType="passenger"
-                        onMessage={() => {
-                          setSelectedBooking(booking);
-                          setMessagingOpen(true);
-                        }}
-                        onReview={booking.status === 'completed' ? () => {
-                          setSelectedBookingForReview(booking.id);
-                          setReviewModalOpen(true);
-                        } : undefined}
-                      />
-                    ))}
+                     {groupedBookings.pastRides.map((booking) => (
+                       <BookingCard 
+                         key={booking.id} 
+                         booking={booking} 
+                         userType="passenger"
+                         onMessage={() => {
+                           setSelectedBooking(booking);
+                           setMessagingOpen(true);
+                         }}
+                         onViewSummary={() => {
+                           setSelectedBookingForSummary(booking);
+                           setSummaryModalOpen(true);
+                         }}
+                         onReview={booking.status === 'completed' ? () => {
+                           setSelectedBookingForReview(booking.id);
+                           setReviewModalOpen(true);
+                         } : undefined}
+                       />
+                     ))}
                   </div>
                 </div>
               )}
@@ -662,6 +670,24 @@ const Dashboard = () => {
           }
         }}
       />
+
+      {/* Messaging Modal - Opens from booking cards */}
+      {messagingOpen && selectedBooking && (
+        <div className="fixed inset-0 z-50 bg-background">
+          <ConversationScreen
+            userType="passenger"
+            booking={selectedBooking}
+            otherUser={selectedBooking.drivers}
+            currentUserId={passenger?.id || ""}
+            currentUserName={passenger?.full_name || ""}
+            currentUserAvatar={passenger?.profile_photo_url}
+            onBack={() => {
+              setMessagingOpen(false);
+              setSelectedBooking(null);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };
