@@ -276,21 +276,19 @@ const PendingRequestAlert = ({ requests, onAccept, onDecline }: PendingRequestAl
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3">
+            <div className="flex gap-3 px-2">
               <Button 
-                size="lg" 
-                onClick={() => onAccept(request.id, suggestedPrices[request.id])}
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold"
+                onClick={() => onDecline(request.id)}
+                variant="outline"
+                className="flex-1 h-11 border-border hover:bg-muted/50 font-medium"
               >
-                ✅ Accept Ride
+                Decline
               </Button>
               <Button 
-                size="lg" 
-                variant="destructive"
-                onClick={() => onDecline(request.id)}
-                className="flex-1 font-semibold"
+                onClick={() => onAccept(request.id, suggestedPrices[request.id])}
+                className="flex-1 h-11 bg-primary hover:bg-primary/90 font-medium shadow-sm"
               >
-                ❌ Decline
+                Accept Ride
               </Button>
             </div>
 

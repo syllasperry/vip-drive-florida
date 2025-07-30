@@ -932,23 +932,24 @@ const DriverDashboard = () => {
               {/* Enhanced Rides List */}
               {rideView === "upcoming" && (
                 <div className="space-y-3">
-                  {driverRides.filter(ride => ride.status === "pending" || ride.status === "accepted" || ride.status === "confirmed" || ride.status === "payment_confirmed").length === 0 ? (
+                  {/* Show only accepted/confirmed rides, not pending ones (they're handled by PendingRequestAlert) */}
+                  {driverRides.filter(ride => ride.status === "accepted" || ride.status === "confirmed" || ride.status === "payment_confirmed").length === 0 ? (
                     <Card className="bg-white border-0 shadow-sm">
                       <CardContent className="p-8 text-center">
                         <div className="p-4 bg-muted/30 rounded-full w-fit mx-auto mb-4">
                           <Car className="h-8 w-8 text-muted-foreground" />
                         </div>
-                        <h3 className="font-semibold text-foreground mb-2">No new requests</h3>
+                        <h3 className="font-semibold text-foreground mb-2">No upcoming rides</h3>
                         <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                          New ride requests will appear here when passengers book.
+                          Your accepted rides will appear here.
                         </p>
                       </CardContent>
                     </Card>
                   ) : (
                     driverRides
-                      .filter(ride => ride.status === "pending" || ride.status === "accepted" || ride.status === "confirmed" || ride.status === "payment_confirmed")
+                      .filter(ride => ride.status === "accepted" || ride.status === "confirmed" || ride.status === "payment_confirmed")
                       .map((ride) => {
-                        const isExpiringSoon = ride.status === "pending" && ride.payment_expires_at && 
+                        const isExpiringSoon = ride.payment_expires_at && 
                           new Date(ride.payment_expires_at).getTime() - Date.now() < 60 * 60 * 1000;
 
                         return (
@@ -961,12 +962,8 @@ const DriverDashboard = () => {
                                     ⏰ Expires soon
                                   </Badge>
                                 )}
-                                <Badge className={`ml-auto ${
-                                  ride.status === "pending" 
-                                    ? "bg-yellow-500/10 text-yellow-700 border-yellow-200" 
-                                    : "bg-green-500/10 text-green-700 border-green-200"
-                                }`}>
-                                  {ride.status === "pending" ? "New Request" : "Accepted"}
+                                <Badge className="bg-green-500/10 text-green-700 border-green-200 ml-auto">
+                                  Accepted
                                 </Badge>
                               </div>
 
@@ -1040,99 +1037,79 @@ const DriverDashboard = () => {
 
                               {/* Enhanced Fare Display */}
                               <div className="flex items-center justify-between mb-4 p-3 bg-primary/5 rounded-xl border border-primary/10">
-                                <span className="text-sm font-medium text-foreground">Suggested fare</span>
+                                <span className="text-sm font-medium text-foreground">Fare</span>
                                 <span className="text-xl font-bold text-primary">
                                   ${ride.final_price || ride.estimated_price || '85.00'}
                                 </span>
                               </div>
 
-                              {/* Enhanced Action Buttons */}
-                              {ride.status === "pending" && (
-                                <div className="flex gap-2">
-                                  <Button
-                                    variant="outline"
-                                    className="flex-1 h-11 border-border hover:bg-muted/50"
-                                    onClick={() => handleDeclineRide(ride.id)}
-                                  >
-                                    Decline
-                                  </Button>
-                                  <Button
-                                    className="flex-1 h-11 bg-primary hover:bg-primary/90 shadow-sm"
-                                    onClick={() => handleAcceptRide(ride.id)}
-                                  >
-                                    Accept Ride
-                                  </Button>
-                                </div>
-                              )}
-
-                              {ride.status === "accepted" && (
-                                <div className="flex items-center gap-3">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="flex-1 h-10 flex items-center justify-center gap-2 border-border hover:bg-muted/50"
-                                    onClick={() => {
-                                      setSelectedBookingForMessaging(ride);
-                                      if (ride.passenger_id) {
-                                        supabase
-                                          .from('passengers')
-                                          .select('*')
-                                          .eq('id', ride.passenger_id)
-                                          .maybeSingle()
-                                          .then(({ data: passenger, error }) => {
-                                            if (passenger && !error) {
-                                              setPassengerProfile(passenger);
-                                            }
-                                          });
+                              {/* Message and Navigation Actions */}
+                              <div className="flex items-center gap-3">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex-1 h-10 flex items-center justify-center gap-2 border-border hover:bg-muted/50"
+                                  onClick={() => {
+                                    setSelectedBookingForMessaging(ride);
+                                    if (ride.passenger_id) {
+                                      supabase
+                                        .from('passengers')
+                                        .select('*')
+                                        .eq('id', ride.passenger_id)
+                                        .maybeSingle()
+                                        .then(({ data: passenger, error }) => {
+                                          if (passenger && !error) {
+                                            setPassengerProfile(passenger);
+                                          }
+                                        });
+                                    }
+                                    setMessagingOpen(true);
+                                  }}
+                                >
+                                  <MessageCircle className="h-4 w-4" />
+                                  Message
+                                </Button>
+                                <div className="relative">
+                                  <select 
+                                    className="appearance-none bg-primary text-primary-foreground px-3 py-2 rounded-md text-sm font-medium h-10 pr-8 cursor-pointer hover:bg-primary/90 transition-colors"
+                                    onChange={(e) => {
+                                      const navApp = e.target.value;
+                                      if (!navApp) return;
+                                      
+                                      const pickup = encodeURIComponent(ride.pickup_location || ride.from);
+                                      const dropoff = encodeURIComponent(ride.dropoff_location || ride.to);
+                                      
+                                      let url = '';
+                                      switch (navApp) {
+                                        case 'google':
+                                          url = `https://www.google.com/maps/dir/${pickup}/${dropoff}`;
+                                          break;
+                                        case 'apple':
+                                          url = `http://maps.apple.com/?saddr=${pickup}&daddr=${dropoff}&dirflg=d`;
+                                          break;
+                                        case 'waze':
+                                          url = `https://waze.com/ul?ll=${pickup}&navigate=yes&to=ll.${dropoff}`;
+                                          break;
+                                        default:
+                                          url = `https://www.google.com/maps/dir/${pickup}/${dropoff}`;
                                       }
-                                      setMessagingOpen(true);
+                                      
+                                      window.open(url, '_blank');
+                                      
+                                      toast({
+                                        title: `Opening ${navApp === 'apple' ? 'Apple Maps' : navApp === 'waze' ? 'Waze' : 'Google Maps'}`,
+                                        description: "Navigation opened in new tab.",
+                                      });
                                     }}
                                   >
-                                    <MessageCircle className="h-4 w-4" />
-                                    Message
-                                  </Button>
-                                  <div className="relative">
-                                    <select 
-                                      className="appearance-none bg-primary text-primary-foreground px-3 py-2 rounded-md text-sm font-medium h-10 pr-8 cursor-pointer hover:bg-primary/90 transition-colors"
-                                      onChange={(e) => {
-                                        const navApp = e.target.value;
-                                        if (!navApp) return;
-                                        
-                                        const pickup = encodeURIComponent(ride.pickup_location || ride.from);
-                                        const dropoff = encodeURIComponent(ride.dropoff_location || ride.to);
-                                        
-                                        let url = '';
-                                        switch (navApp) {
-                                          case 'google':
-                                            url = `https://www.google.com/maps/dir/${pickup}/${dropoff}`;
-                                            break;
-                                          case 'apple':
-                                            url = `http://maps.apple.com/?saddr=${pickup}&daddr=${dropoff}&dirflg=d`;
-                                            break;
-                                          case 'waze':
-                                            url = `https://waze.com/ul?ll=${pickup}&navigate=yes&to=ll.${dropoff}`;
-                                            break;
-                                          default:
-                                            url = `https://www.google.com/maps/dir/${pickup}/${dropoff}`;
-                                        }
-                                        
-                                        window.open(url, '_blank');
-                                        
-                                        toast({
-                                          title: `Opening ${navApp === 'apple' ? 'Apple Maps' : navApp === 'waze' ? 'Waze' : 'Google Maps'}`,
-                                          description: "Navigation opened in new tab.",
-                                        });
-                                      }}
-                                    >
-                                      <option value="">Maps</option>
-                                      <option value="google">Google Maps</option>
-                                      <option value="apple">Apple Maps</option>
-                                      <option value="waze">Waze</option>
-                                    </select>
-                                    <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-primary-foreground pointer-events-none" />
-                                  </div>
+                                    <option value="">Maps</option>
+                                    <option value="google">Google Maps</option>
+                                    <option value="apple">Apple Maps</option>
+                                    <option value="waze">Waze</option>
+                                  </select>
+                                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-primary-foreground pointer-events-none" />
                                 </div>
-                              )}
+                              </div>
                             </CardContent>
                           </Card>
                         );
