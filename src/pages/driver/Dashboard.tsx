@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MessagingInterface } from "@/components/MessagingInterface";
 import { MessagesTab } from "@/components/dashboard/MessagesTab";
-import { PriceOfferModal } from "@/components/booking/PriceOfferModal";
+import { PriceEditModal } from "@/components/PriceEditModal";
 import { DriverScheduleModal } from "@/components/DriverScheduleModal";
 import { DriverSettingsModal } from "@/components/DriverSettingsModal";
 import { DriverPaymentMethodsModal } from "@/components/DriverPaymentMethodsModal";
@@ -43,7 +43,7 @@ const DriverDashboard = () => {
   const [selectedBookingForMessaging, setSelectedBookingForMessaging] = useState<any>(null);
   const [isOnline, setIsOnline] = useState(true);
   const [passengerProfile, setPassengerProfile] = useState<any>(null);
-  const [priceOfferModal, setPriceOfferModal] = useState<{ isOpen: boolean; booking: any }>({ isOpen: false, booking: null });
+  const [priceEditModal, setPriceEditModal] = useState<{ isOpen: boolean; booking: any }>({ isOpen: false, booking: null });
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedBookingForPayment, setSelectedBookingForPayment] = useState<any>(null);
   const [paymentSettingsOpen, setPaymentSettingsOpen] = useState(false);
@@ -520,9 +520,9 @@ const DriverDashboard = () => {
                 description
               )
             `)
-                  .eq('ride_status', 'pending_driver')
-                  .is('driver_id', null)
-                  .or(`vehicle_type.ilike.%${userProfile.car_make} ${userProfile.car_model}%,vehicle_type.is.null`)
+            .eq('status', 'pending')
+            .is('driver_id', null)
+            .or(`vehicle_type.ilike.%${userProfile.car_make} ${userProfile.car_model}%,vehicle_type.is.null`)
             .order('pickup_time', { ascending: true })
         ]);
 
@@ -558,9 +558,9 @@ const DriverDashboard = () => {
             to: booking.dropoff_location,
             passenger: booking.passengers?.full_name || 'Unknown Passenger',
             passengers: booking.passengers, // Include full passenger data for avatar
-            status: booking.ride_status || booking.status,
-            payment: booking.final_price ? `$${booking.final_price}` : (booking.estimated_fare ? `$${booking.estimated_fare}` : "$120.00"),
-            paymentMethod: booking.payment_confirmation_status === 'all_set' ? 'Completed' : null,
+            status: booking.status,
+            payment: "$120.00", // TODO: Calculate real price
+            paymentMethod: booking.payment_status === 'completed' ? 'Completed' : null,
             countdown: null,
             flight_info: booking.flight_info,
             passenger_count: booking.passenger_count,
@@ -568,12 +568,7 @@ const DriverDashboard = () => {
             vehicle_type: booking.vehicle_type || 'Vehicle',
             final_price: booking.final_price,
             passenger_id: booking.passenger_id,
-            payment_status: booking.payment_confirmation_status,
-            pickup_time: booking.pickup_time,
-            pickup_location: booking.pickup_location,
-            dropoff_location: booking.dropoff_location,
-            estimated_fare: booking.estimated_fare,
-            distance_miles: booking.distance_miles
+            payment_status: booking.payment_status
           };
         });
 
@@ -790,7 +785,7 @@ const DriverDashboard = () => {
         {/* Pending Requests Alert */}
         {activeTab === "rides" && (
           <PendingRequestAlert 
-            requests={driverRides.filter(ride => ride.status === "pending_driver").map(ride => ({
+            requests={driverRides.filter(ride => ride.status === "pending").map(ride => ({
               id: ride.id,
               passenger: ride.passenger,
               passengers: ride.passengers,
@@ -840,12 +835,7 @@ const DriverDashboard = () => {
             {/* Rides List */}
             {rideView === "upcoming" && (
               <div className="space-y-4">
-                {driverRides.filter(ride => 
-                  ride.status === "pending_driver" || 
-                  ride.status === "offer_sent" || 
-                  ride.status === "confirmed" || 
-                  ride.status === "in_progress"
-                ).length === 0 ? (
+                {driverRides.filter(ride => ride.status === "pending" || ride.status === "accepted" || ride.status === "confirmed" || ride.status === "payment_confirmed").length === 0 ? (
                   <Card>
                     <CardContent className="p-8 text-center">
                       <Car className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -857,14 +847,9 @@ const DriverDashboard = () => {
                   </Card>
                 ) : (
                   driverRides
-                    .filter(ride => 
-                      ride.status === "pending_driver" || 
-                      ride.status === "offer_sent" || 
-                      ride.status === "confirmed" || 
-                      ride.status === "in_progress"
-                    )
+                    .filter(ride => ride.status === "pending" || ride.status === "accepted" || ride.status === "confirmed" || ride.status === "payment_confirmed")
                     .map((ride) => {
-                      const isExpiringSoon = ride.status === "pending_driver" && ride.payment_expires_at && 
+                      const isExpiringSoon = ride.status === "pending" && ride.payment_expires_at && 
                         new Date(ride.payment_expires_at).getTime() - Date.now() < 60 * 60 * 1000; // 1 hour
 
                       return (
@@ -941,32 +926,23 @@ const DriverDashboard = () => {
                             </div>
 
                             {/* Action Buttons */}
-                             {ride.status === "pending_driver" && (
-                               <div className="flex gap-3">
-                                 <Button
-                                   variant="outline"
-                                   className="flex-1"
-                                   onClick={() => handleDeclineRide(ride.id)}
-                                 >
-                                   Decline
-                                 </Button>
-                                 <Button
-                                   className="flex-1"
-                                   onClick={() => setPriceOfferModal({ isOpen: true, booking: ride })}
-                                 >
-                                   <DollarSign className="h-4 w-4 mr-2" />
-                                   Send Offer
-                                 </Button>
-                               </div>
-                              )}
-
-                             {ride.status === "offer_sent" && (
-                               <div className="text-center py-3">
-                                 <Badge className="bg-blue-100/80 text-blue-800 border-blue-200 px-4 py-2">
-                                   Offer Sent - Awaiting Response
-                                 </Badge>
-                               </div>
-                             )}
+                            {ride.status === "pending" && (
+                              <div className="flex gap-3">
+                                <Button
+                                  variant="outline"
+                                  className="flex-1"
+                                  onClick={() => handleDeclineRide(ride.id)}
+                                >
+                                  Decline
+                                </Button>
+                                <Button
+                                  className="flex-1"
+                                  onClick={() => handleAcceptRide(ride.id)}
+                                >
+                                  Accept
+                                </Button>
+                              </div>
+                            )}
 
                             {ride.status === "accepted" && (
                               <div className="flex gap-3">
@@ -1189,102 +1165,15 @@ const DriverDashboard = () => {
         }}
       />
 
-      <PriceOfferModal
-        isOpen={priceOfferModal.isOpen}
-        onClose={() => setPriceOfferModal({ isOpen: false, booking: null })}
-        booking={priceOfferModal.booking}
-        driverProfile={userProfile}
-        onOfferSent={() => {
-          // Refresh bookings to show updated status
-          const fetchDriverBookings = async () => {
-            if (!userProfile?.id) return;
-
-            try {
-              const [assignedBookings, pendingBookings] = await Promise.all([
-                supabase
-                  .from('bookings')
-                  .select(`
-                    *,
-                    passengers:passenger_id (
-                      id, full_name, phone, email, profile_photo_url,
-                      preferred_temperature, music_preference, music_playlist_link,
-                      interaction_preference, trip_purpose, additional_notes
-                    ),
-                    vehicles:vehicle_id (id, type, description)
-                  `)
-                  .eq('driver_id', userProfile.id)
-                  .order('pickup_time', { ascending: true }),
-                
-                supabase
-                  .from('bookings')
-                  .select(`
-                    *,
-                    passengers:passenger_id (
-                      id, full_name, phone, email, profile_photo_url,
-                      preferred_temperature, music_preference, music_playlist_link,
-                      interaction_preference, trip_purpose, additional_notes
-                    ),
-                    vehicles:vehicle_id (id, type, description)
-                  `)
-                  .eq('ride_status', 'pending_driver')
-                  .is('driver_id', null)
-                  .or(`vehicle_type.ilike.%${userProfile.car_make} ${userProfile.car_model}%,vehicle_type.is.null`)
-                  .order('pickup_time', { ascending: true })
-              ]);
-
-              if (assignedBookings.error || pendingBookings.error) {
-                console.error('Error fetching bookings:', assignedBookings.error || pendingBookings.error);
-                return;
-              }
-
-              const allBookingsData = [
-                ...(assignedBookings.data || []),
-                ...(pendingBookings.data || [])
-              ].filter((booking, index, self) => 
-                index === self.findIndex(b => b.id === booking.id)
-              );
-
-              const transformedBookings = allBookingsData.map(booking => {
-                const pickupDate = new Date(booking.pickup_time);
-                return {
-                  id: booking.id,
-                  date: pickupDate.toISOString().split('T')[0],
-                  time: pickupDate.toLocaleTimeString('en-US', { 
-                    hour: '2-digit', 
-                    minute: '2-digit',
-                    hour12: false 
-                  }),
-                  from: booking.pickup_location,
-                  to: booking.dropoff_location,
-                  passenger: booking.passengers?.full_name || 'Unknown Passenger',
-                  passengers: booking.passengers,
-                  status: booking.ride_status || booking.status,
-                  payment: booking.final_price ? `$${booking.final_price}` : "$120.00",
-                  paymentMethod: booking.payment_confirmation_status === 'all_set' ? 'Completed' : null,
-                  countdown: null,
-                  flight_info: booking.flight_info,
-                  passenger_count: booking.passenger_count,
-                  luggage_count: booking.luggage_count,
-                  vehicle_type: booking.vehicle_type || 'Vehicle',
-                  final_price: booking.final_price,
-                  passenger_id: booking.passenger_id,
-                  payment_status: booking.payment_confirmation_status,
-                  pickup_time: booking.pickup_time,
-                  pickup_location: booking.pickup_location,
-                  dropoff_location: booking.dropoff_location,
-                  estimated_fare: booking.estimated_fare,
-                  distance_miles: booking.distance_miles
-                };
-              });
-
-              setDriverRides(transformedBookings);
-            } catch (error) {
-              console.error('Error fetching driver bookings:', error);
-            }
-          };
-          
-          fetchDriverBookings();
-          setPriceOfferModal({ isOpen: false, booking: null });
+      <PriceEditModal
+        isOpen={priceEditModal.isOpen}
+        onClose={() => setPriceEditModal({ isOpen: false, booking: null })}
+        currentPrice={parseFloat(priceEditModal.booking?.payment?.replace('$', '') || '0')}
+        onPriceUpdate={(newPrice) => {
+          if (priceEditModal.booking) {
+            handlePriceUpdate(priceEditModal.booking.id, newPrice);
+          }
+          setPriceEditModal({ isOpen: false, booking: null });
         }}
       />
 
