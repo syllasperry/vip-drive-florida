@@ -65,12 +65,12 @@ const BookingForm = () => {
         throw new Error('Invalid vehicle selection');
       }
 
-      // Find matching drivers first
+      // Find matching drivers based only on car_make
       const { data: matchingDrivers, error: matchError } = await supabase
-        .rpc('find_matching_drivers', {
-          p_vehicle_make: vehicleInfo.make,
-          p_vehicle_model: vehicleInfo.model
-        });
+        .from('drivers')
+        .select('id, full_name, email, phone, car_make')
+        .ilike('car_make', `%${vehicleInfo.make}%`)
+        .not('car_make', 'is', null);
 
       if (matchError) {
         console.error('Error finding matching drivers:', matchError);
@@ -95,7 +95,7 @@ const BookingForm = () => {
         .from('bookings')
         .insert({
           passenger_id: session.user.id,
-          driver_id: assignedDriver.driver_id,
+          driver_id: assignedDriver.id,
           pickup_location: pickup,
           dropoff_location: dropoff,
           pickup_time: pickupDateTime.toISOString(),
