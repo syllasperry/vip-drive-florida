@@ -523,6 +523,7 @@ const DriverDashboard = () => {
             .eq('ride_status', 'pending_driver')
             .is('driver_id', null)
             .or(`vehicle_type.ilike.%${userProfile.car_make} ${userProfile.car_model}%,vehicle_type.is.null`)
+            .eq('status', 'pending')
             .order('pickup_time', { ascending: true })
         ]);
 
@@ -574,11 +575,13 @@ const DriverDashboard = () => {
           };
         });
 
+        console.log('Driver profile car info:', userProfile.car_make, userProfile.car_model);
         console.log('Fetched bookings for driver:', transformedBookings);
         console.log('Pending bookings:', transformedBookings.filter(ride => 
           ride.status === "pending" || 
           (ride.ride_status === "pending_driver" && !ride.driver_id)
         ));
+        console.log('Raw pending bookings data:', pendingBookings.data);
         setDriverRides(transformedBookings);
       } catch (error) {
         console.error('Error fetching driver bookings:', error);
