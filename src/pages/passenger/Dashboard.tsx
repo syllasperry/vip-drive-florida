@@ -308,13 +308,15 @@ const Dashboard = () => {
 
       setBookings(bookingsData || []);
       
-      // Check for pending offer acceptance
+      // Check for pending offer acceptance - driver sent price and waiting for passenger approval
       const pendingOfferBooking = bookingsData?.find(booking => 
         booking.ride_status === 'offer_sent' && 
-        booking.payment_confirmation_status === 'price_awaiting_acceptance'
+        booking.payment_confirmation_status === 'price_awaiting_acceptance' &&
+        booking.final_price // Ensure there's a price to show
       );
       
       if (pendingOfferBooking && !offerAcceptanceModalOpen) {
+        console.log('Found pending offer booking:', pendingOfferBooking);
         setSelectedBookingForOffer(pendingOfferBooking);
         setOfferAcceptanceModalOpen(true);
       }
@@ -356,6 +358,21 @@ const Dashboard = () => {
           },
           (payload) => {
             console.log('Booking update received:', payload);
+            
+            // Check if this is a driver offering a price
+            if (payload.new?.ride_status === 'offer_sent' && 
+                payload.new?.payment_confirmation_status === 'price_awaiting_acceptance' &&
+                payload.new?.final_price) {
+              console.log('Driver sent price offer, showing modal');
+              
+              // Show toast notification
+              toast({
+                title: "New Price Offer!",
+                description: `Your driver has offered $${payload.new.final_price} for the ride.`,
+                duration: 5000,
+              });
+            }
+            
             fetchBookings(); // Refresh bookings when changes occur
           }
         )
@@ -365,7 +382,7 @@ const Dashboard = () => {
         supabase.removeChannel(channel);
       };
     }
-  }, [passenger]);
+  }, [passenger, toast]);
 
   if (loading) {
     return (

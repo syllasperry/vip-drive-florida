@@ -83,7 +83,8 @@ export const EnhancedBookingCard = ({
         );
       }
       
-      if (booking.payment_confirmation_status === "waiting_for_payment") {
+      if (booking.payment_confirmation_status === "waiting_for_payment" || 
+          (booking.ride_status === "passenger_approved" && booking.payment_confirmation_status === "waiting_for_payment")) {
         buttons.push(
           <Button
             key="payment"

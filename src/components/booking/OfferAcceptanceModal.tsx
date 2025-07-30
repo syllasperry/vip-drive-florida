@@ -60,15 +60,15 @@ export const OfferAcceptanceModal = ({
       const { error } = await supabase
         .from('bookings')
         .update({ 
-          ride_status: 'waiting_for_payment',
-          payment_confirmation_status: 'price_accepted'
+          ride_status: 'passenger_approved',
+          payment_confirmation_status: 'waiting_for_payment'
         })
         .eq('id', booking.id);
 
       if (error) throw error;
 
       toast({
-        title: "Offer Accepted!",
+        title: "Price Accepted!",
         description: "Proceeding to payment instructions.",
       });
 
@@ -89,15 +89,15 @@ export const OfferAcceptanceModal = ({
         .from('bookings')
         .update({ 
           ride_status: 'offer_declined',
-          payment_confirmation_status: 'offer_declined'
+          payment_confirmation_status: 'declined_by_passenger'
         })
         .eq('id', booking.id);
 
       if (error) throw error;
 
       toast({
-        title: "Offer Declined",
-        description: "You can make a new request if needed.",
+        title: "Price Declined",
+        description: "The driver has been notified. You can request a new ride.",
       });
 
       onDecline();
