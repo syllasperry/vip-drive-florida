@@ -104,6 +104,11 @@ export const ConversationScreen = ({
   const sendMessage = async (messageText: string) => {
     if (!messageText.trim()) return;
 
+    console.log('Sending message:', messageText);
+    console.log('Booking ID:', booking.id);
+    console.log('Sender ID:', currentUserId);
+    console.log('Sender Type:', userType);
+
     setLoading(true);
     try {
       const { error } = await supabase
@@ -115,8 +120,12 @@ export const ConversationScreen = ({
           message_text: messageText.trim()
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
 
+      console.log('Message sent successfully');
       setNewMessage("");
     } catch (error) {
       console.error('Error sending message:', error);
