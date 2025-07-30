@@ -621,7 +621,7 @@ const Dashboard = () => {
 
         {/* New Booking Button - Only show on bookings tab */}
         {activeTab === "bookings" && (
-          <div className="p-4 pb-20">
+          <div className="p-4 pb-24">
             <Button 
               onClick={handleNewBooking}
               className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-medium rounded-xl shadow-lg transition-all duration-200 hover:shadow-xl"

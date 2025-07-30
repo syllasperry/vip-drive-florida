@@ -94,7 +94,7 @@ export const DriverPaymentSettingsModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-primary" />
@@ -102,7 +102,8 @@ export const DriverPaymentSettingsModal = ({
           </DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-6 py-4">
+        <div className="flex-1 overflow-y-auto overscroll-behavior-contain">
+          <div className="space-y-6 py-4">
           {/* Preferred Payment Method */}
           <div className="space-y-3">
             <Label className="flex items-center gap-2">
@@ -211,7 +212,7 @@ export const DriverPaymentSettingsModal = ({
           </div>
           
           {/* Action Buttons */}
-          <div className="flex gap-2 pt-4">
+          <div className="flex gap-2 pt-4 pb-2">
             <Button variant="outline" onClick={onClose} className="flex-1" disabled={isLoading}>
               Cancel
             </Button>
@@ -222,6 +223,7 @@ export const DriverPaymentSettingsModal = ({
             >
               {isLoading ? "Saving..." : "Save Settings"}
             </Button>
+          </div>
           </div>
         </div>
       </DialogContent>

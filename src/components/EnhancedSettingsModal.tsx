@@ -39,7 +39,7 @@ export const EnhancedSettingsModal = ({ isOpen, onClose, userId, userType }: Enh
   return (
     <>
       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-        <div className="bg-card rounded-xl w-full max-w-md shadow-xl">
+        <div className="bg-card rounded-xl w-full max-w-md max-h-[90vh] shadow-xl flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-border">
             <h2 className="text-lg font-semibold text-card-foreground">
@@ -51,7 +51,8 @@ export const EnhancedSettingsModal = ({ isOpen, onClose, userId, userType }: Enh
           </div>
 
           {/* Content */}
-          <div className="p-6">
+          <div className="flex-1 overflow-y-auto overscroll-behavior-contain">
+            <div className="p-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="notifications" className="text-xs">
@@ -118,6 +119,7 @@ export const EnhancedSettingsModal = ({ isOpen, onClose, userId, userType }: Enh
                 </TabsContent>
               </div>
             </Tabs>
+            </div>
           </div>
 
           {/* Footer */}

@@ -90,7 +90,7 @@ export const RidePreferencesModal = ({ isOpen, onClose, userId }: RidePreference
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-card rounded-xl w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-card rounded-xl w-full max-w-md shadow-xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border">
           <div className="flex items-center space-x-2">
@@ -105,7 +105,8 @@ export const RidePreferencesModal = ({ isOpen, onClose, userId }: RidePreference
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-8">
+        <div className="flex-1 overflow-y-auto overscroll-behavior-contain">
+          <div className="p-6 space-y-8">
           {/* Temperature Preference */}
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
@@ -189,6 +190,7 @@ export const RidePreferencesModal = ({ isOpen, onClose, userId }: RidePreference
                 </Label>
               </div>
             </RadioGroup>
+          </div>
           </div>
         </div>
 

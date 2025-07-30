@@ -718,7 +718,7 @@ const DriverDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-muted/20 pb-20">
+    <div className="min-h-screen bg-muted/20 pb-24">
       <div className="max-w-md mx-auto">
         {/* Enhanced Profile Header */}
         <div className="bg-gradient-to-br from-primary to-primary/80 px-4 pt-8 pb-6 text-white">

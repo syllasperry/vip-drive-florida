@@ -117,7 +117,7 @@ export const SettingsModal = ({ isOpen, onClose, type, userId, userType }: Setti
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-card rounded-xl w-full max-w-md shadow-xl">
+      <div className="bg-card rounded-xl w-full max-w-md max-h-[90vh] shadow-xl flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border">
           <div className="flex items-center space-x-2">
@@ -136,7 +136,8 @@ export const SettingsModal = ({ isOpen, onClose, type, userId, userType }: Setti
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto overscroll-behavior-contain">
+          <div className="p-6 space-y-6">
           {type === "notifications" && (
             <>
               <div className="flex items-center justify-between">
@@ -236,6 +237,7 @@ export const SettingsModal = ({ isOpen, onClose, type, userId, userType }: Setti
               </div>
             </>
           )}
+          </div>
         </div>
 
         {/* Footer */}
