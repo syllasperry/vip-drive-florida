@@ -471,7 +471,7 @@ export default function DriverDashboard() {
             {/* Pending Requests Alert */}
             {activeTab === "rides" && (
               <PendingRequestAlert 
-                pendingRequests={driverRides.filter(ride => 
+                requests={driverRides.filter(ride => 
                   ride.status === "pending" || 
                   (ride.ride_status === "pending_driver" && !ride.driver_id)
                 ).map(ride => ({
