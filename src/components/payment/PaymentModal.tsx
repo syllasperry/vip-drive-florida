@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { MapPin, Clock, User, Car, CreditCard, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { PaymentInstructionsModal } from "./PaymentInstructionsModal";
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ interface PaymentModalProps {
 export const PaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }: PaymentModalProps) => {
   const [isConfirming, setIsConfirming] = useState(false);
   const [showPaymentInstructions, setShowPaymentInstructions] = useState(false);
+  const [paymentInstructionsOpen, setPaymentInstructionsOpen] = useState(false);
   const { toast } = useToast();
 
   // Add null check to prevent crashes
@@ -153,7 +155,7 @@ export const PaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }: P
           <Card className="border-border/50">
             <CardContent className="p-3">
               <button 
-                onClick={() => setShowPaymentInstructions(true)}
+                onClick={() => setPaymentInstructionsOpen(true)}
                 className="w-full flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-2">
@@ -162,6 +164,15 @@ export const PaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }: P
                 </div>
                 <div className="text-xs text-primary">View Details →</div>
               </button>
+              
+              <div className="mt-2 p-3 bg-muted/30 rounded-lg">
+                <p className="text-xs text-muted-foreground mb-1">
+                  <strong>Method:</strong> {booking.drivers?.preferred_payment_method || "Not specified"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Click above to see detailed payment instructions.
+                </p>
+              </div>
             </CardContent>
           </Card>
 
@@ -201,53 +212,13 @@ export const PaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }: P
       </DialogContent>
 
       {/* Payment Instructions Modal */}
-      <Dialog open={showPaymentInstructions} onOpenChange={setShowPaymentInstructions}>
-        <DialogContent className="max-w-sm mx-auto p-4">
-          <DialogHeader className="pb-3">
-            <DialogTitle className="text-lg font-semibold text-center">Payment Instructions</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <Card className="border-border/50">
-              <CardContent className="p-4 space-y-3">
-                {/* Payment Method */}
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-1">Payment Method:</h3>
-                  <p className="text-sm text-muted-foreground capitalize">
-                    {booking.drivers?.preferred_payment_method || 'Not defined'}
-                  </p>
-                </div>
-
-                {/* Instructions */}
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-1">Instructions:</h3>
-                  <div className="text-sm text-muted-foreground space-y-1">
-                    {booking.drivers?.payment_instructions ? (
-                      <p>{booking.drivers.payment_instructions}</p>
-                    ) : booking.driver_payment_instructions ? (
-                      <p>{booking.driver_payment_instructions}</p>
-                    ) : (
-                      <p>No payment instructions provided by driver yet.</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="text-xs text-muted-foreground italic pt-2 border-t border-border/50">
-                  Once you've made the payment, please confirm using the "I've Made the Payment" button.
-                </div>
-              </CardContent>
-            </Card>
-
-            <Button 
-              onClick={() => setShowPaymentInstructions(false)}
-              variant="outline"
-              className="w-full h-10 rounded-lg text-sm"
-            >
-              Close
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <PaymentInstructionsModal
+        isOpen={paymentInstructionsOpen}
+        onClose={() => setPaymentInstructionsOpen(false)}
+        paymentMethod={booking.drivers?.preferred_payment_method || "Not defined"}
+        paymentInstructions={booking.drivers?.payment_instructions || "No payment instructions provided by driver yet."}
+        driverName={booking.drivers?.full_name || "Driver"}
+      />
     </Dialog>
   );
 };

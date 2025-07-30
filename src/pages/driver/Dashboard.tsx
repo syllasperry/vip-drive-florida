@@ -595,7 +595,7 @@ const DriverDashboard = () => {
             status: booking.status,
             ride_status: booking.ride_status,
             driver_id: booking.driver_id,
-            payment: "$120.00", // TODO: Calculate real price
+            payment: booking.final_price ? `$${booking.final_price}` : "$120.00",
             paymentMethod: booking.payment_status === 'completed' ? 'Completed' : null,
             countdown: null,
             flight_info: booking.flight_info,
@@ -604,7 +604,8 @@ const DriverDashboard = () => {
             vehicle_type: booking.vehicle_type || 'Vehicle',
             final_price: booking.final_price,
             passenger_id: booking.passenger_id,
-            payment_status: booking.payment_status
+            payment_status: booking.payment_status,
+            payment_confirmation_status: booking.payment_confirmation_status
           };
         });
 
@@ -816,6 +817,16 @@ const DriverDashboard = () => {
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 bg-destructive rounded-full"></div>
                       <span className="text-sm text-muted-foreground truncate">{nextRide.to}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <User className="h-3 w-3 text-primary" />
+                      <span className="text-xs text-muted-foreground">
+                        {nextRide.passenger} • {nextRide.passenger_count} passenger{nextRide.passenger_count > 1 ? 's' : ''} • {nextRide.luggage_count} bag{nextRide.luggage_count > 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-3 w-3 text-primary" />
+                      <span className="text-xs font-medium text-primary">{nextRide.payment}</span>
                     </div>
                   </div>
 
@@ -1067,6 +1078,25 @@ const DriverDashboard = () => {
                                   ${ride.final_price || ride.estimated_price || '85.00'}
                                 </span>
                               </div>
+
+                              {/* Payment Received Button - Show if passenger has confirmed payment */}
+                              {ride.payment_confirmation_status === 'passenger_paid' && (
+                                <div className="mb-3">
+                                  <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800 mb-3">
+                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                    <span className="text-sm font-medium text-green-700 dark:text-green-300">
+                                      Passenger has confirmed payment
+                                    </span>
+                                  </div>
+                                  <Button
+                                    className="w-full bg-success hover:bg-success/90 text-white"
+                                    onClick={() => handleConfirmPaymentFromCard(ride)}
+                                  >
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    Confirm Payment Received
+                                  </Button>
+                                </div>
+                              )}
 
                               {/* Message and Navigation Actions */}
                               <div className="flex items-center gap-3">

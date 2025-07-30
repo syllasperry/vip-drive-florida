@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CancelBookingButton } from "./CancelBookingButton";
-import { MapPin, Clock, User, Car, MessageCircle, Star, FileText } from "lucide-react";
+import { MapPin, Clock, User, Car, MessageCircle, Star, FileText, CheckCircle } from "lucide-react";
 
 interface BookingCardProps {
   booking: any;
@@ -13,9 +13,11 @@ interface BookingCardProps {
   onViewSummary?: () => void;
   onCancelSuccess?: () => void;
   onNavigate?: () => void;
+  showPaymentReceivedButton?: boolean;
+  onConfirmPaymentReceived?: () => void;
 }
 
-export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSummary, onCancelSuccess, onNavigate }: BookingCardProps) => {
+export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSummary, onCancelSuccess, onNavigate, showPaymentReceivedButton, onConfirmPaymentReceived }: BookingCardProps) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "confirmed": return "bg-success/10 text-success border-success/20";
@@ -181,6 +183,18 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
             >
               <Star className="h-4 w-4" />
               Review
+            </Button>
+          )}
+
+          {/* Payment Received Button for Drivers */}
+          {showPaymentReceivedButton && onConfirmPaymentReceived && (
+            <Button
+              onClick={onConfirmPaymentReceived}
+              className="flex items-center gap-2 bg-success hover:bg-success/90"
+              size="sm"
+            >
+              <CheckCircle className="h-4 w-4" />
+              Payment Received
             </Button>
           )}
         </div>
