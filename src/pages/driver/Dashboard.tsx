@@ -437,10 +437,11 @@ export default function DriverDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Header */}
-      <ProfileHeader 
-        userProfile={userProfile}
-        userType="driver"
-      />
+        <ProfileHeader 
+          userProfile={userProfile}
+          userType="driver"
+          onPhotoUpload={async () => {}}
+        />
 
       {/* Main Content */}
       <div className="px-4 pb-20">
@@ -448,7 +449,8 @@ export default function DriverDashboard() {
         {nextRide && (
           <UpcomingRideCard 
             ride={nextRide}
-            onAction={() => {}}
+            userType="driver"
+            onMessage={() => {}}
           />
         )}
 
@@ -469,7 +471,7 @@ export default function DriverDashboard() {
             {/* Pending Requests Alert */}
             {activeTab === "rides" && (
               <PendingRequestAlert 
-                requests={driverRides.filter(ride => 
+                pendingRequests={driverRides.filter(ride => 
                   ride.status === "pending" || 
                   (ride.ride_status === "pending_driver" && !ride.driver_id)
                 ).map(ride => ({
@@ -478,6 +480,8 @@ export default function DriverDashboard() {
                   passengers: ride.passengers,
                   from: ride.from,
                   to: ride.to,
+                  time: ride.time,
+                  date: ride.date,
                   pickup_time: ride.date + 'T' + ride.time,
                   passenger_count: ride.passenger_count || 1,
                   luggage_count: ride.luggage_count || 0,
@@ -492,10 +496,10 @@ export default function DriverDashboard() {
             )}
 
             {/* Booking Toggle */}
-            <BookingToggle 
-              view={rideView}
-              onViewChange={setRideView}
-            />
+        <BookingToggle 
+          activeView={rideView}
+          onViewChange={setRideView}
+        />
 
             {/* Rides List */}
             <div className="space-y-4">
@@ -539,10 +543,8 @@ export default function DriverDashboard() {
                           passengers: ride.passengers
                         }}
                         userType="driver"
-                        onMessageClick={() => handleMessageClick(ride.id, ride.passengers)}
+                        onMessage={() => handleMessageClick(ride.id, ride.passengers)}
                         onCancelBooking={() => handleCancelBooking(ride.id)}
-                        onReviewPassenger={() => handleReviewDriver(ride)}
-                        onAction={handleRideAction}
                       />
                     ))}
                   </div>
@@ -556,6 +558,7 @@ export default function DriverDashboard() {
             <MessagesTab 
               userType="driver"
               userId={userProfile?.id || ''}
+              onSelectChat={(booking, otherUser) => handleMessageClick(booking.id, otherUser)}
             />
           </TabsContent>
 
@@ -600,13 +603,15 @@ export default function DriverDashboard() {
       <SettingsModal 
         isOpen={showSettingsModal}
         onClose={() => setShowSettingsModal(false)}
-        type="driver"
+        type="notifications"
+        userId={userProfile?.id}
+        userType="driver"
       />
 
       <DriverSettingsModal 
         isOpen={showDriverSettings}
         onClose={() => setShowDriverSettings(false)}
-        driverId={userProfile?.id || ''}
+        settingType="notifications"
       />
 
       <ReviewModal 
