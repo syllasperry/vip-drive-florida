@@ -634,6 +634,10 @@ const Dashboard = () => {
               <PaymentsTab
                 userId={passenger?.id || ""}
                 userType="passenger"
+                onViewSummary={(booking) => {
+                  setSelectedBookingForSummary(booking);
+                  setSummaryModalOpen(true);
+                }}
               />
             </div>
           )}

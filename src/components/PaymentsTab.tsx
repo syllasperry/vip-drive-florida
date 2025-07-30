@@ -7,16 +7,19 @@ import { format } from "date-fns";
 interface PaymentsTabProps {
   userId: string;
   userType: "passenger" | "driver";
+  onViewSummary?: (booking: any) => void;
 }
 
 interface PaymentRecord {
   id: string;
   amount: number;
   date: string;
-  rideId: string;
+  driverName: string;
+  paymentMethod: string;
+  bookingData: any;
 }
 
-export const PaymentsTab = ({ userId, userType }: PaymentsTabProps) => {
+export const PaymentsTab = ({ userId, userType, onViewSummary }: PaymentsTabProps) => {
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -33,31 +36,42 @@ export const PaymentsTab = ({ userId, userType }: PaymentsTabProps) => {
       const { data: bookings, error } = await supabase
         .from('bookings')
         .select(`
-          id,
-          final_price,
-          estimated_price,
-          pickup_time,
-          pickup_location,
-          dropoff_location
+          *,
+          drivers!inner(
+            full_name,
+            preferred_payment_method,
+            payment_instructions
+          )
         `)
         .eq(userType === 'passenger' ? 'passenger_id' : 'driver_id', userId)
         .eq('payment_confirmation_status', 'all_set')
         .not('final_price', 'is', null)
+        .not('payment_method', 'is', null)
         .order('pickup_time', { ascending: false });
 
       if (error) throw error;
 
       const paymentRecords: PaymentRecord[] = (bookings || []).map(booking => {
-        // Create a simple ride identifier from locations
-        const fromLocation = booking.pickup_location.split(',')[0] || 'Unknown';
-        const toLocation = booking.dropoff_location.split(',')[0] || 'Unknown';
-        const rideIdentifier = `${fromLocation} → ${toLocation}`;
+        const driverName = booking.drivers?.full_name || 'Unknown Driver';
+        const paymentMethod = booking.payment_method || booking.drivers?.preferred_payment_method || 'Unknown';
+        
+        // Format payment method display
+        let paymentMethodDisplay = paymentMethod;
+        if (paymentMethod === 'zelle') paymentMethodDisplay = 'Paid via Zelle';
+        else if (paymentMethod === 'venmo') paymentMethodDisplay = 'Paid via Venmo';
+        else if (paymentMethod === 'apple_pay') paymentMethodDisplay = 'Paid via Apple Pay';
+        else if (paymentMethod === 'google_pay') paymentMethodDisplay = 'Paid via Google Pay';
+        else if (paymentMethod === 'payment_link') paymentMethodDisplay = 'Paid via Payment Link';
+        else if (paymentMethod === 'cash') paymentMethodDisplay = 'Paid in Cash';
+        else paymentMethodDisplay = `Paid via ${paymentMethod}`;
 
         return {
           id: booking.id,
           amount: booking.final_price || booking.estimated_price || 0,
           date: booking.pickup_time,
-          rideId: rideIdentifier
+          driverName,
+          paymentMethod: paymentMethodDisplay,
+          bookingData: booking
         };
       });
 
@@ -111,19 +125,26 @@ export const PaymentsTab = ({ userId, userType }: PaymentsTabProps) => {
       </div>
       
       {payments.map((payment) => (
-        <Card key={payment.id} className="hover:shadow-sm transition-shadow">
+        <Card 
+          key={payment.id} 
+          className="hover:shadow-sm transition-shadow cursor-pointer"
+          onClick={() => onViewSummary?.(payment.bookingData)}
+        >
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                   <CheckCircle className="h-4 w-4 text-green-600" />
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <div className="font-medium text-foreground text-sm">
-                    {format(new Date(payment.date), 'MMM dd, yyyy')}
+                    {format(new Date(payment.date), 'MMM dd, yyyy – h:mm a')}
                   </div>
-                  <div className="text-xs text-muted-foreground truncate max-w-48">
-                    {payment.rideId}
+                  <div className="text-xs text-muted-foreground">
+                    {payment.driverName}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {payment.paymentMethod}
                   </div>
                 </div>
               </div>
@@ -131,7 +152,7 @@ export const PaymentsTab = ({ userId, userType }: PaymentsTabProps) => {
                 <div className="font-semibold text-foreground">
                   ${payment.amount.toFixed(2)}
                 </div>
-                <div className="text-xs text-green-600">
+                <div className="text-xs text-green-600 flex items-center gap-1">
                   Paid
                 </div>
               </div>
