@@ -897,16 +897,16 @@ const DriverDashboard = () => {
                           let url = '';
                           switch (navApp) {
                             case 'google':
-                              url = `https://www.google.com/maps/dir/${pickup}/${dropoff}`;
+                              url = `https://www.google.com/maps/dir/?api=1&origin=${pickup}&destination=${dropoff}&travelmode=driving`;
                               break;
                             case 'apple':
-                              url = `http://maps.apple.com/?saddr=${pickup}&daddr=${dropoff}&dirflg=d`;
+                              url = `https://maps.apple.com/?saddr=${pickup}&daddr=${dropoff}&dirflg=d`;
                               break;
                             case 'waze':
-                              url = `https://waze.com/ul?ll=${pickup}&navigate=yes&to=ll.${dropoff}`;
+                              url = `https://www.waze.com/ul?q=${dropoff}&navigate=yes&from=${pickup}`;
                               break;
                             default:
-                              url = `https://www.google.com/maps/dir/${pickup}/${dropoff}`;
+                              url = `https://www.google.com/maps/dir/?api=1&origin=${pickup}&destination=${dropoff}&travelmode=driving`;
                           }
                           
                           window.open(url, '_blank');
@@ -1172,20 +1172,20 @@ const DriverDashboard = () => {
                                       const pickup = encodeURIComponent(ride.pickup_location || ride.from);
                                       const dropoff = encodeURIComponent(ride.dropoff_location || ride.to);
                                       
-                                      let url = '';
-                                      switch (navApp) {
-                                        case 'google':
-                                          url = `https://www.google.com/maps/dir/${pickup}/${dropoff}`;
-                                          break;
-                                        case 'apple':
-                                          url = `http://maps.apple.com/?saddr=${pickup}&daddr=${dropoff}&dirflg=d`;
-                                          break;
-                                        case 'waze':
-                                          url = `https://waze.com/ul?ll=${pickup}&navigate=yes&to=ll.${dropoff}`;
-                                          break;
-                                        default:
-                                          url = `https://www.google.com/maps/dir/${pickup}/${dropoff}`;
-                                      }
+                                        let url = '';
+                                        switch (navApp) {
+                                          case 'google':
+                                            url = `https://www.google.com/maps/dir/?api=1&origin=${pickup}&destination=${dropoff}&travelmode=driving`;
+                                            break;
+                                          case 'apple':
+                                            url = `https://maps.apple.com/?saddr=${pickup}&daddr=${dropoff}&dirflg=d`;
+                                            break;
+                                          case 'waze':
+                                            url = `https://www.waze.com/ul?q=${dropoff}&navigate=yes&from=${pickup}`;
+                                            break;
+                                          default:
+                                            url = `https://www.google.com/maps/dir/?api=1&origin=${pickup}&destination=${dropoff}&travelmode=driving`;
+                                        }
                                       
                                       window.open(url, '_blank');
                                       
