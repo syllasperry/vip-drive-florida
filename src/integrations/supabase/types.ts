@@ -126,51 +126,6 @@ export type Database = {
           },
         ]
       }
-      Bookings: {
-        Row: {
-          created_at: string
-          driver_id: string
-          dropoff_location: string
-          flight_info: string
-          id: string
-          luggage_count: number
-          passenger_count: number
-          pickup_location: string
-          pickup_time: string
-          status: string
-          user_id: string
-          vehicle_id: string
-        }
-        Insert: {
-          created_at?: string
-          driver_id: string
-          dropoff_location: string
-          flight_info: string
-          id?: string
-          luggage_count: number
-          passenger_count: number
-          pickup_location: string
-          pickup_time: string
-          status: string
-          user_id: string
-          vehicle_id: string
-        }
-        Update: {
-          created_at?: string
-          driver_id?: string
-          dropoff_location?: string
-          flight_info?: string
-          id?: string
-          luggage_count?: number
-          passenger_count?: number
-          pickup_location?: string
-          pickup_time?: string
-          status?: string
-          user_id?: string
-          vehicle_id?: string
-        }
-        Relationships: []
-      }
       drivers: {
         Row: {
           apple_pay_info: string | null
@@ -447,6 +402,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      scheduled_messages: {
+        Row: {
+          booking_id: string
+          created_at: string
+          id: string
+          message_text: string
+          send_at: string
+          sent: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          id?: string
+          message_text: string
+          send_at: string
+          sent?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          id?: string
+          message_text?: string
+          send_at?: string
+          sent?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       users: {
         Row: {

@@ -1,23 +1,39 @@
 import { useState } from "react";
-import { X, MessageCircle, Clock, Image, Camera, MapPin, CreditCard, Smile } from "lucide-react";
+import { X, MessageCircle, Clock, Image, Camera, MapPin, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { ScheduledMessagesModal } from "./ScheduledMessagesModal";
+import { FileUploadModal } from "./FileUploadModal";
+import { ShareRecommendationsModal } from "./ShareRecommendationsModal";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface QuickActionsSheetProps {
   isOpen: boolean;
   onClose: () => void;
   userType: "passenger" | "driver";
   onSendMessage: (message: string) => void;
+  bookingId: string;
+  userId: string;
+  driverInfo?: any;
 }
 
 export const QuickActionsSheet = ({
   isOpen,
   onClose,
   userType,
-  onSendMessage
+  onSendMessage,
+  bookingId,
+  userId,
+  driverInfo
 }: QuickActionsSheetProps) => {
   const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const [showScheduledMessages, setShowScheduledMessages] = useState(false);
+  const [showFileUpload, setShowFileUpload] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [showRecommendations, setShowRecommendations] = useState(false);
+  const { toast } = useToast();
 
   if (!isOpen) return null;
 
@@ -47,6 +63,49 @@ export const QuickActionsSheet = ({
 
   const handleArrivalInstructions = () => {
     onSendMessage("Hi, I'm your chauffeur. I'm currently waiting at the Cell Phone Lot, approximately 5 minutes from the terminal. As soon as you've collected your luggage, please let me know which door number you'll be at, and I'll meet you there. Looking forward to assisting you!");
+    onClose();
+  };
+
+  const handleRequestPaymentDetails = async () => {
+    try {
+      // Get driver's payment details from database
+      const { data: driver, error } = await supabase
+        .from('drivers')
+        .select('preferred_payment_method, payment_instructions, zelle_info, venmo_info, apple_pay_info, google_pay_info, payment_link_info')
+        .eq('id', driverInfo?.id)
+        .single();
+
+      if (error) throw error;
+
+      if (driver && driver.preferred_payment_method) {
+        let paymentMessage = `💳 Payment Details:\n\n`;
+        paymentMessage += `Method: ${driver.preferred_payment_method}\n`;
+        
+        if (driver.payment_instructions) {
+          paymentMessage += `Instructions: ${driver.payment_instructions}\n`;
+        }
+
+        // Add specific payment info based on method
+        if (driver.preferred_payment_method === 'Zelle' && driver.zelle_info) {
+          paymentMessage += `Zelle: ${driver.zelle_info}`;
+        } else if (driver.preferred_payment_method === 'Venmo' && driver.venmo_info) {
+          paymentMessage += `Venmo: ${driver.venmo_info}`;
+        } else if (driver.preferred_payment_method === 'Apple Pay' && driver.apple_pay_info) {
+          paymentMessage += `Apple Pay: ${driver.apple_pay_info}`;
+        } else if (driver.preferred_payment_method === 'Google Pay' && driver.google_pay_info) {
+          paymentMessage += `Google Pay: ${driver.google_pay_info}`;
+        } else if (driver.payment_link_info) {
+          paymentMessage += `Payment Link: ${driver.payment_link_info}`;
+        }
+
+        onSendMessage(paymentMessage);
+      } else {
+        onSendMessage("Hi, could you please confirm your payment details so I can complete the payment?");
+      }
+    } catch (error) {
+      console.error('Error fetching payment details:', error);
+      onSendMessage("Hi, could you please confirm your payment details so I can complete the payment?");
+    }
     onClose();
   };
 
@@ -137,7 +196,7 @@ export const QuickActionsSheet = ({
           <Button
             variant="ghost"
             className="w-full justify-start h-auto py-4"
-            onClick={onClose}
+            onClick={() => setShowScheduledMessages(true)}
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-purple-500/10 rounded-full flex items-center justify-center">
@@ -156,7 +215,7 @@ export const QuickActionsSheet = ({
           <Button
             variant="ghost"
             className="w-full justify-start h-auto py-4"
-            onClick={onClose}
+            onClick={() => setShowFileUpload(true)}
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-green-500/10 rounded-full flex items-center justify-center">
@@ -173,7 +232,7 @@ export const QuickActionsSheet = ({
           <Button
             variant="ghost"
             className="w-full justify-start h-auto py-4"
-            onClick={onClose}
+            onClick={() => setShowCamera(true)}
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-orange-500/10 rounded-full flex items-center justify-center">
@@ -190,7 +249,7 @@ export const QuickActionsSheet = ({
           <Button
             variant="ghost"
             className="w-full justify-start h-auto py-4"
-            onClick={onClose}
+            onClick={() => setShowRecommendations(true)}
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-red-500/10 rounded-full flex items-center justify-center">
@@ -210,7 +269,7 @@ export const QuickActionsSheet = ({
               <Button
                 variant="ghost"
                 className="w-full justify-start h-auto py-4"
-                onClick={handlePaymentRequest}
+                onClick={handleRequestPaymentDetails}
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-blue-500/10 rounded-full flex items-center justify-center">
@@ -247,6 +306,34 @@ export const QuickActionsSheet = ({
           )}
         </div>
       </div>
+
+      {/* Modals */}
+      <ScheduledMessagesModal
+        isOpen={showScheduledMessages}
+        onClose={() => setShowScheduledMessages(false)}
+        bookingId={bookingId}
+        userId={userId}
+      />
+
+      <FileUploadModal
+        isOpen={showFileUpload}
+        onClose={() => setShowFileUpload(false)}
+        onSendMessage={onSendMessage}
+        type="photo"
+      />
+
+      <FileUploadModal
+        isOpen={showCamera}
+        onClose={() => setShowCamera(false)}
+        onSendMessage={onSendMessage}
+        type="camera"
+      />
+
+      <ShareRecommendationsModal
+        isOpen={showRecommendations}
+        onClose={() => setShowRecommendations(false)}
+        onSendMessage={onSendMessage}
+      />
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Plus, Send, MoreHorizontal } from "lucide-react";
+import { ArrowLeft, Plus, Send, Phone, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -131,6 +131,45 @@ export const ConversationScreen = ({
 
   const handleSendMessage = () => {
     sendMessage(newMessage);
+  };
+
+  const handleCallDriver = () => {
+    const driverPhone = otherUser?.phone;
+    if (driverPhone) {
+      window.location.href = `tel:${driverPhone}`;
+    } else {
+      toast({
+        title: "No Phone Number",
+        description: "Driver's phone number is not available",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleShareLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          const locationMessage = `📍 My current location: https://www.google.com/maps?q=${latitude},${longitude}`;
+          sendMessage(locationMessage);
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          toast({
+            title: "Location Error",
+            description: "Unable to get your location. Please check permissions.",
+            variant: "destructive"
+          });
+        }
+      );
+    } else {
+      toast({
+        title: "Location Not Supported",
+        description: "Geolocation is not supported by this browser.",
+        variant: "destructive"
+      });
+    }
   };
 
   const formatMessageTime = (timestamp: string) => {
@@ -295,37 +334,65 @@ export const ConversationScreen = ({
       </div>
 
       {/* Bottom Input Area */}
-      <div className="border-t border-border bg-background p-4">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowQuickActions(true)}
-            className="rounded-full flex-shrink-0"
-          >
-            <Plus className="h-5 w-5" />
-          </Button>
-          
-          <div className="flex items-center gap-2 flex-1 bg-muted rounded-full px-4 py-2">
-            <Input
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Write a message..."
-              onKeyPress={(e) => e.key === "Enter" && !loading && handleSendMessage()}
-              className="border-0 bg-transparent shadow-none p-0 text-sm focus-visible:ring-0"
-              disabled={loading}
-            />
-            {newMessage.trim() && (
-              <Button 
-                onClick={handleSendMessage} 
-                size="sm" 
-                variant="ghost"
-                disabled={loading}
-                className="rounded-full p-1 h-8 w-8"
+      <div className="border-t border-border bg-background">
+        {/* Passenger Action Buttons */}
+        {userType === "passenger" && (
+          <div className="p-3 border-b border-border">
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCallDriver}
+                className="flex-1 flex items-center gap-2"
               >
-                <Send className="h-4 w-4" />
+                <Phone className="h-4 w-4" />
+                Call Driver
               </Button>
-            )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleShareLocation}
+                className="flex-1 flex items-center gap-2"
+              >
+                <MapPin className="h-4 w-4" />
+                Share Location
+              </Button>
+            </div>
+          </div>
+        )}
+        
+        <div className="p-4">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowQuickActions(true)}
+              className="rounded-full flex-shrink-0"
+            >
+              <Plus className="h-5 w-5" />
+            </Button>
+            
+            <div className="flex items-center gap-2 flex-1 bg-muted rounded-full px-4 py-2">
+              <Input
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="Write a message..."
+                onKeyPress={(e) => e.key === "Enter" && !loading && handleSendMessage()}
+                className="border-0 bg-transparent shadow-none p-0 text-sm focus-visible:ring-0"
+                disabled={loading}
+              />
+              {newMessage.trim() && (
+                <Button 
+                  onClick={handleSendMessage} 
+                  size="sm" 
+                  variant="ghost"
+                  disabled={loading}
+                  className="rounded-full p-1 h-8 w-8"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -344,6 +411,9 @@ export const ConversationScreen = ({
         onClose={() => setShowQuickActions(false)}
         userType={userType}
         onSendMessage={sendMessage}
+        bookingId={booking.id}
+        userId={currentUserId}
+        driverInfo={userType === "passenger" ? otherUser : null}
       />
     </div>
   );
