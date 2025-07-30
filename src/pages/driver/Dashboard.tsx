@@ -522,7 +522,6 @@ const DriverDashboard = () => {
             `)
             .eq('ride_status', 'pending_driver')
             .is('driver_id', null)
-            .or(`vehicle_type.eq."${userProfile.car_make} ${userProfile.car_model}",vehicle_type.is.null`)
             .order('pickup_time', { ascending: true })
         ]);
 
@@ -535,10 +534,20 @@ const DriverDashboard = () => {
           console.error('Error fetching pending bookings:', pendingBookings.error);
         }
 
+        // Filter pending bookings to match driver's vehicle make (first word only)
+        const filteredPendingBookings = (pendingBookings.data || []).filter(booking => {
+          if (!booking.vehicle_type || !userProfile.car_make) return true; // Show if no vehicle specified
+          
+          const requestedMake = booking.vehicle_type.split(' ')[0].toLowerCase();
+          const driverMake = userProfile.car_make.toLowerCase();
+          
+          return requestedMake === driverMake;
+        });
+
         // Combine and deduplicate bookings
         const allBookingsData = [
           ...(assignedBookings.data || []),
-          ...(pendingBookings.data || [])
+          ...filteredPendingBookings
         ].filter((booking, index, self) => 
           index === self.findIndex(b => b.id === booking.id)
         );
@@ -576,9 +585,9 @@ const DriverDashboard = () => {
 
         console.log('=== DEBUG DRIVER BOOKINGS ===');
         console.log('Driver profile car info:', userProfile.car_make, userProfile.car_model);
-        console.log('Vehicle type search string:', `${userProfile.car_make} ${userProfile.car_model}`);
+        console.log('Raw pending bookings before filter:', pendingBookings.data);
+        console.log('Filtered pending bookings after make matching:', filteredPendingBookings);
         console.log('Fetched bookings for driver:', transformedBookings);
-        console.log('Raw pending bookings query result:', pendingBookings.data);
         console.log('Pending bookings error:', pendingBookings.error);
         console.log('Pending requests filter:', transformedBookings.filter(ride => 
           (ride.ride_status === "pending_driver" && !ride.driver_id)
