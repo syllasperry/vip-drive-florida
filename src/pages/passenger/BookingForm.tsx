@@ -90,11 +90,12 @@ const BookingForm = () => {
       // For now, assign to the first matching driver (later can implement smart assignment)
       const assignedDriver = matchingDrivers[0];
 
-      // Create booking in database - no driver assignment yet
+      // Create booking in database with assigned driver
       const { data: booking, error } = await supabase
         .from('bookings')
         .insert({
           passenger_id: session.user.id,
+          driver_id: assignedDriver.driver_id,
           pickup_location: pickup,
           dropoff_location: dropoff,
           pickup_time: pickupDateTime.toISOString(),
