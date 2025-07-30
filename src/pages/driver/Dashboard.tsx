@@ -522,7 +522,6 @@ const DriverDashboard = () => {
             `)
             .eq('ride_status', 'pending_driver')
             .is('driver_id', null)
-            .or(`vehicle_type.ilike.%${userProfile.car_make} ${userProfile.car_model}%,vehicle_type.is.null`)
             .order('pickup_time', { ascending: true })
         ]);
 
@@ -559,6 +558,8 @@ const DriverDashboard = () => {
             passenger: booking.passengers?.full_name || 'Unknown Passenger',
             passengers: booking.passengers, // Include full passenger data for avatar
             status: booking.status,
+            ride_status: booking.ride_status,
+            driver_id: booking.driver_id,
             payment: "$120.00", // TODO: Calculate real price
             paymentMethod: booking.payment_status === 'completed' ? 'Completed' : null,
             countdown: null,
@@ -572,6 +573,11 @@ const DriverDashboard = () => {
           };
         });
 
+        console.log('Fetched bookings for driver:', transformedBookings);
+        console.log('Pending bookings:', transformedBookings.filter(ride => 
+          ride.status === "pending" || 
+          (ride.ride_status === "pending_driver" && !ride.driver_id)
+        ));
         setDriverRides(transformedBookings);
       } catch (error) {
         console.error('Error fetching driver bookings:', error);
@@ -841,7 +847,10 @@ const DriverDashboard = () => {
           {/* Pending Requests Alert */}
           {activeTab === "rides" && (
             <PendingRequestAlert 
-              requests={driverRides.filter(ride => ride.status === "pending").map(ride => ({
+              requests={driverRides.filter(ride => 
+                ride.status === "pending" || 
+                (ride.ride_status === "pending_driver" && !ride.driver_id)
+              ).map(ride => ({
                 id: ride.id,
                 passenger: ride.passenger,
                 passengers: ride.passengers,
