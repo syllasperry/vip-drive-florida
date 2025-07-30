@@ -73,6 +73,7 @@ export const OfferAcceptanceModal = ({
       });
 
       onAccept();
+      onClose(); // Close the modal and return to dashboard
     } catch (error) {
       console.error('Error accepting offer:', error);
       toast({
@@ -101,6 +102,7 @@ export const OfferAcceptanceModal = ({
       });
 
       onDecline();
+      onClose(); // Close the modal and return to dashboard
     } catch (error) {
       console.error('Error declining offer:', error);
       toast({
