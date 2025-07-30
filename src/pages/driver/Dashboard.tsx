@@ -522,7 +522,7 @@ const DriverDashboard = () => {
             `)
             .eq('ride_status', 'pending_driver')
             .is('driver_id', null)
-            .ilike('vehicle_type', `%${userProfile.car_make} ${userProfile.car_model}%`)
+            .eq('vehicle_type', `${userProfile.car_make} ${userProfile.car_model}`)
             .order('pickup_time', { ascending: true })
         ]);
 
@@ -608,9 +608,7 @@ const DriverDashboard = () => {
               // Check if this booking is available for this driver (Tesla Model Y match)
               const isCompatibleVehicle = payload.new.vehicle_type && 
                 userProfile?.car_make && userProfile?.car_model &&
-                payload.new.vehicle_type.toLowerCase().includes(
-                  `${userProfile.car_make} ${userProfile.car_model}`.toLowerCase()
-                );
+                payload.new.vehicle_type === `${userProfile.car_make} ${userProfile.car_model}`;
               
               // Check if it's a new pending booking without driver assignment
               const isPendingForDriver = payload.new.ride_status === 'pending_driver' && 
