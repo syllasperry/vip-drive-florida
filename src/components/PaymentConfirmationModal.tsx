@@ -10,7 +10,21 @@ interface PaymentConfirmationModalProps {
   onClose: () => void;
   bookingData: {
     final_price: number;
-    driver: {
+    drivers?: {
+      full_name: string;
+      payment_methods_accepted?: string[];
+      payment_methods_credit_cards?: string[];
+      payment_methods_digital?: string[];
+      cancellation_policy?: string;
+      preferred_payment_method?: string;
+      payment_instructions?: string;
+      zelle_info?: string;
+      venmo_info?: string;
+      apple_pay_info?: string;
+      google_pay_info?: string;
+      payment_link_info?: string;
+    };
+    driver?: {
       full_name: string;
       payment_methods_accepted?: string[];
       payment_methods_credit_cards?: string[];
@@ -51,6 +65,9 @@ export const PaymentConfirmationModal = ({
   const hasDriverConfirmed = paymentStatus === 'driver_confirmed' || paymentStatus === 'both_confirmed';
   const hasPassengerConfirmed = paymentStatus === 'passenger_confirmed' || paymentStatus === 'both_confirmed';
   const bothConfirmed = paymentStatus === 'both_confirmed';
+  
+  // Handle both driver and drivers property names for backward compatibility
+  const driverData = bookingData.drivers || bookingData.driver;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -79,7 +96,7 @@ export const PaymentConfirmationModal = ({
           </Card>
 
           {/* Payment Information */}
-          {isPassenger && (
+          {isPassenger && driverData && (
             <Card>
               <CardContent className="p-4 space-y-4">
                 <h4 className="font-semibold flex items-center gap-2 mb-3">
@@ -92,14 +109,14 @@ export const PaymentConfirmationModal = ({
                 </p>
 
                 {/* Credit Cards */}
-                {bookingData.driver.payment_methods_credit_cards && bookingData.driver.payment_methods_credit_cards.length > 0 && (
+                {driverData.payment_methods_credit_cards && driverData.payment_methods_credit_cards.length > 0 && (
                   <div className="mb-4">
                     <h5 className="font-medium text-sm mb-2 flex items-center gap-1">
                       <CreditCard className="h-3 w-3" />
                       Credit Cards
                     </h5>
                     <div className="grid grid-cols-2 gap-1 text-sm text-muted-foreground">
-                      {bookingData.driver.payment_methods_credit_cards.map((card, index) => (
+                      {driverData.payment_methods_credit_cards.map((card, index) => (
                         <div key={index}>• {card}</div>
                       ))}
                     </div>
@@ -107,14 +124,14 @@ export const PaymentConfirmationModal = ({
                 )}
 
                 {/* Digital Payments */}
-                {bookingData.driver.payment_methods_digital && bookingData.driver.payment_methods_digital.length > 0 && (
+                {driverData.payment_methods_digital && driverData.payment_methods_digital.length > 0 && (
                   <div className="mb-4">
                     <h5 className="font-medium text-sm mb-2 flex items-center gap-1">
                       <Smartphone className="h-3 w-3" />
                       Digital Payments
                     </h5>
                     <div className="grid grid-cols-2 gap-1 text-sm text-muted-foreground">
-                      {bookingData.driver.payment_methods_digital.map((payment, index) => (
+                      {driverData.payment_methods_digital.map((payment, index) => (
                         <div key={index}>• {payment}</div>
                       ))}
                     </div>
@@ -122,14 +139,14 @@ export const PaymentConfirmationModal = ({
                 )}
 
                 {/* Preferred Payment Method */}
-                {bookingData.driver.preferred_payment_method && (
+                {driverData.preferred_payment_method && (
                   <div className="bg-primary/5 p-3 rounded-lg">
                     <div className="font-medium text-primary mb-2">
-                      Preferred: {bookingData.driver.preferred_payment_method}
+                      Preferred: {driverData.preferred_payment_method}
                     </div>
-                    {bookingData.driver.payment_instructions && (
+                    {driverData.payment_instructions && (
                       <div className="text-sm whitespace-pre-line">
-                        {bookingData.driver.payment_instructions}
+                        {driverData.payment_instructions}
                       </div>
                     )}
                   </div>
@@ -137,31 +154,31 @@ export const PaymentConfirmationModal = ({
 
                 {/* Specific Payment Details */}
                 <div className="space-y-2 border-t pt-3">
-                  {bookingData.driver.zelle_info && (
+                  {driverData.zelle_info && (
                     <div className="text-sm">
-                      <span className="font-medium">Zelle:</span> {bookingData.driver.zelle_info}
+                      <span className="font-medium">Zelle:</span> {driverData.zelle_info}
                     </div>
                   )}
-                  {bookingData.driver.venmo_info && (
+                  {driverData.venmo_info && (
                     <div className="text-sm">
-                      <span className="font-medium">Venmo:</span> {bookingData.driver.venmo_info}
+                      <span className="font-medium">Venmo:</span> {driverData.venmo_info}
                     </div>
                   )}
-                  {bookingData.driver.apple_pay_info && (
+                  {driverData.apple_pay_info && (
                     <div className="text-sm">
-                      <span className="font-medium">Apple Pay:</span> {bookingData.driver.apple_pay_info}
+                      <span className="font-medium">Apple Pay:</span> {driverData.apple_pay_info}
                     </div>
                   )}
-                  {bookingData.driver.google_pay_info && (
+                  {driverData.google_pay_info && (
                     <div className="text-sm">
-                      <span className="font-medium">Google Pay:</span> {bookingData.driver.google_pay_info}
+                      <span className="font-medium">Google Pay:</span> {driverData.google_pay_info}
                     </div>
                   )}
-                  {bookingData.driver.payment_link_info && (
+                  {driverData.payment_link_info && (
                     <div className="text-sm">
                       <span className="font-medium">Payment Link:</span>{" "}
                       <a 
-                        href={bookingData.driver.payment_link_info} 
+                        href={driverData.payment_link_info} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="text-primary hover:underline"
@@ -173,11 +190,11 @@ export const PaymentConfirmationModal = ({
                 </div>
 
                 {/* Cancellation Policy */}
-                {bookingData.driver.cancellation_policy && (
+                {driverData.cancellation_policy && (
                   <div className="pt-2 border-t">
                     <h5 className="font-medium text-sm mb-1">Cancellation Policy:</h5>
                     <p className="text-sm text-muted-foreground">
-                      {bookingData.driver.cancellation_policy}
+                      {driverData.cancellation_policy}
                     </p>
                   </div>
                 )}
@@ -221,7 +238,7 @@ export const PaymentConfirmationModal = ({
                       Payment Instructions
                     </h4>
                     <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                      Please send the payment directly to {bookingData.driver.full_name} using one of the accepted methods above. Once completed, confirm your payment below.
+                      Please send the payment directly to {driverData?.full_name || 'your driver'} using one of the accepted methods above. Once completed, confirm your payment below.
                     </p>
                   </div>
                 </div>
