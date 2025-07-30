@@ -17,8 +17,12 @@ export type Database = {
       bookings: {
         Row: {
           created_at: string
+          distance_miles: number | null
           driver_id: string | null
+          driver_payment_confirmed_at: string | null
+          driver_payment_instructions: string | null
           dropoff_location: string
+          estimated_fare: number | null
           estimated_price: number | null
           final_price: number | null
           flight_info: string | null
@@ -26,12 +30,15 @@ export type Database = {
           luggage_count: number
           passenger_count: number
           passenger_id: string
+          passenger_payment_confirmed_at: string | null
+          payment_confirmation_status: string | null
           payment_expires_at: string | null
           payment_method: string | null
           payment_status: string
           pickup_location: string
           pickup_time: string
           price_confirmed_at: string | null
+          ride_status: string | null
           status: string
           updated_at: string | null
           vehicle_id: string | null
@@ -39,8 +46,12 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          distance_miles?: number | null
           driver_id?: string | null
+          driver_payment_confirmed_at?: string | null
+          driver_payment_instructions?: string | null
           dropoff_location: string
+          estimated_fare?: number | null
           estimated_price?: number | null
           final_price?: number | null
           flight_info?: string | null
@@ -48,12 +59,15 @@ export type Database = {
           luggage_count?: number
           passenger_count?: number
           passenger_id: string
+          passenger_payment_confirmed_at?: string | null
+          payment_confirmation_status?: string | null
           payment_expires_at?: string | null
           payment_method?: string | null
           payment_status?: string
           pickup_location: string
           pickup_time: string
           price_confirmed_at?: string | null
+          ride_status?: string | null
           status?: string
           updated_at?: string | null
           vehicle_id?: string | null
@@ -61,8 +75,12 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          distance_miles?: number | null
           driver_id?: string | null
+          driver_payment_confirmed_at?: string | null
+          driver_payment_instructions?: string | null
           dropoff_location?: string
+          estimated_fare?: number | null
           estimated_price?: number | null
           final_price?: number | null
           flight_info?: string | null
@@ -70,12 +88,15 @@ export type Database = {
           luggage_count?: number
           passenger_count?: number
           passenger_id?: string
+          passenger_payment_confirmed_at?: string | null
+          payment_confirmation_status?: string | null
           payment_expires_at?: string | null
           payment_method?: string | null
           payment_status?: string
           pickup_location?: string
           pickup_time?: string
           price_confirmed_at?: string | null
+          ride_status?: string | null
           status?: string
           updated_at?: string | null
           vehicle_id?: string | null
