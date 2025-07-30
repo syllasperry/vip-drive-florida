@@ -156,9 +156,12 @@ export const FileUploadModal = ({
         setUploadProgress(prev => Math.min(prev + 10, 90));
       }, 100);
 
-      const { error: uploadError } = await supabase.storage
+      const { data, error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, selectedFile);
+        .upload(filePath, selectedFile, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
       clearInterval(progressInterval);
       setUploadProgress(100);
@@ -177,7 +180,7 @@ export const FileUploadModal = ({
       console.error('Error uploading file:', error);
       toast({
         title: "Upload Failed",
-        description: "Failed to upload file. Please try again.",
+        description: `Failed to upload file: ${error.message || 'Please try again.'}`,
         variant: "destructive"
       });
       throw error;
