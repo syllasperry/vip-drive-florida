@@ -116,59 +116,59 @@ export const OfferAcceptanceModal = ({
   return (
     <Dialog open={isOpen} onOpenChange={() => {}} modal>
       <DialogContent 
-        className="max-w-md mx-auto bg-background border shadow-lg"
+        className="max-w-sm mx-auto bg-background border shadow-lg p-4"
       >
-        <DialogHeader className="text-center space-y-2">
-          <DialogTitle className="text-xl font-bold text-foreground">
+        <DialogHeader className="text-center space-y-1">
+          <DialogTitle className="text-lg font-bold text-foreground">
             Driver Offer Received
           </DialogTitle>
-          <Badge variant="secondary" className="mx-auto">
+          <Badge variant="secondary" className="mx-auto text-xs">
             <Clock className="h-3 w-3 mr-1" />
             {timeLeft} remaining
           </Badge>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Driver Information */}
           <Card className="border-primary/20">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3 mb-4">
-                <Avatar className="h-12 w-12">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-3">
+                <Avatar className="h-8 w-8">
                   <AvatarImage 
                     src={booking.drivers?.profile_photo_url} 
                     alt={booking.drivers?.full_name}
                   />
-                  <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                  <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
                     {booking.drivers?.full_name?.charAt(0)?.toUpperCase() || "D"}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="font-semibold text-foreground">
+                  <h3 className="font-medium text-foreground text-sm">
                     {booking.drivers?.full_name || "Your Driver"}
                   </h3>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     {booking.vehicle_type}
                   </p>
                 </div>
               </div>
 
               {/* Trip Summary */}
-              <div className="space-y-3">
-                <div className="flex items-start gap-3">
-                  <MapPin className="h-4 w-4 text-primary mt-1 flex-shrink-0" />
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <MapPin className="h-3 w-3 text-primary mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
+                    <p className="text-xs font-medium text-foreground truncate">
                       From: {booking.pickup_location}
                     </p>
-                    <p className="text-sm text-muted-foreground truncate">
+                    <p className="text-xs text-muted-foreground truncate">
                       To: {booking.dropoff_location}
                     </p>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-3">
-                  <Clock className="h-4 w-4 text-primary" />
-                  <span className="text-sm text-foreground">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-3 w-3 text-primary" />
+                  <span className="text-xs text-foreground">
                     {booking.pickup_time ? new Date(booking.pickup_time).toLocaleDateString() : ''} at {booking.pickup_time ? new Date(booking.pickup_time).toLocaleTimeString() : ''}
                   </span>
                 </div>
@@ -178,45 +178,45 @@ export const OfferAcceptanceModal = ({
 
           {/* Price Offer */}
           <Card className="border-primary/20 bg-primary/5">
-            <CardContent className="p-4 text-center">
-              <p className="text-sm text-muted-foreground mb-2">
+            <CardContent className="p-3 text-center">
+              <p className="text-xs text-muted-foreground mb-1">
                 Proposed Fare
               </p>
-              <div className="flex items-center justify-center gap-2">
-                <DollarSign className="h-6 w-6 text-primary" />
-                <span className="text-3xl font-bold text-primary">
+              <div className="flex items-center justify-center gap-1">
+                <DollarSign className="h-5 w-5 text-primary" />
+                <span className="text-2xl font-bold text-primary">
                   {booking.final_price?.toFixed(2) || "0.00"}
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
+              <p className="text-xs text-muted-foreground mt-1">
                 Do you want to accept this ride for this price?
               </p>
             </CardContent>
           </Card>
 
           {/* Action Buttons */}
-          <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
             <Button 
               onClick={handleAccept}
               disabled={timeLeft === "Expired"}
-              className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-medium rounded-xl"
+              className="h-10 bg-primary hover:bg-primary/90 text-white font-medium rounded-lg text-sm"
             >
-              <CheckCircle className="h-5 w-5 mr-2" />
-              ✅ Accept Offer
+              <CheckCircle className="h-4 w-4 mr-1" />
+              Accept
             </Button>
 
             <Button 
               onClick={handleDecline}
               disabled={timeLeft === "Expired"}
               variant="outline"
-              className="w-full h-12 border-destructive text-destructive hover:bg-destructive/10 rounded-xl"
+              className="h-10 border-destructive text-destructive hover:bg-destructive/10 rounded-lg text-sm"
             >
-              <X className="h-5 w-5 mr-2" />
-              ❌ Decline Offer
+              <X className="h-4 w-4 mr-1" />
+              Decline
             </Button>
           </div>
 
-          <div className="text-xs text-muted-foreground text-center">
+          <div className="text-xs text-muted-foreground text-center px-2">
             This offer will expire in {timeLeft}. Please make your decision promptly.
           </div>
         </div>
