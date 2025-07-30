@@ -33,6 +33,8 @@ export const PaymentsTab = ({ userId, userType, onViewSummary }: PaymentsTabProp
     try {
       setLoading(true);
       
+      console.log('Loading payment history for:', { userId, userType });
+      
       const { data: bookings, error } = await supabase
         .from('bookings')
         .select(`
@@ -46,8 +48,9 @@ export const PaymentsTab = ({ userId, userType, onViewSummary }: PaymentsTabProp
         .eq(userType === 'passenger' ? 'passenger_id' : 'driver_id', userId)
         .eq('payment_confirmation_status', 'all_set')
         .not('final_price', 'is', null)
-        .not('payment_method', 'is', null)
         .order('pickup_time', { ascending: false });
+
+      console.log('Payment query result:', { bookings, error });
 
       if (error) throw error;
 
