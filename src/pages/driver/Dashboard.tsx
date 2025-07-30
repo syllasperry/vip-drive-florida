@@ -554,8 +554,8 @@ const DriverDashboard = () => {
               minute: '2-digit',
               hour12: false 
             }),
-            from: booking.pickup_location,
-            to: booking.dropoff_location,
+                  from: booking.pickup_location,
+                  to: booking.dropoff_location,
             passenger: booking.passengers?.full_name || 'Unknown Passenger',
             passengers: booking.passengers, // Include full passenger data for avatar
             status: booking.ride_status || booking.status,
@@ -794,8 +794,8 @@ const DriverDashboard = () => {
               id: ride.id,
               passenger: ride.passenger,
               passengers: ride.passengers,
-              from: ride.from,
-              to: ride.to,
+              from: ride.pickup_location || ride.from,
+              to: ride.dropoff_location || ride.to,
               time: ride.time,
               date: ride.date,
               vehicle_type: ride.vehicle_type,
