@@ -68,47 +68,47 @@ export const PaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }: P
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md mx-auto">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-semibold">Complete Your Payment</DialogTitle>
+      <DialogContent className="max-w-sm mx-auto p-4 max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="pb-3">
+          <DialogTitle className="text-lg font-semibold text-center">Complete Your Payment</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Ride Summary */}
           <Card className="border-border/50">
-            <CardContent className="p-4 space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-full">
-                  <Clock className="h-4 w-4 text-primary" />
+            <CardContent className="p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="p-1 bg-primary/10 rounded-full">
+                  <Clock className="h-3 w-3 text-primary" />
                 </div>
                 <div>
-                  <p className="font-medium text-foreground">
-                    {booking.pickup_time ? new Date(booking.pickup_time).toLocaleDateString() : ''} at {booking.pickup_time ? new Date(booking.pickup_time).toLocaleTimeString() : ''}
+                  <p className="text-sm font-medium text-foreground">
+                    {booking.pickup_time ? new Date(booking.pickup_time).toLocaleDateString() : ''} at {booking.pickup_time ? new Date(booking.pickup_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3">
-                <MapPin className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+              <div className="flex items-start gap-2">
+                <MapPin className="h-3 w-3 text-primary mt-0.5 flex-shrink-0" />
                 <div className="flex-1 min-w-0 space-y-1">
-                  <p className="text-sm font-medium text-foreground truncate">
+                  <p className="text-xs font-medium text-foreground truncate">
                     {booking.pickup_location}
                   </p>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     <div className="h-px bg-border flex-1"></div>
-                    <Car className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                    <Car className="h-2 w-2 text-muted-foreground flex-shrink-0" />
                     <div className="h-px bg-border flex-1"></div>
                   </div>
-                  <p className="text-sm text-muted-foreground truncate">
+                  <p className="text-xs text-muted-foreground truncate">
                     {booking.dropoff_location}
                   </p>
                 </div>
               </div>
 
               {booking.drivers && (
-                <div className="flex items-center gap-3">
-                  <User className="h-4 w-4 text-primary" />
-                  <span className="text-sm text-foreground">
+                <div className="flex items-center gap-2">
+                  <User className="h-3 w-3 text-primary" />
+                  <span className="text-xs text-foreground">
                     Driver: {booking.drivers.full_name}
                   </span>
                 </div>
@@ -118,17 +118,17 @@ export const PaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }: P
 
           {/* Price Summary */}
           <Card className="border-border/50 bg-gradient-to-r from-primary/5 to-primary-glow/5">
-            <CardContent className="p-4">
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-sm text-muted-foreground">Trip Cost</span>
-                <span className="text-2xl font-bold text-primary">
+            <CardContent className="p-3">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs text-muted-foreground">Trip Cost</span>
+                <span className="text-lg font-bold text-primary">
                   {formatCurrency(booking.final_price || booking.estimated_price || 0)}
                 </span>
               </div>
               <Separator />
-              <div className="flex justify-between items-center mt-3">
-                <span className="font-medium text-foreground">Total</span>
-                <span className="text-xl font-bold text-foreground">
+              <div className="flex justify-between items-center mt-2">
+                <span className="text-sm font-medium text-foreground">Total</span>
+                <span className="text-lg font-bold text-foreground">
                   {formatCurrency(booking.final_price || booking.estimated_price || 0)}
                 </span>
               </div>
@@ -137,12 +137,12 @@ export const PaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }: P
 
           {/* Driver Information */}
           <Card className="border-border/50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3 mb-3">
-                <User className="h-4 w-4 text-primary" />
-                <span className="font-medium text-foreground">Your Driver</span>
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <User className="h-3 w-3 text-primary" />
+                <span className="text-sm font-medium text-foreground">Your Driver</span>
               </div>
-              <p className="text-foreground font-medium">
+              <p className="text-sm text-foreground font-medium">
                 {booking.drivers?.full_name || "Driver"}
               </p>
             </CardContent>
@@ -150,15 +150,15 @@ export const PaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }: P
 
           {/* Payment Instructions */}
           <Card className="border-border/50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <CreditCard className="h-4 w-4 text-primary" />
-                <span className="font-medium text-foreground">Payment Instructions</span>
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <CreditCard className="h-3 w-3 text-primary" />
+                <span className="text-sm font-medium text-foreground">Payment Instructions</span>
               </div>
               
-              <div className="space-y-2 text-sm text-muted-foreground">
+              <div className="space-y-1 text-xs text-muted-foreground">
                 {booking.driver_payment_instructions ? (
-                  <p className="bg-muted/50 p-3 rounded-lg text-foreground">
+                  <p className="bg-muted/50 p-2 rounded-lg text-foreground text-xs">
                     {booking.driver_payment_instructions}
                   </p>
                 ) : (
@@ -188,20 +188,20 @@ export const PaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }: P
           </Card>
 
           {/* Action Buttons */}
-          <div className="space-y-3">
+          <div className="space-y-2 pt-2">
             <Button 
               onClick={handlePaymentConfirmation}
               disabled={isConfirming}
-              className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-medium rounded-xl"
+              className="w-full h-10 bg-primary hover:bg-primary/90 text-white font-medium rounded-lg text-sm"
             >
               {isConfirming ? (
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                   Confirming...
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5" />
+                  <CheckCircle className="h-4 w-4" />
                   I've Made the Payment
                 </div>
               )}
@@ -210,13 +210,13 @@ export const PaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }: P
             <Button 
               variant="outline" 
               onClick={onClose}
-              className="w-full h-12 rounded-xl"
+              className="w-full h-10 rounded-lg text-sm"
             >
               Cancel
             </Button>
           </div>
 
-          <div className="text-xs text-muted-foreground text-center">
+          <div className="text-xs text-muted-foreground text-center px-2">
             After confirming, your driver will be notified and will confirm receipt of payment.
           </div>
         </div>
