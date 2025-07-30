@@ -26,6 +26,7 @@ export const PaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }: P
       const { error } = await supabase
         .from('bookings')
         .update({ 
+          ride_status: 'payment_confirmed',
           payment_confirmation_status: 'passenger_paid',
           passenger_payment_confirmed_at: new Date().toISOString()
         })

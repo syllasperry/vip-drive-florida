@@ -102,7 +102,10 @@ const PendingRequestAlert = ({ requests, onAccept, onDecline }: PendingRequestAl
         .from('bookings')
         .update({ 
           final_price: price,
-          status: 'price_proposed' 
+          ride_status: 'offer_sent',
+          payment_confirmation_status: 'price_awaiting_acceptance',
+          driver_id: (await supabase.auth.getSession()).data.session?.user?.id,
+          payment_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString()
         })
         .eq('id', requestId);
 

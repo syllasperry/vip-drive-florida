@@ -520,7 +520,7 @@ const DriverDashboard = () => {
                 description
               )
             `)
-            .eq('status', 'pending')
+            .eq('ride_status', 'pending_driver')
             .is('driver_id', null)
             .or(`vehicle_type.ilike.%${userProfile.car_make} ${userProfile.car_model}%,vehicle_type.is.null`)
             .order('pickup_time', { ascending: true })

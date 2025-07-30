@@ -21,6 +21,7 @@ import { FloatingActionButton } from "@/components/dashboard/FloatingActionButto
 import { FareConfirmationAlert } from "@/components/FareConfirmationAlert";
 import { PaymentConfirmationModal } from "@/components/PaymentConfirmationModal";
 import { PaymentModal } from "@/components/payment/PaymentModal";
+import { OfferAcceptanceModal } from "@/components/booking/OfferAcceptanceModal";
 import { TodoTab } from "@/components/booking/TodoTab";
 import { NotificationManager } from "@/components/NotificationManager";
 import { ChatNotificationBadge } from "@/components/ChatNotificationBadge";
@@ -52,6 +53,8 @@ const Dashboard = () => {
   const [selectedOtherUser, setSelectedOtherUser] = useState<any>(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedBookingForPayment, setSelectedBookingForPayment] = useState<any>(null);
+  const [offerAcceptanceModalOpen, setOfferAcceptanceModalOpen] = useState(false);
+  const [selectedBookingForOffer, setSelectedBookingForOffer] = useState<any>(null);
   const [pendingActionsCount, setPendingActionsCount] = useState(0);
 
   // Keep existing state variables
@@ -67,14 +70,14 @@ const Dashboard = () => {
     upcoming: bookings.filter(booking => {
       const bookingDate = new Date(booking.pickup_time);
       const now = new Date();
-      return ['pending', 'accepted', 'confirmed', 'price_proposed', 'payment_confirmed', 'ready_to_go'].includes(booking.status) ||
-             (bookingDate >= now && !['completed', 'cancelled', 'declined', 'rejected_by_passenger'].includes(booking.status));
+      return ['pending_driver', 'offer_sent', 'waiting_for_payment', 'payment_confirmed', 'ready_to_go'].includes(booking.ride_status) ||
+             (bookingDate >= now && !['completed', 'cancelled', 'declined', 'offer_declined'].includes(booking.ride_status));
     }),
     pastRides: bookings.filter(booking => {
       const bookingDate = new Date(booking.pickup_time);
       const now = new Date();
-      return ['completed', 'cancelled', 'declined', 'rejected_by_passenger'].includes(booking.status) ||
-             (bookingDate < now && !['pending', 'accepted', 'confirmed', 'price_proposed', 'payment_confirmed', 'ready_to_go'].includes(booking.status));
+      return ['completed', 'cancelled', 'declined', 'offer_declined'].includes(booking.ride_status) ||
+             (bookingDate < now && !['pending_driver', 'offer_sent', 'waiting_for_payment', 'payment_confirmed', 'ready_to_go'].includes(booking.ride_status));
     })
   };
 
@@ -305,7 +308,18 @@ const Dashboard = () => {
 
       setBookings(bookingsData || []);
       
-      // Check for pending fare confirmation
+      // Check for pending offer acceptance
+      const pendingOfferBooking = bookingsData?.find(booking => 
+        booking.ride_status === 'offer_sent' && 
+        booking.payment_confirmation_status === 'price_awaiting_acceptance'
+      );
+      
+      if (pendingOfferBooking && !offerAcceptanceModalOpen) {
+        setSelectedBookingForOffer(pendingOfferBooking);
+        setOfferAcceptanceModalOpen(true);
+      }
+      
+      // Check for pending fare confirmation (legacy support)
       const pendingBooking = bookingsData?.find(booking => booking.status === 'price_proposed');
       setPendingFareBooking(pendingBooking || null);
     } catch (error) {
@@ -664,10 +678,38 @@ const Dashboard = () => {
         onClose={() => setShowRideConfirmation(false)}
       />
 
+      <OfferAcceptanceModal
+        isOpen={offerAcceptanceModalOpen}
+        onClose={() => setOfferAcceptanceModalOpen(false)}
+        booking={selectedBookingForOffer}
+        onAccept={() => {
+          setOfferAcceptanceModalOpen(false);
+          // Automatically open payment modal after accepting offer
+          setSelectedBookingForPayment(selectedBookingForOffer);
+          setPaymentModalOpen(true);
+          fetchBookings();
+        }}
+        onDecline={() => {
+          setOfferAcceptanceModalOpen(false);
+          setSelectedBookingForOffer(null);
+          fetchBookings();
+        }}
+      />
+
+      <PaymentModal
+        isOpen={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        booking={selectedBookingForPayment}
+        onPaymentConfirmed={() => {
+          setPaymentModalOpen(false);
+          fetchBookings();
+        }}
+      />
+
       {/* Payment Confirmation Modal */}
       {selectedBookingForPayment && (
         <PaymentConfirmationModal
-          isOpen={paymentModalOpen}
+          isOpen={false} // Disable this for now, using PaymentModal instead
           onClose={() => {
             setPaymentModalOpen(false);
             setSelectedBookingForPayment(null);
@@ -701,22 +743,6 @@ const Dashboard = () => {
         }}
       />
 
-      {/* Payment Modal - New Airbnb-style payment flow */}
-      {selectedBookingForPayment && (
-        <PaymentModal
-          isOpen={paymentModalOpen}
-          onClose={() => {
-            setPaymentModalOpen(false);
-            setSelectedBookingForPayment(null);
-          }}
-          booking={selectedBookingForPayment}
-          onPaymentConfirmed={() => {
-            fetchBookings();
-            setPaymentModalOpen(false);
-            setSelectedBookingForPayment(null);
-          }}
-        />
-      )}
 
       {/* Messaging Modal - Opens from booking cards */}
       {messagingOpen && selectedBooking && (

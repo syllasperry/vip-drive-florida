@@ -43,7 +43,8 @@ export const PriceOfferModal = ({ isOpen, onClose, booking, driverProfile, onOff
           payment_confirmation_status: 'price_awaiting_acceptance',
           final_price: offerPrice,
           driver_payment_instructions: paymentInstructions || getDefaultPaymentInstructions(),
-          driver_id: driverProfile.id
+          driver_id: driverProfile.id,
+          payment_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString() // 15 minutes from now
         })
         .eq('id', booking.id);
 
