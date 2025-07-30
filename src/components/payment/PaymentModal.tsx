@@ -19,6 +19,11 @@ export const PaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }: P
   const [isConfirming, setIsConfirming] = useState(false);
   const { toast } = useToast();
 
+  // Add null check to prevent crashes
+  if (!booking) {
+    return null;
+  }
+
   const handlePaymentConfirmation = async () => {
     setIsConfirming(true);
     

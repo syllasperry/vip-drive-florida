@@ -696,15 +696,17 @@ const Dashboard = () => {
         }}
       />
 
-      <PaymentModal
-        isOpen={paymentModalOpen}
-        onClose={() => setPaymentModalOpen(false)}
-        booking={selectedBookingForPayment}
-        onPaymentConfirmed={() => {
-          setPaymentModalOpen(false);
-          fetchBookings();
-        }}
-      />
+      {selectedBookingForPayment && (
+        <PaymentModal
+          isOpen={paymentModalOpen}
+          onClose={() => setPaymentModalOpen(false)}
+          booking={selectedBookingForPayment}
+          onPaymentConfirmed={() => {
+            setPaymentModalOpen(false);
+            fetchBookings();
+          }}
+        />
+      )}
 
       {/* Payment Confirmation Modal */}
       {selectedBookingForPayment && (
