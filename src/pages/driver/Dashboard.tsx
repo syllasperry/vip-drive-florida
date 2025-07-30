@@ -369,7 +369,12 @@ const DriverDashboard = () => {
   // Function to handle payment confirmation from booking cards
   const handleConfirmPaymentFromCard = async (booking: any) => {
     try {
-      const { error } = await supabase
+      console.log('Confirming payment for booking:', booking.id);
+      console.log('Current user:', userProfile?.id);
+      console.log('Booking driver_id:', booking.driver_id);
+      console.log('Current booking status:', booking.payment_confirmation_status);
+
+      const { data, error } = await supabase
         .from('bookings')
         .update({ 
           status: 'all_set',
@@ -378,6 +383,8 @@ const DriverDashboard = () => {
           driver_payment_confirmed_at: new Date().toISOString()
         })
         .eq('id', booking.id);
+
+      console.log('Update result:', { data, error });
 
       if (error) throw error;
 
