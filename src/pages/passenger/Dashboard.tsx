@@ -16,10 +16,12 @@ import { BottomNavigation } from "@/components/dashboard/BottomNavigation";
 import { ProfileHeader } from "@/components/dashboard/ProfileHeader";
 import { UpcomingRideCard } from "@/components/dashboard/UpcomingRideCard";
 import { BookingToggle } from "@/components/dashboard/BookingToggle";
-import { BookingCard } from "@/components/dashboard/BookingCard";
+import { EnhancedBookingCard } from "@/components/booking/EnhancedBookingCard";
 import { FloatingActionButton } from "@/components/dashboard/FloatingActionButton";
 import { FareConfirmationAlert } from "@/components/FareConfirmationAlert";
 import { PaymentConfirmationModal } from "@/components/PaymentConfirmationModal";
+import { PaymentModal } from "@/components/payment/PaymentModal";
+import { TodoTab } from "@/components/booking/TodoTab";
 import { NotificationManager } from "@/components/NotificationManager";
 import { ChatNotificationBadge } from "@/components/ChatNotificationBadge";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,12 +50,15 @@ const Dashboard = () => {
   const [selectedBookingForSummary, setSelectedBookingForSummary] = useState<any>(null);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [selectedOtherUser, setSelectedOtherUser] = useState<any>(null);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [selectedBookingForPayment, setSelectedBookingForPayment] = useState<any>(null);
+  const [pendingActionsCount, setPendingActionsCount] = useState(0);
+
+  // Keep existing state variables
   const [showConversation, setShowConversation] = useState(false);
   const [showWelcomeCelebration, setShowWelcomeCelebration] = useState(false);
   const [showRideConfirmation, setShowRideConfirmation] = useState(false);
   const [pendingFareBooking, setPendingFareBooking] = useState<any>(null);
-  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [selectedBookingForPayment, setSelectedBookingForPayment] = useState<any>(null);
   const [preferencesModalOpen, setPreferencesModalOpen] = useState(false);
   const [bookings, setBookings] = useState<any[]>([]);
 
@@ -380,6 +385,7 @@ const Dashboard = () => {
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-2xl font-bold text-foreground">
               {activeTab === 'bookings' && 'Bookings'}
+              {activeTab === 'todo' && 'To-Do'}
               {activeTab === 'messages' && 'Messages'}
               {activeTab === 'payments' && 'Payments'}
               {activeTab === 'settings' && 'Settings'}
@@ -453,7 +459,7 @@ const Dashboard = () => {
                   <h3 className="text-lg font-semibold text-foreground mb-3">Upcoming</h3>
                   <div className="space-y-3">
                      {groupedBookings.upcoming.map((booking) => (
-                       <BookingCard 
+                       <EnhancedBookingCard 
                          key={booking.id} 
                          booking={booking} 
                          userType="passenger"
@@ -465,7 +471,11 @@ const Dashboard = () => {
                            setSelectedBookingForSummary(booking);
                            setSummaryModalOpen(true);
                          }}
-                         onCancelSuccess={() => fetchBookings()}
+                         onMakePayment={() => {
+                           setSelectedBookingForPayment(booking);
+                           setPaymentModalOpen(true);
+                         }}
+                         onAcceptOffer={() => handleAcceptFare(booking.id)}
                        />
                      ))}
                   </div>
@@ -477,7 +487,7 @@ const Dashboard = () => {
                   <h3 className="text-lg font-semibold text-foreground mb-3">Past Rides</h3>
                   <div className="space-y-3">
                      {groupedBookings.pastRides.map((booking) => (
-                       <BookingCard 
+                       <EnhancedBookingCard 
                          key={booking.id} 
                          booking={booking} 
                          userType="passenger"
@@ -489,10 +499,10 @@ const Dashboard = () => {
                            setSelectedBookingForSummary(booking);
                            setSummaryModalOpen(true);
                          }}
-                         onReview={booking.status === 'completed' ? () => {
-                           setSelectedBookingForReview(booking.id);
-                           setReviewModalOpen(true);
-                         } : undefined}
+                         onMakePayment={() => {
+                           setSelectedBookingForPayment(booking);
+                           setPaymentModalOpen(true);
+                         }}
                        />
                      ))}
                   </div>
@@ -523,6 +533,26 @@ const Dashboard = () => {
                 </div>
               )}
             </div>
+          )}
+
+          {activeTab === "todo" && (
+            <TodoTab
+              userType="passenger"
+              userId={passenger?.id || ""}
+              onMessage={(booking) => {
+                setSelectedBooking(booking);
+                setMessagingOpen(true);
+              }}
+              onViewSummary={(booking) => {
+                setSelectedBookingForSummary(booking);
+                setSummaryModalOpen(true);
+              }}
+              onMakePayment={(booking) => {
+                setSelectedBookingForPayment(booking);
+                setPaymentModalOpen(true);
+              }}
+              onAcceptOffer={(booking) => handleAcceptFare(booking.id)}
+            />
           )}
 
           {activeTab === "messages" && !showConversation && (
@@ -670,6 +700,23 @@ const Dashboard = () => {
           }
         }}
       />
+
+      {/* Payment Modal - New Airbnb-style payment flow */}
+      {selectedBookingForPayment && (
+        <PaymentModal
+          isOpen={paymentModalOpen}
+          onClose={() => {
+            setPaymentModalOpen(false);
+            setSelectedBookingForPayment(null);
+          }}
+          booking={selectedBookingForPayment}
+          onPaymentConfirmed={() => {
+            fetchBookings();
+            setPaymentModalOpen(false);
+            setSelectedBookingForPayment(null);
+          }}
+        />
+      )}
 
       {/* Messaging Modal - Opens from booking cards */}
       {messagingOpen && selectedBooking && (
