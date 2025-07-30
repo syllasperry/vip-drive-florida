@@ -372,6 +372,7 @@ const DriverDashboard = () => {
       const { error } = await supabase
         .from('bookings')
         .update({ 
+          status: 'all_set',
           ride_status: 'paid',
           payment_confirmation_status: 'all_set',
           driver_payment_confirmed_at: new Date().toISOString()
@@ -380,9 +381,23 @@ const DriverDashboard = () => {
 
       if (error) throw error;
 
+      // Update local state to reflect changes immediately
+      setDriverRides(prevRides => 
+        prevRides.map(ride => 
+          ride.id === booking.id 
+            ? { 
+                ...ride, 
+                status: 'all_set',
+                ride_status: 'paid',
+                payment_confirmation_status: 'all_set' 
+              }
+            : ride
+        )
+      );
+
       toast({
         title: "Payment Confirmed!",
-        description: "🎉 Ride confirmed and paid! Passenger has been notified.",
+        description: "✅ All set! Both passenger and driver are notified.",
       });
 
     } catch (error) {
@@ -577,37 +592,48 @@ const DriverDashboard = () => {
           index === self.findIndex(b => b.id === booking.id)
         );
 
-        // Transform Supabase data to match expected format
-        const transformedBookings = allBookingsData.map(booking => {
-          const pickupDate = new Date(booking.pickup_time);
-          return {
-            id: booking.id,
-            date: pickupDate.toISOString().split('T')[0],
-            time: pickupDate.toLocaleTimeString('en-US', { 
-              hour: '2-digit', 
-              minute: '2-digit',
-              hour12: false 
-            }),
-            from: booking.pickup_location,
-            to: booking.dropoff_location,
-            passenger: booking.passengers?.full_name || 'Unknown Passenger',
-            passengers: booking.passengers, // Include full passenger data for avatar
-            status: booking.status,
-            ride_status: booking.ride_status,
-            driver_id: booking.driver_id,
-            payment: booking.final_price ? `$${booking.final_price}` : "$120.00",
-            paymentMethod: booking.payment_status === 'completed' ? 'Completed' : null,
-            countdown: null,
-            flight_info: booking.flight_info,
-            passenger_count: booking.passenger_count,
-            luggage_count: booking.luggage_count,
-            vehicle_type: booking.vehicle_type || 'Vehicle',
-            final_price: booking.final_price,
-            passenger_id: booking.passenger_id,
-            payment_status: booking.payment_status,
-            payment_confirmation_status: booking.payment_confirmation_status
-          };
-        });
+        // Transform Supabase data to match expected format and sort by pickup time
+        const transformedBookings = allBookingsData
+          .map(booking => {
+            const pickupDate = new Date(booking.pickup_time);
+            return {
+              id: booking.id,
+              date: pickupDate.toISOString().split('T')[0],
+              time: pickupDate.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: false 
+              }),
+              pickup_time: booking.pickup_time, // Keep original for sorting
+              pickup_location: booking.pickup_location,
+              dropoff_location: booking.dropoff_location,
+              from: booking.pickup_location,
+              to: booking.dropoff_location,
+              passenger: booking.passengers?.full_name || 'Unknown Passenger',
+              passengers: booking.passengers, // Include full passenger data for avatar
+              status: booking.status,
+              ride_status: booking.ride_status,
+              driver_id: booking.driver_id,
+              payment: booking.final_price ? `$${booking.final_price}` : (booking.estimated_price ? `$${booking.estimated_price}` : "$85.00"),
+              paymentMethod: booking.payment_status === 'completed' ? 'Completed' : null,
+              countdown: null,
+              flight_info: booking.flight_info,
+              passenger_count: booking.passenger_count || 1,
+              luggage_count: booking.luggage_count || 0,
+              vehicle_type: booking.vehicle_type || 'Vehicle',
+              final_price: booking.final_price,
+              estimated_price: booking.estimated_price,
+              passenger_id: booking.passenger_id,
+              payment_status: booking.payment_status,
+              payment_confirmation_status: booking.payment_confirmation_status
+            };
+          })
+          .sort((a, b) => {
+            // Sort by pickup time - most recent/urgent first
+            const dateA = new Date(a.pickup_time);
+            const dateB = new Date(b.pickup_time);
+            return dateA.getTime() - dateB.getTime();
+          });
 
         console.log('=== DEBUG DRIVER BOOKINGS ===');
         console.log('Driver profile car info:', userProfile.car_make, userProfile.car_model);
@@ -1079,7 +1105,7 @@ const DriverDashboard = () => {
                                 </span>
                               </div>
 
-                              {/* Payment Received Button - Show if passenger has confirmed payment */}
+                              {/* Payment Status Display */}
                               {ride.payment_confirmation_status === 'passenger_paid' && (
                                 <div className="mb-3">
                                   <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800 mb-3">
@@ -1095,6 +1121,18 @@ const DriverDashboard = () => {
                                     <CheckCircle className="h-4 w-4 mr-2" />
                                     Confirm Payment Received
                                   </Button>
+                                </div>
+                              )}
+
+                              {/* All Set Status - Show when both sides confirmed */}
+                              {ride.payment_confirmation_status === 'all_set' && (
+                                <div className="mb-3 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+                                  <div className="flex items-center gap-2">
+                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                    <span className="text-sm font-semibold text-green-700 dark:text-green-300">
+                                      ✅ Payment Received - All Set
+                                    </span>
+                                  </div>
                                 </div>
                               )}
 
