@@ -163,7 +163,10 @@ export const FileUploadModal = ({
       clearInterval(progressInterval);
       setUploadProgress(100);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw uploadError;
+      }
 
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
@@ -177,21 +180,31 @@ export const FileUploadModal = ({
         description: "Failed to upload file. Please try again.",
         variant: "destructive"
       });
-      return null;
+      throw error;
     } finally {
       setUploading(false);
     }
   };
 
   const handleSend = async () => {
-    const fileUrl = await uploadFile();
-    if (fileUrl) {
-      const fileType = selectedFile?.type.startsWith('image/') ? '📷' : 
-                      selectedFile?.type.startsWith('video/') ? '🎥' : '📎';
-      const fileName = selectedFile?.name || 'file';
-      
-      onSendMessage(`${fileType} ${fileName}\n${fileUrl}`);
-      handleClose();
+    try {
+      const fileUrl = await uploadFile();
+      if (fileUrl) {
+        const fileType = selectedFile?.type.startsWith('image/') ? '📷' : 
+                        selectedFile?.type.startsWith('video/') ? '🎥' : '📎';
+        const fileName = selectedFile?.name || 'file';
+        
+        onSendMessage(`${fileType} ${fileName}\n${fileUrl}`);
+        handleClose();
+        
+        toast({
+          title: "File Sent",
+          description: "Your file has been sent successfully",
+        });
+      }
+    } catch (error) {
+      console.error('Error sending file:', error);
+      // Error toast is already shown in uploadFile function
     }
   };
 
