@@ -909,7 +909,7 @@ const DriverDashboard = () => {
                               url = `https://www.google.com/maps/dir/?api=1&origin=${pickup}&destination=${dropoff}&travelmode=driving`;
                           }
                           
-                          window.open(url, '_blank');
+                          window.location.href = url;
                           
                           toast({
                             title: `Opening ${navApp === 'apple' ? 'Apple Maps' : navApp === 'waze' ? 'Waze' : 'Google Maps'}`,
@@ -1187,7 +1187,7 @@ const DriverDashboard = () => {
                                             url = `https://www.google.com/maps/dir/?api=1&origin=${pickup}&destination=${dropoff}&travelmode=driving`;
                                         }
                                       
-                                      window.open(url, '_blank');
+                                      window.location.href = url;
                                       
                                       toast({
                                         title: `Opening ${navApp === 'apple' ? 'Apple Maps' : navApp === 'waze' ? 'Waze' : 'Google Maps'}`,
