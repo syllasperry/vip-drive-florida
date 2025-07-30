@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MessagingInterface } from "@/components/MessagingInterface";
+import { MessagesInbox } from "@/components/messaging/MessagesInbox";
+import { ConversationScreen } from "@/components/messaging/ConversationScreen";
 import { EnhancedSettingsModal } from "@/components/EnhancedSettingsModal";
 import { PaymentsTab } from "@/components/PaymentsTab";
 import { ProfileEditModal } from "@/components/ProfileEditModal";
@@ -21,7 +22,6 @@ import { FareConfirmationAlert } from "@/components/FareConfirmationAlert";
 import { PaymentConfirmationModal } from "@/components/PaymentConfirmationModal";
 import { NotificationManager } from "@/components/NotificationManager";
 import { ChatNotificationBadge } from "@/components/ChatNotificationBadge";
-import { MessagesTab } from "@/components/dashboard/MessagesTab";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { User, LogOut, Clock, MessageCircle, CreditCard, Settings, Car, CalendarDays, History, Plus } from "lucide-react";
@@ -47,6 +47,8 @@ const Dashboard = () => {
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
   const [selectedBookingForSummary, setSelectedBookingForSummary] = useState<any>(null);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
+  const [selectedOtherUser, setSelectedOtherUser] = useState<any>(null);
+  const [showConversation, setShowConversation] = useState(false);
   const [showWelcomeCelebration, setShowWelcomeCelebration] = useState(false);
   const [showRideConfirmation, setShowRideConfirmation] = useState(false);
   const [pendingFareBooking, setPendingFareBooking] = useState<any>(null);
@@ -306,6 +308,18 @@ const Dashboard = () => {
     }
   };
 
+  const handleSelectChat = (booking: any, otherUser: any) => {
+    setSelectedBooking(booking);
+    setSelectedOtherUser(otherUser);
+    setShowConversation(true);
+  };
+
+  const handleBackToInbox = () => {
+    setShowConversation(false);
+    setSelectedBooking(null);
+    setSelectedOtherUser(null);
+  };
+
   useEffect(() => {
     fetchBookings();
 
@@ -503,17 +517,24 @@ const Dashboard = () => {
             </div>
           )}
 
-          {activeTab === "messages" && (
-            <div className="p-4">
-              <MessagesTab
-                userType="passenger"
-                userId={passenger?.id || ""}
-                onSelectChat={(booking, otherUser) => {
-                  setSelectedBooking(booking);
-                  setMessagingOpen(true);
-                }}
-              />
-            </div>
+          {activeTab === "messages" && !showConversation && (
+            <MessagesInbox
+              userType="passenger"
+              userId={passenger?.id || ""}
+              onSelectChat={handleSelectChat}
+            />
+          )}
+
+          {activeTab === "messages" && showConversation && selectedBooking && (
+            <ConversationScreen
+              userType="passenger"
+              booking={selectedBooking}
+              otherUser={selectedOtherUser}
+              currentUserId={passenger?.id || ""}
+              currentUserName={passenger?.full_name || ""}
+              currentUserAvatar={passenger?.profile_photo_url}
+              onBack={handleBackToInbox}
+            />
           )}
 
           {activeTab === "payments" && (
@@ -568,22 +589,6 @@ const Dashboard = () => {
       </div>
 
       {/* Modals */}
-      {selectedBooking && (
-        <MessagingInterface 
-          isOpen={messagingOpen}
-          onClose={() => {
-            setMessagingOpen(false);
-            setSelectedBooking(null);
-          }}
-          bookingId={selectedBooking.id}
-          currentUserId={passenger?.id || ""}
-          currentUserName={passenger?.full_name || ""}
-          currentUserAvatar={passenger?.profile_photo_url}
-          otherUserName={selectedBooking.drivers?.full_name || "Driver"}
-          otherUserAvatar={selectedBooking.drivers?.profile_photo_url}
-          userType="passenger"
-        />
-      )}
       
       <EnhancedSettingsModal
         isOpen={settingsModalOpen}
