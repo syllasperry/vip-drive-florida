@@ -6,39 +6,83 @@ interface BookingSummaryModalProps {
   isOpen: boolean;
   onClose: () => void;
   booking: {
-    id: string;
-    date: string;
-    time: string;
-    from: string;
-    to: string;
-    vehicle: string;
-    vehicleModel?: string;
-    status: string;
-    driver?: string;
-    paymentMethod?: string;
+    id?: string;
+    pickup_location?: string;
+    dropoff_location?: string;
+    pickup_time?: string;
+    vehicle_type?: string;
+    status?: string;
+    ride_status?: string;
+    payment_confirmation_status?: string;
+    driver_id?: string;
+    payment_method?: string;
     flight_info?: string;
     passenger_count?: number;
     luggage_count?: number;
+    final_price?: number;
+    estimated_price?: number;
+    drivers?: {
+      full_name: string;
+      car_make?: string;
+      car_model?: string;
+      car_color?: string;
+    };
+    // Legacy fields for backward compatibility
+    date?: string;
+    time?: string;
+    from?: string;
+    to?: string;
+    vehicle?: string;
+    vehicleModel?: string;
+    driver?: string;
+    paymentMethod?: string;
   };
 }
 
 export const BookingSummaryModal = ({ isOpen, onClose, booking }: BookingSummaryModalProps) => {
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
+  // Get the correct values from Supabase fields or fallback to legacy fields
+  const pickupLocation = booking.pickup_location || booking.from || '';
+  const dropoffLocation = booking.dropoff_location || booking.to || '';
+  const pickupTime = booking.pickup_time || booking.date || '';
+  const vehicleType = booking.vehicle_type || booking.vehicle || '';
+  const vehicleModel = booking.drivers?.car_model || booking.vehicleModel || '';
+  const vehicleMake = booking.drivers?.car_make || '';
+  const vehicleColor = booking.drivers?.car_color || '';
+  const driverName = booking.drivers?.full_name || booking.driver || '';
+  const currentStatus = booking.ride_status || booking.status || '';
+  const paymentStatus = booking.payment_confirmation_status || '';
+
+  const formatDateTime = (dateTimeString: string) => {
+    if (!dateTimeString) return 'Date not specified';
+    
+    try {
+      const date = new Date(dateTimeString);
+      if (isNaN(date.getTime())) return 'Invalid Date';
+      
+      return date.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      }) + ' at ' + date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch (error) {
+      return 'Invalid Date';
+    }
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case "confirmed": 
+      case "accepted":
       case "payment_confirmed": 
+      case "all_set":
         return "text-success";
       case "pending": 
+      case "pending_driver":
         return "text-warning";
       case "completed": 
         return "text-primary";
@@ -48,13 +92,23 @@ export const BookingSummaryModal = ({ isOpen, onClose, booking }: BookingSummary
   };
 
   const getStatusText = (status: string) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case "confirmed": return "Confirmed";
+      case "accepted": return "Accepted";
       case "pending": return "Pending Driver Acceptance";
+      case "pending_driver": return "Pending Driver Acceptance";
       case "payment_confirmed": return "Payment Confirmed";
+      case "all_set": return "All Set - Ready to Go";
       case "completed": return "Completed";
-      default: return status;
+      default: return status || 'Unknown Status';
     }
+  };
+
+  const getVehicleDisplay = () => {
+    if (vehicleMake && vehicleModel) {
+      return `${vehicleMake} ${vehicleModel}${vehicleColor ? ` (${vehicleColor})` : ''}`;
+    }
+    return vehicleType || 'Vehicle information not available';
   };
 
   return (
@@ -67,19 +121,21 @@ export const BookingSummaryModal = ({ isOpen, onClose, booking }: BookingSummary
         <div className="space-y-6">
           {/* Status */}
           <div className="text-center">
-            <div className={`text-lg font-semibold ${getStatusColor(booking.status)}`}>
-              {getStatusText(booking.status)}
+            <div className={`text-lg font-semibold ${getStatusColor(currentStatus)}`}>
+              {getStatusText(currentStatus)}
             </div>
+            {paymentStatus === 'all_set' && (
+              <div className="mt-2 text-sm text-success font-medium">
+                ✅ All Set - Ready to Go!
+              </div>
+            )}
           </div>
 
           {/* Vehicle Information */}
           <div className="bg-muted/20 rounded-lg p-4">
             <h3 className="font-bold text-foreground mb-2">Vehicle</h3>
             <div className="text-sm">
-              <div className="font-medium">{booking.vehicle}</div>
-              {booking.vehicleModel && (
-                <div className="text-muted-foreground">{booking.vehicleModel}</div>
-              )}
+              <div className="font-medium">{getVehicleDisplay()}</div>
             </div>
           </div>
 
@@ -92,7 +148,7 @@ export const BookingSummaryModal = ({ isOpen, onClose, booking }: BookingSummary
                 <MapPin className="h-5 w-5 text-primary mt-0.5" />
                 <div>
                   <div className="text-sm text-muted-foreground">From</div>
-                  <div className="font-medium">{booking.from}</div>
+                  <div className="font-medium">{pickupLocation || 'Pickup location not specified'}</div>
                 </div>
               </div>
               
@@ -100,7 +156,7 @@ export const BookingSummaryModal = ({ isOpen, onClose, booking }: BookingSummary
                 <MapPin className="h-5 w-5 text-success mt-0.5" />
                 <div>
                   <div className="text-sm text-muted-foreground">To</div>
-                  <div className="font-medium">{booking.to}</div>
+                  <div className="font-medium">{dropoffLocation || 'Drop-off location not specified'}</div>
                 </div>
               </div>
               
@@ -108,7 +164,7 @@ export const BookingSummaryModal = ({ isOpen, onClose, booking }: BookingSummary
                 <Clock className="h-5 w-5 text-primary" />
                 <div>
                   <div className="text-sm text-muted-foreground">Date & Time</div>
-                  <div className="font-medium">{formatDate(booking.date)} at {booking.time}</div>
+                  <div className="font-medium">{formatDateTime(pickupTime)}</div>
                 </div>
               </div>
 
@@ -141,14 +197,28 @@ export const BookingSummaryModal = ({ isOpen, onClose, booking }: BookingSummary
                   </div>
                 </div>
               )}
+
+              {(booking.final_price || booking.estimated_price) && (
+                <div className="flex items-center gap-3">
+                  <DollarSign className="h-5 w-5 text-primary" />
+                  <div>
+                    <div className="text-sm text-muted-foreground">
+                      {booking.final_price ? 'Final Price' : 'Estimated Price'}
+                    </div>
+                    <div className="font-medium">
+                      ${(booking.final_price || booking.estimated_price)?.toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Driver Information */}
-          {booking.driver && (
+          {driverName && (
             <div>
               <h3 className="font-bold text-foreground mb-2">Driver</h3>
-              <div className="font-medium">{booking.driver}</div>
+              <div className="font-medium">{driverName}</div>
             </div>
           )}
 
@@ -159,10 +229,10 @@ export const BookingSummaryModal = ({ isOpen, onClose, booking }: BookingSummary
               Payment Information
             </h3>
             
-            {booking.paymentMethod ? (
+            {booking.payment_method || booking.paymentMethod ? (
               <div className="text-sm">
                 <div className="text-muted-foreground">Payment Method</div>
-                <div className="font-medium">{booking.paymentMethod}</div>
+                <div className="font-medium">{booking.payment_method || booking.paymentMethod}</div>
               </div>
             ) : (
               <div className="space-y-4">
