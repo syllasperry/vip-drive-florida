@@ -289,7 +289,9 @@ const Dashboard = () => {
             full_name,
             phone,
             email,
-            profile_photo_url
+            profile_photo_url,
+            preferred_payment_method,
+            payment_instructions
           ),
           vehicles:vehicle_id (
             id,
