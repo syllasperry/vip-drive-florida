@@ -135,6 +135,19 @@ export const PaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }: P
             </CardContent>
           </Card>
 
+          {/* Driver Information */}
+          <Card className="border-border/50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <User className="h-4 w-4 text-primary" />
+                <span className="font-medium text-foreground">Your Driver</span>
+              </div>
+              <p className="text-foreground font-medium">
+                {booking.drivers?.full_name || "Driver"}
+              </p>
+            </CardContent>
+          </Card>
+
           {/* Payment Instructions */}
           <Card className="border-border/50">
             <CardContent className="p-4">
@@ -145,13 +158,30 @@ export const PaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }: P
               
               <div className="space-y-2 text-sm text-muted-foreground">
                 {booking.driver_payment_instructions ? (
-                  <p>{booking.driver_payment_instructions}</p>
+                  <p className="bg-muted/50 p-3 rounded-lg text-foreground">
+                    {booking.driver_payment_instructions}
+                  </p>
                 ) : (
-                  <>
-                    <p>• Venmo: @{booking.drivers?.venmo_info || 'driver-venmo'}</p>
-                    <p>• Zelle: {booking.drivers?.zelle_info || booking.drivers?.email}</p>
-                    <p>• Cash payment accepted at pickup</p>
-                  </>
+                  <div className="space-y-1">
+                    {booking.drivers?.venmo_info && (
+                      <p>• <strong>Venmo:</strong> @{booking.drivers.venmo_info}</p>
+                    )}
+                    {booking.drivers?.zelle_info && (
+                      <p>• <strong>Zelle:</strong> {booking.drivers.zelle_info}</p>
+                    )}
+                    {booking.drivers?.apple_pay_info && (
+                      <p>• <strong>Apple Pay:</strong> {booking.drivers.apple_pay_info}</p>
+                    )}
+                    {booking.drivers?.google_pay_info && (
+                      <p>• <strong>Google Pay:</strong> {booking.drivers.google_pay_info}</p>
+                    )}
+                    {booking.drivers?.payment_link_info && (
+                      <p>• <strong>Payment Link:</strong> {booking.drivers.payment_link_info}</p>
+                    )}
+                    {!booking.drivers?.venmo_info && !booking.drivers?.zelle_info && (
+                      <p>• Cash payment accepted at pickup</p>
+                    )}
+                  </div>
                 )}
               </div>
             </CardContent>

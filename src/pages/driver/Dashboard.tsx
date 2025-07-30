@@ -91,6 +91,39 @@ const DriverDashboard = () => {
         } else {
           setUserProfile(driver);
         }
+
+        // Set up real-time subscription for payment confirmations
+        if (driver) {
+          const channel = supabase
+            .channel('driver-payment-notifications')
+            .on(
+              'postgres_changes',
+              {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'bookings',
+                filter: `driver_id=eq.${driver.id}`
+              },
+              (payload) => {
+                console.log('Booking update for driver:', payload);
+                
+                // Check if passenger confirmed payment
+                if (payload.new?.payment_confirmation_status === 'passenger_paid' && 
+                    payload.old?.payment_confirmation_status !== 'passenger_paid') {
+                  toast({
+                    title: "🚨 Payment Confirmation Required!",
+                    description: `Passenger confirmed payment for ride to ${payload.new.dropoff_location}. Please verify and confirm receipt.`,
+                    duration: 10000,
+                  });
+                }
+              }
+            )
+            .subscribe();
+
+          return () => {
+            supabase.removeChannel(channel);
+          };
+        }
       } catch (error) {
         console.error('Auth check error:', error);
         navigate("/driver/login");
@@ -301,20 +334,12 @@ const DriverDashboard = () => {
     if (!selectedBookingForPayment) return;
 
     try {
-      const currentStatus = selectedBookingForPayment.payment_status;
-      let newStatus;
-      
-      if (currentStatus === 'passenger_confirmed') {
-        newStatus = 'both_confirmed';
-      } else {
-        newStatus = 'driver_confirmed';
-      }
-
       const { error } = await supabase
         .from('bookings')
         .update({ 
-          payment_status: newStatus,
-          status: newStatus === 'both_confirmed' ? 'ready_to_go' : 'payment_confirmed'
+          ride_status: 'paid',
+          payment_confirmation_status: 'all_set',
+          driver_payment_confirmed_at: new Date().toISOString()
         })
         .eq('id', selectedBookingForPayment.id);
 
@@ -328,45 +353,45 @@ const DriverDashboard = () => {
         return;
       }
 
-      // Send confirmation message
-      await supabase
-        .from('messages')
-        .insert({
-          booking_id: selectedBookingForPayment.id,
-          sender_id: userProfile?.id,
-          sender_type: 'driver',
-          message_text: `I've confirmed receiving the payment of $${selectedBookingForPayment?.final_price?.toFixed(2)}.${newStatus === 'both_confirmed' ? ' Ready to go!' : ' Waiting for passenger confirmation.'}`
-        });
-
-      // Send notification
-      await supabase.functions.invoke('send-booking-notifications', {
-        body: {
-          bookingId: selectedBookingForPayment.id,
-          status: newStatus === 'both_confirmed' ? 'ready_to_go' : 'payment_confirmed',
-          triggerType: 'status_change'
-        }
+      toast({
+        title: "Payment Confirmed!",
+        description: "🎉 Ride confirmed and paid! Both parties have been notified.",
       });
 
-      // Update local state
-      setDriverRides(prevRides => 
-        prevRides.map(ride => 
-          ride.id === selectedBookingForPayment.id 
-            ? { 
-                ...ride, 
-                status: newStatus === 'both_confirmed' ? 'ready_to_go' : 'payment_confirmed', 
-                payment_status: newStatus,
-                paymentMethod: newStatus === 'both_confirmed' ? 'Completed' : 'Confirming'
-              }
-            : ride
-        )
-      );
+      // Close the payment modal
+      setPaymentModalOpen(false);
+      setSelectedBookingForPayment(null);
+    } catch (error) {
+      console.error('Error confirming payment:', error);
+    }
+  };
+
+  // Function to handle payment confirmation from booking cards
+  const handleConfirmPaymentFromCard = async (booking: any) => {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          ride_status: 'paid',
+          payment_confirmation_status: 'all_set',
+          driver_payment_confirmed_at: new Date().toISOString()
+        })
+        .eq('id', booking.id);
+
+      if (error) throw error;
 
       toast({
         title: "Payment Confirmed!",
-        description: newStatus === 'both_confirmed' ? "Both parties confirmed. Ready to go!" : "Waiting for passenger confirmation.",
+        description: "🎉 Ride confirmed and paid! Passenger has been notified.",
       });
+
     } catch (error) {
       console.error('Error confirming payment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to confirm payment. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
