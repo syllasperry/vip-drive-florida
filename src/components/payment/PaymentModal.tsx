@@ -17,6 +17,7 @@ interface PaymentModalProps {
 
 export const PaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }: PaymentModalProps) => {
   const [isConfirming, setIsConfirming] = useState(false);
+  const [showPaymentInstructions, setShowPaymentInstructions] = useState(false);
   const { toast } = useToast();
 
   // Add null check to prevent crashes
@@ -151,39 +152,16 @@ export const PaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }: P
           {/* Payment Instructions */}
           <Card className="border-border/50">
             <CardContent className="p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <CreditCard className="h-3 w-3 text-primary" />
-                <span className="text-sm font-medium text-foreground">Payment Instructions</span>
-              </div>
-              
-              <div className="space-y-1 text-xs text-muted-foreground">
-                {booking.driver_payment_instructions ? (
-                  <p className="bg-muted/50 p-2 rounded-lg text-foreground text-xs">
-                    {booking.driver_payment_instructions}
-                  </p>
-                ) : (
-                  <div className="space-y-1">
-                    {booking.drivers?.venmo_info && (
-                      <p>• <strong>Venmo:</strong> @{booking.drivers.venmo_info}</p>
-                    )}
-                    {booking.drivers?.zelle_info && (
-                      <p>• <strong>Zelle:</strong> {booking.drivers.zelle_info}</p>
-                    )}
-                    {booking.drivers?.apple_pay_info && (
-                      <p>• <strong>Apple Pay:</strong> {booking.drivers.apple_pay_info}</p>
-                    )}
-                    {booking.drivers?.google_pay_info && (
-                      <p>• <strong>Google Pay:</strong> {booking.drivers.google_pay_info}</p>
-                    )}
-                    {booking.drivers?.payment_link_info && (
-                      <p>• <strong>Payment Link:</strong> {booking.drivers.payment_link_info}</p>
-                    )}
-                    {!booking.drivers?.venmo_info && !booking.drivers?.zelle_info && (
-                      <p>• Cash payment accepted at pickup</p>
-                    )}
-                  </div>
-                )}
-              </div>
+              <button 
+                onClick={() => setShowPaymentInstructions(true)}
+                className="w-full flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <CreditCard className="h-3 w-3 text-primary" />
+                  <span className="text-sm font-medium text-foreground">Payment Instructions</span>
+                </div>
+                <div className="text-xs text-primary">View Details →</div>
+              </button>
             </CardContent>
           </Card>
 
@@ -221,6 +199,78 @@ export const PaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }: P
           </div>
         </div>
       </DialogContent>
+
+      {/* Payment Instructions Modal */}
+      <Dialog open={showPaymentInstructions} onOpenChange={setShowPaymentInstructions}>
+        <DialogContent className="max-w-sm mx-auto p-4">
+          <DialogHeader className="pb-3">
+            <DialogTitle className="text-lg font-semibold text-center">Payment Instructions</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <Card className="border-border/50">
+              <CardContent className="p-4 space-y-3">
+                {/* Payment Method */}
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground mb-1">Payment Method:</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {booking.drivers?.preferred_payment_method || 
+                     (booking.drivers?.venmo_info ? 'Venmo' :
+                      booking.drivers?.zelle_info ? 'Zelle' :
+                      booking.drivers?.apple_pay_info ? 'Apple Pay' :
+                      booking.drivers?.google_pay_info ? 'Google Pay' :
+                      booking.drivers?.payment_link_info ? 'Payment Link' :
+                      'Cash')}
+                  </p>
+                </div>
+
+                {/* Instructions */}
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground mb-1">Instructions:</h3>
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    {booking.driver_payment_instructions ? (
+                      <p>{booking.driver_payment_instructions}</p>
+                    ) : (
+                      <div className="space-y-1">
+                        {booking.drivers?.venmo_info && (
+                          <p>Send payment to Venmo: @{booking.drivers.venmo_info}</p>
+                        )}
+                        {booking.drivers?.zelle_info && (
+                          <p>Send payment to Zelle: {booking.drivers.zelle_info}</p>
+                        )}
+                        {booking.drivers?.apple_pay_info && (
+                          <p>Send payment to Apple Pay: {booking.drivers.apple_pay_info}</p>
+                        )}
+                        {booking.drivers?.google_pay_info && (
+                          <p>Send payment to Google Pay: {booking.drivers.google_pay_info}</p>
+                        )}
+                        {booking.drivers?.payment_link_info && (
+                          <p>Use payment link: {booking.drivers.payment_link_info}</p>
+                        )}
+                        {!booking.drivers?.venmo_info && !booking.drivers?.zelle_info && !booking.drivers?.apple_pay_info && !booking.drivers?.google_pay_info && !booking.drivers?.payment_link_info && (
+                          <p>Cash payment accepted at pickup</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="text-xs text-muted-foreground italic pt-2 border-t border-border/50">
+                  Once you've made the payment, please confirm using the "I've Made the Payment" button.
+                </div>
+              </CardContent>
+            </Card>
+
+            <Button 
+              onClick={() => setShowPaymentInstructions(false)}
+              variant="outline"
+              className="w-full h-10 rounded-lg text-sm"
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 };
