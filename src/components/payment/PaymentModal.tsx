@@ -213,14 +213,8 @@ export const PaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }: P
                 {/* Payment Method */}
                 <div>
                   <h3 className="text-sm font-semibold text-foreground mb-1">Payment Method:</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {booking.drivers?.preferred_payment_method || 
-                     (booking.drivers?.venmo_info ? 'Venmo' :
-                      booking.drivers?.zelle_info ? 'Zelle' :
-                      booking.drivers?.apple_pay_info ? 'Apple Pay' :
-                      booking.drivers?.google_pay_info ? 'Google Pay' :
-                      booking.drivers?.payment_link_info ? 'Payment Link' :
-                      'Cash')}
+                  <p className="text-sm text-muted-foreground capitalize">
+                    {booking.drivers?.preferred_payment_method || 'Not defined'}
                   </p>
                 </div>
 
@@ -228,29 +222,12 @@ export const PaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }: P
                 <div>
                   <h3 className="text-sm font-semibold text-foreground mb-1">Instructions:</h3>
                   <div className="text-sm text-muted-foreground space-y-1">
-                    {booking.driver_payment_instructions ? (
+                    {booking.drivers?.payment_instructions ? (
+                      <p>{booking.drivers.payment_instructions}</p>
+                    ) : booking.driver_payment_instructions ? (
                       <p>{booking.driver_payment_instructions}</p>
                     ) : (
-                      <div className="space-y-1">
-                        {booking.drivers?.venmo_info && (
-                          <p>Send payment to Venmo: @{booking.drivers.venmo_info}</p>
-                        )}
-                        {booking.drivers?.zelle_info && (
-                          <p>Send payment to Zelle: {booking.drivers.zelle_info}</p>
-                        )}
-                        {booking.drivers?.apple_pay_info && (
-                          <p>Send payment to Apple Pay: {booking.drivers.apple_pay_info}</p>
-                        )}
-                        {booking.drivers?.google_pay_info && (
-                          <p>Send payment to Google Pay: {booking.drivers.google_pay_info}</p>
-                        )}
-                        {booking.drivers?.payment_link_info && (
-                          <p>Use payment link: {booking.drivers.payment_link_info}</p>
-                        )}
-                        {!booking.drivers?.venmo_info && !booking.drivers?.zelle_info && !booking.drivers?.apple_pay_info && !booking.drivers?.google_pay_info && !booking.drivers?.payment_link_info && (
-                          <p>Cash payment accepted at pickup</p>
-                        )}
-                      </div>
+                      <p>No payment instructions provided by driver yet.</p>
                     )}
                   </div>
                 </div>
