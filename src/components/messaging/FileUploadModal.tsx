@@ -63,7 +63,7 @@ export const FileUploadModal = ({
     }
   };
 
-  const capturePhoto = () => {
+  const capturePhoto = async () => {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
@@ -74,11 +74,58 @@ export const FileUploadModal = ({
       
       if (context) {
         context.drawImage(video, 0, 0);
-        canvas.toBlob((blob) => {
+        canvas.toBlob(async (blob) => {
           if (blob) {
             const file = new File([blob], `photo-${Date.now()}.jpg`, { type: 'image/jpeg' });
-            handleFileSelect(file);
-            stopCamera();
+            
+            // Immediately upload and send the photo
+            setUploading(true);
+            setUploadProgress(0);
+
+            try {
+              const fileExt = 'jpg';
+              const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
+              const filePath = `chat-files/${fileName}`;
+
+              // Simulate upload progress
+              const progressInterval = setInterval(() => {
+                setUploadProgress(prev => Math.min(prev + 10, 90));
+              }, 50);
+
+              const { error: uploadError } = await supabase.storage
+                .from('avatars')
+                .upload(filePath, file);
+
+              clearInterval(progressInterval);
+              setUploadProgress(100);
+
+              if (uploadError) throw uploadError;
+
+              const { data: { publicUrl } } = supabase.storage
+                .from('avatars')
+                .getPublicUrl(filePath);
+
+              // Send the photo message
+              onSendMessage(`📷 ${file.name}\n${publicUrl}`);
+              
+              // Close modal and stop camera
+              handleClose();
+              
+              toast({
+                title: "Photo Sent",
+                description: "Your photo has been sent successfully",
+              });
+              
+            } catch (error) {
+              console.error('Error uploading photo:', error);
+              toast({
+                title: "Upload Failed",
+                description: "Failed to send photo. Please try again.",
+                variant: "destructive"
+              });
+            } finally {
+              setUploading(false);
+            }
           }
         }, 'image/jpeg', 0.9);
       }
@@ -196,10 +243,25 @@ export const FileUploadModal = ({
                 <Button onClick={handleCamera} variant="outline">
                   Start Camera
                 </Button>
-                <Button onClick={capturePhoto} disabled={!videoRef.current?.srcObject}>
-                  Capture Photo
+                <Button 
+                  onClick={capturePhoto} 
+                  disabled={!videoRef.current?.srcObject || uploading}
+                  className="min-w-[120px]"
+                >
+                  {uploading ? `${uploadProgress}%` : 'Capture Photo'}
                 </Button>
               </div>
+              
+              {/* Upload Progress for Camera */}
+              {uploading && (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Sending photo...</span>
+                    <span>{uploadProgress}%</span>
+                  </div>
+                  <Progress value={uploadProgress} className="h-2" />
+                </div>
+              )}
             </div>
           ) : type === "photo" && !selectedFile ? (
             <div className="space-y-4">
