@@ -26,8 +26,11 @@ import StatusTracker, { BookingStatus } from "@/components/StatusTracker";
 import { StatusBadges } from "@/components/status/StatusBadges";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Car, DollarSign, User, LogOut, Clock, CheckCircle, Calendar, MessageCircle, Edit, CreditCard, Settings, Navigation, MapPin, Users, Map, ChevronDown, AlertCircle } from "lucide-react";
+import { Car, DollarSign, User, LogOut, Clock, CheckCircle, Calendar, MessageCircle, Edit, CreditCard, Settings, Navigation, MapPin, Users, Map, ChevronDown, AlertCircle, Download, Mail, FileText } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { BookingSummaryModal } from "@/components/BookingSummaryModal";
+import { ContributorInfoModal } from "@/components/pdf/ContributorInfoModal";
+import { PDFGenerator } from "@/components/pdf/PDFGenerator";
 
 const DriverDashboard = () => {
   const navigate = useNavigate();
@@ -48,6 +51,10 @@ const DriverDashboard = () => {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedBookingForPayment, setSelectedBookingForPayment] = useState<any>(null);
   const [paymentSettingsOpen, setPaymentSettingsOpen] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [showContributorModal, setShowContributorModal] = useState(false);
+  const [pdfAction, setPdfAction] = useState<'download' | 'email'>('download');
   
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -504,6 +511,70 @@ const DriverDashboard = () => {
       });
     } catch (error) {
       console.error('Error confirming price:', error);
+    }
+  };
+
+  const handleViewSummary = (booking: any) => {
+    setSelectedBooking(booking);
+    setShowSummaryModal(true);
+  };
+
+  const handlePDFAction = (action: 'download' | 'email') => {
+    setPdfAction(action);
+    setShowContributorModal(true);
+  };
+
+  const generateEarningsReport = async (contributorInfo: { type: 'individual' | 'business'; name: string }) => {
+    try {
+      // Fetch all completed bookings with payment status 'all_set'
+      const { data: completedBookings, error } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          passengers!inner(full_name)
+        `)
+        .eq('driver_id', userProfile?.id)
+        .eq('payment_confirmation_status', 'all_set')
+        .not('final_price', 'is', null)
+        .order('pickup_time', { ascending: false });
+
+      if (error) throw error;
+
+      const records = (completedBookings || []).map(booking => ({
+        id: booking.id,
+        amount: booking.final_price || 0,
+        date: booking.pickup_time,
+        paymentMethod: booking.payment_method || 'Not specified',
+        counterpartyName: booking.passengers?.full_name || 'Unknown Passenger'
+      }));
+
+      const pdfData = {
+        title: 'Driver Earnings Summary',
+        contributorInfo,
+        records,
+        userType: 'driver' as const
+      };
+
+      const doc = PDFGenerator.generate(pdfData);
+      const filename = `driver-earnings-summary-${new Date().toISOString().split('T')[0]}.pdf`;
+
+      if (pdfAction === 'email') {
+        await PDFGenerator.shareByEmail(doc, filename);
+      } else {
+        doc.save(filename);
+      }
+
+      toast({
+        title: "Success!",
+        description: `Earnings report ${pdfAction === 'email' ? 'shared' : 'downloaded'} successfully!`,
+      });
+    } catch (error) {
+      console.error('Error generating earnings report:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate earnings report",
+        variant: "destructive",
+      });
     }
   };
 
@@ -1267,20 +1338,20 @@ const DriverDashboard = () => {
                     driverRides
                       .filter(ride => ride.status === "completed" || ride.status === "cancelled")
                       .map((ride) => (
-                        <BookingCard
-                          key={ride.id}
-                          booking={ride}
-                          userType="driver"
-                          onMessage={() => {
-                            setSelectedBookingForMessaging(ride);
-                            if (ride.passenger_id) {
-                              supabase
-                                .from('passengers')
-                                .select('*')
-                                .eq('id', ride.passenger_id)
-                                .maybeSingle()
-                                .then(({ data: passenger, error }) => {
-                                  if (passenger && !error) {
+                         <BookingCard
+                           key={ride.id}
+                           booking={ride}
+                           userType="driver"
+                           onMessage={() => {
+                             setSelectedBookingForMessaging(ride);
+                             if (ride.passenger_id) {
+                               supabase
+                                 .from('passengers')
+                                 .select('*')
+                                 .eq('id', ride.passenger_id)
+                                 .maybeSingle()
+                                 .then(({ data: passenger, error }) => {
+                                   if (passenger && !error) {
                                     setPassengerProfile(passenger);
                                   }
                                 });

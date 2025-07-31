@@ -1,8 +1,12 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle, CreditCard } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CheckCircle, CreditCard, Download, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { ContributorInfoModal } from "@/components/pdf/ContributorInfoModal";
+import { PDFGenerator } from "@/components/pdf/PDFGenerator";
+import { toast } from "sonner";
 
 interface PaymentsTabProps {
   userId: string;
@@ -22,6 +26,8 @@ interface PaymentRecord {
 export const PaymentsTab = ({ userId, userType, onViewSummary }: PaymentsTabProps) => {
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showContributorModal, setShowContributorModal] = useState(false);
+  const [pdfAction, setPdfAction] = useState<'download' | 'email'>('download');
 
   useEffect(() => {
     if (userId) {
@@ -87,6 +93,44 @@ export const PaymentsTab = ({ userId, userType, onViewSummary }: PaymentsTabProp
     }
   };
 
+  const handlePDFAction = (action: 'download' | 'email') => {
+    setPdfAction(action);
+    setShowContributorModal(true);
+  };
+
+  const generatePaymentReport = async (contributorInfo: { type: 'individual' | 'business'; name: string }) => {
+    try {
+      const records = payments.map(payment => ({
+        id: payment.id,
+        amount: payment.amount,
+        date: payment.date,
+        paymentMethod: payment.paymentMethod,
+        counterpartyName: payment.driverName
+      }));
+
+      const pdfData = {
+        title: 'Passenger Payment Summary',
+        contributorInfo,
+        records,
+        userType: 'passenger' as const
+      };
+
+      const doc = PDFGenerator.generate(pdfData);
+      const filename = `passenger-payment-summary-${new Date().toISOString().split('T')[0]}.pdf`;
+
+      if (pdfAction === 'email') {
+        await PDFGenerator.shareByEmail(doc, filename);
+      } else {
+        doc.save(filename);
+      }
+
+      toast.success(`Payment report ${pdfAction === 'email' ? 'shared' : 'downloaded'} successfully!`);
+    } catch (error) {
+      console.error('Error generating payment report:', error);
+      toast.error('Failed to generate payment report');
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-3">
@@ -123,8 +167,33 @@ export const PaymentsTab = ({ userId, userType, onViewSummary }: PaymentsTabProp
 
   return (
     <div className="space-y-3">
-      <div className="text-sm text-muted-foreground mb-4">
-        {payments.length} completed {payments.length === 1 ? 'payment' : 'payments'}
+      <div className="flex items-center justify-between mb-4">
+        <div className="text-sm text-muted-foreground">
+          {payments.length} completed {payments.length === 1 ? 'payment' : 'payments'}
+        </div>
+        
+        {payments.length > 0 && (
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => handlePDFAction('download')}
+              variant="outline" 
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Download PDF
+            </Button>
+            <Button 
+              onClick={() => handlePDFAction('email')}
+              variant="outline" 
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <Mail className="h-4 w-4" />
+              Send by Email
+            </Button>
+          </div>
+        )}
       </div>
       
       {payments.map((payment) => (
@@ -163,6 +232,13 @@ export const PaymentsTab = ({ userId, userType, onViewSummary }: PaymentsTabProp
           </CardContent>
         </Card>
       ))}
+      
+      <ContributorInfoModal
+        isOpen={showContributorModal}
+        onClose={() => setShowContributorModal(false)}
+        onSubmit={generatePaymentReport}
+        title="Passenger Payment Report"
+      />
     </div>
   );
 };

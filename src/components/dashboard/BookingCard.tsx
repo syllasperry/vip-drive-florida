@@ -170,7 +170,7 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
             Message
           </Button>
 
-          {onViewSummary && (
+          {onViewSummary && booking.payment_confirmation_status === 'all_set' && (
             <Button
               onClick={onViewSummary}
               variant="outline"
