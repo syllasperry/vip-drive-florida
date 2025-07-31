@@ -65,21 +65,23 @@ export const TodoTab = ({
 
       const { data, error } = await query
         .in('ride_status', ['pending_driver', 'offer_sent', 'confirmed'])
-        .order('pickup_time', { ascending: true });
+        .order('pickup_time', { ascending: false }); // Most recent first
 
       if (error) throw error;
 
-      // Filter for bookings that need action
+      // Filter for bookings that need action or are ready for navigation
       const actionableBookings = (data || []).filter(booking => {
         if (userType === "passenger") {
           return (
             booking.payment_confirmation_status === 'price_awaiting_acceptance' ||
-            booking.payment_confirmation_status === 'waiting_for_payment'
+            booking.payment_confirmation_status === 'waiting_for_payment' ||
+            booking.payment_confirmation_status === 'all_set'
           );
         } else {
           return (
             booking.ride_status === 'pending_driver' ||
-            booking.payment_confirmation_status === 'passenger_paid'
+            booking.payment_confirmation_status === 'passenger_paid' ||
+            booking.payment_confirmation_status === 'all_set'
           );
         }
       });
@@ -100,12 +102,18 @@ export const TodoTab = ({
       if (booking.payment_confirmation_status === 'waiting_for_payment') {
         return { type: 'make_payment', icon: DollarSign, text: 'Make Payment', color: 'bg-yellow-100 text-yellow-800' };
       }
+      if (booking.payment_confirmation_status === 'all_set') {
+        return { type: 'all_set', icon: Clock, text: 'Ready for Pickup', color: 'bg-green-100 text-green-800' };
+      }
     } else {
       if (booking.ride_status === 'pending_driver') {
         return { type: 'send_offer', icon: Clock, text: 'Send Price Offer', color: 'bg-orange-100 text-orange-800' };
       }
       if (booking.payment_confirmation_status === 'passenger_paid') {
         return { type: 'confirm_payment', icon: DollarSign, text: 'Confirm Payment', color: 'bg-green-100 text-green-800' };
+      }
+      if (booking.payment_confirmation_status === 'all_set') {
+        return { type: 'all_set', icon: Clock, text: 'Ready for Pickup', color: 'bg-green-100 text-green-800' };
       }
     }
     return { type: 'unknown', icon: AlertCircle, text: 'Action Required', color: 'bg-gray-100 text-gray-800' };
@@ -131,7 +139,7 @@ export const TodoTab = ({
             </div>
             <h3 className="font-medium text-foreground mb-2">All caught up!</h3>
             <p className="text-sm text-muted-foreground">
-              You have no pending actions at the moment.
+              {userType === 'driver' ? 'No pending rides or actions at the moment.' : 'You have no pending actions at the moment.'}
             </p>
           </CardContent>
         </Card>
@@ -145,7 +153,7 @@ export const TodoTab = ({
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">
             <AlertCircle className="h-5 w-5 text-orange-600" />
-            Pending Actions
+            {userType === 'driver' ? 'My Rides & Actions' : 'Pending Actions'}
             <Badge className="ml-2 bg-orange-100 text-orange-800">
               {pendingActions.length}
             </Badge>

@@ -211,11 +211,11 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
                       url = `https://www.google.com/maps/dir/?api=1&origin=${pickup}&destination=${dropoff}&travelmode=driving`;
                   }
                   
-                  window.open(url, '_blank');
+                  window.location.href = url;
                   
                   toast({
                     title: `Opening ${navApp === 'apple' ? 'Apple Maps' : navApp === 'waze' ? 'Waze' : 'Google Maps'}`,
-                    description: "Navigation opened in new tab.",
+                    description: "Redirecting to navigation app...",
                   });
                   
                   // Reset select

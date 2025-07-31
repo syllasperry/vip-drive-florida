@@ -1,8 +1,9 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MapPin, Clock, User, Car, MessageCircle, FileText, DollarSign, CheckCircle, XCircle, Edit3 } from "lucide-react";
+import { MapPin, Clock, User, Car, MessageCircle, FileText, DollarSign, CheckCircle, XCircle, Edit3, ChevronDown } from "lucide-react";
 import { StatusBadges } from "../status/StatusBadges";
+import { useToast } from "@/hooks/use-toast";
 
 interface EnhancedBookingCardProps {
   booking: any;
@@ -29,6 +30,7 @@ export const EnhancedBookingCard = ({
   onEditPrice,
   onCancelBooking
 }: EnhancedBookingCardProps) => {
+  const { toast } = useToast();
   
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -127,6 +129,55 @@ export const EnhancedBookingCard = ({
           </Button>
         );
       }
+    }
+
+    // Maps button for All Set rides (drivers only)
+    if (userType === "driver" && booking.payment_confirmation_status === "all_set") {
+      buttons.push(
+        <div key="maps" className="relative">
+          <select 
+            className="appearance-none bg-primary text-primary-foreground px-3 py-2 rounded-md text-sm font-medium h-8 pr-8 cursor-pointer hover:bg-primary/90 transition-colors"
+            onChange={(e) => {
+              const navApp = e.target.value;
+              if (!navApp) return;
+              
+              const pickup = encodeURIComponent(booking.pickup_location || booking.from || '');
+              const dropoff = encodeURIComponent(booking.dropoff_location || booking.to || '');
+              
+              let url = '';
+              switch (navApp) {
+                case 'google':
+                  url = `https://www.google.com/maps/dir/?api=1&origin=${pickup}&destination=${dropoff}&travelmode=driving`;
+                  break;
+                case 'apple':
+                  url = `https://maps.apple.com/?saddr=${pickup}&daddr=${dropoff}&dirflg=d`;
+                  break;
+                case 'waze':
+                  url = `https://www.waze.com/ul?q=${dropoff}&navigate=yes&from=${pickup}`;
+                  break;
+                default:
+                  url = `https://www.google.com/maps/dir/?api=1&origin=${pickup}&destination=${dropoff}&travelmode=driving`;
+              }
+              
+              window.location.href = url;
+              
+              toast({
+                title: `Opening ${navApp === 'apple' ? 'Apple Maps' : navApp === 'waze' ? 'Waze' : 'Google Maps'}`,
+                description: "Redirecting to navigation app...",
+              });
+              
+              // Reset select
+              e.target.value = '';
+            }}
+          >
+            <option value="">Maps</option>
+            <option value="google">Google Maps</option>
+            <option value="apple">Apple Maps</option>
+            <option value="waze">Waze</option>
+          </select>
+          <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-primary-foreground pointer-events-none" />
+        </div>
+      );
     }
 
     // Cancel button for specific statuses
