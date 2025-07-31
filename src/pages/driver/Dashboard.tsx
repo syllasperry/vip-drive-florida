@@ -31,7 +31,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { BookingSummaryModal } from "@/components/BookingSummaryModal";
 import { ContributorInfoModal } from "@/components/pdf/ContributorInfoModal";
 import { PDFGenerator } from "@/components/pdf/PDFGenerator";
-import ToDoList from "@/components/dashboard/ToDoList";
+import ToDoPage from "./ToDoPage";
 
 const DriverDashboard = () => {
   const navigate = useNavigate();
@@ -668,7 +668,7 @@ const DriverDashboard = () => {
             .from('bookings')
             .select(`
               *,
-              passengers!inner (
+              passengers (
                 id,
                 full_name,
                 phone,
@@ -690,7 +690,7 @@ const DriverDashboard = () => {
             .from('bookings')
             .select(`
               *,
-              passengers!inner (
+              passengers (
                 id,
                 full_name,
                 phone,
@@ -740,7 +740,6 @@ const DriverDashboard = () => {
         const transformedBookings = allBookingsData
           .map(booking => {
             const pickupDate = new Date(booking.pickup_time);
-            
             return {
               id: booking.id,
               date: pickupDate.toISOString().split('T')[0],
@@ -793,83 +792,6 @@ const DriverDashboard = () => {
         console.log('Assigned bookings error:', assignedBookings.error);
         
         setDriverRides(transformedBookings);
-        
-        // Filter bookings for different views
-        const now = new Date();
-        console.log('=== FILTER LOGIC DEBUG ===');
-        console.log('Current time:', now);
-        console.log('All bookings before filtering:', transformedBookings);
-        
-        // Clear filter logic - remove duplicates and apply correct status filtering
-        
-        const upcomingBookings = transformedBookings.filter(booking => {
-          const bookingDate = new Date(booking.pickup_time);
-          const isUpcoming = bookingDate > now;
-          const correctStatus = (
-            booking.status === 'accepted' || 
-            booking.status === 'confirmed' ||
-            booking.payment_confirmation_status === 'passenger_paid'
-          );
-          
-          console.log(`Booking ${booking.id} - upcoming check:`, { 
-            isUpcoming, 
-            correctStatus, 
-            status: booking.status, 
-            paymentStatus: booking.payment_confirmation_status 
-          });
-          
-          return isUpcoming && correctStatus;
-        });
-
-        const todoBookings = transformedBookings.filter(booking => {
-          const bookingDate = new Date(booking.pickup_time);
-          const oneHourAfterPickup = new Date(bookingDate.getTime() + 60 * 60 * 1000);
-          const isAllSet = booking.payment_confirmation_status === 'all_set';
-          const notExpired = now < oneHourAfterPickup;
-          
-          console.log(`Booking ${booking.id} - todo check:`, { 
-            isAllSet, 
-            notExpired, 
-            paymentStatus: booking.payment_confirmation_status,
-            pickupTime: bookingDate,
-            oneHourAfter: oneHourAfterPickup
-          });
-          
-          return isAllSet && notExpired;
-        });
-
-        const pastBookings = transformedBookings.filter(booking => {
-          const bookingDate = new Date(booking.pickup_time);
-          const oneHourAfterPickup = new Date(bookingDate.getTime() + 60 * 60 * 1000);
-          
-          const isCompleted = booking.status === 'completed';
-          const isCancelled = booking.status === 'cancelled';
-          const isDeclined = booking.status === 'declined';
-          const isExpiredAllSet = booking.payment_confirmation_status === 'all_set' && now >= oneHourAfterPickup;
-          const isExpiredOther = bookingDate <= now && booking.payment_confirmation_status !== 'all_set';
-          
-          const shouldBeInPast = isCompleted || isCancelled || isDeclined || isExpiredAllSet || isExpiredOther;
-          
-          console.log(`Booking ${booking.id} - past check:`, { 
-            isCompleted, 
-            isCancelled, 
-            isDeclined, 
-            isExpiredAllSet, 
-            isExpiredOther,
-            shouldBeInPast,
-            status: booking.status,
-            paymentStatus: booking.payment_confirmation_status
-          });
-          
-          return shouldBeInPast;
-        });
-        
-        console.log('=== FILTERED RESULTS ===');
-        console.log('Upcoming bookings:', upcomingBookings);
-        console.log('Todo bookings:', todoBookings);
-        console.log('Past bookings:', pastBookings);
-
-        // These variables are calculated but not stored in state since they're derived from driverRides
       } catch (error) {
         console.error('Error fetching driver bookings:', error);
       }
@@ -1508,17 +1430,12 @@ const DriverDashboard = () => {
 
               {rideView === "past" && (
                 <OrganizedBookingsList 
-                  bookings={driverRides.filter(ride => {
-                    const now = new Date();
-                    const bookingDate = new Date(ride.pickup_time);
-                    const oneHourAfterPickup = new Date(bookingDate.getTime() + 60 * 60 * 1000);
-                    
-                    // Only include rides that are truly in the past: completed, cancelled, declined, or all_set rides that are past pickup + 1 hour
-                    return ride.status === "completed" || 
-                           ride.status === "cancelled" || 
-                           ride.status === "declined" ||
-                           (ride.payment_confirmation_status === "all_set" && now >= oneHourAfterPickup);
-                  })}
+                  bookings={driverRides.filter(ride => 
+                    ride.status === "completed" || 
+                    ride.status === "cancelled" || 
+                    ride.payment_confirmation_status === "all_set" ||
+                    ride.ride_status === "paid"
+                  )}
                   userType="driver"
                   onMessage={(booking) => {
                     setSelectedBookingForMessaging(booking);
@@ -1551,40 +1468,7 @@ const DriverDashboard = () => {
           )}
 
           {activeTab === "todo" && (
-            <ToDoList
-              bookings={driverRides.filter(booking => {
-                const now = new Date();
-                const bookingDate = new Date(booking.pickup_time);
-                const oneHourAfterPickup = new Date(bookingDate.getTime() + 60 * 60 * 1000);
-                
-                console.log(`ToDoList filter - Booking ${booking.id}:`, {
-                  paymentStatus: booking.payment_confirmation_status,
-                  isAllSet: booking.payment_confirmation_status === 'all_set',
-                  notExpired: now < oneHourAfterPickup,
-                  passengerData: booking.passengers,
-                  passengerName: booking.passengers?.full_name
-                });
-                
-                return booking.payment_confirmation_status === 'all_set' && now < oneHourAfterPickup;
-              })}
-              onMessage={(booking) => {
-                setSelectedBookingForMessaging(booking);
-                if (booking.passenger_id) {
-                  supabase
-                    .from('passengers')
-                    .select('*')
-                    .eq('id', booking.passenger_id)
-                    .maybeSingle()
-                    .then(({ data: passenger, error }) => {
-                      if (passenger && !error) {
-                        setPassengerProfile(passenger);
-                      }
-                    });
-                }
-                setMessagingOpen(true);
-              }}
-              onViewSummary={handleViewSummary}
-            />
+            <ToDoPage />
           )}
 
           {activeTab === "messages" && userProfile?.id && (
