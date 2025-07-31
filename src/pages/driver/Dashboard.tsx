@@ -922,14 +922,15 @@ const DriverDashboard = () => {
 <h1 className="text-3xl font-bold text-center text-primary mt-6 mb-8">To-do</h1>
 
 {/* LISTA DE CORRIDAS */}
+{/* LISTA DE CORRIDAS */}
 <div className="space-y-6 px-4">
   {driverRides.map((ride, index) => (
-    <div key={index} className="bg-white p-4 rounded-xl shadow border border-gray-200">
-      <div className="flex justify-between items-center mb-2">
-        <div>
-          <p className="text-sm text-muted-foreground">Passenger</p>
-          <p className="text-lg font-semibold">{ride.passenger_name || "Unknown"}</p>
-        </div>
+    <div
+      key={index}
+      className="bg-white p-4 rounded-xl shadow-lg border border-gray-200"
+    >
+      {/* Header: nome e foto do passageiro */}
+      <div className="flex items-center gap-4 mb-4">
         {ride.passenger_photo && (
           <img
             src={ride.passenger_photo}
@@ -937,24 +938,47 @@ const DriverDashboard = () => {
             className="w-12 h-12 rounded-full border border-gray-300"
           />
         )}
+        <div>
+          <p className="text-sm text-muted-foreground">Passenger</p>
+          <p className="text-lg font-semibold">
+            {ride.passenger_name || "Unknown"}
+          </p>
+        </div>
       </div>
 
-      <div className="text-sm text-gray-600 space-y-1">
-        <p><strong>Pickup:</strong> {ride.pickup_location}</p>
-        <p><strong>Dropoff:</strong> {ride.dropoff_location}</p>
-        <p><strong>Status:</strong> {ride.status || "All Set"}</p>
+      {/* Pickup & Dropoff */}
+      <div className="text-sm text-gray-700 space-y-1 mb-4">
+        <p>
+          <strong>📍 Pickup:</strong> {ride.pickup_location}
+        </p>
+        <p>
+          <strong🏁> Dropoff:</strong> {ride.dropoff_location}
+        </p>
+        <p>
+          <strong>✅ Status:</strong> {ride.status || "All Set"}
+        </p>
       </div>
 
       {/* Preferências do Passageiro */}
-      <div className="mt-4 border-t pt-2 text-sm">
-        <p className="font-medium mb-1">Passenger Preferences:</p>
+      <div className="border-t pt-3 mt-3 text-sm">
+        <p className="font-medium text-gray-700 mb-1">🧊 Passenger Preferences:</p>
         <ul className="list-disc list-inside space-y-1">
-          <li><strong>Temperature:</strong> {ride.preferences?.temperature || "Any"}</li>
-          <li><strong>Music:</strong> {ride.preferences?.music || "No preference"}</li>
-          <li><strong>Talkative:</strong> {ride.preferences?.talkative ? "Yes" : "No"}</li>
+          <li>
+            <strong>Temperature:</strong>{" "}
+            {ride.preferences?.temperature || "Any"}
+          </li>
+          <li>
+            <strong>Music:</strong> {ride.preferences?.music || "No preference"}
+          </li>
+          <li>
+            <strong>Talkative:</strong>{" "}
+            {ride.preferences?.talkative ? "Yes" : "No"}
+          </li>
         </ul>
       </div>
     </div>
+  ))}
+</div>
   ))}
 </div>
       <div className="max-w-md mx-auto">
