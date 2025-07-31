@@ -1169,8 +1169,9 @@ const DriverDashboard = () => {
                           new Date(ride.payment_expires_at).getTime() - Date.now() < 60 * 60 * 1000;
 
                         return (
-                          <Card key={ride.id} className="bg-white border-0 shadow-sm hover:shadow-md transition-all duration-300">
-                            <CardContent className="p-5">
+                          <div key={ride.id} className="border-2 border-border/40 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-card to-card/80 backdrop-blur-sm">
+                            <Card className="bg-transparent border-0 shadow-none">
+                              <CardContent className="p-5">
                               {/* Status Badges */}
                               <div className="flex items-center justify-between mb-4">
                                 {isExpiringSoon && (
@@ -1388,7 +1389,8 @@ const DriverDashboard = () => {
                                 </div>
                               </div>
                             </CardContent>
-                          </Card>
+                            </Card>
+                          </div>
                         );
                       })
                   )}
@@ -1396,8 +1398,13 @@ const DriverDashboard = () => {
               )}
 
               {rideView === "past" && (
-                <div className="space-y-3">
-                  {driverRides.filter(ride => ride.status === "completed" || ride.status === "cancelled").length === 0 ? (
+                <div className="space-y-4">
+                  {driverRides.filter(ride => 
+                    ride.status === "completed" || 
+                    ride.status === "cancelled" || 
+                    ride.payment_confirmation_status === "all_set" ||
+                    ride.ride_status === "all_set"
+                  ).length === 0 ? (
                     <Card className="bg-white border-0 shadow-sm">
                       <CardContent className="p-8 text-center">
                         <div className="p-4 bg-muted/30 rounded-full w-fit mx-auto mb-4">
@@ -1411,30 +1418,36 @@ const DriverDashboard = () => {
                     </Card>
                   ) : (
                     driverRides
-                      .filter(ride => ride.status === "completed" || ride.status === "cancelled")
+                      .filter(ride => 
+                        ride.status === "completed" || 
+                        ride.status === "cancelled" || 
+                        ride.payment_confirmation_status === "all_set" ||
+                        ride.ride_status === "all_set"
+                      )
                       .map((ride) => (
-                         <BookingCard
-                           key={ride.id}
-                           booking={ride}
-                           userType="driver"
-                           onMessage={() => {
-                             setSelectedBookingForMessaging(ride);
-                             if (ride.passenger_id) {
-                               supabase
-                                 .from('passengers')
-                                 .select('*')
-                                 .eq('id', ride.passenger_id)
-                                 .maybeSingle()
-                                 .then(({ data: passenger, error }) => {
-                                   if (passenger && !error) {
-                                    setPassengerProfile(passenger);
-                                  }
-                                });
-                            }
-                            setMessagingOpen(true);
-                          }}
-                          onViewSummary={() => handleViewSummary(ride)}
-                        />
+                        <div key={ride.id} className="border-2 border-border/40 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-card to-card/80 backdrop-blur-sm">
+                          <BookingCard
+                            booking={ride}
+                            userType="driver"
+                            onMessage={() => {
+                              setSelectedBookingForMessaging(ride);
+                              if (ride.passenger_id) {
+                                supabase
+                                  .from('passengers')
+                                  .select('*')
+                                  .eq('id', ride.passenger_id)
+                                  .maybeSingle()
+                                  .then(({ data: passenger, error }) => {
+                                    if (passenger && !error) {
+                                     setPassengerProfile(passenger);
+                                   }
+                                 });
+                             }
+                             setMessagingOpen(true);
+                           }}
+                           onViewSummary={() => handleViewSummary(ride)}
+                         />
+                        </div>
                       ))
                   )}
                 </div>
