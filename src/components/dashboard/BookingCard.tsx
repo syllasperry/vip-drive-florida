@@ -6,6 +6,7 @@ import { CancelBookingButton } from "./CancelBookingButton";
 import { StatusBadges } from "@/components/status/StatusBadges";
 import { MapPin, Clock, User, Car, MessageCircle, Star, FileText, CheckCircle, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import PassengerPreferencesCard from "@/components/PassengerPreferencesCard";
 
 interface BookingCardProps {
   booking: any;
@@ -101,7 +102,7 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
           </div>
 
           {/* Enhanced Passenger Information for Drivers (after booking acceptance) */}
-          {userType === "driver" && booking.passengers && (booking.status === "accepted" || booking.status === "confirmed" || booking.status === "payment_confirmed" || booking.status === "ready_to_go") && (
+          {userType === "driver" && booking.passengers && (booking.status === "accepted" || booking.status === "confirmed" || booking.status === "payment_confirmed" || booking.status === "ready_to_go" || booking.payment_confirmation_status === "all_set") && (
             <div className="bg-gradient-to-r from-primary/5 to-primary-glow/5 border border-primary/20 rounded-lg p-4 mt-4">
               <div className="flex items-center gap-3">
                 <Avatar className="h-12 w-12">
@@ -131,6 +132,20 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
                 <div className="mt-2 text-xs text-amber-600 bg-amber-50 rounded p-2">
                   ⚠️ Passenger information not available - please verify identity before pickup
                 </div>
+              )}
+              
+              {/* Passenger Preferences for All Set rides */}
+              {booking.payment_confirmation_status === "all_set" && booking.passengers && (
+                <PassengerPreferencesCard 
+                  preferences={{
+                    preferred_temperature: booking.passengers.preferred_temperature,
+                    music_preference: booking.passengers.music_preference,
+                    music_playlist_link: booking.passengers.music_playlist_link,
+                    interaction_preference: booking.passengers.interaction_preference,
+                    trip_purpose: booking.passengers.trip_purpose,
+                    additional_notes: booking.passengers.additional_notes
+                  }}
+                />
               )}
             </div>
           )}
