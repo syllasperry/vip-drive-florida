@@ -137,9 +137,9 @@ const OrganizedBookingsList: React.FC<OrganizedBookingsListProps> = ({
             </div>
             
             {/* Bookings in this status */}
-            <div className="space-y-3">
+            <div className="space-y-4">
               {bookings.map((booking) => (
-                <div key={booking.id} className="border border-border/50 rounded-lg overflow-hidden shadow-sm">
+                <div key={booking.id} className="border-2 border-border/40 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-card to-card/80 backdrop-blur-sm">
                   <BookingCard
                     booking={booking}
                     userType={userType}

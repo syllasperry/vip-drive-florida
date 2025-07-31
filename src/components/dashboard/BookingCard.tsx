@@ -42,7 +42,7 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
   };
 
   return (
-    <Card className="hover:shadow-[var(--shadow-subtle)] transition-all duration-300 border-border/50">
+    <Card className="hover:shadow-[var(--shadow-subtle)] transition-all duration-300 border-border/60 shadow-sm bg-card/50 backdrop-blur-sm">
       <CardContent className="p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
@@ -170,7 +170,7 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
             Message
           </Button>
 
-          {onViewSummary && booking.payment_confirmation_status === 'all_set' && (
+          {onViewSummary && (booking.payment_confirmation_status === 'all_set' || booking.ride_status === 'all_set' || booking.status === 'completed') && (
             <Button
               onClick={onViewSummary}
               variant="outline"
