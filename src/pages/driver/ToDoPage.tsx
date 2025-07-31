@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, Clock, User, CreditCard, Thermometer, Volume2, VolumeX, MessageSquare, MessageSquareOff, Navigation, Map, ChevronDown, MessageCircle, FileText } from "lucide-react";
+import { MapPin, Clock, User, CreditCard, Thermometer, Volume2, VolumeX, MessageSquare, MessageSquareOff } from "lucide-react";
 
 interface Booking {
   id: string;
@@ -13,17 +12,12 @@ interface Booking {
   dropoff_location: string;
   pickup_time: string;
   payment_method?: string;
-  passenger_id: string;
   passengers?: {
-    id: string;
     full_name: string;
-    phone?: string;
     profile_photo_url?: string;
     preferred_temperature?: number;
     music_preference?: string;
     interaction_preference?: string;
-    trip_purpose?: string;
-    additional_notes?: string;
   };
 }
 
@@ -49,17 +43,12 @@ const ToDoPage = () => {
             dropoff_location,
             pickup_time,
             payment_method,
-            passenger_id,
             passengers (
-              id,
               full_name,
-              phone,
               profile_photo_url,
               preferred_temperature,
               music_preference,
-              interaction_preference,
-              trip_purpose,
-              additional_notes
+              interaction_preference
             )
           `)
           .eq('driver_id', session.user.id)
@@ -100,33 +89,6 @@ const ToDoPage = () => {
     };
   };
 
-  const handleMapNavigation = (navApp: string, pickup: string, dropoff: string) => {
-    const pickupEncoded = encodeURIComponent(pickup);
-    const dropoffEncoded = encodeURIComponent(dropoff);
-    
-    let url = '';
-    switch (navApp) {
-      case 'google':
-        url = `https://www.google.com/maps/dir/?api=1&origin=${pickupEncoded}&destination=${dropoffEncoded}&travelmode=driving`;
-        break;
-      case 'apple':
-        url = `https://maps.apple.com/?saddr=${pickupEncoded}&daddr=${dropoffEncoded}&dirflg=d`;
-        break;
-      case 'waze':
-        url = `https://www.waze.com/ul?q=${dropoffEncoded}&navigate=yes&from=${pickupEncoded}`;
-        break;
-      default:
-        url = `https://www.google.com/maps/dir/?api=1&origin=${pickupEncoded}&destination=${dropoffEncoded}&travelmode=driving`;
-    }
-    
-    window.location.href = url;
-    
-    toast({
-      title: `Abrindo ${navApp === 'apple' ? 'Apple Maps' : navApp === 'waze' ? 'Waze' : 'Google Maps'}`,
-      description: "Redirecionando para o app de navegação...",
-    });
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-background p-4">
@@ -139,7 +101,7 @@ const ToDoPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4 pb-20">
+    <div className="min-h-screen bg-background p-4">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl font-bold text-foreground mb-6">To-Do</h1>
         
@@ -176,10 +138,7 @@ const ToDoPage = () => {
                         </Avatar>
                         <div>
                           <p className="font-semibold text-foreground">{booking.passengers.full_name}</p>
-                          {booking.passengers.phone && (
-                            <p className="text-sm text-muted-foreground">{booking.passengers.phone}</p>
-                          )}
-                          <p className="text-xs text-muted-foreground">Passageiro</p>
+                          <p className="text-sm text-muted-foreground">Passageiro</p>
                         </div>
                       </div>
                     )}
@@ -221,7 +180,7 @@ const ToDoPage = () => {
 
                     {/* Passenger Preferences */}
                     {booking.passengers && (
-                      <div className="bg-muted/50 rounded-lg p-4 mb-4">
+                      <div className="bg-muted/50 rounded-lg p-4">
                         <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
                           <User className="h-4 w-4" />
                           Preferências do Passageiro
@@ -270,98 +229,8 @@ const ToDoPage = () => {
                             </div>
                           )}
                         </div>
-
-                        {/* Trip Purpose and Additional Notes */}
-                        {(booking.passengers.trip_purpose || booking.passengers.additional_notes) && (
-                          <div className="mt-4 pt-3 border-t border-border">
-                            {booking.passengers.trip_purpose && (
-                              <div className="mb-2">
-                                <span className="text-xs font-medium text-muted-foreground">Objetivo da viagem:</span>
-                                <span className="text-sm text-foreground ml-2">{booking.passengers.trip_purpose}</span>
-                              </div>
-                            )}
-                            {booking.passengers.additional_notes && (
-                              <div>
-                                <span className="text-xs font-medium text-muted-foreground">Observações:</span>
-                                <span className="text-sm text-foreground ml-2">{booking.passengers.additional_notes}</span>
-                              </div>
-                            )}
-                          </div>
-                        )}
                       </div>
                     )}
-
-                    {/* Action Buttons */}
-                    <div className="mt-4 pt-4 border-t border-border">
-                      <h5 className="text-sm font-medium text-foreground mb-3">Ações</h5>
-                      
-                      {/* Message and Summary Buttons */}
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex items-center gap-2"
-                          onClick={() => {
-                            toast({
-                              title: "Mensagem",
-                              description: "Funcionalidade de mensagem será implementada",
-                            });
-                          }}
-                        >
-                          <MessageCircle className="h-4 w-4" />
-                          Mensagem
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex items-center gap-2"
-                          onClick={() => {
-                            toast({
-                              title: "Resumo",
-                              description: "Funcionalidade de resumo será implementada",
-                            });
-                          }}
-                        >
-                          <FileText className="h-4 w-4" />
-                          View Summary
-                        </Button>
-                      </div>
-
-                      {/* Maps Navigation Buttons */}
-                      <h6 className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
-                        <Navigation className="h-4 w-4" />
-                        Navegação
-                      </h6>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          onClick={() => handleMapNavigation('google', booking.pickup_location, booking.dropoff_location)}
-                          variant="outline"
-                          size="sm"
-                          className="flex items-center gap-2"
-                        >
-                          <Map className="h-4 w-4" />
-                          Google Maps
-                        </Button>
-                        <Button
-                          onClick={() => handleMapNavigation('apple', booking.pickup_location, booking.dropoff_location)}
-                          variant="outline"
-                          size="sm"
-                          className="flex items-center gap-2"
-                        >
-                          <Navigation className="h-4 w-4" />
-                          Apple Maps
-                        </Button>
-                        <Button
-                          onClick={() => handleMapNavigation('waze', booking.pickup_location, booking.dropoff_location)}
-                          variant="outline"
-                          size="sm"
-                          className="flex items-center gap-2"
-                        >
-                          <MapPin className="h-4 w-4" />
-                          Waze
-                        </Button>
-                      </div>
-                    </div>
                   </CardContent>
                 </Card>
               );
