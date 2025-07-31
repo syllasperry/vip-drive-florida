@@ -668,7 +668,7 @@ const DriverDashboard = () => {
             .from('bookings')
             .select(`
               *,
-              passengers!inner (
+              passengers (
                 id,
                 full_name,
                 phone,
@@ -690,7 +690,7 @@ const DriverDashboard = () => {
             .from('bookings')
             .select(`
               *,
-              passengers!inner (
+              passengers (
                 id,
                 full_name,
                 phone,
@@ -781,17 +781,16 @@ const DriverDashboard = () => {
 
         console.log('=== DEBUG DRIVER BOOKINGS ===');
         console.log('Driver profile car info:', userProfile.car_make, userProfile.car_model);
+        console.log('Raw assigned bookings:', assignedBookings.data);
         console.log('Raw pending bookings before filter:', pendingBookings.data);
         console.log('Filtered pending bookings after make matching:', filteredPendingBookings);
-        console.log('Fetched bookings for driver:', transformedBookings);
+        console.log('Final transformed bookings:', transformedBookings);
+        console.log('Bookings with All Set status:', transformedBookings.filter(b => b.payment_confirmation_status === 'all_set'));
+        console.log('Bookings with completed status:', transformedBookings.filter(b => b.status === 'completed'));
+        console.log('Passenger data check:', transformedBookings.map(b => ({ id: b.id, passenger: b.passenger, passengers: b.passengers })));
         console.log('Pending bookings error:', pendingBookings.error);
-        console.log('Pending requests filter:', transformedBookings.filter(ride => 
-          (ride.ride_status === "pending_driver" && !ride.driver_id)
-        ));
-        console.log('All pending bookings in state:', transformedBookings.filter(ride => 
-          ride.status === "pending" || 
-          (ride.ride_status === "pending_driver" && !ride.driver_id)
-        ));
+        console.log('Assigned bookings error:', assignedBookings.error);
+        
         setDriverRides(transformedBookings);
       } catch (error) {
         console.error('Error fetching driver bookings:', error);
@@ -877,12 +876,33 @@ const DriverDashboard = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    console.log('=== FILTERING DEBUG ===');
+    console.log('Current view:', rideView);
+    console.log('Ride:', ride.id, 'Status:', ride.status, 'Payment status:', ride.payment_confirmation_status);
+    console.log('Ride date:', rideDate, 'Today:', today);
+    console.log('Passenger:', ride.passenger, 'Passengers object:', ride.passengers);
+    
     if (rideView === "upcoming") {
-      return rideDate >= today && ride.status !== "completed";
+      // For upcoming: rides in the future that are not completed and not "all_set"
+      const isUpcoming = rideDate >= today && ride.status !== "completed" && ride.payment_confirmation_status !== "all_set";
+      console.log('Is upcoming:', isUpcoming);
+      return isUpcoming;
     } else {
-      return rideDate < today || ride.status === "completed";
+      // For past rides, include:
+      // 1. Rides that happened before today, OR
+      // 2. Rides with status "completed", OR 
+      // 3. Rides with payment_confirmation_status "all_set" (these are finished rides)
+      const isPast = rideDate < today || ride.status === "completed" || ride.payment_confirmation_status === "all_set";
+      console.log('Is past:', isPast);
+      return isPast;
     }
   });
+  
+  console.log('=== FILTERED RESULTS ===');
+  console.log('Total driver rides:', driverRides.length);
+  console.log('Filtered rides for', rideView, ':', filteredRides.length);
+  console.log('All Set rides:', driverRides.filter(r => r.payment_confirmation_status === "all_set"));
+  console.log('Completed rides:', driverRides.filter(r => r.status === "completed"));
 
   // Get next upcoming ride
   const nextRide = driverRides.find(ride => {
