@@ -31,7 +31,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { BookingSummaryModal } from "@/components/BookingSummaryModal";
 import { ContributorInfoModal } from "@/components/pdf/ContributorInfoModal";
 import { PDFGenerator } from "@/components/pdf/PDFGenerator";
-import ToDoPage from "./ToDoPage";
+import ToDoList from "@/components/dashboard/ToDoList";
 
 const DriverDashboard = () => {
   const navigate = useNavigate();
@@ -741,34 +741,6 @@ const DriverDashboard = () => {
           .map(booking => {
             const pickupDate = new Date(booking.pickup_time);
             
-            // Debug specific booking issues
-            console.log('=== TRANSFORMING BOOKING ===');
-            console.log('Booking ID:', booking.id);
-            console.log('Raw passengers data:', booking.passengers);
-            console.log('Passenger full_name:', booking.passengers?.full_name);
-            console.log('Payment confirmation status:', booking.payment_confirmation_status);
-            console.log('Status:', booking.status);
-            
-            // If passengers data is missing, try to fetch it manually as a fallback
-            let passengerData = booking.passengers;
-            if (!passengerData && booking.passenger_id) {
-              console.log('No passenger data found, will need manual fetch for:', booking.passenger_id);
-              // For now, create a placeholder that will trigger a manual fetch
-              passengerData = { 
-                id: booking.passenger_id, 
-                full_name: 'Loading...', 
-                phone: '', 
-                email: '', 
-                profile_photo_url: '', 
-                preferred_temperature: 0, 
-                music_preference: '', 
-                music_playlist_link: '', 
-                interaction_preference: '', 
-                trip_purpose: '', 
-                additional_notes: '' 
-              };
-            }
-            
             return {
               id: booking.id,
               date: pickupDate.toISOString().split('T')[0],
@@ -782,8 +754,8 @@ const DriverDashboard = () => {
               dropoff_location: booking.dropoff_location,
               from: booking.pickup_location,
               to: booking.dropoff_location,
-              passenger: passengerData?.full_name || 'Unknown Passenger',
-              passengers: passengerData, // Include full passenger data for avatar
+              passenger: booking.passengers?.full_name || 'Unknown Passenger',
+              passengers: booking.passengers, // Include full passenger data for avatar
               status: booking.status,
               ride_status: booking.ride_status,
               driver_id: booking.driver_id,
@@ -821,6 +793,37 @@ const DriverDashboard = () => {
         console.log('Assigned bookings error:', assignedBookings.error);
         
         setDriverRides(transformedBookings);
+        
+        // Filter bookings for different views
+        const now = new Date();
+        
+        const upcomingBookings = transformedBookings.filter(booking => {
+          const bookingDate = new Date(booking.pickup_time);
+          return bookingDate > now && (
+            booking.status === 'accepted' || 
+            booking.status === 'confirmed' ||
+            booking.payment_confirmation_status === 'passenger_paid'
+          );
+        });
+
+        const todoBookings = transformedBookings.filter(booking => {
+          const bookingDate = new Date(booking.pickup_time);
+          const oneHourAfterPickup = new Date(bookingDate.getTime() + 60 * 60 * 1000);
+          return booking.payment_confirmation_status === 'all_set' && now < oneHourAfterPickup;
+        });
+
+        const pastBookings = transformedBookings.filter(booking => {
+          const bookingDate = new Date(booking.pickup_time);
+          const oneHourAfterPickup = new Date(bookingDate.getTime() + 60 * 60 * 1000);
+          
+          return booking.status === 'completed' || 
+                 booking.status === 'cancelled' || 
+                 booking.status === 'declined' ||
+                 (booking.payment_confirmation_status === 'all_set' && now >= oneHourAfterPickup) ||
+                 (bookingDate <= now && booking.payment_confirmation_status !== 'all_set');
+        });
+
+        // These variables are calculated but not stored in state since they're derived from driverRides
       } catch (error) {
         console.error('Error fetching driver bookings:', error);
       }
@@ -1497,7 +1500,31 @@ const DriverDashboard = () => {
           )}
 
           {activeTab === "todo" && (
-            <ToDoPage />
+            <ToDoList
+              bookings={driverRides.filter(booking => {
+                const now = new Date();
+                const bookingDate = new Date(booking.pickup_time);
+                const oneHourAfterPickup = new Date(bookingDate.getTime() + 60 * 60 * 1000);
+                return booking.payment_confirmation_status === 'all_set' && now < oneHourAfterPickup;
+              })}
+              onMessage={(booking) => {
+                setSelectedBookingForMessaging(booking);
+                if (booking.passenger_id) {
+                  supabase
+                    .from('passengers')
+                    .select('*')
+                    .eq('id', booking.passenger_id)
+                    .maybeSingle()
+                    .then(({ data: passenger, error }) => {
+                      if (passenger && !error) {
+                        setPassengerProfile(passenger);
+                      }
+                    });
+                }
+                setMessagingOpen(true);
+              }}
+              onViewSummary={handleViewSummary}
+            />
           )}
 
           {activeTab === "messages" && userProfile?.id && (
