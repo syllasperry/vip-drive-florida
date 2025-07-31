@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,11 +10,23 @@ interface ContributorInfoModalProps {
   onClose: () => void;
   onSubmit: (data: { type: 'individual' | 'business'; name: string }) => void;
   title: string;
+  initialData?: { type: 'individual' | 'business'; name: string } | null;
 }
 
-export const ContributorInfoModal = ({ isOpen, onClose, onSubmit, title }: ContributorInfoModalProps) => {
+export const ContributorInfoModal = ({ isOpen, onClose, onSubmit, title, initialData }: ContributorInfoModalProps) => {
   const [contributorType, setContributorType] = useState<'individual' | 'business'>('individual');
   const [name, setName] = useState('');
+
+  // Pre-fill with initial data when modal opens
+  useEffect(() => {
+    if (isOpen && initialData) {
+      setContributorType(initialData.type);
+      setName(initialData.name);
+    } else if (isOpen) {
+      setContributorType('individual');
+      setName('');
+    }
+  }, [isOpen, initialData]);
 
   const handleSubmit = () => {
     if (name.trim()) {

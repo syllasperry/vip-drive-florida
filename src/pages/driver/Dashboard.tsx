@@ -524,6 +524,81 @@ const DriverDashboard = () => {
     setShowContributorModal(true);
   };
 
+  const generateDriverReport = async (contributorInfo: { type: 'individual' | 'business'; name: string }) => {
+    try {
+      // Get all completed bookings for this driver with payment status 'all_set'
+      const { data: bookings, error } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          passengers!inner(
+            full_name,
+            account_type,
+            account_name
+          )
+        `)
+        .eq('driver_id', userProfile?.id)
+        .eq('payment_confirmation_status', 'all_set')
+        .not('final_price', 'is', null)
+        .order('pickup_time', { ascending: false });
+
+      if (error) throw error;
+
+      const records = (bookings || []).map(booking => {
+        const passengerName = booking.passengers?.full_name || 'Unknown Passenger';
+        const passengerDisplayName = booking.passengers?.account_type === 'business' 
+          ? `${passengerName} (Business)` 
+          : `${passengerName} (Individual)`;
+        
+        // Format payment method display
+        let paymentMethodDisplay = booking.payment_method || 'Unknown';
+        if (booking.payment_method === 'zelle') paymentMethodDisplay = 'Received via Zelle';
+        else if (booking.payment_method === 'venmo') paymentMethodDisplay = 'Received via Venmo';
+        else if (booking.payment_method === 'apple_pay') paymentMethodDisplay = 'Received via Apple Pay';
+        else if (booking.payment_method === 'google_pay') paymentMethodDisplay = 'Received via Google Pay';
+        else if (booking.payment_method === 'payment_link') paymentMethodDisplay = 'Received via Payment Link';
+        else if (booking.payment_method === 'cash') paymentMethodDisplay = 'Received in Cash';
+        else paymentMethodDisplay = `Received via ${booking.payment_method}`;
+
+        return {
+          id: booking.id,
+          amount: booking.final_price || booking.estimated_price || 0,
+          date: booking.pickup_time,
+          paymentMethod: paymentMethodDisplay,
+          counterpartyName: passengerDisplayName
+        };
+      });
+
+      const pdfData = {
+        title: 'Driver Earnings Summary',
+        contributorInfo,
+        records,
+        userType: 'driver' as const
+      };
+
+      const doc = PDFGenerator.generate(pdfData);
+      const filename = `driver-earnings-summary-${new Date().toISOString().split('T')[0]}.pdf`;
+
+      if (pdfAction === 'email') {
+        await PDFGenerator.shareByEmail(doc, filename);
+      } else {
+        doc.save(filename);
+      }
+
+      toast({
+        title: "Earnings report generated!",
+        description: `Report ${pdfAction === 'email' ? 'shared' : 'downloaded'} successfully.`,
+      });
+    } catch (error) {
+      console.error('Error generating earnings report:', error);
+      toast({
+        title: "Error",
+        description: 'Failed to generate earnings report',
+        variant: "destructive",
+      });
+    }
+  };
+
   const generateEarningsReport = async (contributorInfo: { type: 'individual' | 'business'; name: string }) => {
     try {
       // Fetch all completed bookings with payment status 'all_set'
@@ -1560,6 +1635,30 @@ const DriverDashboard = () => {
           };
           refreshProfile();
         }}
+      />
+
+      {/* Summary Modal */}
+      {selectedBooking && (
+        <BookingSummaryModal
+          isOpen={showSummaryModal}
+          onClose={() => {
+            setShowSummaryModal(false);
+            setSelectedBooking(null);
+          }}
+          booking={selectedBooking}
+        />
+      )}
+
+      {/* PDF Contributor Modal */}
+      <ContributorInfoModal
+        isOpen={showContributorModal}
+        onClose={() => setShowContributorModal(false)}
+        onSubmit={generateDriverReport}
+        title="Driver Earnings Report"
+        initialData={userProfile?.account_type && userProfile?.account_name ? {
+          type: userProfile.account_type,
+          name: userProfile.account_name
+        } : null}
       />
     </div>
   );

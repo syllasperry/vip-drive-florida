@@ -28,12 +28,29 @@ export const PaymentsTab = ({ userId, userType, onViewSummary }: PaymentsTabProp
   const [loading, setLoading] = useState(true);
   const [showContributorModal, setShowContributorModal] = useState(false);
   const [pdfAction, setPdfAction] = useState<'download' | 'email'>('download');
+  const [userProfileData, setUserProfileData] = useState<any>(null);
 
   useEffect(() => {
     if (userId) {
       loadPaymentHistory();
+      loadUserProfile();
     }
   }, [userId, userType]);
+
+  const loadUserProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('passengers')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error) throw error;
+      setUserProfileData(data);
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+    }
+  };
 
   const loadPaymentHistory = async () => {
     try {
@@ -238,6 +255,10 @@ export const PaymentsTab = ({ userId, userType, onViewSummary }: PaymentsTabProp
         onClose={() => setShowContributorModal(false)}
         onSubmit={generatePaymentReport}
         title="Passenger Payment Report"
+        initialData={userProfileData?.account_type && userProfileData?.account_name ? {
+          type: userProfileData.account_type,
+          name: userProfileData.account_name
+        } : null}
       />
     </div>
   );

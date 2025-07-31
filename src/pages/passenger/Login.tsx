@@ -18,7 +18,9 @@ const PassengerLogin = () => {
     name: "",
     phone: "",
     hearAbout: "",
-    profilePhoto: null as File | null
+    profilePhoto: null as File | null,
+    accountType: "",
+    accountName: ""
   });
   
   const navigate = useNavigate();
@@ -139,7 +141,9 @@ const PassengerLogin = () => {
               full_name: formData.name,
               email: formData.email,
               phone: formData.phone,
-              profile_photo_url: profilePhotoUrl
+              profile_photo_url: profilePhotoUrl,
+              account_type: formData.accountType || null,
+              account_name: formData.accountName || null
             });
 
           if (insertError) throw insertError;
@@ -416,6 +420,34 @@ const PassengerLogin = () => {
                     </SelectContent>
                   </Select>
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="accountType">Account Type (Optional)</Label>
+                  <Select value={formData.accountType} onValueChange={(value) => handleInputChange("accountType", value)}>
+                    <SelectTrigger className="h-12">
+                      <SelectValue placeholder="Select account type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="individual">Individual</SelectItem>
+                      <SelectItem value="business">Business</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {formData.accountType && (
+                  <div className="space-y-2">
+                    <Label htmlFor="accountName">
+                      {formData.accountType === 'individual' ? 'Full Name' : 'Business Name'}
+                    </Label>
+                    <Input
+                      id="accountName"
+                      value={formData.accountName}
+                      onChange={(e) => handleInputChange("accountName", e.target.value)}
+                      placeholder={formData.accountType === 'individual' ? 'Enter your full name' : 'Enter business name'}
+                      className="h-12"
+                    />
+                  </div>
+                )}
               </>
             )}
 

@@ -128,6 +128,8 @@ export type Database = {
       }
       drivers: {
         Row: {
+          account_name: string | null
+          account_type: string | null
           apple_pay_info: string | null
           cancellation_policy: string | null
           car_color: string | null
@@ -153,6 +155,8 @@ export type Database = {
           zelle_info: string | null
         }
         Insert: {
+          account_name?: string | null
+          account_type?: string | null
           apple_pay_info?: string | null
           cancellation_policy?: string | null
           car_color?: string | null
@@ -178,6 +182,8 @@ export type Database = {
           zelle_info?: string | null
         }
         Update: {
+          account_name?: string | null
+          account_type?: string | null
           apple_pay_info?: string | null
           cancellation_policy?: string | null
           car_color?: string | null
@@ -308,6 +314,8 @@ export type Database = {
       }
       passengers: {
         Row: {
+          account_name: string | null
+          account_type: string | null
           additional_notes: string | null
           created_at: string
           email: string
@@ -322,6 +330,8 @@ export type Database = {
           trip_purpose: string | null
         }
         Insert: {
+          account_name?: string | null
+          account_type?: string | null
           additional_notes?: string | null
           created_at?: string
           email: string
@@ -336,6 +346,8 @@ export type Database = {
           trip_purpose?: string | null
         }
         Update: {
+          account_name?: string | null
+          account_type?: string | null
           additional_notes?: string | null
           created_at?: string
           email?: string

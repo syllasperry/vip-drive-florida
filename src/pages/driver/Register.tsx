@@ -31,7 +31,9 @@ const DriverRegister = () => {
     venmoInfo: "",
     applePayInfo: "",
     googlePayInfo: "",
-    paymentLinkInfo: ""
+    paymentLinkInfo: "",
+    accountType: "",
+    accountName: ""
   });
   const { toast } = useToast();
 
@@ -78,7 +80,9 @@ const DriverRegister = () => {
             apple_pay_info: formData.applePayInfo,
             google_pay_info: formData.googlePayInfo,
             payment_link_info: formData.paymentLinkInfo,
-            profile_photo_url: null
+            profile_photo_url: null,
+            account_type: formData.accountType || null,
+            account_name: formData.accountName || null
           });
 
         if (insertError) throw insertError;
@@ -288,6 +292,38 @@ const DriverRegister = () => {
                 placeholder="ABC-1234"
               />
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="accountType">
+                <User className="inline h-4 w-4 mr-2" />
+                Account Type (Optional)
+              </Label>
+              <Select value={formData.accountType} onValueChange={(value) => handleInputChange("accountType", value)}>
+                <SelectTrigger className="h-12">
+                  <SelectValue placeholder="Select account type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="individual">Individual</SelectItem>
+                  <SelectItem value="business">Business</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {formData.accountType && (
+              <div className="space-y-2">
+                <Label htmlFor="accountName">
+                  <User className="inline h-4 w-4 mr-2" />
+                  {formData.accountType === 'individual' ? 'Full Name' : 'Business Name'}
+                </Label>
+                <Input
+                  id="accountName"
+                  value={formData.accountName}
+                  onChange={(e) => handleInputChange("accountName", e.target.value)}
+                  placeholder={formData.accountType === 'individual' ? 'Enter your full name' : 'Enter business name'}
+                  className="h-12"
+                />
+              </div>
+            )}
 
             <Button
               type="submit"

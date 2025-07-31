@@ -21,7 +21,9 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload, 
     email: "",
     phone: "",
     profilePhoto: null as File | null,
-    profilePhotoUrl: null as string | null
+    profilePhotoUrl: null as string | null,
+    accountType: "",
+    accountName: ""
   });
   const [isUploading, setIsUploading] = useState(false);
   const [consentModalOpen, setConsentModalOpen] = useState(false);
@@ -130,7 +132,9 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload, 
       email: userProfile?.email || "", 
       phone: userProfile?.phone || "",
       profilePhoto: null,
-      profilePhotoUrl: userProfile?.profile_photo_url
+      profilePhotoUrl: userProfile?.profile_photo_url,
+      accountType: userProfile?.account_type || "",
+      accountName: userProfile?.account_name || ""
     });
   }, [isOpen, userProfile]);
 
@@ -155,7 +159,9 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload, 
         .update({
           full_name: formData.name,
           email: formData.email,
-          phone: formData.phone
+          phone: formData.phone,
+          account_type: formData.accountType || null,
+          account_name: formData.accountName || null
         })
         .eq('id', userProfile.id);
 
@@ -309,6 +315,37 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload, 
                   className="mt-1"
                 />
               </div>
+
+              <div>
+                <Label htmlFor="accountType" className="text-card-foreground">
+                  Account Type
+                </Label>
+                <select
+                  id="accountType"
+                  value={formData.accountType}
+                  onChange={(e) => handleInputChange("accountType", e.target.value)}
+                  className="w-full mt-1 px-3 py-2 border border-input bg-background rounded-md text-sm"
+                >
+                  <option value="">Select account type</option>
+                  <option value="individual">Individual</option>
+                  <option value="business">Business</option>
+                </select>
+              </div>
+
+              {formData.accountType && (
+                <div>
+                  <Label htmlFor="accountName" className="text-card-foreground">
+                    {formData.accountType === 'individual' ? 'Full Name' : 'Business Name'}
+                  </Label>
+                  <Input
+                    id="accountName"
+                    value={formData.accountName}
+                    onChange={(e) => handleInputChange("accountName", e.target.value)}
+                    className="mt-1"
+                    placeholder={formData.accountType === 'individual' ? 'Enter your full name' : 'Enter business name'}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>
