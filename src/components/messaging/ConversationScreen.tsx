@@ -236,8 +236,8 @@ export const ConversationScreen = ({
     <div className="h-screen bg-background flex flex-col">
       {/* Header */}
       <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 border-b border-border">
-        <div className="pt-safe-top px-4 pb-4">
-          <div className="flex items-center gap-3 mb-3 mt-2">
+        <div className="px-4 pt-2 pb-4">
+          <div className="flex items-center gap-3 mb-3">
             <Button variant="ghost" size="icon" onClick={onBack} className="rounded-full">
               <ArrowLeft className="h-5 w-5" />
             </Button>
