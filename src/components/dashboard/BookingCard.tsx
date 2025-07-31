@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CancelBookingButton } from "./CancelBookingButton";
 import { StatusBadges } from "@/components/status/StatusBadges";
-import { MapPin, Clock, User, Car, MessageCircle, Star, FileText, CheckCircle } from "lucide-react";
+import { MapPin, Clock, User, Car, MessageCircle, Star, FileText, CheckCircle, ChevronDown } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface BookingCardProps {
   booking: any;
@@ -19,6 +20,7 @@ interface BookingCardProps {
 }
 
 export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSummary, onCancelSuccess, onNavigate, showPaymentReceivedButton, onConfirmPaymentReceived }: BookingCardProps) => {
+  const { toast } = useToast();
   const getStatusColor = (status: string) => {
     switch (status) {
       case "confirmed": return "bg-success/10 text-success border-success/20";
@@ -180,6 +182,53 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
               <FileText className="h-4 w-4" />
               Summary
             </Button>
+          )}
+
+          {/* Maps Button for All Set rides */}
+          {booking.payment_confirmation_status === 'all_set' && userType === "driver" && (
+            <div className="relative">
+              <select 
+                className="appearance-none bg-primary text-primary-foreground px-3 py-2 rounded-md text-sm font-medium h-8 pr-8 cursor-pointer hover:bg-primary/90 transition-colors"
+                onChange={(e) => {
+                  const navApp = e.target.value;
+                  if (!navApp) return;
+                  
+                  const pickup = encodeURIComponent(booking.pickup_location || booking.from || '');
+                  const dropoff = encodeURIComponent(booking.dropoff_location || booking.to || '');
+                  
+                  let url = '';
+                  switch (navApp) {
+                    case 'google':
+                      url = `https://www.google.com/maps/dir/?api=1&origin=${pickup}&destination=${dropoff}&travelmode=driving`;
+                      break;
+                    case 'apple':
+                      url = `https://maps.apple.com/?saddr=${pickup}&daddr=${dropoff}&dirflg=d`;
+                      break;
+                    case 'waze':
+                      url = `https://www.waze.com/ul?q=${dropoff}&navigate=yes&from=${pickup}`;
+                      break;
+                    default:
+                      url = `https://www.google.com/maps/dir/?api=1&origin=${pickup}&destination=${dropoff}&travelmode=driving`;
+                  }
+                  
+                  window.open(url, '_blank');
+                  
+                  toast({
+                    title: `Opening ${navApp === 'apple' ? 'Apple Maps' : navApp === 'waze' ? 'Waze' : 'Google Maps'}`,
+                    description: "Navigation opened in new tab.",
+                  });
+                  
+                  // Reset select
+                  e.target.value = '';
+                }}
+              >
+                <option value="">Maps</option>
+                <option value="google">Google Maps</option>
+                <option value="apple">Apple Maps</option>
+                <option value="waze">Waze</option>
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-primary-foreground pointer-events-none" />
+            </div>
           )}
 
           {booking.status === "completed" && onReview && (
