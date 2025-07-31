@@ -10,9 +10,9 @@ import { useToast } from "@/hooks/use-toast";
 interface BookingCardProps {
   booking: any;
   userType: "passenger" | "driver";
-  onMessage?: () => void;
-  onReview?: () => void;
-  onViewSummary?: () => void;
+  onMessage?: (booking?: any) => void;
+  onReview?: (booking?: any) => void;
+  onViewSummary?: (booking?: any) => void;
   onCancelSuccess?: () => void;
   onNavigate?: () => void;
   showPaymentReceivedButton?: boolean;
