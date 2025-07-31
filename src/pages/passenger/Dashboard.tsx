@@ -618,15 +618,17 @@ const Dashboard = () => {
           )}
 
           {activeTab === "messages" && showConversation && selectedBooking && (
-            <ConversationScreen
-              userType="passenger"
-              booking={selectedBooking}
-              otherUser={selectedOtherUser}
-              currentUserId={passenger?.id || ""}
-              currentUserName={passenger?.full_name || ""}
-              currentUserAvatar={passenger?.profile_photo_url}
-              onBack={handleBackToInbox}
-            />
+            <div className="fixed inset-0 z-50 bg-background">
+              <ConversationScreen
+                userType="passenger"
+                booking={selectedBooking}
+                otherUser={selectedOtherUser}
+                currentUserId={passenger?.id || ""}
+                currentUserName={passenger?.full_name || ""}
+                currentUserAvatar={passenger?.profile_photo_url}
+                onBack={handleBackToInbox}
+              />
+            </div>
           )}
 
           {activeTab === "payments" && (
@@ -676,12 +678,14 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Bottom Navigation */}
-        <BottomNavigation
-          activeTab={activeTab}
-          onTabChange={handleTabChange}
-          userType="passenger"
-        />
+        {/* Bottom Navigation - Hide when conversation is active */}
+        {!(activeTab === "messages" && showConversation) && (
+          <BottomNavigation
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            userType="passenger"
+          />
+        )}
       </div>
 
       {/* Modals */}
