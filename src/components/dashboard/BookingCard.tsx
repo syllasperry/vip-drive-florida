@@ -22,15 +22,6 @@ interface BookingCardProps {
 
 export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSummary, onCancelSuccess, onNavigate, showPaymentReceivedButton, onConfirmPaymentReceived }: BookingCardProps) => {
   const { toast } = useToast();
-  
-  // Debug passenger data
-  console.log('BookingCard received booking:', {
-    id: booking.id,
-    passengers_exists: !!booking.passengers,
-    passengers_data: booking.passengers,
-    passenger_name: booking.passenger,
-    payment_status: booking.payment_confirmation_status
-  });
   const getStatusColor = (status: string) => {
     switch (status) {
       case "confirmed": return "bg-success/10 text-success border-success/20";
