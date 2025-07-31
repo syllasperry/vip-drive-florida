@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, Clock, User, CreditCard, Thermometer, Volume2, VolumeX, MessageSquare, MessageSquareOff } from "lucide-react";
+import { MapPin, Clock, User, CreditCard, Thermometer, Volume2, VolumeX, MessageSquare, MessageSquareOff, Navigation, Map, ChevronDown } from "lucide-react";
 
 interface Booking {
   id: string;
@@ -89,6 +90,33 @@ const ToDoPage = () => {
     };
   };
 
+  const handleMapNavigation = (navApp: string, pickup: string, dropoff: string) => {
+    const pickupEncoded = encodeURIComponent(pickup);
+    const dropoffEncoded = encodeURIComponent(dropoff);
+    
+    let url = '';
+    switch (navApp) {
+      case 'google':
+        url = `https://www.google.com/maps/dir/?api=1&origin=${pickupEncoded}&destination=${dropoffEncoded}&travelmode=driving`;
+        break;
+      case 'apple':
+        url = `https://maps.apple.com/?saddr=${pickupEncoded}&daddr=${dropoffEncoded}&dirflg=d`;
+        break;
+      case 'waze':
+        url = `https://www.waze.com/ul?q=${dropoffEncoded}&navigate=yes&from=${pickupEncoded}`;
+        break;
+      default:
+        url = `https://www.google.com/maps/dir/?api=1&origin=${pickupEncoded}&destination=${dropoffEncoded}&travelmode=driving`;
+    }
+    
+    window.location.href = url;
+    
+    toast({
+      title: `Abrindo ${navApp === 'apple' ? 'Apple Maps' : navApp === 'waze' ? 'Waze' : 'Google Maps'}`,
+      description: "Redirecionando para o app de navegação...",
+    });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background p-4">
@@ -101,7 +129,7 @@ const ToDoPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4">
+    <div className="min-h-screen bg-background p-4 pb-20">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl font-bold text-foreground mb-6">To-Do</h1>
         
@@ -231,6 +259,43 @@ const ToDoPage = () => {
                         </div>
                       </div>
                     )}
+
+                    {/* Maps Navigation Buttons */}
+                    <div className="mt-4 pt-4 border-t border-border">
+                      <h5 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                        <Navigation className="h-4 w-4" />
+                        Navegação
+                      </h5>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          onClick={() => handleMapNavigation('google', booking.pickup_location, booking.dropoff_location)}
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-2"
+                        >
+                          <Map className="h-4 w-4" />
+                          Google Maps
+                        </Button>
+                        <Button
+                          onClick={() => handleMapNavigation('apple', booking.pickup_location, booking.dropoff_location)}
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-2"
+                        >
+                          <Navigation className="h-4 w-4" />
+                          Apple Maps
+                        </Button>
+                        <Button
+                          onClick={() => handleMapNavigation('waze', booking.pickup_location, booking.dropoff_location)}
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-2"
+                        >
+                          <MapPin className="h-4 w-4" />
+                          Waze
+                        </Button>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               );
