@@ -20,7 +20,6 @@ import { UpcomingRideCard } from "@/components/dashboard/UpcomingRideCard";
 import { EarningsSection } from "@/components/dashboard/EarningsSection";
 import { BookingToggle } from "@/components/dashboard/BookingToggle";
 import { BookingCard } from "@/components/dashboard/BookingCard";
-import { ToDoCard } from "@/components/dashboard/ToDoCard";
 import OrganizedBookingsList from "@/components/dashboard/OrganizedBookingsList";
 import PendingRequestAlert from "@/components/dashboard/PendingRequestAlert";
 import StatusTracker, { BookingStatus } from "@/components/StatusTracker";
@@ -658,38 +657,52 @@ const DriverDashboard = () => {
 
   // Fetch real bookings for the driver
   const fetchDriverBookings = async () => {
-  if (!userProfile?.id) return;
+      if (!userProfile?.id) return;
 
-  try {
-    const { data, error } = await supabase
-      .from('bookings')
-      .select(`
-        id,
-        pickup_location,
-        dropoff_location,
-        status,
-        passengers (
-          full_name,
-          profile_photo_url,
-          preferred_temperature,
-          music_preference,
-          music_playlist_link,
-          interaction_preference
-        )
-      `)
-      .eq('driver_id', userProfile.id)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching bookings:', error);
-      return;
-    }
-
-    setDriverRides(data);
-  } catch (err) {
-    console.error('Unexpected error fetching bookings:', err);
-  }
-};
+      try {
+        // Fetch both assigned bookings AND pending bookings that match driver's vehicle
+        const [assignedBookings, pendingBookings] = await Promise.all([
+          // Get bookings already assigned to this driver
+          supabase
+            .from('bookings')
+            .select(`
+              *,
+              passengers (
+                id,
+                full_name,
+                phone,
+                email,
+                profile_photo_url,
+                preferred_temperature,
+                music_preference,
+                music_playlist_link,
+                interaction_preference,
+                trip_purpose,
+                additional_notes
+              )
+            `)
+            .eq('driver_id', userProfile.id)
+            .order('pickup_time', { ascending: true }),
+          
+          // Get pending bookings that match this driver's vehicle type
+          supabase
+            .from('bookings')
+            .select(`
+              *,
+              passengers (
+                id,
+                full_name,
+                phone,
+                email,
+                profile_photo_url,
+                preferred_temperature,
+                music_preference,
+                music_playlist_link,
+                interaction_preference,
+                trip_purpose,
+                additional_notes
+              )
+            `)
             .eq('ride_status', 'pending_driver')
             .is('driver_id', null)
             .order('pickup_time', { ascending: true })
@@ -918,45 +931,6 @@ const DriverDashboard = () => {
 
   return (
     <div className="min-h-screen bg-muted/20 pb-24">
-      {/* TÍTULO DO TOPO */}
-<h1 className="text-3xl font-bold text-center text-primary mt-6 mb-8">To-do</h1>
-
-{/* LISTA DE CORRIDAS */}
-<div className="space-y-6 px-4">
-  {driverRides.map((ride, index) => (
-    <div key={index} className="bg-white p-4 rounded-xl shadow border border-gray-200">
-      <div className="flex justify-between items-center mb-2">
-        <div>
-          <p className="text-sm text-muted-foreground">Passenger</p>
-          <p className="text-lg font-semibold">{ride.passenger_name || "Unknown"}</p>
-        </div>
-        {ride.passenger_photo && (
-          <img
-            src={ride.passenger_photo}
-            alt="Passenger"
-            className="w-12 h-12 rounded-full border border-gray-300"
-          />
-        )}
-      </div>
-
-      <div className="text-sm text-gray-600 space-y-1">
-        <p><strong>Pickup:</strong> {ride.pickup_location}</p>
-        <p><strong>Dropoff:</strong> {ride.dropoff_location}</p>
-        <p><strong>Status:</strong> {ride.status || "All Set"}</p>
-      </div>
-
-      {/* Preferências do Passageiro */}
-      <div className="mt-4 border-t pt-2 text-sm">
-        <p className="font-medium mb-1">Passenger Preferences:</p>
-        <ul className="list-disc list-inside space-y-1">
-          <li><strong>Temperature:</strong> {ride.preferences?.temperature || "Any"}</li>
-          <li><strong>Music:</strong> {ride.preferences?.music || "No preference"}</li>
-          <li><strong>Talkative:</strong> {ride.preferences?.talkative ? "Yes" : "No"}</li>
-        </ul>
-      </div>
-    </div>
-  ))}
-</div>
       <div className="max-w-md mx-auto">
           {/* Enhanced Profile Header */}
           <div className="bg-gradient-to-br from-primary to-primary/80 px-4 pt-8 pb-6 text-white relative">
