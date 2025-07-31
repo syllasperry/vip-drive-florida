@@ -13,6 +13,7 @@ interface Booking {
   dropoff_location: string;
   pickup_time: string;
   payment_method?: string;
+  vehicle_type?: string;
   passengers?: {
     full_name: string;
     profile_photo_url?: string;
@@ -20,6 +21,8 @@ interface Booking {
     preferred_temperature?: number;
     music_preference?: string;
     interaction_preference?: string;
+    trip_purpose?: string;
+    additional_notes?: string;
   };
 }
 
@@ -45,13 +48,16 @@ const ToDoPage = () => {
             dropoff_location,
             pickup_time,
             payment_method,
+            vehicle_type,
             passengers (
               full_name,
               profile_photo_url,
               phone,
               preferred_temperature,
               music_preference,
-              interaction_preference
+              interaction_preference,
+              trip_purpose,
+              additional_notes
             )
           `)
           .eq('driver_id', session.user.id)
@@ -120,10 +126,10 @@ const ToDoPage = () => {
               return (
                 <Card key={booking.id} className="bg-card border-border rounded-2xl overflow-hidden shadow-sm">
                   <CardContent className="p-4">
-                    {/* Header with ride type and date */}
+                    {/* Header with vehicle info and date */}
                     <div className="flex justify-between items-center mb-4">
                       <div>
-                        <h3 className="font-semibold text-foreground text-lg">Lhaff chaffer ride</h3>
+                        <h3 className="font-semibold text-foreground text-lg">{booking.vehicle_type || 'Private Ride'}</h3>
                         <p className="text-sm text-muted-foreground">{date}</p>
                       </div>
                       <div className="text-right">
@@ -160,19 +166,29 @@ const ToDoPage = () => {
                       </div>
                     )}
 
-                    {/* Passenger Preferences */}
+                    {/* Temperature Preference */}
                     {booking.passengers?.preferred_temperature && (
                       <div className="flex justify-between items-center py-2 border-b border-border/50">
-                        <span className="text-sm text-muted-foreground">Passenger boforelis</span>
+                        <span className="text-sm text-muted-foreground">Car Temperature Preference</span>
                         <span className="text-sm font-medium text-foreground">{booking.passengers.preferred_temperature}°C</span>
                       </div>
                     )}
 
-                    {/* Music/Sound Migration */}
-                    <div className="flex justify-between items-center py-2 border-b border-border/50 mb-4">
-                      <span className="text-sm text-muted-foreground">Sais migration</span>
+                    {/* Music Preference */}
+                    <div className="flex justify-between items-center py-2 border-b border-border/50">
+                      <span className="text-sm text-muted-foreground">Music Preference</span>
                       <span className="text-sm font-medium text-foreground">
-                        {booking.passengers?.music_preference === 'yes' || booking.passengers?.music_preference === 'on' ? 'Music On' : 'Music Off'}
+                        {booking.passengers?.music_preference === 'yes' || booking.passengers?.music_preference === 'on' ? 'On' : 'Off'}
+                      </span>
+                    </div>
+
+                    {/* Conversation Preference */}
+                    <div className="flex justify-between items-center py-2 border-b border-border/50 mb-4">
+                      <span className="text-sm text-muted-foreground">Conversation Style</span>
+                      <span className="text-sm font-medium text-foreground">
+                        {booking.passengers?.interaction_preference === 'talkative' ? 'Talkative' : 
+                         booking.passengers?.interaction_preference === 'quiet' ? 'Quiet' : 
+                         "Doesn't matter"}
                       </span>
                     </div>
 
@@ -234,46 +250,32 @@ const ToDoPage = () => {
                       </div>
                     </div>
 
-                    {/* Upcoming entries section */}
+                    {/* Trip Details Summary */}
                     <div className="bg-muted/30 rounded-xl p-3">
                       <div className="flex justify-between items-center mb-2">
-                        <h4 className="text-sm font-medium text-foreground">Upcoming entries</h4>
+                        <h4 className="text-sm font-medium text-foreground">Trip Details</h4>
                         <span className="text-xs text-muted-foreground">{time}</span>
                       </div>
                       
-                      {/* Trip preferences in compact grid */}
-                      <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div className="text-center">
-                          <p className="font-medium text-foreground">Air State</p>
-                          <p className="text-muted-foreground">
-                            {booking.passengers?.preferred_temperature ? `${booking.passengers.preferred_temperature}°C` : 'Fitab'}
-                          </p>
+                      {/* Locations */}
+                      <div className="space-y-2 mb-3">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-3 w-3 text-green-500" />
+                          <p className="text-xs text-muted-foreground">Pickup: {booking.pickup_location}</p>
                         </div>
-                        <div className="text-center">
-                          <p className="font-medium text-foreground">Air Ente</p>
-                          <p className="text-muted-foreground">
-                            {booking.passengers?.music_preference === 'yes' || booking.passengers?.music_preference === 'on' ? 'Fitris' : 'Silent'}
-                          </p>
-                        </div>
-                        <div className="text-center">
-                          <p className="font-medium text-foreground">Sila Infoss</p>
-                          <p className="text-muted-foreground">
-                            {booking.passengers?.interaction_preference === 'talk' ? 'Talk' : 'Rius'}
-                          </p>
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-3 w-3 text-red-500" />
+                          <p className="text-xs text-muted-foreground">Drop-off: {booking.dropoff_location}</p>
                         </div>
                       </div>
 
-                      {/* Maps and Secondary buttons */}
-                      <div className="flex justify-between items-center mt-3">
-                        <div className="text-xs">
-                          <p className="font-medium text-foreground">Rider ar paty masitantion</p>
-                          <p className="text-muted-foreground">Maps</p>
+                      {/* Payment Method */}
+                      {booking.payment_method && (
+                        <div className="flex justify-between items-center text-xs mb-2">
+                          <span className="font-medium text-foreground">Payment Method</span>
+                          <span className="text-muted-foreground">{booking.payment_method}</span>
                         </div>
-                        <div className="text-xs text-right">
-                          <p className="font-medium text-foreground">Ror fast</p>
-                          <p className="text-muted-foreground">Sertionary</p>
-                        </div>
-                      </div>
+                      )}
                     </div>
 
                     {/* All Set status */}
