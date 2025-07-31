@@ -668,7 +668,7 @@ const DriverDashboard = () => {
             .from('bookings')
             .select(`
               *,
-              passengers (
+              passengers!inner (
                 id,
                 full_name,
                 phone,
@@ -690,7 +690,7 @@ const DriverDashboard = () => {
             .from('bookings')
             .select(`
               *,
-              passengers (
+              passengers!inner (
                 id,
                 full_name,
                 phone,
@@ -796,32 +796,78 @@ const DriverDashboard = () => {
         
         // Filter bookings for different views
         const now = new Date();
+        console.log('=== FILTER LOGIC DEBUG ===');
+        console.log('Current time:', now);
+        console.log('All bookings before filtering:', transformedBookings);
+        
+        // Clear filter logic - remove duplicates and apply correct status filtering
         
         const upcomingBookings = transformedBookings.filter(booking => {
           const bookingDate = new Date(booking.pickup_time);
-          return bookingDate > now && (
+          const isUpcoming = bookingDate > now;
+          const correctStatus = (
             booking.status === 'accepted' || 
             booking.status === 'confirmed' ||
             booking.payment_confirmation_status === 'passenger_paid'
           );
+          
+          console.log(`Booking ${booking.id} - upcoming check:`, { 
+            isUpcoming, 
+            correctStatus, 
+            status: booking.status, 
+            paymentStatus: booking.payment_confirmation_status 
+          });
+          
+          return isUpcoming && correctStatus;
         });
 
         const todoBookings = transformedBookings.filter(booking => {
           const bookingDate = new Date(booking.pickup_time);
           const oneHourAfterPickup = new Date(bookingDate.getTime() + 60 * 60 * 1000);
-          return booking.payment_confirmation_status === 'all_set' && now < oneHourAfterPickup;
+          const isAllSet = booking.payment_confirmation_status === 'all_set';
+          const notExpired = now < oneHourAfterPickup;
+          
+          console.log(`Booking ${booking.id} - todo check:`, { 
+            isAllSet, 
+            notExpired, 
+            paymentStatus: booking.payment_confirmation_status,
+            pickupTime: bookingDate,
+            oneHourAfter: oneHourAfterPickup
+          });
+          
+          return isAllSet && notExpired;
         });
 
         const pastBookings = transformedBookings.filter(booking => {
           const bookingDate = new Date(booking.pickup_time);
           const oneHourAfterPickup = new Date(bookingDate.getTime() + 60 * 60 * 1000);
           
-          return booking.status === 'completed' || 
-                 booking.status === 'cancelled' || 
-                 booking.status === 'declined' ||
-                 (booking.payment_confirmation_status === 'all_set' && now >= oneHourAfterPickup) ||
-                 (bookingDate <= now && booking.payment_confirmation_status !== 'all_set');
+          const isCompleted = booking.status === 'completed';
+          const isCancelled = booking.status === 'cancelled';
+          const isDeclined = booking.status === 'declined';
+          const isExpiredAllSet = booking.payment_confirmation_status === 'all_set' && now >= oneHourAfterPickup;
+          const isExpiredOther = bookingDate <= now && booking.payment_confirmation_status !== 'all_set';
+          
+          const shouldBeInPast = isCompleted || isCancelled || isDeclined || isExpiredAllSet || isExpiredOther;
+          
+          console.log(`Booking ${booking.id} - past check:`, { 
+            isCompleted, 
+            isCancelled, 
+            isDeclined, 
+            isExpiredAllSet, 
+            isExpiredOther,
+            shouldBeInPast,
+            status: booking.status,
+            paymentStatus: booking.payment_confirmation_status
+          });
+          
+          return shouldBeInPast;
         });
+        
+        console.log('=== FILTERED RESULTS ===');
+        console.log('Upcoming bookings:', upcomingBookings);
+        console.log('Todo bookings:', todoBookings);
+        console.log('Past bookings:', pastBookings);
 
         // These variables are calculated but not stored in state since they're derived from driverRides
       } catch (error) {
@@ -1462,12 +1508,17 @@ const DriverDashboard = () => {
 
               {rideView === "past" && (
                 <OrganizedBookingsList 
-                  bookings={driverRides.filter(ride => 
-                    ride.status === "completed" || 
-                    ride.status === "cancelled" || 
-                    ride.payment_confirmation_status === "all_set" ||
-                    ride.ride_status === "paid"
-                  )}
+                  bookings={driverRides.filter(ride => {
+                    const now = new Date();
+                    const bookingDate = new Date(ride.pickup_time);
+                    const oneHourAfterPickup = new Date(bookingDate.getTime() + 60 * 60 * 1000);
+                    
+                    // Only include rides that are truly in the past: completed, cancelled, declined, or all_set rides that are past pickup + 1 hour
+                    return ride.status === "completed" || 
+                           ride.status === "cancelled" || 
+                           ride.status === "declined" ||
+                           (ride.payment_confirmation_status === "all_set" && now >= oneHourAfterPickup);
+                  })}
                   userType="driver"
                   onMessage={(booking) => {
                     setSelectedBookingForMessaging(booking);
@@ -1505,6 +1556,15 @@ const DriverDashboard = () => {
                 const now = new Date();
                 const bookingDate = new Date(booking.pickup_time);
                 const oneHourAfterPickup = new Date(bookingDate.getTime() + 60 * 60 * 1000);
+                
+                console.log(`ToDoList filter - Booking ${booking.id}:`, {
+                  paymentStatus: booking.payment_confirmation_status,
+                  isAllSet: booking.payment_confirmation_status === 'all_set',
+                  notExpired: now < oneHourAfterPickup,
+                  passengerData: booking.passengers,
+                  passengerName: booking.passengers?.full_name
+                });
+                
                 return booking.payment_confirmation_status === 'all_set' && now < oneHourAfterPickup;
               })}
               onMessage={(booking) => {
