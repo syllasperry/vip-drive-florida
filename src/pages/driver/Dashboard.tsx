@@ -656,8 +656,7 @@ const DriverDashboard = () => {
   const [driverRides, setDriverRides] = useState<any[]>([]);
 
   // Fetch real bookings for the driver
-  useEffect(() => {
-    const fetchDriverBookings = async () => {
+  const fetchDriverBookings = async () => {
       if (!userProfile?.id) return;
 
       try {
@@ -768,7 +767,7 @@ const DriverDashboard = () => {
               status: booking.status,
               ride_status: booking.ride_status,
               driver_id: booking.driver_id,
-              payment: booking.final_price ? `$${booking.final_price}` : (booking.estimated_price ? `$${booking.estimated_price}` : "$85.00"),
+              payment: booking.final_price ? `$${booking.final_price}` : (booking.estimated_price ? `$${booking.estimated_price}` : "TBD"),
               paymentMethod: booking.payment_status === 'completed' ? 'Completed' : null,
               countdown: null,
               flight_info: booking.flight_info,
@@ -806,11 +805,12 @@ const DriverDashboard = () => {
       } catch (error) {
         console.error('Error fetching driver bookings:', error);
       }
-    };
+  };
 
+  useEffect(() => {
     fetchDriverBookings();
 
-        // Set up real-time subscription for new bookings assigned to this driver
+    // Set up real-time subscription for new bookings assigned to this driver
         const channel = supabase
           .channel('driver-new-bookings')
           .on(
@@ -862,11 +862,15 @@ const DriverDashboard = () => {
             {
               event: 'UPDATE',
               schema: 'public',
-              table: 'bookings',
-              filter: `driver_id=eq.${userProfile?.id}`
+              table: 'bookings'
             },
-            () => {
-              fetchDriverBookings();
+            (payload) => {
+              console.log('Booking update received:', payload);
+              // Refetch if this booking involves the current driver
+              if (payload.new.driver_id === userProfile?.id || 
+                  payload.old?.driver_id === userProfile?.id) {
+                fetchDriverBookings();
+              }
             }
           )
           .subscribe();
@@ -938,8 +942,20 @@ const DriverDashboard = () => {
   return (
     <div className="min-h-screen bg-muted/20 pb-24">
       <div className="max-w-md mx-auto">
-        {/* Enhanced Profile Header */}
-        <div className="bg-gradient-to-br from-primary to-primary/80 px-4 pt-8 pb-6 text-white">
+          {/* Enhanced Profile Header */}
+          <div className="bg-gradient-to-br from-primary to-primary/80 px-4 pt-8 pb-6 text-white relative">
+            {/* Debug refresh button */}
+            <button 
+              onClick={() => {
+                console.log('Manual refresh triggered');
+                fetchDriverBookings();
+              }}
+              className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 rounded-full p-2 transition-colors"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <Avatar className="h-12 w-12 ring-2 ring-white/20">
@@ -1271,6 +1287,10 @@ const DriverDashboard = () => {
                                       rideStatus={ride.ride_status || ride.status || 'pending'} 
                                       paymentStatus={ride.payment_confirmation_status || 'waiting_for_offer'}
                                     />
+                                    {/* Debug info */}
+                                    <div className="text-xs text-muted-foreground mt-1">
+                                      Status: {ride.ride_status || ride.status} | Payment: {ride.payment_confirmation_status}
+                                    </div>
                                   </div>
                                   
                                   {/* Waiting for passenger payment */}
