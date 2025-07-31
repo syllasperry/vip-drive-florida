@@ -658,52 +658,38 @@ const DriverDashboard = () => {
 
   // Fetch real bookings for the driver
   const fetchDriverBookings = async () => {
-      if (!userProfile?.id) return;
+  if (!userProfile?.id) return;
 
-      try {
-        // Fetch both assigned bookings AND pending bookings that match driver's vehicle
-        const [assignedBookings, pendingBookings] = await Promise.all([
-          // Get bookings already assigned to this driver
-          supabase
-            .from('bookings')
-            .select(`
-              *,
-              passengers (
-                id,
-                full_name,
-                phone,
-                email,
-                profile_photo_url,
-                preferred_temperature,
-                music_preference,
-                music_playlist_link,
-                interaction_preference,
-                trip_purpose,
-                additional_notes
-              )
-            `)
-            .eq('driver_id', userProfile.id)
-            .order('pickup_time', { ascending: true }),
-          
-          // Get pending bookings that match this driver's vehicle type
-          supabase
-            .from('bookings')
-            .select(`
-              *,
-              passengers (
-                id,
-                full_name,
-                phone,
-                email,
-                profile_photo_url,
-                preferred_temperature,
-                music_preference,
-                music_playlist_link,
-                interaction_preference,
-                trip_purpose,
-                additional_notes
-              )
-            `)
+  try {
+    const { data, error } = await supabase
+      .from('bookings')
+      .select(`
+        id,
+        pickup_location,
+        dropoff_location,
+        status,
+        passengers (
+          full_name,
+          profile_photo_url,
+          preferred_temperature,
+          music_preference,
+          music_playlist_link,
+          interaction_preference
+        )
+      `)
+      .eq('driver_id', userProfile.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching bookings:', error);
+      return;
+    }
+
+    setDriverRides(data);
+  } catch (err) {
+    console.error('Unexpected error fetching bookings:', err);
+  }
+};
             .eq('ride_status', 'pending_driver')
             .is('driver_id', null)
             .order('pickup_time', { ascending: true })
