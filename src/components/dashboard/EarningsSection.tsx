@@ -38,7 +38,7 @@ export const EarningsSection = ({ driverId }: EarningsSectionProps) => {
           .from('bookings')
           .select('final_price, created_at')
           .eq('driver_id', driverId)
-          .eq('payment_status', 'both_confirmed')
+          .eq('payment_confirmation_status', 'all_set')
           .not('final_price', 'is', null);
 
         if (error) {
@@ -87,8 +87,8 @@ export const EarningsSection = ({ driverId }: EarningsSectionProps) => {
           filter: `driver_id=eq.${driverId}`
         },
         (payload) => {
-          // Refetch earnings when payment status changes to both_confirmed
-          if (payload.new.payment_status === 'both_confirmed') {
+          // Refetch earnings when payment status changes to all_set
+          if (payload.new.payment_confirmation_status === 'all_set') {
             fetchEarnings();
           }
         }

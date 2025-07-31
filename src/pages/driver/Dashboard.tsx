@@ -23,9 +23,10 @@ import { BookingCard } from "@/components/dashboard/BookingCard";
 import OrganizedBookingsList from "@/components/dashboard/OrganizedBookingsList";
 import PendingRequestAlert from "@/components/dashboard/PendingRequestAlert";
 import StatusTracker, { BookingStatus } from "@/components/StatusTracker";
+import { StatusBadges } from "@/components/status/StatusBadges";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Car, DollarSign, User, LogOut, Clock, CheckCircle, Calendar, MessageCircle, Edit, CreditCard, Settings, Navigation, MapPin, Users, Map, ChevronDown } from "lucide-react";
+import { Car, DollarSign, User, LogOut, Clock, CheckCircle, Calendar, MessageCircle, Edit, CreditCard, Settings, Navigation, MapPin, Users, Map, ChevronDown, AlertCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const DriverDashboard = () => {
@@ -1024,16 +1025,18 @@ const DriverDashboard = () => {
                         return (
                           <Card key={ride.id} className="bg-white border-0 shadow-sm hover:shadow-md transition-all duration-300">
                             <CardContent className="p-5">
-                              {/* Status Badge */}
+                              {/* Status Badges */}
                               <div className="flex items-center justify-between mb-4">
                                 {isExpiringSoon && (
                                   <Badge className="bg-orange-500/10 text-orange-700 border-orange-200">
                                     ⏰ Expires soon
                                   </Badge>
                                 )}
-                                <Badge className="bg-green-500/10 text-green-700 border-green-200 ml-auto">
-                                  Accepted
-                                </Badge>
+                                <StatusBadges 
+                                  rideStatus={ride.ride_status || ride.status || 'pending'} 
+                                  paymentStatus={ride.payment_confirmation_status || 'waiting_for_offer'}
+                                  className="ml-auto"
+                                />
                               </div>
 
                               {/* Date and Time */}
@@ -1112,36 +1115,64 @@ const DriverDashboard = () => {
                                 </span>
                               </div>
 
-                              {/* Payment Status Display */}
-                              {ride.payment_confirmation_status === 'passenger_paid' && (
-                                <div className="mb-3">
-                                  <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800 mb-3">
-                                    <CheckCircle className="h-4 w-4 text-green-600" />
-                                    <span className="text-sm font-medium text-green-700 dark:text-green-300">
-                                      Passenger has confirmed payment
-                                    </span>
+                              {/* Enhanced Payment Status Display */}
+                              <div className="mb-4">
+                                <div className="p-3 bg-muted/30 rounded-xl border">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium text-foreground">Payment Status</span>
+                                    <StatusBadges 
+                                      rideStatus={ride.ride_status || ride.status || 'pending'} 
+                                      paymentStatus={ride.payment_confirmation_status || 'waiting_for_offer'}
+                                    />
                                   </div>
-                                  <Button
-                                    className="w-full bg-success hover:bg-success/90 text-white"
-                                    onClick={() => handleConfirmPaymentFromCard(ride)}
-                                  >
-                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                    Confirm Payment Received
-                                  </Button>
-                                </div>
-                              )}
+                                  
+                                  {/* Waiting for passenger payment */}
+                                  {(ride.payment_confirmation_status === 'waiting_for_payment' || 
+                                    ride.payment_confirmation_status === 'price_awaiting_acceptance') && (
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                      <Clock className="h-4 w-4" />
+                                      <span>Waiting for passenger to confirm payment</span>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Passenger confirmed payment */}
+                                  {ride.payment_confirmation_status === 'passenger_paid' && (
+                                    <div>
+                                      <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800 mb-3">
+                                        <CheckCircle className="h-4 w-4 text-blue-600" />
+                                        <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                                          Passenger has confirmed payment
+                                        </span>
+                                      </div>
+                                      <Button
+                                        className="w-full bg-success hover:bg-success/90 text-white"
+                                        onClick={() => handleConfirmPaymentFromCard(ride)}
+                                      >
+                                        <CheckCircle className="h-4 w-4 mr-2" />
+                                        Confirm Payment Received
+                                      </Button>
+                                    </div>
+                                  )}
 
-                              {/* All Set Status - Show when both sides confirmed */}
-                              {ride.payment_confirmation_status === 'all_set' && (
-                                <div className="mb-3 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
-                                  <div className="flex items-center gap-2">
-                                    <CheckCircle className="h-4 w-4 text-green-600" />
-                                    <span className="text-sm font-semibold text-green-700 dark:text-green-300">
-                                      ✅ Payment Received - All Set
-                                    </span>
-                                  </div>
+                                  {/* All Set Status */}
+                                  {ride.payment_confirmation_status === 'all_set' && (
+                                    <div className="flex items-center gap-2 p-2 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                                      <CheckCircle className="h-4 w-4 text-emerald-600" />
+                                      <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                                        ✅ Payment Received - All Set
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  {/* Awaiting driver confirmation */}
+                                  {ride.payment_confirmation_status === 'awaiting_driver_confirmation' && (
+                                    <div className="flex items-center gap-2 text-sm text-amber-600">
+                                      <AlertCircle className="h-4 w-4" />
+                                      <span>Awaiting your payment confirmation</span>
+                                    </div>
+                                  )}
                                 </div>
-                              )}
+                              </div>
 
                               {/* Message and Navigation Actions */}
                               <div className="flex items-center gap-3">

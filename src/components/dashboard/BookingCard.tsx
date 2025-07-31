@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CancelBookingButton } from "./CancelBookingButton";
+import { StatusBadges } from "@/components/status/StatusBadges";
 import { MapPin, Clock, User, Car, MessageCircle, Star, FileText, CheckCircle } from "lucide-react";
 
 interface BookingCardProps {
@@ -59,9 +60,16 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
               )}
             </div>
           </div>
-          <Badge className={getStatusColor(booking.status)}>
-            {getStatusText(booking.status)}
-          </Badge>
+          {booking.ride_status || booking.payment_confirmation_status ? (
+            <StatusBadges 
+              rideStatus={booking.ride_status || booking.status || 'pending'} 
+              paymentStatus={booking.payment_confirmation_status || 'waiting_for_offer'}
+            />
+          ) : (
+            <Badge className={getStatusColor(booking.status)}>
+              {getStatusText(booking.status)}
+            </Badge>
+          )}
         </div>
 
         <div className="space-y-3 mb-4">
