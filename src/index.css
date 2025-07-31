@@ -306,3 +306,8 @@
 .animate-subtext-entrance {
   animation: subtext-entrance 1s ease-out 4.5s both;
 }
+
+/* Safe area support for mobile devices */
+.pt-safe-top {
+  padding-top: env(safe-area-inset-top, 1rem);
+}
