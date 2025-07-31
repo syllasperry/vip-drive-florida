@@ -1398,59 +1398,36 @@ const DriverDashboard = () => {
               )}
 
               {rideView === "past" && (
-                <div className="space-y-4">
-                  {driverRides.filter(ride => 
+                <OrganizedBookingsList 
+                  bookings={driverRides.filter(ride => 
                     ride.status === "completed" || 
                     ride.status === "cancelled" || 
                     ride.payment_confirmation_status === "all_set" ||
-                    ride.ride_status === "all_set"
-                  ).length === 0 ? (
-                    <Card className="bg-white border-0 shadow-sm">
-                      <CardContent className="p-8 text-center">
-                        <div className="p-4 bg-muted/30 rounded-full w-fit mx-auto mb-4">
-                          <CheckCircle className="h-8 w-8 text-muted-foreground" />
-                        </div>
-                        <h3 className="font-semibold text-foreground mb-2">No past rides</h3>
-                        <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                          Your completed rides will appear here.
-                        </p>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    driverRides
-                      .filter(ride => 
-                        ride.status === "completed" || 
-                        ride.status === "cancelled" || 
-                        ride.payment_confirmation_status === "all_set" ||
-                        ride.ride_status === "all_set"
-                      )
-                      .map((ride) => (
-                        <div key={ride.id} className="border-2 border-border/40 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-card to-card/80 backdrop-blur-sm">
-                          <BookingCard
-                            booking={ride}
-                            userType="driver"
-                            onMessage={() => {
-                              setSelectedBookingForMessaging(ride);
-                              if (ride.passenger_id) {
-                                supabase
-                                  .from('passengers')
-                                  .select('*')
-                                  .eq('id', ride.passenger_id)
-                                  .maybeSingle()
-                                  .then(({ data: passenger, error }) => {
-                                    if (passenger && !error) {
-                                     setPassengerProfile(passenger);
-                                   }
-                                 });
-                             }
-                             setMessagingOpen(true);
-                           }}
-                           onViewSummary={() => handleViewSummary(ride)}
-                         />
-                        </div>
-                      ))
+                    ride.ride_status === "paid"
                   )}
-                </div>
+                  userType="driver"
+                  onMessage={(booking) => {
+                    setSelectedBookingForMessaging(booking);
+                    if (booking.passenger_id) {
+                      supabase
+                        .from('passengers')
+                        .select('*')
+                        .eq('id', booking.passenger_id)
+                        .maybeSingle()
+                        .then(({ data: passenger, error }) => {
+                          if (passenger && !error) {
+                            setPassengerProfile(passenger);
+                          }
+                        });
+                    }
+                    setMessagingOpen(true);
+                  }}
+                  onViewSummary={handleViewSummary}
+                  onCancelSuccess={() => {
+                    // Refresh bookings after cancellation
+                    window.location.reload();
+                  }}
+                />
               )}
             </div>
           )}
