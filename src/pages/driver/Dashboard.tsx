@@ -667,7 +667,7 @@ const DriverDashboard = () => {
             .from('bookings')
             .select(`
               *,
-              passengers:passenger_id (
+              passengers (
                 id,
                 full_name,
                 phone,
@@ -679,11 +679,6 @@ const DriverDashboard = () => {
                 interaction_preference,
                 trip_purpose,
                 additional_notes
-              ),
-              vehicles:vehicle_id (
-                id,
-                type,
-                description
               )
             `)
             .eq('driver_id', userProfile.id)
@@ -694,7 +689,7 @@ const DriverDashboard = () => {
             .from('bookings')
             .select(`
               *,
-              passengers:passenger_id (
+              passengers (
                 id,
                 full_name,
                 phone,
@@ -706,11 +701,6 @@ const DriverDashboard = () => {
                 interaction_preference,
                 trip_purpose,
                 additional_notes
-              ),
-              vehicles:vehicle_id (
-                id,
-                type,
-                description
               )
             `)
             .eq('ride_status', 'pending_driver')

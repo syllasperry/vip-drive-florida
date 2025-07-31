@@ -1,7 +1,8 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MapPin, Clock, User, Car, MessageCircle, FileText, DollarSign, CheckCircle, XCircle, Edit3, ChevronDown } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { MapPin, Clock, User, Car, MessageCircle, FileText, DollarSign, CheckCircle, XCircle, Edit3, ChevronDown, Thermometer, Volume2, VolumeX, MessageSquare, MessageSquareOff } from "lucide-react";
 import { StatusBadges } from "../status/StatusBadges";
 import { useToast } from "@/hooks/use-toast";
 
@@ -293,6 +294,54 @@ export const EnhancedBookingCard = ({
             </div>
           )}
         </div>
+
+        {/* Passenger Preferences for Drivers */}
+        {userType === "driver" && booking.passengers && (
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3 mb-4">
+            <h4 className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Passenger Preferences
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              {booking.passengers.preferred_temperature && (
+                <Badge variant="outline" className="text-xs">
+                  <Thermometer className="h-3 w-3 mr-1" />
+                  {booking.passengers.preferred_temperature}°F
+                </Badge>
+              )}
+              {booking.passengers.music_preference && (
+                <Badge variant="outline" className="text-xs">
+                  {booking.passengers.music_preference === 'yes' || booking.passengers.music_preference === 'on' ? (
+                    <Volume2 className="h-3 w-3 mr-1" />
+                  ) : (
+                    <VolumeX className="h-3 w-3 mr-1" />
+                  )}
+                  {booking.passengers.music_preference === 'yes' || booking.passengers.music_preference === 'on' ? 'Likes Music' : 'No Music'}
+                </Badge>
+              )}
+              {booking.passengers.interaction_preference && (
+                <Badge variant="outline" className="text-xs">
+                  {booking.passengers.interaction_preference === 'talk' ? (
+                    <MessageSquare className="h-3 w-3 mr-1" />
+                  ) : (
+                    <MessageSquareOff className="h-3 w-3 mr-1" />
+                  )}
+                  {booking.passengers.interaction_preference === 'talk' ? 'Likes to Talk' : 'Prefers Quiet'}
+                </Badge>
+              )}
+              {booking.passengers.trip_purpose && (
+                <Badge variant="outline" className="text-xs">
+                  {booking.passengers.trip_purpose}
+                </Badge>
+              )}
+            </div>
+            {booking.passengers.additional_notes && (
+              <p className="text-xs text-muted-foreground mt-2 italic">
+                Note: {booking.passengers.additional_notes}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-2">

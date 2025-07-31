@@ -53,7 +53,13 @@ export const TodoTab = ({
           passengers (
             id,
             full_name,
-            profile_photo_url
+            profile_photo_url,
+            preferred_temperature,
+            music_preference,
+            music_playlist_link,
+            interaction_preference,
+            trip_purpose,
+            additional_notes
           )
         `);
 
@@ -65,6 +71,7 @@ export const TodoTab = ({
 
       const { data, error } = await query
         .in('ride_status', ['pending_driver', 'offer_sent', 'confirmed'])
+        .or('payment_confirmation_status.eq.all_set')
         .order('pickup_time', { ascending: false }); // Most recent first
 
       if (error) throw error;
