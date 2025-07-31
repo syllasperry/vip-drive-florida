@@ -153,9 +153,13 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload, 
     try {
       console.log('Saving profile data:', formData, 'for user:', userProfile.id);
       
-      // Update driver profile in database
+      // Determine if this is a driver or passenger profile based on available fields
+      const isDriver = userProfile.hasOwnProperty('car_make') || userProfile.hasOwnProperty('car_model');
+      const tableName = isDriver ? 'drivers' : 'passengers';
+      
+      // Update profile in database
       const { error } = await supabase
-        .from('drivers')
+        .from(tableName)
         .update({
           full_name: formData.name,
           email: formData.email,
