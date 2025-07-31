@@ -1433,6 +1433,7 @@ const DriverDashboard = () => {
                             }
                             setMessagingOpen(true);
                           }}
+                          onViewSummary={() => handleViewSummary(ride)}
                         />
                       ))
                   )}
