@@ -740,6 +740,35 @@ const DriverDashboard = () => {
         const transformedBookings = allBookingsData
           .map(booking => {
             const pickupDate = new Date(booking.pickup_time);
+            
+            // Debug specific booking issues
+            console.log('=== TRANSFORMING BOOKING ===');
+            console.log('Booking ID:', booking.id);
+            console.log('Raw passengers data:', booking.passengers);
+            console.log('Passenger full_name:', booking.passengers?.full_name);
+            console.log('Payment confirmation status:', booking.payment_confirmation_status);
+            console.log('Status:', booking.status);
+            
+            // If passengers data is missing, try to fetch it manually as a fallback
+            let passengerData = booking.passengers;
+            if (!passengerData && booking.passenger_id) {
+              console.log('No passenger data found, will need manual fetch for:', booking.passenger_id);
+              // For now, create a placeholder that will trigger a manual fetch
+              passengerData = { 
+                id: booking.passenger_id, 
+                full_name: 'Loading...', 
+                phone: '', 
+                email: '', 
+                profile_photo_url: '', 
+                preferred_temperature: 0, 
+                music_preference: '', 
+                music_playlist_link: '', 
+                interaction_preference: '', 
+                trip_purpose: '', 
+                additional_notes: '' 
+              };
+            }
+            
             return {
               id: booking.id,
               date: pickupDate.toISOString().split('T')[0],
@@ -753,8 +782,8 @@ const DriverDashboard = () => {
               dropoff_location: booking.dropoff_location,
               from: booking.pickup_location,
               to: booking.dropoff_location,
-              passenger: booking.passengers?.full_name || 'Unknown Passenger',
-              passengers: booking.passengers, // Include full passenger data for avatar
+              passenger: passengerData?.full_name || 'Unknown Passenger',
+              passengers: passengerData, // Include full passenger data for avatar
               status: booking.status,
               ride_status: booking.ride_status,
               driver_id: booking.driver_id,

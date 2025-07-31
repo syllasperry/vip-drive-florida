@@ -60,6 +60,7 @@ const OrganizedBookingsList: React.FC<OrganizedBookingsListProps> = ({
       b.status === 'price_proposed' || 
       b.status === 'ready_to_go'
     ),
+    all_set: sortedBookings.filter(b => b.payment_confirmation_status === 'all_set'),
     completed: sortedBookings.filter(b => b.status === 'completed'),
     canceled: sortedBookings.filter(b => 
       b.status === 'cancelled' || 
@@ -87,6 +88,12 @@ const OrganizedBookingsList: React.FC<OrganizedBookingsListProps> = ({
           title: '🔵 💸 Payment Confirmed',
           bgColor: 'bg-blue-50 dark:bg-blue-950/20',
           borderColor: 'border-blue-200 dark:border-blue-800'
+        };
+      case 'all_set':
+        return {
+          title: '🟢 ✅ All Set',
+          bgColor: 'bg-green-50 dark:bg-green-950/20',
+          borderColor: 'border-green-200 dark:border-green-800'
         };
       case 'completed':
         return {
