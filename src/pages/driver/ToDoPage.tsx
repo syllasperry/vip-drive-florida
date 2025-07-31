@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, Clock, User, CreditCard, Thermometer, Volume2, VolumeX, MessageSquare, MessageSquareOff } from "lucide-react";
+import { MapPin, Clock, User, CreditCard, Thermometer, Volume2, VolumeX, MessageSquare, MessageSquareOff, Phone, FileText, ChevronDown } from "lucide-react";
 
 interface Booking {
   id: string;
@@ -15,6 +16,7 @@ interface Booking {
   passengers?: {
     full_name: string;
     profile_photo_url?: string;
+    phone?: string;
     preferred_temperature?: number;
     music_preference?: string;
     interaction_preference?: string;
@@ -46,6 +48,7 @@ const ToDoPage = () => {
             passengers (
               full_name,
               profile_photo_url,
+              phone,
               preferred_temperature,
               music_preference,
               interaction_preference
@@ -102,8 +105,8 @@ const ToDoPage = () => {
 
   return (
     <div className="min-h-screen bg-background p-4">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-foreground mb-6">To-Do</h1>
+      <div className="max-w-md mx-auto">
+        <h1 className="text-2xl font-bold text-foreground mb-6 text-center">To Do</h1>
         
         {bookings.length === 0 ? (
           <div className="text-center text-muted-foreground py-8">
@@ -115,13 +118,17 @@ const ToDoPage = () => {
               const { date, time } = formatDateTime(booking.pickup_time);
               
               return (
-                <Card key={booking.id} className="border border-border">
-                  <CardContent className="p-6">
-                    {/* Status Badge */}
-                    <div className="flex justify-between items-start mb-4">
-                      <Badge variant="secondary" className="bg-green-100 text-green-800">
-                        All Set
-                      </Badge>
+                <Card key={booking.id} className="bg-card border-border rounded-2xl overflow-hidden shadow-sm">
+                  <CardContent className="p-4">
+                    {/* Header with ride type and date */}
+                    <div className="flex justify-between items-center mb-4">
+                      <div>
+                        <h3 className="font-semibold text-foreground text-lg">Lhaff chaffer ride</h3>
+                        <p className="text-sm text-muted-foreground">{date}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-foreground">{time}</p>
+                      </div>
                     </div>
 
                     {/* Passenger Info */}
@@ -136,101 +143,147 @@ const ToDoPage = () => {
                             {booking.passengers.full_name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'U'}
                           </AvatarFallback>
                         </Avatar>
-                        <div>
+                        <div className="flex-1">
                           <p className="font-semibold text-foreground">{booking.passengers.full_name}</p>
-                          <p className="text-sm text-muted-foreground">Passageiro</p>
+                          <p className="text-sm text-muted-foreground">
+                            {booking.pickup_location} → {booking.dropoff_location}
+                          </p>
                         </div>
                       </div>
                     )}
 
-                    {/* Date and Time */}
-                    <div className="flex items-center gap-2 mb-4">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-foreground">{date} às {time}</span>
-                    </div>
-
-                    {/* Locations */}
-                    <div className="space-y-3 mb-4">
-                      <div className="flex items-start gap-3">
-                        <MapPin className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-foreground">Origem</p>
-                          <p className="text-sm text-muted-foreground">{booking.pickup_location}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-start gap-3">
-                        <MapPin className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-foreground">Destino</p>
-                          <p className="text-sm text-muted-foreground">{booking.dropoff_location}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Payment Method */}
-                    {booking.payment_method && (
-                      <div className="flex items-center gap-2 mb-4">
-                        <CreditCard className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-foreground">
-                          Método de pagamento: {booking.payment_method}
-                        </span>
+                    {/* Phone Number */}
+                    {booking.passengers?.phone && (
+                      <div className="flex justify-between items-center py-2 border-b border-border/50">
+                        <span className="text-sm text-muted-foreground">Phone Number</span>
+                        <span className="text-sm font-medium text-foreground">{booking.passengers.phone}</span>
                       </div>
                     )}
 
                     {/* Passenger Preferences */}
-                    {booking.passengers && (
-                      <div className="bg-muted/50 rounded-lg p-4">
-                        <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-                          <User className="h-4 w-4" />
-                          Preferências do Passageiro
-                        </h4>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          {/* Temperature */}
-                          {booking.passengers.preferred_temperature && (
-                            <div className="flex items-center gap-2">
-                              <Thermometer className="h-4 w-4 text-blue-500" />
-                              <span className="text-sm text-foreground">
-                                {booking.passengers.preferred_temperature}°C
-                              </span>
-                            </div>
-                          )}
-                          
-                          {/* Music Preference */}
-                          {booking.passengers.music_preference && (
-                            <div className="flex items-center gap-2">
-                              {booking.passengers.music_preference === 'yes' || 
-                               booking.passengers.music_preference === 'on' ? (
-                                <Volume2 className="h-4 w-4 text-green-500" />
-                              ) : (
-                                <VolumeX className="h-4 w-4 text-red-500" />
-                              )}
-                              <span className="text-sm text-foreground">
-                                {booking.passengers.music_preference === 'yes' || 
-                                 booking.passengers.music_preference === 'on' ? 
-                                 'Gosta de música' : 'Sem música'}
-                              </span>
-                            </div>
-                          )}
-                          
-                          {/* Interaction Preference */}
-                          {booking.passengers.interaction_preference && (
-                            <div className="flex items-center gap-2">
-                              {booking.passengers.interaction_preference === 'talk' ? (
-                                <MessageSquare className="h-4 w-4 text-blue-500" />
-                              ) : (
-                                <MessageSquareOff className="h-4 w-4 text-gray-500" />
-                              )}
-                              <span className="text-sm text-foreground">
-                                {booking.passengers.interaction_preference === 'talk' ? 
-                                 'Gosta de conversar' : 'Prefere silêncio'}
-                              </span>
-                            </div>
-                          )}
-                        </div>
+                    {booking.passengers?.preferred_temperature && (
+                      <div className="flex justify-between items-center py-2 border-b border-border/50">
+                        <span className="text-sm text-muted-foreground">Passenger boforelis</span>
+                        <span className="text-sm font-medium text-foreground">{booking.passengers.preferred_temperature}°C</span>
                       </div>
                     )}
+
+                    {/* Music/Sound Migration */}
+                    <div className="flex justify-between items-center py-2 border-b border-border/50 mb-4">
+                      <span className="text-sm text-muted-foreground">Sais migration</span>
+                      <span className="text-sm font-medium text-foreground">
+                        {booking.passengers?.music_preference === 'yes' || booking.passengers?.music_preference === 'on' ? 'Music On' : 'Music Off'}
+                      </span>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-3 mb-4">
+                      {/* Summary Button */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 bg-muted/50 hover:bg-muted text-foreground border-border"
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Summary
+                      </Button>
+
+                      {/* Maps Button */}
+                      <div className="flex-1 relative">
+                        <select 
+                          className="w-full appearance-none bg-primary text-primary-foreground px-3 py-2 rounded-md text-sm font-medium h-9 pr-8 cursor-pointer hover:bg-primary/90 transition-colors"
+                          onChange={(e) => {
+                            const navApp = e.target.value;
+                            if (!navApp) return;
+                            
+                            const pickup = encodeURIComponent(booking.pickup_location || '');
+                            const dropoff = encodeURIComponent(booking.dropoff_location || '');
+                            
+                            let url = '';
+                            switch (navApp) {
+                              case 'google':
+                                url = `https://www.google.com/maps/dir/?api=1&origin=${pickup}&destination=${dropoff}&travelmode=driving`;
+                                break;
+                              case 'apple':
+                                url = `https://maps.apple.com/?saddr=${pickup}&daddr=${dropoff}&dirflg=d`;
+                                break;
+                              case 'waze':
+                                url = `https://www.waze.com/ul?q=${dropoff}&navigate=yes&from=${pickup}`;
+                                break;
+                              default:
+                                url = `https://www.google.com/maps/dir/?api=1&origin=${pickup}&destination=${dropoff}&travelmode=driving`;
+                            }
+                            
+                            window.location.href = url;
+                            
+                            toast({
+                              title: `Opening ${navApp === 'apple' ? 'Apple Maps' : navApp === 'waze' ? 'Waze' : 'Google Maps'}`,
+                              description: "Redirecting to navigation app...",
+                            });
+                            
+                            // Reset select
+                            e.target.value = '';
+                          }}
+                        >
+                          <option value="">Maps</option>
+                          <option value="google">Google Maps</option>
+                          <option value="apple">Apple Maps</option>
+                          <option value="waze">Waze</option>
+                        </select>
+                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-primary-foreground pointer-events-none" />
+                      </div>
+                    </div>
+
+                    {/* Upcoming entries section */}
+                    <div className="bg-muted/30 rounded-xl p-3">
+                      <div className="flex justify-between items-center mb-2">
+                        <h4 className="text-sm font-medium text-foreground">Upcoming entries</h4>
+                        <span className="text-xs text-muted-foreground">{time}</span>
+                      </div>
+                      
+                      {/* Trip preferences in compact grid */}
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div className="text-center">
+                          <p className="font-medium text-foreground">Air State</p>
+                          <p className="text-muted-foreground">
+                            {booking.passengers?.preferred_temperature ? `${booking.passengers.preferred_temperature}°C` : 'Fitab'}
+                          </p>
+                        </div>
+                        <div className="text-center">
+                          <p className="font-medium text-foreground">Air Ente</p>
+                          <p className="text-muted-foreground">
+                            {booking.passengers?.music_preference === 'yes' || booking.passengers?.music_preference === 'on' ? 'Fitris' : 'Silent'}
+                          </p>
+                        </div>
+                        <div className="text-center">
+                          <p className="font-medium text-foreground">Sila Infoss</p>
+                          <p className="text-muted-foreground">
+                            {booking.passengers?.interaction_preference === 'talk' ? 'Talk' : 'Rius'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Maps and Secondary buttons */}
+                      <div className="flex justify-between items-center mt-3">
+                        <div className="text-xs">
+                          <p className="font-medium text-foreground">Rider ar paty masitantion</p>
+                          <p className="text-muted-foreground">Maps</p>
+                        </div>
+                        <div className="text-xs text-right">
+                          <p className="font-medium text-foreground">Ror fast</p>
+                          <p className="text-muted-foreground">Sertionary</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* All Set status */}
+                    <div className="flex items-center justify-between mt-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span className="text-sm font-medium text-foreground">All Set</span>
+                      </div>
+                      <span className="text-sm text-muted-foreground">1</span>
+                    </div>
                   </CardContent>
                 </Card>
               );
