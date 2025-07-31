@@ -668,7 +668,7 @@ const DriverDashboard = () => {
             .from('bookings')
             .select(`
               *,
-              passengers (
+              passengers!inner (
                 id,
                 full_name,
                 phone,
@@ -690,7 +690,7 @@ const DriverDashboard = () => {
             .from('bookings')
             .select(`
               *,
-              passengers (
+              passengers!inner (
                 id,
                 full_name,
                 phone,
@@ -787,7 +787,23 @@ const DriverDashboard = () => {
         console.log('Final transformed bookings:', transformedBookings);
         console.log('Bookings with All Set status:', transformedBookings.filter(b => b.payment_confirmation_status === 'all_set'));
         console.log('Bookings with completed status:', transformedBookings.filter(b => b.status === 'completed'));
-        console.log('Passenger data check:', transformedBookings.map(b => ({ id: b.id, passenger: b.passenger, passengers: b.passengers })));
+        console.log('Passenger data detailed check:', transformedBookings.map(b => ({ 
+          id: b.id, 
+          passenger_name: b.passenger, 
+          passengers_object: b.passengers,
+          has_passengers_data: !!b.passengers,
+          passenger_full_name: b.passengers?.full_name,
+          passenger_phone: b.passengers?.phone,
+          passenger_photo: b.passengers?.profile_photo_url,
+          payment_status: b.payment_confirmation_status
+        })));
+        console.log('ALL SET rides detailed:', transformedBookings.filter(b => b.payment_confirmation_status === 'all_set').map(b => ({
+          id: b.id,
+          passengers_object_exists: !!b.passengers,
+          full_name: b.passengers?.full_name,
+          phone: b.passengers?.phone,
+          photo_url: b.passengers?.profile_photo_url
+        })));
         console.log('Pending bookings error:', pendingBookings.error);
         console.log('Assigned bookings error:', assignedBookings.error);
         
