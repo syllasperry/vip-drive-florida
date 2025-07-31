@@ -31,6 +31,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { BookingSummaryModal } from "@/components/BookingSummaryModal";
 import { ContributorInfoModal } from "@/components/pdf/ContributorInfoModal";
 import { PDFGenerator } from "@/components/pdf/PDFGenerator";
+import ToDoPage from "./ToDoPage";
 
 const DriverDashboard = () => {
   const navigate = useNavigate();
@@ -1444,6 +1445,10 @@ const DriverDashboard = () => {
 
           {activeTab === "earnings" && (
             <EarningsSection driverId={userProfile?.id} />
+          )}
+
+          {activeTab === "todo" && (
+            <ToDoPage />
           )}
 
           {activeTab === "messages" && userProfile?.id && (
