@@ -334,6 +334,16 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload, 
                   <option value="individual">Individual</option>
                   <option value="business">Business</option>
                 </select>
+                
+                {/* Current Setting Display */}
+                {userProfile?.account_type && userProfile?.account_name && (
+                  <div className="mt-2 p-2 bg-muted/50 rounded-md border border-border/50">
+                    <p className="text-sm text-muted-foreground">
+                      <span className="font-medium">Current setting:</span>{" "}
+                      <span className="capitalize">{userProfile.account_type}</span> — {userProfile.account_name}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {formData.accountType && (
