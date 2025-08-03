@@ -137,7 +137,7 @@ const RideProgress = () => {
       const stageOrder = ['heading_to_pickup', 'arrived_at_pickup', 'passenger_onboard', 'in_transit', 'arrived_at_dropoff', 'ride_completed'];
       const currentIndex = stageOrder.indexOf(mappedStageId);
       
-      // Update ride stages completion status
+      // Update ride stages completion status - mark all stages up to current as completed
       setRideStages(prev => prev.map(stage => ({
         ...stage,
         completed: stageOrder.indexOf(stage.id) <= currentIndex
@@ -153,8 +153,12 @@ const RideProgress = () => {
         })
       }));
     } else {
-      // Initial state - no active stage
+      // Initial state - no active stage, reset all stages to uncompleted
       setActiveStageId(null);
+      setRideStages(prev => prev.map(stage => ({
+        ...stage,
+        completed: false
+      })));
     }
   };
 
@@ -180,14 +184,22 @@ const RideProgress = () => {
       const currentIndex = activeStageId ? stageOrder.indexOf(activeStageId) : -1;
       const newIndex = stageOrder.indexOf(stageId);
       
-      // Prevent going backwards
+      // Prevent going backwards - can only move forward or stay on same stage
       if (newIndex < currentIndex) {
         console.log('Cannot go backwards in ride stages');
         return;
       }
 
+      // If clicking on already active stage, do nothing (can't unselect)
+      if (activeStageId === stageId) {
+        console.log('Stage already selected');
+        return;
+      }
+
+      console.log('Updating ride stage to:', dbStage);
+
       // Special handling for ride completion
-      if (stageId === 'ride_completed' && checked) {
+      if (stageId === 'ride_completed') {
         const { error } = await supabase
           .from('bookings')
           .update({ 
@@ -199,7 +211,10 @@ const RideProgress = () => {
           })
           .eq('id', booking.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error updating ride completion:', error);
+          throw error;
+        }
       } else {
         // Update booking in database - this will trigger real-time updates
         const { error } = await supabase
@@ -210,18 +225,21 @@ const RideProgress = () => {
           })
           .eq('id', booking.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error updating ride stage:', error);
+          throw error;
+        }
       }
 
-      // Lock timestamp once set - don't update if already exists
+      console.log('Successfully updated ride stage to:', dbStage);
+
+      // Update local state immediately for better UX (but this will be overridden by real-time updates)
       const currentTimestamp = new Date().toLocaleTimeString('en-US', { 
         hour: '2-digit', 
         minute: '2-digit',
         hour12: true 
       });
 
-      // Update local state immediately for better UX
-      setActiveStageId(stageId);
       setStageTimestamps(prev => ({
         ...prev,
         [stageId]: prev[stageId] || currentTimestamp
