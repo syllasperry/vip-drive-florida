@@ -202,21 +202,20 @@ export const MessagesTab = ({ userType, userId, onSelectChat }: MessageTabProps)
         >
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="relative">
-                <Avatar className="w-10 h-10">
+              {/* Driver and Passenger Photos Side by Side */}
+              <div className="flex -space-x-2">
+                <Avatar className="w-10 h-10 border-2 border-background">
                   <AvatarImage src={chat.other_user_avatar} alt={chat.other_user_name} />
                   <AvatarFallback className="text-sm font-medium">
                     {chat.other_user_name.split(' ').map(n => n[0]).join('')}
                   </AvatarFallback>
                 </Avatar>
-                {chat.unread_count > 0 && (
-                  <Badge 
-                    variant="destructive" 
-                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
-                  >
-                    {chat.unread_count}
-                  </Badge>
-                )}
+                {/* Show current user avatar as second avatar for visual consistency */}
+                <Avatar className="w-10 h-10 border-2 border-background">
+                  <AvatarFallback className="text-sm font-medium bg-muted">
+                    D
+                  </AvatarFallback>
+                </Avatar>
               </div>
               
               <div className="flex-1 min-w-0">
@@ -236,8 +235,18 @@ export const MessagesTab = ({ userType, userId, onSelectChat }: MessageTabProps)
                 </p>
               </div>
               
-              <div className="text-xs text-muted-foreground">
-                {formatTime(chat.last_message_time)}
+              <div className="flex flex-col items-end gap-1">
+                <div className="text-xs text-muted-foreground">
+                  {formatTime(chat.last_message_time)}
+                </div>
+                {chat.unread_count > 0 && (
+                  <Badge 
+                    variant="destructive" 
+                    className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+                  >
+                    {chat.unread_count}
+                  </Badge>
+                )}
               </div>
             </div>
           </CardContent>

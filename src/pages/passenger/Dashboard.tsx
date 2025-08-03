@@ -69,17 +69,13 @@ const Dashboard = () => {
   // Group bookings
   const groupedBookings = {
     upcoming: bookings.filter(booking => {
-      const bookingDate = new Date(booking.pickup_time);
-      const now = new Date();
-      return (booking.ride_stage !== 'completed' && !['completed', 'cancelled', 'declined', 'offer_declined'].includes(booking.ride_status)) ||
-             (bookingDate >= now && !['completed', 'cancelled', 'declined', 'offer_declined'].includes(booking.ride_status));
+      // Only show upcoming if NOT completed
+      return booking.ride_stage !== 'completed' && 
+             !['completed', 'cancelled', 'declined', 'offer_declined'].includes(booking.ride_status);
     }),
     pastRides: bookings.filter(booking => {
-      const bookingDate = new Date(booking.pickup_time);
-      const now = new Date();
-      return booking.ride_stage === 'completed' || 
-             ['completed', 'cancelled', 'declined', 'offer_declined'].includes(booking.ride_status) ||
-             (bookingDate < now && !['pending_driver', 'offer_sent', 'waiting_for_payment', 'payment_confirmed', 'ready_to_go'].includes(booking.ride_status));
+      // Only show in past rides if actually completed with final status
+      return booking.ride_stage === 'completed';
     })
   };
 

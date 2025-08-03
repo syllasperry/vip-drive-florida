@@ -28,7 +28,7 @@ import StatusTracker, { BookingStatus } from "@/components/StatusTracker";
 import { StatusBadges } from "@/components/status/StatusBadges";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Car, DollarSign, User, LogOut, Clock, CheckCircle, Calendar, MessageCircle, Edit, CreditCard, Settings, Navigation, MapPin, Users, Map, ChevronDown, AlertCircle, Download, Mail, FileText } from "lucide-react";
+import { Car, DollarSign, User, LogOut, Clock, CheckCircle, Calendar, MessageCircle, Edit, CreditCard, Settings, Navigation, MapPin, Users, Map, ChevronDown, AlertCircle, Download, Mail, FileText, Bell, Shield } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { BookingSummaryModal } from "@/components/BookingSummaryModal";
 import { ContributorInfoModal } from "@/components/pdf/ContributorInfoModal";
@@ -124,8 +124,8 @@ const DriverDashboard = () => {
     console.log('Ride:', ride.id, 'Status:', ride.status, 'Payment status:', ride.payment_confirmation_status, 'Ride status:', ride.ride_status, 'Ride stage:', ride.ride_stage);
     console.log('Passenger:', ride.passenger, 'Passengers object:', ride.passengers);
     
-    // Priority 1: Completed rides go to Past Rides
-    if (ride.ride_stage === "completed" || ride.status === "completed" || ride.ride_status === "completed") {
+    // Priority 1: ONLY completed rides with final "completed" status go to Past Rides
+    if (ride.ride_stage === "completed") {
       const shouldBeInPastRides = rideView === "past-rides";
       console.log('Completed ride - Should be in Past Rides:', shouldBeInPastRides);
       return shouldBeInPastRides;
@@ -837,11 +837,93 @@ const DriverDashboard = () => {
         )}
 
         {activeTab === "settings" && (
-          <DriverSettingsModal
-            isOpen={true}
-            onClose={() => setActiveTab("rides")}
-            settingType={settingsType}
-          />
+          <div className="space-y-6 p-4">
+            {/* Header */}
+            <div className="text-center py-4">
+              <h2 className="text-2xl font-bold text-foreground mb-2">⚙️ Settings</h2>
+              <p className="text-sm text-muted-foreground">
+                Manage your driver preferences and account settings
+              </p>
+            </div>
+
+            {/* Settings Options */}
+            <div className="space-y-4">
+              <Button
+                variant="outline"
+                className="w-full h-14 justify-start text-left"
+                onClick={() => setSettingsType("notifications")}
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Bell className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <div className="font-medium">Notifications</div>
+                    <div className="text-sm text-muted-foreground">Manage notification preferences</div>
+                  </div>
+                </div>
+              </Button>
+
+              <Button
+                variant="outline"
+                className="w-full h-14 justify-start text-left"
+                onClick={() => setSettingsType("privacy")}
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Shield className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <div className="font-medium">Privacy & Security</div>
+                    <div className="text-sm text-muted-foreground">Control your privacy settings</div>
+                  </div>
+                </div>
+              </Button>
+
+              <Button
+                variant="outline"
+                className="w-full h-14 justify-start text-left"
+                onClick={() => setDriverPreferencesModalOpen(true)}
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <User className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <div className="font-medium">Driver Preferences</div>
+                    <div className="text-sm text-muted-foreground">Update your driver profile</div>
+                  </div>
+                </div>
+              </Button>
+
+              <Button
+                variant="outline"
+                className="w-full h-14 justify-start text-left"
+                onClick={() => setPaymentSettingsOpen(true)}
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <CreditCard className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <div className="font-medium">Payment Settings</div>
+                    <div className="text-sm text-muted-foreground">Manage payment methods</div>
+                  </div>
+                </div>
+              </Button>
+
+              <Button
+                variant="destructive"
+                className="w-full h-14 justify-start text-left mt-8"
+                onClick={handleLogout}
+              >
+                <div className="flex items-center space-x-3">
+                  <LogOut className="h-5 w-5" />
+                  <div className="font-medium">Sign Out</div>
+                </div>
+              </Button>
+            </div>
+          </div>
         )}
       </div>
 
@@ -851,6 +933,41 @@ const DriverDashboard = () => {
         onTabChange={setActiveTab}
         userType="driver"
       />
+
+      {/* Settings Modals */}
+      {settingsType && (
+        <DriverSettingsModal
+          isOpen={true}
+          onClose={() => setSettingsType(null)}
+          settingType={settingsType}
+        />
+      )}
+
+      {/* Driver Preferences Modal */}
+      {driverPreferencesModalOpen && (
+        <DriverPreferencesModal
+          isOpen={driverPreferencesModalOpen}
+          onClose={() => setDriverPreferencesModalOpen(false)}
+          userProfile={userProfile}
+          onProfileUpdate={() => fetchDriverBookings(userProfile)}
+        />
+      )}
+
+      {/* Payment Settings Modal */}
+      {paymentSettingsOpen && userProfile?.id && (
+        <DriverPaymentSettingsModal
+          isOpen={paymentSettingsOpen}
+          onClose={() => setPaymentSettingsOpen(false)}
+          driverId={userProfile.id}
+          currentData={{
+            payment_methods_accepted: userProfile.payment_methods_accepted,
+            cancellation_policy: userProfile.cancellation_policy,
+            preferred_payment_method: userProfile.preferred_payment_method,
+            payment_instructions: userProfile.payment_instructions
+          }}
+          onUpdate={() => fetchDriverBookings(userProfile)}
+        />
+      )}
 
       {/* Messaging Modal */}
       {messagingOpen && selectedBookingForMessaging && (
