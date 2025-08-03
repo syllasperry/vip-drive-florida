@@ -297,10 +297,6 @@ const DriverDashboard = () => {
         status: 'accepted',
         driver_id: userProfile.id
       };
-      
-      if (price) {
-        updateData.final_price = price;
-      }
 
       const { error } = await supabase
         .from('bookings')
@@ -537,7 +533,10 @@ const DriverDashboard = () => {
       {/* Profile Header */}
       <ProfileHeader 
         userProfile={userProfile}
-        onLogout={handleLogout}
+        onPhotoUpload={handlePhotoUpload}
+        userType="driver"
+        isOnline={isOnline}
+        onProfileUpdate={() => fetchDriverBookings(userProfile)}
       />
 
       {/* Main Content */}
@@ -745,7 +744,11 @@ const DriverDashboard = () => {
           <MessagesTab 
             userId={userProfile?.id} 
             userType="driver"
-            userName={userProfile?.full_name}
+            onSelectChat={(booking, otherUser) => {
+              setSelectedBookingForMessaging(booking);
+              setPassengerProfile(otherUser);
+              setMessagingOpen(true);
+            }}
           />
         )}
 
@@ -753,8 +756,7 @@ const DriverDashboard = () => {
           <DriverSettingsModal
             isOpen={true}
             onClose={() => setActiveTab("rides")}
-            profile={userProfile}
-            onPhotoUpload={handlePhotoUpload}
+            settingType={settingsType}
           />
         )}
       </div>
@@ -772,10 +774,12 @@ const DriverDashboard = () => {
           isOpen={messagingOpen}
           onClose={() => setMessagingOpen(false)}
           bookingId={selectedBookingForMessaging.id}
-          userId={userProfile?.id}
+          currentUserId={userProfile?.id}
           userType="driver"
-          userName={userProfile?.full_name}
+          currentUserName={userProfile?.full_name}
+          currentUserAvatar={userProfile?.profile_photo_url}
           otherUserName={passengerProfile?.full_name || selectedBookingForMessaging.passenger}
+          otherUserAvatar={passengerProfile?.profile_photo_url}
         />
       )}
     </div>
