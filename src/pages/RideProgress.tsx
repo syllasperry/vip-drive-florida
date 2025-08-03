@@ -118,8 +118,6 @@ const RideProgress = () => {
   };
 
   const updateStagesFromBooking = (bookingData: any) => {
-    // Start with all stages uncompleted by default
-    // Only mark current stage if it exists in database and is not the initial state
     const currentStage = bookingData.ride_stage;
     const stageMapping: { [key: string]: string } = {
       'driver_heading_to_pickup': 'heading_to_pickup',
@@ -132,19 +130,21 @@ const RideProgress = () => {
     
     const mappedStageId = stageMapping[currentStage];
     
-    // Don't auto-select first stage - let driver manually start the ride
-    if (currentStage && currentStage !== 'driver_heading_to_pickup') {
+    // Set active stage and lock in timestamp if not already set
+    if (currentStage && mappedStageId) {
       setActiveStageId(mappedStageId);
+      
+      // Only set timestamp if not already set (preserve original timestamps)
       setStageTimestamps(prev => ({
         ...prev,
-        [mappedStageId]: new Date().toLocaleTimeString('en-US', { 
+        [mappedStageId]: prev[mappedStageId] || new Date().toLocaleTimeString('en-US', { 
           hour: '2-digit', 
           minute: '2-digit',
           hour12: true 
         })
       }));
     } else {
-      // Initial state - all uncompleted
+      // Initial state - no active stage
       setActiveStageId(null);
     }
   };
@@ -166,6 +166,17 @@ const RideProgress = () => {
       const dbStage = stageMapping[stageId];
       if (!dbStage) return;
 
+      // Only allow progression forward, not backward
+      const stageOrder = ['heading_to_pickup', 'arrived_at_pickup', 'passenger_onboard', 'in_transit', 'arrived_at_dropoff', 'ride_completed'];
+      const currentIndex = activeStageId ? stageOrder.indexOf(activeStageId) : -1;
+      const newIndex = stageOrder.indexOf(stageId);
+      
+      // Prevent going backwards
+      if (newIndex < currentIndex) {
+        console.log('Cannot go backwards in ride stages');
+        return;
+      }
+
       // Special handling for ride completion
       if (stageId === 'ride_completed' && checked) {
         const { error } = await supabase
@@ -181,7 +192,7 @@ const RideProgress = () => {
 
         if (error) throw error;
       } else {
-        // Update booking in database
+        // Update booking in database - this will trigger real-time updates
         const { error } = await supabase
           .from('bookings')
           .update({ 
@@ -193,7 +204,6 @@ const RideProgress = () => {
         if (error) throw error;
       }
 
-      // Sequential progression logic - only one status active at a time
       // Lock timestamp once set - don't update if already exists
       const currentTimestamp = new Date().toLocaleTimeString('en-US', { 
         hour: '2-digit', 
@@ -201,7 +211,7 @@ const RideProgress = () => {
         hour12: true 
       });
 
-      // Update local state
+      // Update local state immediately for better UX
       setActiveStageId(stageId);
       setStageTimestamps(prev => ({
         ...prev,
@@ -321,14 +331,14 @@ const RideProgress = () => {
                       {isDriver ? (
                         <button
                           onClick={() => handleStageUpdate(stage.id, !isCompleted)}
-                          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all hover:scale-105 ${
+                          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 ${
                             isCompleted 
-                              ? 'bg-primary border-primary text-primary-foreground' 
-                              : 'border-muted-foreground hover:border-primary bg-background'
+                              ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-500/30' 
+                              : 'border-muted-foreground hover:border-green-500 hover:bg-green-50 bg-background'
                           } ${isInTransitWithStops ? 'bg-background border-background text-primary' : ''}`}
                         >
                           {isCompleted && (
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <svg className="w-4 h-4 font-bold" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
                           )}
@@ -336,11 +346,11 @@ const RideProgress = () => {
                       ) : (
                         <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
                           isCompleted 
-                            ? 'bg-primary border-primary text-primary-foreground' 
+                            ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-500/30' 
                             : 'border-muted-foreground bg-background'
                         } ${isInTransitWithStops ? 'bg-background border-background text-primary' : ''}`}>
                           {isCompleted && (
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <svg className="w-4 h-4 font-bold" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
                           )}

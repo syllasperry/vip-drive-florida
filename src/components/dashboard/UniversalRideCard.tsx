@@ -4,12 +4,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Clock, Phone, ChevronDown, Map } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { StatusBadges } from "@/components/status/StatusBadges";
 import { RideStatusFlow } from "@/components/ride/RideStatusFlow";
 import { AirbnbStyleReviewModal } from "@/components/review/AirbnbStyleReviewModal";
+import { supabase } from "@/integrations/supabase/client";
 
 interface UniversalRideCardProps {
   booking: any;
@@ -31,6 +32,38 @@ export const UniversalRideCard = ({
   const { toast } = useToast();
   const [preferencesOpen, setPreferencesOpen] = useState(true);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [currentBooking, setCurrentBooking] = useState(booking);
+  const [lastUpdated, setLastUpdated] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+
+  // Set up real-time subscription for this specific booking
+  useEffect(() => {
+    if (!booking?.id) return;
+
+    const channel = supabase
+      .channel(`booking-${booking.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'bookings',
+          filter: `id=eq.${booking.id}`
+        },
+        (payload) => {
+          console.log('Real-time booking update:', payload);
+          setCurrentBooking(payload.new);
+          setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+          
+          // Trigger status update callback
+          onStatusUpdate?.();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [booking?.id, onStatusUpdate]);
 
   const handlePhoneCall = (phone: string) => {
     if (phone) {
@@ -105,9 +138,9 @@ export const UniversalRideCard = ({
     }
   };
 
-  // Get passenger info based on user type
-  const passengerInfo = userType === "driver" ? booking.passengers : booking.passenger;
-  const driverInfo = userType === "passenger" ? booking.drivers : booking.driver;
+  // Get passenger info based on user type (use currentBooking for real-time updates)
+  const passengerInfo = userType === "driver" ? currentBooking.passengers : currentBooking.passenger;
+  const driverInfo = userType === "passenger" ? currentBooking.drivers : currentBooking.driver;
 
   // Determine which user info to display
   const displayUser = userType === "driver" ? passengerInfo : driverInfo;
@@ -117,9 +150,23 @@ export const UniversalRideCard = ({
     return null; // Don't render card if no passenger info for drivers
   }
 
+  // Create status display text based on current ride stage
+  const getStatusDisplayText = () => {
+    const stage = currentBooking.ride_stage;
+    const stageMap: { [key: string]: string } = {
+      'driver_heading_to_pickup': 'Driver Heading to Pickup',
+      'driver_arrived_at_pickup': 'Driver Arrived at Pickup',
+      'passenger_onboard': 'Passenger Onboard',
+      'in_transit': 'In Transit',
+      'driver_arrived_at_dropoff': 'Driver Arrived at Drop-off',
+      'completed': 'Ride Completed'
+    };
+    return stageMap[stage] || 'Status Unknown';
+  };
+
   return (
     <Card className={`transition-all duration-300 shadow-md hover:shadow-lg mx-4 my-2 rounded-lg ${
-      booking.payment_confirmation_status === 'all_set' 
+      currentBooking.payment_confirmation_status === 'all_set' 
         ? 'border-blue-500 border-2 bg-white' 
         : 'border-border hover:border-primary/50'
     }`}>
@@ -128,9 +175,17 @@ export const UniversalRideCard = ({
         {showStatusBadge && (
           <div className="flex items-center justify-between p-4 bg-white rounded-t-lg">
             <h2 className="text-lg font-semibold text-gray-900">
-              {booking.payment_confirmation_status === 'all_set' ? 'New Rides' : 'Ride Details'}
+              {currentBooking.payment_confirmation_status === 'all_set' ? 'Real Time' : 'Ride Details'}
             </h2>
-            {booking.payment_confirmation_status === 'all_set' ? (
+            {currentBooking.payment_confirmation_status === 'all_set' && currentBooking.ride_stage ? (
+              <div className="flex flex-col items-end">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm font-semibold text-gray-900">{getStatusDisplayText()}</span>
+                </div>
+                <span className="text-xs text-gray-500">Updated: {lastUpdated}</span>
+              </div>
+            ) : currentBooking.payment_confirmation_status === 'all_set' ? (
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
                   <div className="w-3 h-3 text-white">✓</div>
@@ -139,8 +194,8 @@ export const UniversalRideCard = ({
               </div>
             ) : (
               <StatusBadges 
-                rideStatus={booking.ride_status || booking.status || 'pending'} 
-                paymentStatus={booking.payment_confirmation_status || 'waiting_for_offer'}
+                rideStatus={currentBooking.ride_status || currentBooking.status || 'pending'} 
+                paymentStatus={currentBooking.payment_confirmation_status || 'waiting_for_offer'}
               />
             )}
           </div>
@@ -302,12 +357,12 @@ export const UniversalRideCard = ({
           )}
 
           {/* Ride Status Flow - Show for rides that are in progress */}
-          {booking.payment_confirmation_status === 'all_set' && 
-           booking.ride_stage && 
-           booking.ride_stage !== 'completed' && (
+          {currentBooking.payment_confirmation_status === 'all_set' && 
+           currentBooking.ride_stage && 
+           currentBooking.ride_stage !== 'completed' && (
             <div className="mt-4">
               <RideStatusFlow 
-                booking={booking}
+                booking={currentBooking}
                 userType={userType}
                 onStatusUpdate={onStatusUpdate}
               />
@@ -316,7 +371,7 @@ export const UniversalRideCard = ({
 
           {/* Review Button - Show for completed rides (passenger only) */}
           {userType === "passenger" && 
-           booking.ride_stage === 'completed' && (
+           currentBooking.ride_stage === 'completed' && (
             <div className="mt-4">
               <Button
                 onClick={() => setReviewModalOpen(true)}
@@ -373,7 +428,7 @@ export const UniversalRideCard = ({
           <AirbnbStyleReviewModal
             isOpen={reviewModalOpen}
             onClose={() => setReviewModalOpen(false)}
-            booking={booking}
+            booking={currentBooking}
           />
         </div>
       </CardContent>

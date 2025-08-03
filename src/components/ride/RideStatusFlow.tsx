@@ -78,6 +78,7 @@ export const RideStatusFlow = ({ booking, userType, onStatusUpdate }: RideStatus
   const [extraStops, setExtraStops] = useState<string[]>(booking.extra_stops || []);
   const [newStop, setNewStop] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
+  const [currentTimestamp, setCurrentTimestamp] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
   
   // Calculate estimated arrival time (for driver_heading_to_pickup stage)
   const getEstimatedArrival = () => {
@@ -100,6 +101,9 @@ export const RideStatusFlow = ({ booking, userType, onStatusUpdate }: RideStatus
 
     setIsUpdating(true);
     try {
+      // Update timestamp for instant feedback
+      setCurrentTimestamp(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      
       const updateData: any = { 
         ride_stage: nextStage,
         updated_at: new Date().toISOString()
@@ -114,6 +118,7 @@ export const RideStatusFlow = ({ booking, userType, onStatusUpdate }: RideStatus
         updateData.ride_status = 'completed';
       }
 
+      // Update database - this will trigger real-time updates to passenger dashboard
       const { error } = await supabase
         .from('bookings')
         .update(updateData)
@@ -121,9 +126,10 @@ export const RideStatusFlow = ({ booking, userType, onStatusUpdate }: RideStatus
 
       if (error) throw error;
 
+      const nextConfig = stageConfig[nextStage];
       toast({
         title: "Status Updated",
-        description: `Ride status updated to: ${config.title}`,
+        description: `Ride status updated to: ${nextConfig.title}`,
       });
 
       onStatusUpdate?.(nextStage);
@@ -209,8 +215,8 @@ export const RideStatusFlow = ({ booking, userType, onStatusUpdate }: RideStatus
               <h3 className="font-semibold text-lg">{config.title}</h3>
               <p className="text-sm opacity-80">{config.description}</p>
             </div>
-            <Badge variant="secondary" className="text-xs">
-              {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            <Badge variant="secondary" className="text-xs font-medium">
+              {currentTimestamp}
             </Badge>
           </div>
           
