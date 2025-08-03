@@ -1,13 +1,14 @@
-import { Car, Calendar, MessageCircle, CreditCard, Settings, DollarSign, AlertCircle } from "lucide-react";
+import { Car, Calendar, MessageCircle, CreditCard, Settings, DollarSign, AlertCircle, Navigation } from "lucide-react";
 
 interface BottomNavigationProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   userType: "passenger" | "driver";
   pendingActionsCount?: number;
+  hasActiveRide?: boolean;
 }
 
-export const BottomNavigation = ({ activeTab, onTabChange, userType, pendingActionsCount = 0 }: BottomNavigationProps) => {
+export const BottomNavigation = ({ activeTab, onTabChange, userType, pendingActionsCount = 0, hasActiveRide = false }: BottomNavigationProps) => {
   const passengerTabs = [
     { id: "bookings", label: "Bookings", icon: Calendar },
     { id: "todo", label: "To-Do", icon: AlertCircle, badge: pendingActionsCount },
@@ -23,12 +24,20 @@ export const BottomNavigation = ({ activeTab, onTabChange, userType, pendingActi
     { id: "settings", label: "Settings", icon: Settings }
   ];
 
-  const tabs = userType === "passenger" ? passengerTabs : driverTabs;
+  // Add ride progress button when there's an active ride
+  const rideProgressTab = { id: "rideProgress", label: "Ride Progress", icon: Navigation };
+  
+  let finalTabs = userType === "passenger" ? passengerTabs : driverTabs;
+  
+  if (hasActiveRide) {
+    // Insert ride progress as second-to-last tab
+    finalTabs = [...finalTabs.slice(0, -1), rideProgressTab, finalTabs[finalTabs.length - 1]];
+  }
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border/50 backdrop-blur-lg z-50">
-      <div className={`grid ${userType === "driver" ? "grid-cols-4" : "grid-cols-5"} max-w-lg mx-auto`}>
-        {tabs.map((tab) => {
+      <div className={`grid grid-cols-${finalTabs.length} max-w-lg mx-auto`}>
+        {finalTabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           

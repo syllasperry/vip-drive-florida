@@ -255,6 +255,11 @@ const Dashboard = () => {
 
   // Handle tab navigation
   const handleTabChange = (tab: string) => {
+    if (tab === 'rideProgress') {
+      navigate('/ride-progress');
+      return;
+    }
+    
     setActiveTab(tab);
     
     switch (tab) {
@@ -697,6 +702,7 @@ const Dashboard = () => {
             activeTab={activeTab}
             onTabChange={handleTabChange}
             userType="passenger"
+            hasActiveRide={groupedBookings.upcoming.length > 0}
           />
         )}
       </div>

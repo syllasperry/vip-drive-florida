@@ -857,8 +857,15 @@ const DriverDashboard = () => {
       {/* Bottom Navigation */}
       <BottomNavigation
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={(tab) => {
+          if (tab === 'rideProgress') {
+            navigate('/ride-progress');
+          } else {
+            setActiveTab(tab);
+          }
+        }}
         userType="driver"
+        hasActiveRide={true}
       />
 
       {/* Settings Modals */}
