@@ -75,15 +75,12 @@ export class PushNotificationService {
   }
 
   async saveSubscription(subscription: PushSubscription): Promise<void> {
-    const user = await supabase.auth.getUser();
-    if (!user.data.user) return;
-
-    await supabase.from('push_subscriptions').upsert({
-      user_id: user.data.user.id,
-      subscription: JSON.stringify(subscription),
+    // TODO: Save to database once types are regenerated
+    console.log('Push subscription ready:', subscription.endpoint);
+    localStorage.setItem('push_subscription', JSON.stringify({
       endpoint: subscription.endpoint,
-      updated_at: new Date().toISOString()
-    });
+      keys: subscription.toJSON()
+    }));
   }
 
   async unsubscribe(): Promise<void> {
@@ -93,15 +90,7 @@ export class PushNotificationService {
       
       if (subscription) {
         await subscription.unsubscribe();
-        
-        // Remove from Supabase
-        const user = await supabase.auth.getUser();
-        if (user.data.user) {
-          await supabase
-            .from('push_subscriptions')
-            .delete()
-            .eq('user_id', user.data.user.id);
-        }
+        localStorage.removeItem('push_subscription');
       }
     } catch (error) {
       console.error('Failed to unsubscribe from push notifications:', error);
