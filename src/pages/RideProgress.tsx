@@ -129,21 +129,19 @@ const RideProgress = () => {
     
     const mappedStageId = stageMapping[currentStage];
     
-    // Set active stage and mark all previous stages as completed
+    console.log('Updating stages from booking. Current stage:', currentStage, 'Mapped:', mappedStageId);
+    
+    // Set active stage
     if (currentStage && mappedStageId) {
       setActiveStageId(mappedStageId);
       
-      // Mark all stages up to and including current as completed
-      const stageOrder = ['heading_to_pickup', 'arrived_at_pickup', 'passenger_onboard', 'in_transit', 'arrived_at_dropoff', 'ride_completed'];
-      const currentIndex = stageOrder.indexOf(mappedStageId);
-      
-      // Update ride stages completion status - mark all stages up to current as completed
+      // Single selection model: only mark the CURRENT active stage as completed
       setRideStages(prev => prev.map(stage => ({
         ...stage,
-        completed: stageOrder.indexOf(stage.id) <= currentIndex
+        completed: stage.id === mappedStageId
       })));
       
-      // Only set timestamp if not already set (preserve original timestamps)
+      // Set timestamp for active stage if not already set
       setStageTimestamps(prev => ({
         ...prev,
         [mappedStageId]: prev[mappedStageId] || new Date().toLocaleTimeString('en-US', { 
@@ -152,13 +150,16 @@ const RideProgress = () => {
           hour12: true 
         })
       }));
+      
+      console.log('Active stage set to:', mappedStageId);
     } else {
-      // Initial state - no active stage, reset all stages to uncompleted
+      // Initial state - no active stage
       setActiveStageId(null);
       setRideStages(prev => prev.map(stage => ({
         ...stage,
         completed: false
       })));
+      console.log('No active stage, resetting all');
     }
   };
 
@@ -362,7 +363,9 @@ const RideProgress = () => {
                           className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 ${
                             isCompleted 
                               ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-500/30' 
-                              : 'border-muted-foreground hover:border-green-500 hover:bg-green-50 bg-background'
+                              : isCurrentStage
+                                ? 'border-primary bg-primary/10 hover:bg-primary/20'
+                                : 'border-muted-foreground hover:border-green-500 hover:bg-green-50 bg-background'
                           } ${isInTransitWithStops ? 'bg-background border-background text-primary' : ''}`}
                         >
                           {isCompleted && (
