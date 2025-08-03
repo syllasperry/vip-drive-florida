@@ -1,8 +1,8 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { StatusBadges } from "@/components/status/StatusBadges";
-import { MapPin, Clock, Car, MessageCircle, FileText, ChevronDown, Phone, Settings, User } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { MapPin, Clock, Car, MessageCircle, FileText, ChevronDown, Phone, Settings, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -70,57 +70,56 @@ export const NewRidesBookingCard = ({ booking, onMessage, onViewSummary }: NewRi
   };
 
   return (
-    <Card className="border-primary/50 border-2 hover:shadow-[var(--shadow-subtle)] transition-all duration-300 shadow-sm bg-card/50 backdrop-blur-sm">
-      <CardContent className="p-5">
-        {/* Header with Date/Time and Status */}
-        <div className="flex items-center justify-between mb-4">
+    <Card className="border-primary border-2 hover:shadow-lg transition-all duration-300 shadow-md bg-card">
+      <CardContent className="p-6">
+        {/* Header with Date/Time and All Set Status */}
+        <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary/10 rounded-full">
-              <Clock className="h-4 w-4 text-primary" />
+              <Clock className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-sm font-medium text-foreground">
-                {booking.pickup_time ? new Date(booking.pickup_time).toLocaleDateString() : ''} at {booking.pickup_time ? new Date(booking.pickup_time).toLocaleTimeString() : ''}
+              <p className="text-lg font-semibold text-foreground">
+                📅 {booking.pickup_time ? new Date(booking.pickup_time).toLocaleDateString() : ''} at {booking.pickup_time ? new Date(booking.pickup_time).toLocaleTimeString() : ''}
               </p>
             </div>
           </div>
-          <StatusBadges 
-            rideStatus={booking.ride_status || booking.status || 'pending'} 
-            paymentStatus={booking.payment_confirmation_status || 'waiting_for_offer'}
-          />
+          <Badge className="bg-green-100 text-green-800 border-green-200 px-3 py-1 text-sm font-semibold">
+            ✅ All Set
+          </Badge>
         </div>
 
         {/* Passenger Information */}
         {booking.passengers && (
-          <div className="bg-gradient-to-r from-primary/5 to-primary-glow/5 border border-primary/20 rounded-lg p-4 mb-4">
-            <div className="flex items-center gap-3 mb-3">
-              <Avatar className="h-14 w-14 border-2 border-primary/20">
+          <div className="bg-gradient-to-r from-primary/10 to-primary/5 border-2 border-primary/30 rounded-lg p-5 mb-6">
+            <div className="flex items-center gap-4 mb-4">
+              <Avatar className="h-16 w-16 border-2 border-primary/30">
                 <AvatarImage 
                   src={booking.passengers?.profile_photo_url} 
                   alt={booking.passengers?.full_name}
                 />
-                <AvatarFallback className="bg-primary/10 text-primary font-semibold text-lg">
+                <AvatarFallback className="bg-primary/10 text-primary font-bold text-xl">
                   {booking.passengers?.full_name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'P'}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
-                <p className="font-semibold text-foreground text-lg">
-                  {booking.passengers?.full_name || 'Passenger'}
+                <p className="font-bold text-foreground text-xl mb-1">
+                  🧑‍💼 {booking.passengers?.full_name || 'Passenger'}
                 </p>
                 {booking.passengers?.phone && (
                   <Button
                     variant="link"
                     size="sm"
-                    className="h-auto p-0 text-primary hover:text-primary/80 font-medium"
+                    className="h-auto p-0 text-primary hover:text-primary/80 font-semibold text-base"
                     onClick={() => handlePhoneCall(booking.passengers.phone)}
                   >
-                    <Phone className="h-4 w-4 mr-1" />
-                    {booking.passengers.phone}
+                    <Phone className="h-4 w-4 mr-2" />
+                    📞 {booking.passengers.phone}
                   </Button>
                 )}
                 {booking.passengers?.email && (
-                  <p className="text-sm text-muted-foreground">
-                    {booking.passengers?.email}
+                  <p className="text-sm text-muted-foreground mt-1">
+                    📧 {booking.passengers?.email}
                   </p>
                 )}
               </div>
@@ -132,56 +131,57 @@ export const NewRidesBookingCard = ({ booking, onMessage, onViewSummary }: NewRi
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full flex items-center justify-between border-primary/30 hover:bg-primary/5"
+                  className="w-full flex items-center justify-between border-primary/40 hover:bg-primary/10 text-base font-semibold py-3"
                 >
                   <span className="flex items-center gap-2">
-                    <Settings className="h-4 w-4" />
-                    Passenger Preferences
+                    <Settings className="h-5 w-5" />
+                    🎛️ Passenger Preferences
                   </span>
-                  <ChevronDown className={`h-4 w-4 transition-transform ${preferencesOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`h-5 w-5 transition-transform ${preferencesOpen ? 'rotate-180' : ''}`} />
                 </Button>
               </CollapsibleTrigger>
-              <CollapsibleContent className="mt-3">
-                <div className="bg-white/50 rounded-lg p-3 space-y-2 text-sm">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <p className="font-medium text-foreground">Temperature:</p>
-                      <p className="text-muted-foreground">{formatTemperature(booking.passengers.preferred_temperature)}</p>
+              <CollapsibleContent className="mt-4">
+                <div className="bg-white/80 rounded-lg p-4 space-y-4 text-sm border border-primary/20">
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                      <p className="font-semibold text-foreground">🌡️ Temperature:</p>
+                      <p className="text-muted-foreground font-medium">{formatTemperature(booking.passengers.preferred_temperature)}</p>
                     </div>
-                    <div>
-                      <p className="font-medium text-foreground">Music:</p>
-                      <p className="text-muted-foreground">{formatMusicPreference(booking.passengers.music_preference)}</p>
+                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                      <p className="font-semibold text-foreground">🎵 Music:</p>
+                      <p className="text-muted-foreground font-medium">{formatMusicPreference(booking.passengers.music_preference)}</p>
                     </div>
                   </div>
                   
                   {booking.passengers.music_playlist_link && booking.passengers.music_preference === 'playlist' && (
-                    <div>
-                      <p className="font-medium text-foreground">Playlist:</p>
+                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                      <p className="font-semibold text-foreground mb-2">🎧 Playlist:</p>
                       <a 
                         href={booking.passengers.music_playlist_link} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="text-primary hover:text-primary/80 underline break-all"
+                        className="text-primary hover:text-primary/80 underline break-all text-sm font-medium flex items-center gap-1"
                       >
+                        <ExternalLink className="h-4 w-4" />
                         {booking.passengers.music_playlist_link}
                       </a>
                     </div>
                   )}
                   
-                  <div>
-                    <p className="font-medium text-foreground">Interaction:</p>
-                    <p className="text-muted-foreground">{formatInteractionPreference(booking.passengers.interaction_preference)}</p>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <p className="font-semibold text-foreground">💬 Interaction:</p>
+                    <p className="text-muted-foreground font-medium">{formatInteractionPreference(booking.passengers.interaction_preference)}</p>
                   </div>
                   
-                  <div>
-                    <p className="font-medium text-foreground">Trip Purpose:</p>
-                    <p className="text-muted-foreground">{formatTripPurpose(booking.passengers.trip_purpose)}</p>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <p className="font-semibold text-foreground">🎯 Trip Purpose:</p>
+                    <p className="text-muted-foreground font-medium">{formatTripPurpose(booking.passengers.trip_purpose)}</p>
                   </div>
                   
                   {booking.passengers.additional_notes && (
-                    <div>
-                      <p className="font-medium text-foreground">Additional Notes:</p>
-                      <p className="text-muted-foreground italic">{booking.passengers.additional_notes}</p>
+                    <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                      <p className="font-semibold text-foreground mb-2">📝 Additional Notes:</p>
+                      <p className="text-muted-foreground italic font-medium">{booking.passengers.additional_notes}</p>
                     </div>
                   )}
                 </div>
@@ -191,41 +191,41 @@ export const NewRidesBookingCard = ({ booking, onMessage, onViewSummary }: NewRi
         )}
 
         {/* Route Information */}
-        <div className="space-y-3 mb-4">
+        <div className="space-y-4 mb-6">
           <div className="flex items-start gap-3">
-            <MapPin className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+            <MapPin className="h-5 w-5 text-primary mt-1 flex-shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground">{booking.pickup_location || 'Pickup location'}</p>
-              <div className="flex items-center gap-2 my-1">
+              <p className="text-base font-semibold text-foreground mb-2">📍 {booking.pickup_location || 'Pickup location'}</p>
+              <div className="flex items-center gap-2 my-3">
                 <div className="h-px bg-border flex-1"></div>
-                <Car className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                <Car className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <div className="h-px bg-border flex-1"></div>
               </div>
-              <p className="text-sm text-muted-foreground">{booking.dropoff_location || 'Dropoff location'}</p>
+              <p className="text-base font-semibold text-foreground">🎯 {booking.dropoff_location || 'Dropoff location'}</p>
             </div>
           </div>
 
           {/* Vehicle Information */}
-          <div className="flex items-center gap-3">
-            <Car className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium text-foreground">{getDriverCarInfo()}</span>
+          <div className="flex items-center gap-3 bg-blue-50 p-3 rounded-lg border border-blue-200">
+            <Car className="h-5 w-5 text-primary" />
+            <span className="text-base font-semibold text-foreground">🚘 {getDriverCarInfo()}</span>
           </div>
 
           {/* Price */}
           {(booking.final_price || booking.estimated_price) && (
-            <div className="text-right">
-              <p className="text-xl font-bold text-primary">${booking.final_price || booking.estimated_price}</p>
+            <div className="text-right bg-green-50 p-3 rounded-lg border border-green-200">
+              <p className="text-2xl font-bold text-primary">💲 ${booking.final_price || booking.estimated_price}</p>
             </div>
           )}
         </div>
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-3">
           <Button
             onClick={onMessage}
             variant="outline"
             size="sm"
-            className="flex items-center justify-center gap-2"
+            className="flex items-center justify-center gap-2 py-3"
           >
             <MessageCircle className="h-4 w-4" />
             Message
@@ -236,7 +236,7 @@ export const NewRidesBookingCard = ({ booking, onMessage, onViewSummary }: NewRi
               onClick={onViewSummary}
               variant="outline"
               size="sm"
-              className="flex items-center justify-center gap-2"
+              className="flex items-center justify-center gap-2 py-3"
             >
               <FileText className="h-4 w-4" />
               Summary
@@ -246,7 +246,7 @@ export const NewRidesBookingCard = ({ booking, onMessage, onViewSummary }: NewRi
           {/* Maps Navigation */}
           <div className="relative col-span-2">
             <select 
-              className="appearance-none bg-primary text-primary-foreground px-3 py-2 rounded-md text-sm font-medium w-full h-9 pr-8 cursor-pointer hover:bg-primary/90 transition-colors text-center"
+              className="appearance-none bg-primary text-primary-foreground px-4 py-3 rounded-md text-sm font-medium w-full cursor-pointer hover:bg-primary/90 transition-colors text-center"
               onChange={(e) => {
                 const navApp = e.target.value;
                 if (!navApp) return;
@@ -285,7 +285,7 @@ export const NewRidesBookingCard = ({ booking, onMessage, onViewSummary }: NewRi
               <option value="apple">Apple Maps</option>
               <option value="waze">Waze</option>
             </select>
-            <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-primary-foreground pointer-events-none" />
+            <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-primary-foreground pointer-events-none" />
           </div>
         </div>
       </CardContent>
