@@ -23,14 +23,17 @@ const RideProgress = () => {
   const [passenger, setPassenger] = useState<any>(null);
   const [extraStopLocation, setExtraStopLocation] = useState('');
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
-  const [rideStages, setRideStages] = useState<RideStage[]>([
-    { id: 'heading_to_pickup', title: 'Driver heading to pickup', completed: false },
-    { id: 'arrived_at_pickup', title: 'Driver arrived at pickup', completed: false },
-    { id: 'passenger_onboard', title: 'Passenger onboard', completed: false },
-    { id: 'in_transit', title: 'In transit with optional stops', completed: false },
-    { id: 'arrived_at_dropoff', title: 'Driver arrived at drop-off location', completed: false },
-    { id: 'ride_completed', title: 'Ride completed successfully', completed: false },
-  ]);
+  const [activeStageId, setActiveStageId] = useState<string | null>(null);
+  const [stageTimestamps, setStageTimestamps] = useState<Record<string, string>>({});
+  
+  const rideStages = [
+    { id: 'heading_to_pickup', title: 'Driver heading to pickup' },
+    { id: 'arrived_at_pickup', title: 'Driver arrived at pickup' },
+    { id: 'passenger_onboard', title: 'Passenger onboard' },
+    { id: 'in_transit', title: 'In transit with optional stops' },
+    { id: 'arrived_at_dropoff', title: 'Driver arrived at drop-off location' },
+    { id: 'ride_completed', title: 'Ride completed successfully' },
+  ];
 
   useEffect(() => {
     console.log('RideProgress - Location state:', location.state);
@@ -127,26 +130,22 @@ const RideProgress = () => {
       'completed': 'ride_completed'
     };
     
-    const activeStageId = stageMapping[currentStage];
+    const mappedStageId = stageMapping[currentStage];
     
     // Don't auto-select first stage - let driver manually start the ride
     if (currentStage && currentStage !== 'driver_heading_to_pickup') {
-      setRideStages(prev => prev.map(stage => ({
-        ...stage,
-        completed: stage.id === activeStageId,
-        timestamp: stage.id === activeStageId ? new Date().toLocaleTimeString('en-US', { 
+      setActiveStageId(mappedStageId);
+      setStageTimestamps(prev => ({
+        ...prev,
+        [mappedStageId]: new Date().toLocaleTimeString('en-US', { 
           hour: '2-digit', 
           minute: '2-digit',
           hour12: true 
-        }) : undefined
-      })));
+        })
+      }));
     } else {
       // Initial state - all uncompleted
-      setRideStages(prev => prev.map(stage => ({
-        ...stage,
-        completed: false,
-        timestamp: undefined
-      })));
+      setActiveStageId(null);
     }
   };
 
@@ -202,21 +201,11 @@ const RideProgress = () => {
         hour12: true 
       });
 
-      setRideStages(prev => prev.map(stage => {
-        if (stage.id === stageId && checked) {
-          return { 
-            ...stage, 
-            completed: true, 
-            // Keep existing timestamp if already set, otherwise set new one
-            timestamp: stage.timestamp || currentTimestamp
-          };
-        } else {
-          return { 
-            ...stage, 
-            completed: false
-            // Keep existing timestamps for completed stages
-          };
-        }
+      // Update local state
+      setActiveStageId(stageId);
+      setStageTimestamps(prev => ({
+        ...prev,
+        [stageId]: prev[stageId] || currentTimestamp
       }));
 
     } catch (error) {
@@ -317,7 +306,9 @@ const RideProgress = () => {
         {/* Ride Status Timeline */}
         <div className="space-y-3">
           {rideStages.map((stage, index) => {
-            const isInTransitWithStops = stage.id === 'in_transit' && stage.completed;
+            const isCompleted = activeStageId === stage.id;
+            const timestamp = stageTimestamps[stage.id];
+            const isInTransitWithStops = stage.id === 'in_transit' && isCompleted;
             
             return (
               <div key={stage.id} className="bg-card rounded-lg border">
@@ -329,14 +320,14 @@ const RideProgress = () => {
                     <div className="flex-shrink-0">
                       {isDriver ? (
                         <button
-                          onClick={() => handleStageUpdate(stage.id, !stage.completed)}
+                          onClick={() => handleStageUpdate(stage.id, !isCompleted)}
                           className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all hover:scale-105 ${
-                            stage.completed 
+                            isCompleted 
                               ? 'bg-primary border-primary text-primary-foreground' 
                               : 'border-muted-foreground hover:border-primary bg-background'
                           } ${isInTransitWithStops ? 'bg-background border-background text-primary' : ''}`}
                         >
-                          {stage.completed && (
+                          {isCompleted && (
                             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
@@ -344,11 +335,11 @@ const RideProgress = () => {
                         </button>
                       ) : (
                         <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                          stage.completed 
+                          isCompleted 
                             ? 'bg-primary border-primary text-primary-foreground' 
                             : 'border-muted-foreground bg-background'
                         } ${isInTransitWithStops ? 'bg-background border-background text-primary' : ''}`}>
-                          {stage.completed && (
+                          {isCompleted && (
                             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
@@ -359,17 +350,17 @@ const RideProgress = () => {
                     <div className="flex-1">
                       <p className={`text-sm font-medium ${
                         isInTransitWithStops ? 'text-primary-foreground' : 
-                        stage.completed ? 'text-foreground' : 'text-muted-foreground'
+                        isCompleted ? 'text-foreground' : 'text-muted-foreground'
                       }`}>
                         {stage.title}
                       </p>
                     </div>
                   </div>
-                  {stage.timestamp && (
+                  {timestamp && (
                     <span className={`text-xs font-medium ${
                       isInTransitWithStops ? 'text-primary-foreground/80' : 'text-muted-foreground'
                     }`}>
-                      {stage.timestamp}
+                      {timestamp}
                     </span>
                   )}
                 </div>
