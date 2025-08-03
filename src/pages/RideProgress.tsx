@@ -116,7 +116,7 @@ const RideProgress = () => {
 
   const updateStagesFromBooking = (bookingData: any) => {
     // Start with all stages uncompleted by default
-    // Only mark current stage if it exists in database
+    // Only mark current stage if it exists in database and is not the initial state
     const currentStage = bookingData.ride_stage;
     const stageMapping: { [key: string]: string } = {
       'driver_heading_to_pickup': 'heading_to_pickup',
@@ -129,15 +129,25 @@ const RideProgress = () => {
     
     const activeStageId = stageMapping[currentStage];
     
-    setRideStages(prev => prev.map(stage => ({
-      ...stage,
-      completed: stage.id === activeStageId,
-      timestamp: stage.id === activeStageId ? new Date().toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit',
-        hour12: true 
-      }) : undefined
-    })));
+    // Don't auto-select first stage - let driver manually start the ride
+    if (currentStage && currentStage !== 'driver_heading_to_pickup') {
+      setRideStages(prev => prev.map(stage => ({
+        ...stage,
+        completed: stage.id === activeStageId,
+        timestamp: stage.id === activeStageId ? new Date().toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          hour12: true 
+        }) : undefined
+      })));
+    } else {
+      // Initial state - all uncompleted
+      setRideStages(prev => prev.map(stage => ({
+        ...stage,
+        completed: false,
+        timestamp: undefined
+      })));
+    }
   };
 
   const handleStageUpdate = async (stageId: string, checked: boolean) => {
@@ -185,27 +195,26 @@ const RideProgress = () => {
       }
 
       // Sequential progression logic - only one status active at a time
-      const timestamp = new Date().toLocaleTimeString('en-US', { 
+      // Lock timestamp once set - don't update if already exists
+      const currentTimestamp = new Date().toLocaleTimeString('en-US', { 
         hour: '2-digit', 
         minute: '2-digit',
         hour12: true 
       });
 
-      const stageOrder = ['heading_to_pickup', 'arrived_at_pickup', 'passenger_onboard', 'in_transit', 'arrived_at_dropoff', 'ride_completed'];
-      const clickedIndex = stageOrder.indexOf(stageId);
-
-      setRideStages(prev => prev.map((stage, index) => {
+      setRideStages(prev => prev.map(stage => {
         if (stage.id === stageId && checked) {
           return { 
             ...stage, 
             completed: true, 
-            timestamp: timestamp 
+            // Keep existing timestamp if already set, otherwise set new one
+            timestamp: stage.timestamp || currentTimestamp
           };
         } else {
           return { 
             ...stage, 
-            completed: false, 
-            timestamp: undefined 
+            completed: false
+            // Keep existing timestamps for completed stages
           };
         }
       }));
