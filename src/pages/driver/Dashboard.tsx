@@ -141,17 +141,12 @@ const DriverDashboard = () => {
       console.log('Is new ride:', isNewRide);
       return isNewRide;
     } else {
-      // Past Rides: ONLY rides that have been explicitly completed OR are past their pickup time
-      const now = new Date();
-      const pickupTime = new Date(ride.pickup_time);
-      const isExpiredByTime = pickupTime < now;
+      // Past Rides: ONLY rides that have been explicitly completed
+      // Rides with "All Set" status should stay in "New Rides" until actually completed
       const isExplicitlyCompleted = ride.status === "completed" || ride.ride_status === "completed";
       
-      const isPastRide = isExplicitlyCompleted || 
-                        (isExpiredByTime && ride.payment_confirmation_status === "all_set");
-      
-      console.log('Is past ride:', isPastRide, '- Completed:', isExplicitlyCompleted, '- Expired:', isExpiredByTime, '- Pickup time:', ride.pickup_time);
-      return isPastRide;
+      console.log('Is past ride:', isExplicitlyCompleted, '- Status:', ride.status, '- Ride status:', ride.ride_status);
+      return isExplicitlyCompleted;
     }
   });
   

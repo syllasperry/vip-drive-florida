@@ -246,7 +246,8 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
             </div>
           )}
 
-          {booking.status === "completed" && onReview && (
+          {/* Review button only for passengers when booking is completed */}
+          {booking.status === "completed" && userType === "passenger" && onReview && (
             <Button
               onClick={onReview}
               variant="outline"
