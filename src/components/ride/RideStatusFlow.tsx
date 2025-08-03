@@ -208,29 +208,31 @@ export const RideStatusFlow = ({ booking, userType, onStatusUpdate }: RideStatus
 
   return (
     <div className="space-y-4">
-      {/* Current Status Display */}
-      <Card className={`border-2 ${config.color}`}>
-        <CardContent className="p-4">
-          <div className="flex items-center gap-3 mb-2">
-            <Icon className="h-6 w-6" />
+      {/* Current Status Display - Highlighted Yellow Border */}
+      <Card className="border-2 border-yellow-400 bg-blue-50/50 shadow-lg">
+        <CardContent className="p-6">
+          <div className="flex items-start gap-4">
+            <div className="p-2 bg-blue-500 rounded-full">
+              <Icon className="h-6 w-6 text-white" />
+            </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-lg">{config.title}</h3>
-              <p className="text-sm opacity-80">{config.description}</p>
+              <h3 className="font-bold text-xl text-blue-700 mb-1">{config.title}</h3>
+              <p className="text-blue-600 text-base mb-3">{config.description}</p>
+              
+              {/* Show estimated arrival for driver heading to pickup */}
+              {currentStage === 'driver_heading_to_pickup' && (
+                <div className="flex items-center gap-2 text-gray-600">
+                  <Clock className="h-4 w-4" />
+                  <span className="text-sm">
+                    Estimated arrival: <span className="font-semibold text-gray-800">{getEstimatedArrival()}</span>
+                  </span>
+                </div>
+              )}
             </div>
-            <Badge variant="secondary" className="text-xs font-medium">
-              {currentTimestamp}
-            </Badge>
+            <div className="bg-gray-800 text-white px-3 py-1 rounded-full">
+              <span className="text-sm font-medium">{currentTimestamp}</span>
+            </div>
           </div>
-          
-          {/* Show estimated arrival for driver heading to pickup */}
-          {currentStage === 'driver_heading_to_pickup' && (
-            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/20">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">
-                Estimated arrival: <span className="font-medium text-foreground">{getEstimatedArrival()}</span>
-              </span>
-            </div>
-          )}
         </CardContent>
       </Card>
 
