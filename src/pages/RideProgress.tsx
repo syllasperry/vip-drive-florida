@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Phone } from 'lucide-react';
+import { ArrowLeft, Phone, Map, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 
 interface RideStage {
@@ -21,6 +22,7 @@ const RideProgress = () => {
   const [booking, setBooking] = useState<any>(null);
   const [passenger, setPassenger] = useState<any>(null);
   const [extraStopLocation, setExtraStopLocation] = useState('');
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
   const [rideStages, setRideStages] = useState<RideStage[]>([
     { id: 'heading_to_pickup', title: 'Driver heading to pickup', completed: false },
     { id: 'arrived_at_pickup', title: 'Driver arrived at pickup', completed: false },
@@ -46,6 +48,28 @@ const RideProgress = () => {
     if (bookingData && bookingData.passenger_id) {
       fetchPassengerInfo(bookingData.passenger_id);
       updateStagesFromBooking(bookingData);
+      
+      // Set up real-time subscription for booking updates
+      const channel = supabase
+        .channel('booking-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'bookings',
+            filter: `id=eq.${bookingData.id}`
+          },
+          (payload) => {
+            console.log('Real-time booking update received:', payload);
+            updateStagesFromBooking(payload.new);
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     } else {
       console.error('RideProgress - Missing booking data or passenger_id');
     }
@@ -91,15 +115,24 @@ const RideProgress = () => {
   };
 
   const updateStagesFromBooking = (bookingData: any) => {
-    // Update stages based on current ride_stage from booking
-    const currentStage = bookingData.ride_stage || 'driver_heading_to_pickup';
-    const stageOrder = ['driver_heading_to_pickup', 'driver_arrived_at_pickup', 'passenger_onboard', 'in_transit', 'driver_arrived_at_dropoff', 'completed'];
-    const currentIndex = stageOrder.indexOf(currentStage);
+    // Start with all stages uncompleted by default
+    // Only mark current stage if it exists in database
+    const currentStage = bookingData.ride_stage;
+    const stageMapping: { [key: string]: string } = {
+      'driver_heading_to_pickup': 'heading_to_pickup',
+      'driver_arrived_at_pickup': 'arrived_at_pickup',
+      'passenger_onboard': 'passenger_onboard',
+      'in_transit': 'in_transit',
+      'driver_arrived_at_dropoff': 'arrived_at_dropoff',
+      'completed': 'ride_completed'
+    };
     
-    setRideStages(prev => prev.map((stage, index) => ({
+    const activeStageId = stageMapping[currentStage];
+    
+    setRideStages(prev => prev.map(stage => ({
       ...stage,
-      completed: index <= currentIndex,
-      timestamp: index <= currentIndex ? new Date().toLocaleTimeString('en-US', { 
+      completed: stage.id === activeStageId,
+      timestamp: stage.id === activeStageId ? new Date().toLocaleTimeString('en-US', { 
         hour: '2-digit', 
         minute: '2-digit',
         hour12: true 
@@ -203,7 +236,30 @@ const RideProgress = () => {
         break;
     }
     
-    if (url) window.open(url, '_blank');
+    if (url) {
+      window.open(url, '_blank');
+      setIsMapModalOpen(false);
+    }
+  };
+
+  const handleSaveExtraStop = async () => {
+    if (!booking || !extraStopLocation.trim()) return;
+    
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          extra_stops: [{ address: extraStopLocation.trim(), timestamp: new Date().toISOString() }],
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', booking.id);
+
+      if (error) throw error;
+      
+      console.log('Extra stop saved successfully');
+    } catch (error) {
+      console.error('Error saving extra stop:', error);
+    }
   };
 
   if (!booking || !passenger) {
@@ -311,7 +367,7 @@ const RideProgress = () => {
                 
                 {/* Extra stop input for "In transit" stage */}
                 {isInTransitWithStops && (
-                  <div className="px-4 pb-4">
+                  <div className="px-4 pb-4 space-y-3">
                     <Input
                       placeholder="Enter extra stop address"
                       value={extraStopLocation}
@@ -319,6 +375,17 @@ const RideProgress = () => {
                       className="bg-background text-foreground border-border"
                       disabled={!isDriver}
                     />
+                    {isDriver && (
+                      <Button 
+                        onClick={handleSaveExtraStop}
+                        size="sm"
+                        className="w-full"
+                        disabled={!extraStopLocation.trim()}
+                      >
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Extra Stop
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
@@ -327,33 +394,50 @@ const RideProgress = () => {
         </div>
 
         {/* Maps Navigation */}
-        <div className="pt-8">
-          <div className="flex justify-center gap-4 max-w-md mx-auto">
-            <Button
-              variant="outline"
-              size="lg"
-              className="flex-1 h-12 font-medium text-base bg-background hover:bg-accent hover:text-accent-foreground border-2 rounded-xl transition-all duration-200 hover:scale-105"
-              onClick={() => handleMapsClick('google')}
-            >
-              Google Maps
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              className="flex-1 h-12 font-medium text-base bg-background hover:bg-accent hover:text-accent-foreground border-2 rounded-xl transition-all duration-200 hover:scale-105"
-              onClick={() => handleMapsClick('apple')}
-            >
-              Apple Maps
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              className="flex-1 h-12 font-medium text-base bg-background hover:bg-accent hover:text-accent-foreground border-2 rounded-xl transition-all duration-200 hover:scale-105"
-              onClick={() => handleMapsClick('waze')}
-            >
-              Waze
-            </Button>
-          </div>
+        <div className="pt-8 flex justify-center">
+          <Dialog open={isMapModalOpen} onOpenChange={setIsMapModalOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="lg"
+                className="h-12 px-8 font-medium text-base bg-background hover:bg-accent hover:text-accent-foreground border-2 rounded-xl transition-all duration-200 hover:scale-105"
+              >
+                <Map className="h-5 w-5 mr-2" />
+                Maps
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Choose Maps App</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3 pt-4">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="w-full h-12 font-medium text-base"
+                  onClick={() => handleMapsClick('google')}
+                >
+                  Google Maps
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="w-full h-12 font-medium text-base"
+                  onClick={() => handleMapsClick('apple')}
+                >
+                  Apple Maps
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="w-full h-12 font-medium text-base"
+                  onClick={() => handleMapsClick('waze')}
+                >
+                  Waze
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </div>
