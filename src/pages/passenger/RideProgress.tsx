@@ -14,15 +14,14 @@ const PassengerRideProgress = () => {
   const [activeStageId, setActiveStageId] = useState<string | null>(null);
   const [stageTimestamps, setStageTimestamps] = useState<Record<string, string>>({});
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
-  
-  const rideStages = [
-    { id: 'heading_to_pickup', title: 'Driver heading to pickup' },
-    { id: 'arrived_at_pickup', title: 'Driver arrived at pickup' },
-    { id: 'passenger_onboard', title: 'Passenger onboard' },
-    { id: 'in_transit', title: 'In transit with optional stops' },
-    { id: 'arrived_at_dropoff', title: 'Driver arrived at drop-off location' },
-    { id: 'ride_completed', title: 'Ride completed successfully' },
-  ];
+  const [rideStages, setRideStages] = useState([
+    { id: 'heading_to_pickup', title: 'Driver heading to pickup', completed: false },
+    { id: 'arrived_at_pickup', title: 'Driver arrived at pickup', completed: false },
+    { id: 'passenger_onboard', title: 'Passenger onboard', completed: false },
+    { id: 'in_transit', title: 'In transit with optional stops', completed: false },
+    { id: 'arrived_at_dropoff', title: 'Driver arrived at drop-off location', completed: false },
+    { id: 'ride_completed', title: 'Ride completed successfully', completed: false },
+  ]);
 
   useEffect(() => {
     console.log('PassengerRideProgress - Location state:', location.state);
@@ -115,9 +114,19 @@ const PassengerRideProgress = () => {
     
     const mappedStageId = stageMapping[currentStage];
     
-    // Set active stage and lock in timestamp if not already set
+    // Set active stage and mark all previous stages as completed
     if (currentStage && mappedStageId) {
       setActiveStageId(mappedStageId);
+      
+      // Mark all stages up to and including current as completed
+      const stageOrder = ['heading_to_pickup', 'arrived_at_pickup', 'passenger_onboard', 'in_transit', 'arrived_at_dropoff', 'ride_completed'];
+      const currentIndex = stageOrder.indexOf(mappedStageId);
+      
+      // Update ride stages completion status
+      setRideStages(prev => prev.map(stage => ({
+        ...stage,
+        completed: stageOrder.indexOf(stage.id) <= currentIndex
+      })));
       
       // Only set timestamp if not already set (preserve original timestamps)
       setStageTimestamps(prev => ({
@@ -207,9 +216,10 @@ const PassengerRideProgress = () => {
         {/* Ride Status Timeline */}
         <div className="space-y-3">
           {rideStages.map((stage, index) => {
-            const isCompleted = activeStageId === stage.id;
+            const isCompleted = stage.completed;
+            const isCurrentStage = activeStageId === stage.id;
             const timestamp = stageTimestamps[stage.id];
-            const isInTransitWithStops = stage.id === 'in_transit' && isCompleted;
+            const isInTransitWithStops = stage.id === 'in_transit' && isCurrentStage;
             
             return (
               <div key={stage.id} className="bg-card rounded-lg border">

@@ -26,6 +26,7 @@ import { OfferAcceptanceModal } from "@/components/booking/OfferAcceptanceModal"
 
 import { NotificationManager } from "@/components/NotificationManager";
 import { ChatNotificationBadge } from "@/components/ChatNotificationBadge";
+import { RideStatusCard } from "@/components/RideStatusCard";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { User, LogOut, Clock, MessageCircle, CreditCard, Settings, Car, CalendarDays, History, Plus } from "lucide-react";
@@ -413,6 +414,11 @@ const Dashboard = () => {
         />
       )}
       
+      {/* Active Ride Status Card */}
+      {groupedBookings.upcoming.length > 0 && groupedBookings.upcoming[0].ride_stage && groupedBookings.upcoming[0].ride_stage !== 'completed' && (
+        <RideStatusCard booking={groupedBookings.upcoming[0]} />
+      )}
+
       {/* Main Container - Clean Mobile Layout inspired by Airbnb */}
       <div className="max-w-sm mx-auto min-h-screen flex flex-col">
         
