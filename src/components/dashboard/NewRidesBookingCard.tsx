@@ -80,7 +80,7 @@ export const NewRidesBookingCard = ({ booking, onMessage, onViewSummary }: NewRi
             </div>
             <div>
               <p className="text-lg font-semibold text-foreground">
-                📅 {booking.pickup_time ? new Date(booking.pickup_time).toLocaleDateString() : ''} at {booking.pickup_time ? new Date(booking.pickup_time).toLocaleTimeString() : ''}
+                📅 {booking.pickup_time ? new Date(booking.pickup_time).toLocaleDateString() : ''} at {booking.pickup_time ? new Date(booking.pickup_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : ''}
               </p>
             </div>
           </div>
