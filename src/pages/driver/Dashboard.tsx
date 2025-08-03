@@ -20,6 +20,7 @@ import { UpcomingRideCard } from "@/components/dashboard/UpcomingRideCard";
 import { EarningsSection } from "@/components/dashboard/EarningsSection";
 import { BookingToggle } from "@/components/dashboard/BookingToggle";
 import { BookingCard } from "@/components/dashboard/BookingCard";
+import { NewRidesBookingCard } from "@/components/dashboard/NewRidesBookingCard";
 import OrganizedBookingsList from "@/components/dashboard/OrganizedBookingsList";
 import PendingRequestAlert from "@/components/dashboard/PendingRequestAlert";
 import StatusTracker, { BookingStatus } from "@/components/StatusTracker";
@@ -182,6 +183,14 @@ const DriverDashboard = () => {
                 interaction_preference,
                 trip_purpose,
                 additional_notes
+              ),
+              drivers:driver_id (
+                id,
+                full_name,
+                car_make,
+                car_model,
+                car_year,
+                car_color
               )
             `)
             .eq('driver_id', profile.id)
@@ -257,6 +266,7 @@ const DriverDashboard = () => {
               to: booking.dropoff_location,
               passenger: booking.passengers?.full_name || 'Unknown Passenger',
               passengers: booking.passengers,
+              drivers: (booking as any).drivers || profile,
               status: booking.status,
               ride_status: booking.ride_status,
               driver_id: booking.driver_id,
@@ -656,30 +666,60 @@ const DriverDashboard = () => {
                     </CardContent>
                   </Card>
                 ) : (
-                  filteredRides.map((ride) => (
-                    <BookingCard
-                      key={ride.id}
-                      booking={ride}
-                      userType="driver"
-                      onMessage={(booking) => {
-                        setSelectedBookingForMessaging(booking);
-                        if (booking.passenger_id) {
-                          supabase
-                            .from('passengers')
-                            .select('*')
-                            .eq('id', booking.passenger_id)
-                            .maybeSingle()
-                            .then(({ data: passenger, error }) => {
-                              if (passenger && !error) {
-                                setPassengerProfile(passenger);
-                              }
-                            });
-                        }
-                        setMessagingOpen(true);
-                      }}
-                      onViewSummary={(booking) => handleViewSummary(booking)}
-                    />
-                  ))
+                  filteredRides.map((ride) => {
+                    // Use NewRidesBookingCard for "All Set" rides
+                    if (ride.payment_confirmation_status === "all_set") {
+                      return (
+                        <NewRidesBookingCard
+                          key={ride.id}
+                          booking={ride}
+                          onMessage={(booking) => {
+                            setSelectedBookingForMessaging(booking);
+                            if (booking.passenger_id) {
+                              supabase
+                                .from('passengers')
+                                .select('*')
+                                .eq('id', booking.passenger_id)
+                                .maybeSingle()
+                                .then(({ data: passenger, error }) => {
+                                  if (passenger && !error) {
+                                    setPassengerProfile(passenger);
+                                  }
+                                });
+                            }
+                            setMessagingOpen(true);
+                          }}
+                          onViewSummary={(booking) => handleViewSummary(booking)}
+                        />
+                      );
+                    }
+                    
+                    // Use regular BookingCard for other rides
+                    return (
+                      <BookingCard
+                        key={ride.id}
+                        booking={ride}
+                        userType="driver"
+                        onMessage={(booking) => {
+                          setSelectedBookingForMessaging(booking);
+                          if (booking.passenger_id) {
+                            supabase
+                              .from('passengers')
+                              .select('*')
+                              .eq('id', booking.passenger_id)
+                              .maybeSingle()
+                              .then(({ data: passenger, error }) => {
+                                if (passenger && !error) {
+                                  setPassengerProfile(passenger);
+                                }
+                              });
+                          }
+                          setMessagingOpen(true);
+                        }}
+                        onViewSummary={(booking) => handleViewSummary(booking)}
+                      />
+                    );
+                  })
                 )}
               </div>
             )}
