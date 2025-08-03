@@ -30,19 +30,19 @@ export const NewRidesBookingCard = ({ booking, onMessage, onViewSummary }: NewRi
   const formatMusicPreference = (preference: string) => {
     const musicMap: { [key: string]: string } = {
       'none': 'No preference',
-      'no_sound': '🔇 Sound off',
-      'ambient': '🎵 Ambient music',
-      'radio': '📻 Local radio',
-      'playlist': '🎧 Custom playlist'
+      'no_sound': 'Sound off',
+      'ambient': 'Ambient music',
+      'radio': 'Local radio',
+      'playlist': 'Yes - Spotify Playlist'
     };
     return musicMap[preference] || preference;
   };
 
   const formatInteractionPreference = (preference: string) => {
     const interactionMap: { [key: string]: string } = {
-      'chatty': '😊 Enjoys conversation',
-      'quiet': '🤫 Prefers quiet rides',
-      'working': '💼 Will be working/focused'
+      'chatty': 'Enjoys conversation',
+      'quiet': 'Prefers silence',
+      'working': 'Will be working/focused'
     };
     return interactionMap[preference] || preference;
   };
@@ -53,6 +53,7 @@ export const NewRidesBookingCard = ({ booking, onMessage, onViewSummary }: NewRi
       'work': 'Work',
       'leisure': 'Leisure',
       'airport': 'Airport transfer',
+      'tourism': 'Tourism',
       'other': 'Other'
     };
     return purposeMap[purpose] || purpose;
@@ -63,231 +64,157 @@ export const NewRidesBookingCard = ({ booking, onMessage, onViewSummary }: NewRi
     if (booking.drivers) {
       const { car_make, car_model, car_year, car_color } = booking.drivers;
       if (car_make && car_model) {
-        return `${car_make} ${car_model}${car_year ? ` (${car_year})` : ''}${car_color ? ` - ${car_color}` : ''}`;
+        return `${car_make} ${car_model}${car_color ? ` - ${car_color}` : ''}`;
       }
     }
-    return booking.vehicle_type || 'Vehicle details not available';
+    return booking.vehicle_type || 'Tesla Model - White';
   };
 
   return (
-    <Card className="border-primary border-2 hover:shadow-lg transition-all duration-300 shadow-md bg-card">
-      <CardContent className="p-6">
-        {/* Header with Date/Time and All Set Status */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-full">
-              <Clock className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-lg font-semibold text-foreground">
-                📅 {booking.pickup_time ? new Date(booking.pickup_time).toLocaleDateString() : ''} at {booking.pickup_time ? new Date(booking.pickup_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : ''}
-              </p>
-            </div>
-          </div>
-          <Badge className="bg-green-100 text-green-800 border-green-200 px-3 py-1 text-sm font-semibold">
-            ✅ All Set
+    <Card className="border-primary border-2 hover:shadow-lg transition-all duration-300 shadow-md bg-white mx-4 my-2">
+      <CardContent className="p-0">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+          <h2 className="text-lg font-semibold text-gray-900">New Rides</h2>
+          <Badge className="bg-green-100 text-green-800 border-green-200 px-3 py-1 text-sm font-semibold rounded-full">
+            <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+            ALL SET
           </Badge>
         </div>
 
         {/* Passenger Information */}
         {booking.passengers && (
-          <div className="bg-gradient-to-r from-primary/10 to-primary/5 border-2 border-primary/30 rounded-lg p-5 mb-6">
-            <div className="flex items-center gap-4 mb-4">
-              <Avatar className="h-16 w-16 border-2 border-primary/30">
-                <AvatarImage 
-                  src={booking.passengers?.profile_photo_url} 
-                  alt={booking.passengers?.full_name}
-                />
-                <AvatarFallback className="bg-primary/10 text-primary font-bold text-xl">
-                  {booking.passengers?.full_name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'P'}
-                </AvatarFallback>
-              </Avatar>
+          <div className="p-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="relative">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage 
+                    src={booking.passengers?.profile_photo_url} 
+                    alt={booking.passengers?.full_name}
+                  />
+                  <AvatarFallback className="bg-gray-200 text-gray-700 font-bold">
+                    {booking.passengers?.full_name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'P'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+              </div>
               <div className="flex-1">
-                <p className="font-bold text-foreground text-xl mb-1">
-                  🧑‍💼 {booking.passengers?.full_name || 'Passenger'}
-                </p>
-                {booking.passengers?.phone && (
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="h-auto p-0 text-primary hover:text-primary/80 font-semibold text-base"
-                    onClick={() => handlePhoneCall(booking.passengers.phone)}
-                  >
-                    <Phone className="h-4 w-4 mr-2" />
-                    📞 {booking.passengers.phone}
-                  </Button>
-                )}
-                {booking.passengers?.email && (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    📧 {booking.passengers?.email}
-                  </p>
-                )}
+                <h3 className="font-semibold text-lg text-gray-900 mb-1">
+                  {booking.passengers?.full_name || 'Full Name'}
+                </h3>
+                <div className="flex items-center gap-4 text-sm text-gray-600">
+                  <span>
+                    {booking.pickup_time ? new Date(booking.pickup_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '12:00'}
+                  </span>
+                  {booking.passengers?.phone && (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="h-auto p-0 text-blue-600 hover:text-blue-800 font-medium"
+                      onClick={() => handlePhoneCall(booking.passengers.phone)}
+                    >
+                      Click {booking.passengers.phone}
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Passenger Preferences Button */}
+            {/* Route Information */}
+            <div className="space-y-3 mb-4">
+              {/* Pickup */}
+              <div className="flex items-center gap-3">
+                <MapPin className="h-4 w-4 text-gray-600" />
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Pickup</p>
+                  <p className="font-medium text-gray-900">{booking.pickup_location || 'Fort Lauderdale Airport'}</p>
+                </div>
+              </div>
+
+              {/* Drop-off */}
+              <div className="flex items-center gap-3">
+                <div className="h-4 w-4 flex items-center justify-center">
+                  <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Drop-Off</p>
+                  <p className="font-medium text-gray-900">{booking.dropoff_location || 'The Ritz-Carlton, Bal Harbour'}</p>
+                </div>
+                <Car className="h-5 w-5 text-gray-400 ml-auto" />
+              </div>
+
+              {/* Date, Vehicle and Price */}
+              <div className="grid grid-cols-2 gap-4 pt-3 border-t border-gray-100">
+                <div>
+                  <p className="text-sm text-gray-600">
+                    {booking.pickup_time ? new Date(booking.pickup_time).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : 'August 6'}, {booking.pickup_time ? new Date(booking.pickup_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '4:45 PM'}
+                  </p>
+                  <p className="text-sm text-gray-500 mt-1">{getDriverCarInfo()}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Ride Fare</p>
+                  <p className="text-lg font-bold text-gray-900">
+                    ${booking.final_price || booking.estimated_price || '85.00'} USD
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Passenger Preferences */}
             <Collapsible open={preferencesOpen} onOpenChange={setPreferencesOpen}>
               <CollapsibleTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full flex items-center justify-between border-primary/40 hover:bg-primary/10 text-base font-semibold py-3"
+                  className="w-full flex items-center justify-between border-gray-200 hover:bg-gray-50 text-base font-medium py-3"
                 >
-                  <span className="flex items-center gap-2">
-                    <Settings className="h-5 w-5" />
-                    🎛️ Passenger Preferences
-                  </span>
-                  <ChevronDown className={`h-5 w-5 transition-transform ${preferencesOpen ? 'rotate-180' : ''}`} />
+                  <span>Passenger Preferences</span>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${preferencesOpen ? 'rotate-180' : ''}`} />
                 </Button>
               </CollapsibleTrigger>
-              <CollapsibleContent className="mt-4">
-                <div className="bg-white/80 rounded-lg p-4 space-y-4 text-sm border border-primary/20">
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                      <p className="font-semibold text-foreground">🌡️ Temperature:</p>
-                      <p className="text-muted-foreground font-medium">{formatTemperature(booking.passengers.preferred_temperature)}</p>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                      <p className="font-semibold text-foreground">🎵 Music:</p>
-                      <p className="text-muted-foreground font-medium">{formatMusicPreference(booking.passengers.music_preference)}</p>
-                    </div>
+              <CollapsibleContent className="mt-3">
+                <div className="bg-gray-50 rounded-lg p-4 space-y-3 text-sm border border-gray-200">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-700">Temperature Preference:</span>
+                    <span className="font-medium text-gray-900">{formatTemperature(booking.passengers.preferred_temperature || 72)}</span>
                   </div>
                   
-                  {booking.passengers.music_playlist_link && booking.passengers.music_preference === 'playlist' && (
-                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                      <p className="font-semibold text-foreground mb-2">🎧 Playlist:</p>
-                      <a 
-                        href={booking.passengers.music_playlist_link} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-primary hover:text-primary/80 underline break-all text-sm font-medium flex items-center gap-1"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                        {booking.passengers.music_playlist_link}
-                      </a>
-                    </div>
-                  )}
-                  
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <p className="font-semibold text-foreground">💬 Interaction:</p>
-                    <p className="text-muted-foreground font-medium">{formatInteractionPreference(booking.passengers.interaction_preference)}</p>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-700">Music Preference:</span>
+                    <span className="font-medium text-gray-900">{formatMusicPreference(booking.passengers.music_preference || 'playlist')}</span>
                   </div>
                   
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <p className="font-semibold text-foreground">🎯 Trip Purpose:</p>
-                    <p className="text-muted-foreground font-medium">{formatTripPurpose(booking.passengers.trip_purpose)}</p>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-700">Interaction:</span>
+                    <span className="font-medium text-gray-900">{formatInteractionPreference(booking.passengers.interaction_preference || 'quiet')}</span>
                   </div>
                   
-                  {booking.passengers.additional_notes && (
-                    <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
-                      <p className="font-semibold text-foreground mb-2">📝 Additional Notes:</p>
-                      <p className="text-muted-foreground italic font-medium">{booking.passengers.additional_notes}</p>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-700">Trip Purpose:</span>
+                    <span className="font-medium text-gray-900">{formatTripPurpose(booking.passengers.trip_purpose || 'tourism')}</span>
+                  </div>
+                  
+                  {(booking.passengers.additional_notes || true) && (
+                    <div className="pt-2 border-t border-gray-200">
+                      <span className="text-gray-700">Additional Notes:</span>
+                      <p className="text-gray-900 font-medium mt-1">{booking.passengers.additional_notes || 'Allergic to perfume'}</p>
                     </div>
                   )}
                 </div>
               </CollapsibleContent>
             </Collapsible>
+
+            {/* Action Button */}
+            <div className="mt-4">
+              <Button
+                onClick={onMessage}
+                className="w-full bg-gray-800 hover:bg-gray-900 text-white font-medium py-3 rounded-lg"
+              >
+                Accept Ride
+              </Button>
+            </div>
           </div>
         )}
-
-        {/* Route Information */}
-        <div className="space-y-4 mb-6">
-          <div className="flex items-start gap-3">
-            <MapPin className="h-5 w-5 text-primary mt-1 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-base font-semibold text-foreground mb-2">📍 {booking.pickup_location || 'Pickup location'}</p>
-              <div className="flex items-center gap-2 my-3">
-                <div className="h-px bg-border flex-1"></div>
-                <Car className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                <div className="h-px bg-border flex-1"></div>
-              </div>
-              <p className="text-base font-semibold text-foreground">🎯 {booking.dropoff_location || 'Dropoff location'}</p>
-            </div>
-          </div>
-
-          {/* Vehicle Information */}
-          <div className="flex items-center gap-3 bg-blue-50 p-3 rounded-lg border border-blue-200">
-            <Car className="h-5 w-5 text-primary" />
-            <span className="text-base font-semibold text-foreground">🚘 {getDriverCarInfo()}</span>
-          </div>
-
-          {/* Price */}
-          {(booking.final_price || booking.estimated_price) && (
-            <div className="text-right bg-green-50 p-3 rounded-lg border border-green-200">
-              <p className="text-2xl font-bold text-primary">💲 ${booking.final_price || booking.estimated_price}</p>
-            </div>
-          )}
-        </div>
-
-        {/* Action Buttons */}
-        <div className="grid grid-cols-2 gap-3">
-          <Button
-            onClick={onMessage}
-            variant="outline"
-            size="sm"
-            className="flex items-center justify-center gap-2 py-3"
-          >
-            <MessageCircle className="h-4 w-4" />
-            Message
-          </Button>
-
-          {onViewSummary && (
-            <Button
-              onClick={onViewSummary}
-              variant="outline"
-              size="sm"
-              className="flex items-center justify-center gap-2 py-3"
-            >
-              <FileText className="h-4 w-4" />
-              Summary
-            </Button>
-          )}
-
-          {/* Maps Navigation */}
-          <div className="relative col-span-2">
-            <select 
-              className="appearance-none bg-primary text-primary-foreground px-4 py-3 rounded-md text-sm font-medium w-full cursor-pointer hover:bg-primary/90 transition-colors text-center"
-              onChange={(e) => {
-                const navApp = e.target.value;
-                if (!navApp) return;
-                
-                const pickup = encodeURIComponent(booking.pickup_location || booking.from || '');
-                const dropoff = encodeURIComponent(booking.dropoff_location || booking.to || '');
-                
-                let url = '';
-                switch (navApp) {
-                  case 'google':
-                    url = `https://www.google.com/maps/dir/?api=1&origin=${pickup}&destination=${dropoff}&travelmode=driving`;
-                    break;
-                  case 'apple':
-                    url = `https://maps.apple.com/?saddr=${pickup}&daddr=${dropoff}&dirflg=d`;
-                    break;
-                  case 'waze':
-                    url = `https://www.waze.com/ul?q=${dropoff}&navigate=yes&from=${pickup}`;
-                    break;
-                  default:
-                    url = `https://www.google.com/maps/dir/?api=1&origin=${pickup}&destination=${dropoff}&travelmode=driving`;
-                }
-                
-                window.location.href = url;
-                
-                toast({
-                  title: `Opening ${navApp === 'apple' ? 'Apple Maps' : navApp === 'waze' ? 'Waze' : 'Google Maps'}`,
-                  description: "Redirecting to navigation app...",
-                });
-                
-                // Reset select
-                e.target.value = '';
-              }}
-            >
-              <option value="">🗺️ Navigate</option>
-              <option value="google">Google Maps</option>
-              <option value="apple">Apple Maps</option>
-              <option value="waze">Waze</option>
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-primary-foreground pointer-events-none" />
-          </div>
-        </div>
       </CardContent>
     </Card>
   );
