@@ -90,7 +90,7 @@ export const NewRidesBookingCard = ({ booking, onMessage, onViewSummary }: NewRi
             <div className="relative">
               <Avatar className="h-14 w-14">
                 <AvatarImage 
-                  src={booking.passengers?.profile_photo_url || "/lovable-uploads/525c9a73-0f5d-4805-855b-5ffe7c660eec.png"} 
+                  src={booking.passengers?.profile_photo_url} 
                   alt={booking.passengers?.full_name || 'Passenger'}
                 />
                 <AvatarFallback className="bg-gray-200 text-gray-700 font-bold text-lg">
