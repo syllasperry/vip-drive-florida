@@ -17,6 +17,7 @@ import { ProfileHeader } from "@/components/dashboard/ProfileHeader";
 import { UpcomingRideCard } from "@/components/dashboard/UpcomingRideCard";
 import { BookingToggle } from "@/components/dashboard/BookingToggle";
 import { EnhancedBookingCard } from "@/components/booking/EnhancedBookingCard";
+import { UniversalRideCard } from "@/components/dashboard/UniversalRideCard";
 import { FloatingActionButton } from "@/components/dashboard/FloatingActionButton";
 import { FareConfirmationAlert } from "@/components/FareConfirmationAlert";
 import { PaymentConfirmationModal } from "@/components/PaymentConfirmationModal";
@@ -70,13 +71,14 @@ const Dashboard = () => {
     upcoming: bookings.filter(booking => {
       const bookingDate = new Date(booking.pickup_time);
       const now = new Date();
-      return ['pending_driver', 'offer_sent', 'waiting_for_payment', 'payment_confirmed', 'ready_to_go'].includes(booking.ride_status) ||
+      return (booking.ride_stage !== 'completed' && !['completed', 'cancelled', 'declined', 'offer_declined'].includes(booking.ride_status)) ||
              (bookingDate >= now && !['completed', 'cancelled', 'declined', 'offer_declined'].includes(booking.ride_status));
     }),
     pastRides: bookings.filter(booking => {
       const bookingDate = new Date(booking.pickup_time);
       const now = new Date();
-      return ['completed', 'cancelled', 'declined', 'offer_declined'].includes(booking.ride_status) ||
+      return booking.ride_stage === 'completed' || 
+             ['completed', 'cancelled', 'declined', 'offer_declined'].includes(booking.ride_status) ||
              (bookingDate < now && !['pending_driver', 'offer_sent', 'waiting_for_payment', 'payment_confirmed', 'ready_to_go'].includes(booking.ride_status));
     })
   };
@@ -494,24 +496,41 @@ const Dashboard = () => {
                   <h3 className="text-lg font-semibold text-foreground mb-3">Upcoming</h3>
                   <div className="space-y-3">
                      {groupedBookings.upcoming.map((booking) => (
-                       <EnhancedBookingCard 
-                         key={booking.id} 
-                         booking={booking} 
-                         userType="passenger"
-                         onMessage={() => {
-                           setSelectedBooking(booking);
-                           setMessagingOpen(true);
-                         }}
-                         onViewSummary={() => {
-                           setSelectedBookingForSummary(booking);
-                           setSummaryModalOpen(true);
-                         }}
-                         onMakePayment={() => {
-                           setSelectedBookingForPayment(booking);
-                           setPaymentModalOpen(true);
-                         }}
-                         onAcceptOffer={() => handleAcceptFare(booking.id)}
-                       />
+                       booking.payment_confirmation_status === 'all_set' ? (
+                         <UniversalRideCard
+                           key={booking.id}
+                           booking={booking}
+                           userType="passenger"
+                           onMessage={() => {
+                             setSelectedBooking(booking);
+                             setMessagingOpen(true);
+                           }}
+                           onViewSummary={() => {
+                             setSelectedBookingForSummary(booking);
+                             setSummaryModalOpen(true);
+                           }}
+                           onStatusUpdate={fetchBookings}
+                         />
+                       ) : (
+                         <EnhancedBookingCard 
+                           key={booking.id} 
+                           booking={booking} 
+                           userType="passenger"
+                           onMessage={() => {
+                             setSelectedBooking(booking);
+                             setMessagingOpen(true);
+                           }}
+                           onViewSummary={() => {
+                             setSelectedBookingForSummary(booking);
+                             setSummaryModalOpen(true);
+                           }}
+                           onMakePayment={() => {
+                             setSelectedBookingForPayment(booking);
+                             setPaymentModalOpen(true);
+                           }}
+                           onAcceptOffer={() => handleAcceptFare(booking.id)}
+                         />
+                       )
                      ))}
                   </div>
                 </div>
@@ -521,25 +540,42 @@ const Dashboard = () => {
                 <div>
                   <h3 className="text-lg font-semibold text-foreground mb-3">Past Rides</h3>
                   <div className="space-y-3">
-                     {groupedBookings.pastRides.map((booking) => (
-                       <EnhancedBookingCard 
-                         key={booking.id} 
-                         booking={booking} 
-                         userType="passenger"
-                         onMessage={() => {
-                           setSelectedBooking(booking);
-                           setMessagingOpen(true);
-                         }}
-                         onViewSummary={() => {
-                           setSelectedBookingForSummary(booking);
-                           setSummaryModalOpen(true);
-                         }}
-                         onMakePayment={() => {
-                           setSelectedBookingForPayment(booking);
-                           setPaymentModalOpen(true);
-                         }}
-                       />
-                     ))}
+                      {groupedBookings.pastRides.map((booking) => (
+                        booking.ride_stage === 'completed' ? (
+                          <UniversalRideCard
+                            key={booking.id}
+                            booking={booking}
+                            userType="passenger"
+                            onMessage={() => {
+                              setSelectedBooking(booking);
+                              setMessagingOpen(true);
+                            }}
+                            onViewSummary={() => {
+                              setSelectedBookingForSummary(booking);
+                              setSummaryModalOpen(true);
+                            }}
+                            onStatusUpdate={fetchBookings}
+                          />
+                        ) : (
+                          <EnhancedBookingCard 
+                            key={booking.id} 
+                            booking={booking} 
+                            userType="passenger"
+                            onMessage={() => {
+                              setSelectedBooking(booking);
+                              setMessagingOpen(true);
+                            }}
+                            onViewSummary={() => {
+                              setSelectedBookingForSummary(booking);
+                              setSummaryModalOpen(true);
+                            }}
+                            onMakePayment={() => {
+                              setSelectedBookingForPayment(booking);
+                              setPaymentModalOpen(true);
+                            }}
+                          />
+                        )
+                      ))}
                   </div>
                 </div>
               )}

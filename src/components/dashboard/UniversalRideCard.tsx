@@ -8,6 +8,8 @@ import { useState } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { StatusBadges } from "@/components/status/StatusBadges";
+import { RideStatusFlow } from "@/components/ride/RideStatusFlow";
+import { AirbnbStyleReviewModal } from "@/components/review/AirbnbStyleReviewModal";
 
 interface UniversalRideCardProps {
   booking: any;
@@ -15,6 +17,7 @@ interface UniversalRideCardProps {
   onMessage?: (booking?: any) => void;
   onViewSummary?: (booking?: any) => void;
   showStatusBadge?: boolean;
+  onStatusUpdate?: () => void;
 }
 
 export const UniversalRideCard = ({ 
@@ -22,10 +25,12 @@ export const UniversalRideCard = ({
   userType, 
   onMessage, 
   onViewSummary,
-  showStatusBadge = true 
+  showStatusBadge = true,
+  onStatusUpdate
 }: UniversalRideCardProps) => {
   const { toast } = useToast();
   const [preferencesOpen, setPreferencesOpen] = useState(false);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
 
   const handlePhoneCall = (phone: string) => {
     if (phone) {
@@ -296,6 +301,32 @@ export const UniversalRideCard = ({
             </div>
           )}
 
+          {/* Ride Status Flow - Show for rides that are in progress */}
+          {booking.payment_confirmation_status === 'all_set' && 
+           booking.ride_stage && 
+           booking.ride_stage !== 'completed' && (
+            <div className="mt-4">
+              <RideStatusFlow 
+                booking={booking}
+                userType={userType}
+                onStatusUpdate={onStatusUpdate}
+              />
+            </div>
+          )}
+
+          {/* Review Button - Show for completed rides (passenger only) */}
+          {userType === "passenger" && 
+           booking.ride_stage === 'completed' && (
+            <div className="mt-4">
+              <Button
+                onClick={() => setReviewModalOpen(true)}
+                className="w-full bg-primary hover:bg-primary/90 text-white font-medium py-4 rounded-lg text-base flex items-center justify-center gap-2"
+              >
+                ⭐ Leave Review
+              </Button>
+            </div>
+          )}
+
           {/* Maps Button - Always shown at bottom */}
           <div className="mt-4">
             <Dialog>
@@ -337,6 +368,13 @@ export const UniversalRideCard = ({
               </DialogContent>
             </Dialog>
           </div>
+
+          {/* Review Modal */}
+          <AirbnbStyleReviewModal
+            isOpen={reviewModalOpen}
+            onClose={() => setReviewModalOpen(false)}
+            booking={booking}
+          />
         </div>
       </CardContent>
     </Card>

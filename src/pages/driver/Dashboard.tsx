@@ -21,6 +21,7 @@ import { EarningsSection } from "@/components/dashboard/EarningsSection";
 import { BookingToggle } from "@/components/dashboard/BookingToggle";
 import { BookingCard } from "@/components/dashboard/BookingCard";
 import { NewRidesBookingCard } from "@/components/dashboard/NewRidesBookingCard";
+import { UniversalRideCard } from "@/components/dashboard/UniversalRideCard";
 import OrganizedBookingsList from "@/components/dashboard/OrganizedBookingsList";
 import PendingRequestAlert from "@/components/dashboard/PendingRequestAlert";
 import StatusTracker, { BookingStatus } from "@/components/StatusTracker";
@@ -120,21 +121,21 @@ const DriverDashboard = () => {
   const filteredRides = driverRides.filter(ride => {
     console.log('=== FILTERING DEBUG ===');
     console.log('Current view:', rideView);
-    console.log('Ride:', ride.id, 'Status:', ride.status, 'Payment status:', ride.payment_confirmation_status, 'Ride status:', ride.ride_status);
+    console.log('Ride:', ride.id, 'Status:', ride.status, 'Payment status:', ride.payment_confirmation_status, 'Ride status:', ride.ride_status, 'Ride stage:', ride.ride_stage);
     console.log('Passenger:', ride.passenger, 'Passengers object:', ride.passengers);
     
-    // Priority 1: All Set rides MUST go to New Rides
-    if (ride.payment_confirmation_status === "all_set") {
-      const shouldBeInNewRides = rideView === "new-rides";
-      console.log('All Set ride - Should be in New Rides:', shouldBeInNewRides);
-      return shouldBeInNewRides;
-    }
-    
-    // Priority 2: Explicitly completed rides go to Past Rides
-    if (ride.status === "completed" || ride.ride_status === "completed") {
+    // Priority 1: Completed rides go to Past Rides
+    if (ride.ride_stage === "completed" || ride.status === "completed" || ride.ride_status === "completed") {
       const shouldBeInPastRides = rideView === "past-rides";
       console.log('Completed ride - Should be in Past Rides:', shouldBeInPastRides);
       return shouldBeInPastRides;
+    }
+    
+    // Priority 2: All Set rides (not completed) go to New Rides
+    if (ride.payment_confirmation_status === "all_set" && ride.ride_stage !== "completed") {
+      const shouldBeInNewRides = rideView === "new-rides";
+      console.log('All Set ride - Should be in New Rides:', shouldBeInNewRides);
+      return shouldBeInNewRides;
     }
     
     // Priority 3: Pending/Waiting rides go to New Requests
@@ -281,7 +282,9 @@ const DriverDashboard = () => {
               estimated_price: booking.estimated_price,
               passenger_id: booking.passenger_id,
               payment_status: booking.payment_status,
-              payment_confirmation_status: booking.payment_confirmation_status
+              payment_confirmation_status: booking.payment_confirmation_status,
+              ride_stage: booking.ride_stage || 'driver_heading_to_pickup',
+              extra_stops: booking.extra_stops || []
             };
           })
           .sort((a, b) => {
@@ -688,12 +691,26 @@ const DriverDashboard = () => {
                   />
                 ) : (
                   filteredRides.map((ride) => {
-                    // Use NewRidesBookingCard for "All Set" rides
-                    if (ride.payment_confirmation_status === "all_set") {
-                      return (
-                        <NewRidesBookingCard
-                          key={ride.id}
+                    // Use UniversalRideCard for all rides with status flow
+                    return (
+                      <div key={ride.id} className="border-0">
+                        {ride.payment_confirmation_status === "all_set" && (
+                          <div className="text-center mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                            <div className="flex items-center justify-center gap-2 text-green-800">
+                              <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                                <div className="w-2 h-2 bg-white rounded-full"></div>
+                              </div>
+                              <span className="font-semibold">ALL SET</span>
+                            </div>
+                            <p className="text-sm text-green-700 mt-1">
+                              Payment confirmed - Ready to start the ride
+                            </p>
+                          </div>
+                        )}
+                        {/* Use the new UniversalRideCard instead */}
+                        <UniversalRideCard
                           booking={ride}
+                          userType="driver"
                           onMessage={(booking) => {
                             setSelectedBookingForMessaging(booking);
                             if (booking.passenger_id) {
@@ -711,9 +728,10 @@ const DriverDashboard = () => {
                             setMessagingOpen(true);
                           }}
                           onViewSummary={(booking) => handleViewSummary(booking)}
+                          onStatusUpdate={() => fetchDriverBookings(userProfile)}
                         />
-                      );
-                    }
+                      </div>
+                    );
                     
                     // Use regular BookingCard for other rides
                     return (
