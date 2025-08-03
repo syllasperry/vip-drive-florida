@@ -1,9 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { MapPin, Navigation, Clock, CheckCircle, Car, Flag, Plus, X } from "lucide-react";
+import { MapPin, Navigation, Clock, CheckCircle, Car, Flag, Plus, X, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -75,6 +76,7 @@ const stageConfig = {
 
 export const RideStatusFlow = ({ booking, userType, onStatusUpdate }: RideStatusFlowProps) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [extraStops, setExtraStops] = useState<string[]>(booking.extra_stops || []);
   const [newStop, setNewStop] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
@@ -280,6 +282,32 @@ export const RideStatusFlow = ({ booking, userType, onStatusUpdate }: RideStatus
           </CardContent>
         </Card>
       )}
+
+      {/* View Progress Button */}
+      <Button
+        variant="outline"
+        onClick={() => {
+          if (userType === "passenger") {
+            navigate('/passenger/ride-progress', { 
+              state: { 
+                booking: booking, 
+                userType: userType 
+              } 
+            });
+          } else {
+            navigate('/ride-progress', { 
+              state: { 
+                booking: booking, 
+                userType: userType 
+              } 
+            });
+          }
+        }}
+        className="w-full py-3 text-base font-medium mb-2"
+      >
+        <Eye className="h-4 w-4 mr-2" />
+        View Full Progress
+      </Button>
 
       {/* Driver Action Button */}
       {userType === "driver" && config.nextStage && (
