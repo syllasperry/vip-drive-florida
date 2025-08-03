@@ -19,11 +19,14 @@ export type Database = {
           created_at: string
           distance_miles: number | null
           driver_id: string | null
+          driver_location_lat: number | null
+          driver_location_lng: number | null
           driver_payment_confirmed_at: string | null
           driver_payment_instructions: string | null
           dropoff_location: string
           estimated_fare: number | null
           estimated_price: number | null
+          extra_stops: Json | null
           final_price: number | null
           flight_info: string | null
           id: string
@@ -38,6 +41,9 @@ export type Database = {
           pickup_location: string
           pickup_time: string
           price_confirmed_at: string | null
+          ride_completed_at: string | null
+          ride_stage: string | null
+          ride_started_at: string | null
           ride_status: string | null
           status: string
           updated_at: string | null
@@ -48,11 +54,14 @@ export type Database = {
           created_at?: string
           distance_miles?: number | null
           driver_id?: string | null
+          driver_location_lat?: number | null
+          driver_location_lng?: number | null
           driver_payment_confirmed_at?: string | null
           driver_payment_instructions?: string | null
           dropoff_location: string
           estimated_fare?: number | null
           estimated_price?: number | null
+          extra_stops?: Json | null
           final_price?: number | null
           flight_info?: string | null
           id?: string
@@ -67,6 +76,9 @@ export type Database = {
           pickup_location: string
           pickup_time: string
           price_confirmed_at?: string | null
+          ride_completed_at?: string | null
+          ride_stage?: string | null
+          ride_started_at?: string | null
           ride_status?: string | null
           status?: string
           updated_at?: string | null
@@ -77,11 +89,14 @@ export type Database = {
           created_at?: string
           distance_miles?: number | null
           driver_id?: string | null
+          driver_location_lat?: number | null
+          driver_location_lng?: number | null
           driver_payment_confirmed_at?: string | null
           driver_payment_instructions?: string | null
           dropoff_location?: string
           estimated_fare?: number | null
           estimated_price?: number | null
+          extra_stops?: Json | null
           final_price?: number | null
           flight_info?: string | null
           id?: string
@@ -96,6 +111,9 @@ export type Database = {
           pickup_location?: string
           pickup_time?: string
           price_confirmed_at?: string | null
+          ride_completed_at?: string | null
+          ride_stage?: string | null
+          ride_started_at?: string | null
           ride_status?: string | null
           status?: string
           updated_at?: string | null
@@ -411,6 +429,68 @@ export type Database = {
             columns: ["passenger_id"]
             isOneToOne: false
             referencedRelation: "passengers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ride_reviews: {
+        Row: {
+          auto_publish_eligible: boolean | null
+          booking_id: string
+          comfort_rating: number
+          communication_rating: number
+          created_at: string
+          driver_id: string
+          driving_rating: number
+          id: string
+          is_published: boolean | null
+          overall_rating: number | null
+          passenger_id: string
+          private_feedback: string | null
+          public_review: string | null
+          punctuality_rating: number
+          updated_at: string
+        }
+        Insert: {
+          auto_publish_eligible?: boolean | null
+          booking_id: string
+          comfort_rating: number
+          communication_rating: number
+          created_at?: string
+          driver_id: string
+          driving_rating: number
+          id?: string
+          is_published?: boolean | null
+          overall_rating?: number | null
+          passenger_id: string
+          private_feedback?: string | null
+          public_review?: string | null
+          punctuality_rating: number
+          updated_at?: string
+        }
+        Update: {
+          auto_publish_eligible?: boolean | null
+          booking_id?: string
+          comfort_rating?: number
+          communication_rating?: number
+          created_at?: string
+          driver_id?: string
+          driving_rating?: number
+          id?: string
+          is_published?: boolean | null
+          overall_rating?: number | null
+          passenger_id?: string
+          private_feedback?: string | null
+          public_review?: string | null
+          punctuality_rating?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
         ]
