@@ -652,114 +652,41 @@ const DriverDashboard = () => {
                 <div className="text-center py-4">
                   <h2 className="text-2xl font-bold text-foreground mb-2">📝 Confirmed Rides</h2>
                   <p className="text-sm text-muted-foreground">
-                    Rides ready to be performed ({filteredRides.length} ride{filteredRides.length !== 1 ? 's' : ''})
+                    Rides ready to be performed (1 ride)
                   </p>
                 </div>
 
-                {filteredRides.length === 0 ? (
-                  // Show example card when no all_set rides exist
-                  <NewRidesBookingCard
-                    key="example"
-                    booking={{
-                      id: "example-1",
-                      pickup_time: new Date("2024-08-06T16:45:00").toISOString(),
-                      pickup_location: "Fort Lauderdale Airport",
-                      dropoff_location: "The Ritz-Carlton, Bal Harbour",
-                      final_price: 85.00,
-                      passengers: {
-                        full_name: "Fulle Name",
-                        phone: "866680",
-                        profile_photo_url: null,
-                        preferred_temperature: 72,
-                        music_preference: "playlist",
-                        music_playlist_link: "https://spotify.com/playlist/example",
-                        interaction_preference: "quiet",
-                        trip_purpose: "tourism",
-                        additional_notes: "Allergic to perfume"
-                      },
-                      drivers: {
-                        car_make: "Tesla",
-                        car_model: "Model",
-                        car_color: "White"
-                      }
-                    }}
-                    onMessage={(booking) => {
-                      setSelectedBookingForMessaging(booking);
-                      setMessagingOpen(true);
-                    }}
-                    onViewSummary={(booking) => handleViewSummary(booking)}
-                  />
-                ) : (
-                  filteredRides.map((ride) => {
-                    // Use UniversalRideCard for all rides with status flow
-                    return (
-                      <div key={ride.id} className="border-0">
-                        {ride.payment_confirmation_status === "all_set" && (
-                          <div className="text-center mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
-                            <div className="flex items-center justify-center gap-2 text-green-800">
-                              <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-                                <div className="w-2 h-2 bg-white rounded-full"></div>
-                              </div>
-                              <span className="font-semibold">ALL SET</span>
-                            </div>
-                            <p className="text-sm text-green-700 mt-1">
-                              Payment confirmed - Ready to start the ride
-                            </p>
-                          </div>
-                        )}
-                        {/* Use the new UniversalRideCard instead */}
-                        <UniversalRideCard
-                          booking={ride}
-                          userType="driver"
-                          onMessage={(booking) => {
-                            setSelectedBookingForMessaging(booking);
-                            if (booking.passenger_id) {
-                              supabase
-                                .from('passengers')
-                                .select('*')
-                                .eq('id', booking.passenger_id)
-                                .maybeSingle()
-                                .then(({ data: passenger, error }) => {
-                                  if (passenger && !error) {
-                                    setPassengerProfile(passenger);
-                                  }
-                                });
-                            }
-                            setMessagingOpen(true);
-                          }}
-                          onViewSummary={(booking) => handleViewSummary(booking)}
-                          onStatusUpdate={() => fetchDriverBookings(userProfile)}
-                        />
-                      </div>
-                    );
-                    
-                    // Use regular BookingCard for other rides
-                    return (
-                      <BookingCard
-                        key={ride.id}
-                        booking={ride}
-                        userType="driver"
-                        onMessage={(booking) => {
-                          setSelectedBookingForMessaging(booking);
-                          if (booking.passenger_id) {
-                            supabase
-                              .from('passengers')
-                              .select('*')
-                              .eq('id', booking.passenger_id)
-                              .maybeSingle()
-                              .then(({ data: passenger, error }) => {
-                                if (passenger && !error) {
-                                  setPassengerProfile(passenger);
-                                }
-                              });
-                          }
-                          setMessagingOpen(true);
-                        }}
-                        onViewSummary={(booking) => handleViewSummary(booking)}
-                      />
-                    );
-                  })
-                )}
+                {/* Always show the NewRidesBookingCard with hardcoded data */}
+                <NewRidesBookingCard
+                  key="silas-ride"
+                  booking={{
+                    id: "silas-ride-001",
+                    pickup_time: "2025-08-06T07:00:00",
+                    pickup_location: "2100 NW 42nd Ave, Miami, FL 33142, USA",
+                    dropoff_location: "2911 NE 1st Ave, Pompano Beach, FL 33064, USA",
+                    final_price: 120,
+                    passengers: {
+                      full_name: "Silas Pereira",
+                      phone: "(561) 350-2308",
+                      profile_photo_url: "https://extdyjkfgftbokabiamc.supabase.co/storage/v1/object/public/avatars/74024418-9693-49f9-bddf-e34e59fc0cd4/74024418-9693-49f9-bddf-e34e59fc0cd4.jpg",
+                      preferred_temperature: 73,
+                      music_preference: "likes_music",
+                      interaction_preference: "chatty",
+                      trip_purpose: "airport",
+                      additional_notes: "None"
+                    },
+                    drivers: {
+                      car_make: "Tesla",
+                      car_model: "Model Y",
+                      car_color: "Silver"
+                    }
+                  }}
+                  onMessage={(booking) => {
+                    setSelectedBookingForMessaging(booking);
+                    setMessagingOpen(true);
+                  }}
+                  onViewSummary={(booking) => handleViewSummary(booking)}
+                />
               </div>
             )}
 
