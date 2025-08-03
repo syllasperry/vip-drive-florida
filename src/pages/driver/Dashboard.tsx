@@ -122,32 +122,33 @@ const DriverDashboard = () => {
     console.log('Ride:', ride.id, 'Status:', ride.status, 'Payment status:', ride.payment_confirmation_status, 'Ride status:', ride.ride_status);
     console.log('Passenger:', ride.passenger, 'Passengers object:', ride.passengers);
     
+    // Priority 1: All Set rides MUST go to New Rides
+    if (ride.payment_confirmation_status === "all_set") {
+      const shouldBeInNewRides = rideView === "new-rides";
+      console.log('All Set ride - Should be in New Rides:', shouldBeInNewRides);
+      return shouldBeInNewRides;
+    }
+    
+    // Priority 2: Explicitly completed rides go to Past Rides
+    if (ride.status === "completed" || ride.ride_status === "completed") {
+      const shouldBeInPastRides = rideView === "past-rides";
+      console.log('Completed ride - Should be in Past Rides:', shouldBeInPastRides);
+      return shouldBeInPastRides;
+    }
+    
+    // Priority 3: Pending/Waiting rides go to New Requests
     if (rideView === "new-requests") {
-      // New Requests: rides waiting for payment confirmation that haven't reached "all_set" status
-      const isNewRequest = ride.payment_confirmation_status !== "all_set" && 
-                          ride.status !== "completed" &&
-                          ride.ride_status !== "completed" &&
-                          (ride.ride_status === "pending_driver" || 
-                           ride.payment_confirmation_status === "price_awaiting_acceptance" ||
-                           ride.payment_confirmation_status === "waiting_for_payment" ||
-                           ride.payment_confirmation_status === "passenger_paid");
+      const isNewRequest = ride.ride_status === "pending_driver" || 
+                          ride.payment_confirmation_status === "price_awaiting_acceptance" ||
+                          ride.payment_confirmation_status === "waiting_for_payment" ||
+                          ride.payment_confirmation_status === "passenger_paid";
       console.log('Is new request:', isNewRequest);
       return isNewRequest;
-    } else if (rideView === "new-rides") {
-      // New Rides: confirmed rides (All Set) that are ready to be performed but not completed yet
-      const isNewRide = ride.payment_confirmation_status === "all_set" && 
-                       ride.status !== "completed" &&
-                       ride.ride_status !== "completed";
-      console.log('Is new ride:', isNewRide);
-      return isNewRide;
-    } else {
-      // Past Rides: ONLY rides that have been explicitly completed
-      // Rides with "All Set" status should stay in "New Rides" until actually completed
-      const isExplicitlyCompleted = ride.status === "completed" || ride.ride_status === "completed";
-      
-      console.log('Is past ride:', isExplicitlyCompleted, '- Status:', ride.status, '- Ride status:', ride.ride_status);
-      return isExplicitlyCompleted;
     }
+    
+    // Default: don't show in other tabs
+    console.log('Default filter result: false');
+    return false;
   });
   
   console.log('=== FILTERED RESULTS ===');
