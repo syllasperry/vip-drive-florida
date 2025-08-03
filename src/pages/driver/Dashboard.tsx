@@ -654,17 +654,38 @@ const DriverDashboard = () => {
                 </div>
 
                 {filteredRides.length === 0 ? (
-                  <Card className="bg-white border-0 shadow-sm">
-                    <CardContent className="p-8 text-center">
-                      <div className="p-4 bg-muted/30 rounded-full w-fit mx-auto mb-4">
-                        <Car className="h-8 w-8 text-muted-foreground" />
-                      </div>
-                      <h3 className="font-semibold text-foreground mb-2">No confirmed rides</h3>
-                      <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                        Rides confirmed by passengers will appear here.
-                      </p>
-                    </CardContent>
-                  </Card>
+                  // Show example card when no all_set rides exist
+                  <NewRidesBookingCard
+                    key="example"
+                    booking={{
+                      id: "example-1",
+                      pickup_time: new Date("2024-08-06T16:45:00").toISOString(),
+                      pickup_location: "Fort Lauderdale Airport",
+                      dropoff_location: "The Ritz-Carlton, Bal Harbour",
+                      final_price: 85.00,
+                      passengers: {
+                        full_name: "Fulle Name",
+                        phone: "866680",
+                        profile_photo_url: null,
+                        preferred_temperature: 72,
+                        music_preference: "playlist",
+                        music_playlist_link: "https://spotify.com/playlist/example",
+                        interaction_preference: "quiet",
+                        trip_purpose: "tourism",
+                        additional_notes: "Allergic to perfume"
+                      },
+                      drivers: {
+                        car_make: "Tesla",
+                        car_model: "Model",
+                        car_color: "White"
+                      }
+                    }}
+                    onMessage={(booking) => {
+                      setSelectedBookingForMessaging(booking);
+                      setMessagingOpen(true);
+                    }}
+                    onViewSummary={(booking) => handleViewSummary(booking)}
+                  />
                 ) : (
                   filteredRides.map((ride) => {
                     // Use NewRidesBookingCard for "All Set" rides
