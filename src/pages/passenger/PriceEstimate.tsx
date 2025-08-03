@@ -168,7 +168,7 @@ const PriceEstimate = () => {
 
         <div className="text-center mt-6">
           <p className="text-sm text-muted-foreground">
-            Minimum booking: 48 hours in advance
+            Minimum booking: 6 hours in advance
           </p>
         </div>
       </div>

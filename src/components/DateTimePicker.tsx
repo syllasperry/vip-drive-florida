@@ -23,9 +23,10 @@ export const DateTimePicker = ({
 }: DateTimePickerProps) => {
   const [calendarOpen, setCalendarOpen] = useState(false);
   
-  // Calculate minimum date (48 hours from now)
-  const minDate = addHours(new Date(), 48);
-  const minDateOnly = startOfDay(addDays(new Date(), 2));
+  // Calculate minimum date (6 hours from now)
+  const minDate = addHours(new Date(), 6);
+  const minDateOnly = new Date();
+  minDateOnly.setHours(0, 0, 0, 0); // Start of today
   
   const parsedDate = selectedDate ? new Date(selectedDate) : undefined;
 
@@ -38,13 +39,13 @@ export const DateTimePicker = ({
       for (let minute = 0; minute < 60; minute += 30) {
         const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
         
-        // If selected date is exactly 2 days from now, check 48-hour rule
+        // Check 6-hour minimum notice rule
         if (selectedDateObj) {
           const fullDateTime = new Date(selectedDateObj);
           fullDateTime.setHours(hour, minute, 0, 0);
           
           if (isAfter(minDate, fullDateTime)) {
-            continue; // Skip this time as it's within 48 hours
+            continue; // Skip this time as it's within 6 hours
           }
         }
         
@@ -58,7 +59,13 @@ export const DateTimePicker = ({
 
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
-      onDateChange(date.toISOString().split('T')[0]);
+      // Fix timezone issue by using local date string
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const localDateString = `${year}-${month}-${day}`;
+      
+      onDateChange(localDateString);
       setCalendarOpen(false);
       
       // Reset time if current time is no longer valid for new date
@@ -69,7 +76,10 @@ export const DateTimePicker = ({
   };
 
   const disableDate = (date: Date) => {
-    return !isAfter(date, minDateOnly);
+    // Allow today and future dates
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date < today;
   };
 
   return (
@@ -77,7 +87,7 @@ export const DateTimePicker = ({
       <div>
         <Label className="text-card-foreground flex items-center">
           <CalendarIcon className="mr-1 h-4 w-4" />
-          Date (min 48h advance)
+          Date (min 6h advance)
         </Label>
         <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
           <PopoverTrigger asChild>
@@ -124,7 +134,7 @@ export const DateTimePicker = ({
         </Select>
         {selectedDate && timeOptions.length === 0 && (
           <p className="text-sm text-muted-foreground mt-1">
-            No available times for this date. Please select a date further in the future.
+            Please select a time at least 6 hours from now.
           </p>
         )}
       </div>

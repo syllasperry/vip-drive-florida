@@ -51,6 +51,20 @@ const BookingForm = () => {
 
       // Combine date and time for pickup_time
       const pickupDateTime = new Date(`${formData.date}T${formData.time}`);
+      
+      // Validate 6-hour minimum notice
+      const now = new Date();
+      const minBookingTime = new Date(now.getTime() + (6 * 60 * 60 * 1000)); // 6 hours from now
+      
+      if (pickupDateTime <= minBookingTime) {
+        toast({
+          title: "Invalid Booking Time",
+          description: "Please select a time at least 6 hours from now.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
 
       // Get vehicle details from the selected vehicle
       const vehicleMapping = {
