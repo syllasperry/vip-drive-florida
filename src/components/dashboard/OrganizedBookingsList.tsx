@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { StandardDriverRideCard } from '../StandardDriverRideCard';
 import { BookingCard } from './BookingCard';
 import { Badge } from "@/components/ui/badge";
 
@@ -140,15 +141,22 @@ const OrganizedBookingsList: React.FC<OrganizedBookingsListProps> = ({
             <div className="space-y-6">
               {bookings.map((booking) => (
                 <div key={booking.id} className="border-2 border-primary/20 rounded-xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.18)] transition-all duration-300 bg-gradient-to-br from-card via-card/95 to-primary/5 backdrop-blur-sm mb-6 p-1">
-                  <BookingCard
-                    booking={booking}
-                    userType={userType}
-                    onMessage={() => onMessage(booking)}
-                    onReview={onReview ? () => onReview(booking.id) : undefined}
-                    onViewSummary={onViewSummary ? () => onViewSummary(booking) : undefined}
-                    onCancelSuccess={onCancelSuccess}
-                    onNavigate={onNavigate ? () => onNavigate(booking) : undefined}
-                  />
+                  {userType === 'driver' ? (
+                    <StandardDriverRideCard
+                      booking={booking}
+                      onMessage={() => onMessage(booking)}
+                    />
+                  ) : (
+                    <BookingCard
+                      booking={booking}
+                      userType={userType}
+                      onMessage={() => onMessage(booking)}
+                      onReview={onReview ? () => onReview(booking.id) : undefined}
+                      onViewSummary={onViewSummary ? () => onViewSummary(booking) : undefined}
+                      onCancelSuccess={onCancelSuccess}
+                      onNavigate={onNavigate ? () => onNavigate(booking) : undefined}
+                    />
+                  )}
                 </div>
               ))}
             </div>

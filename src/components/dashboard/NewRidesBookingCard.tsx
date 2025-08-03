@@ -18,7 +18,7 @@ interface NewRidesBookingCardProps {
 export const NewRidesBookingCard = ({ booking, onMessage, onViewSummary }: NewRidesBookingCardProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [preferencesOpen, setPreferencesOpen] = useState(false);
+  const [preferencesOpen, setPreferencesOpen] = useState(true);
 
   const handlePhoneCall = (phone: string) => {
     if (phone) {

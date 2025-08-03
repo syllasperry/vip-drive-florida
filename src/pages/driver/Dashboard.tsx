@@ -19,7 +19,7 @@ import { ProfileHeader } from "@/components/dashboard/ProfileHeader";
 import { UpcomingRideCard } from "@/components/dashboard/UpcomingRideCard";
 import { EarningsSection } from "@/components/dashboard/EarningsSection";
 import { BookingToggle } from "@/components/dashboard/BookingToggle";
-import { BookingCard } from "@/components/dashboard/BookingCard";
+import { StandardDriverRideCard } from "@/components/StandardDriverRideCard";
 import { NewRidesBookingCard } from "@/components/dashboard/NewRidesBookingCard";
 import { UniversalRideCard } from "@/components/dashboard/UniversalRideCard";
 import OrganizedBookingsList from "@/components/dashboard/OrganizedBookingsList";
@@ -615,10 +615,9 @@ const DriverDashboard = () => {
                   </Card>
                 ) : (
                   filteredRides.map((ride) => (
-                    <BookingCard
+                    <StandardDriverRideCard
                       key={ride.id}
                       booking={ride}
-                      userType="driver"
                       onMessage={(booking) => {
                         setSelectedBookingForMessaging(booking);
                         if (booking.passenger_id) {
@@ -715,10 +714,9 @@ const DriverDashboard = () => {
                   </Card>
                 ) : (
                   filteredRides.map((ride) => (
-                    <BookingCard
+                    <StandardDriverRideCard
                       key={ride.id}
                       booking={ride}
-                      userType="driver"
                       onMessage={(booking) => {
                         setSelectedBookingForMessaging(booking);
                         if (booking.passenger_id) {

@@ -29,7 +29,7 @@ export const UniversalRideCard = ({
   onStatusUpdate
 }: UniversalRideCardProps) => {
   const { toast } = useToast();
-  const [preferencesOpen, setPreferencesOpen] = useState(false);
+  const [preferencesOpen, setPreferencesOpen] = useState(true);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
 
   const handlePhoneCall = (phone: string) => {
