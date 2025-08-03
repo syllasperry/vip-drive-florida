@@ -151,19 +151,20 @@ const RideProgress = () => {
         if (error) throw error;
       }
 
-      // Update local state
+      // Update local state - toggle individual stages independently
       const timestamp = new Date().toLocaleTimeString('en-US', { 
         hour: '2-digit', 
         minute: '2-digit',
         hour12: true 
       });
 
-      setRideStages(prev => prev.map((stage, index) => {
-        const stageIndex = rideStages.findIndex(s => s.id === stageId);
-        if (checked && index <= stageIndex) {
-          return { ...stage, completed: true, timestamp };
-        } else if (!checked && index > stageIndex) {
-          return { ...stage, completed: false, timestamp: undefined };
+      setRideStages(prev => prev.map(stage => {
+        if (stage.id === stageId) {
+          return { 
+            ...stage, 
+            completed: checked, 
+            timestamp: checked ? timestamp : undefined 
+          };
         }
         return stage;
       }));
@@ -241,41 +242,41 @@ const RideProgress = () => {
         </div>
 
         {/* Ride Status Timeline */}
-        <div className="space-y-1">
+        <div className="space-y-3">
           {rideStages.map((stage, index) => {
             const isInTransitWithStops = stage.id === 'in_transit' && stage.completed;
             
             return (
-              <div key={stage.id}>
+              <div key={stage.id} className="bg-card rounded-lg border">
                 {/* Main status row */}
-                <div className={`flex items-center justify-between py-4 px-3 rounded-lg ${
-                  isInTransitWithStops ? 'bg-blue-600 text-white' : ''
+                <div className={`flex items-center justify-between p-4 ${
+                  isInTransitWithStops ? 'bg-primary text-primary-foreground rounded-t-lg' : ''
                 }`}>
                   <div className="flex items-center space-x-4">
                     <div className="flex-shrink-0">
                       {isDriver ? (
                         <button
                           onClick={() => handleStageUpdate(stage.id, !stage.completed)}
-                          className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${
+                          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all hover:scale-105 ${
                             stage.completed 
-                              ? 'bg-blue-600 border-blue-600 text-white' 
-                              : 'border-gray-300 hover:border-blue-400'
-                          } ${isInTransitWithStops ? 'bg-white border-white text-blue-600' : ''}`}
+                              ? 'bg-primary border-primary text-primary-foreground' 
+                              : 'border-muted-foreground hover:border-primary bg-background'
+                          } ${isInTransitWithStops ? 'bg-background border-background text-primary' : ''}`}
                         >
                           {stage.completed && (
-                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
                           )}
                         </button>
                       ) : (
-                        <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
                           stage.completed 
-                            ? 'bg-blue-600 border-blue-600 text-white' 
-                            : 'border-gray-300'
-                        } ${isInTransitWithStops ? 'bg-white border-white text-blue-600' : ''}`}>
+                            ? 'bg-primary border-primary text-primary-foreground' 
+                            : 'border-muted-foreground bg-background'
+                        } ${isInTransitWithStops ? 'bg-background border-background text-primary' : ''}`}>
                           {stage.completed && (
-                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
                           )}
@@ -283,20 +284,17 @@ const RideProgress = () => {
                       )}
                     </div>
                     <div className="flex-1">
-                      <p className={`text-base font-medium ${
-                        isInTransitWithStops ? 'text-white' : 
-                        stage.completed ? 'text-gray-900' : 'text-gray-500'
+                      <p className={`text-sm font-medium ${
+                        isInTransitWithStops ? 'text-primary-foreground' : 
+                        stage.completed ? 'text-foreground' : 'text-muted-foreground'
                       }`}>
                         {stage.title}
                       </p>
-                      {isInTransitWithStops && (
-                        <p className="text-white/90 text-sm mt-1">Enter address</p>
-                      )}
                     </div>
                   </div>
                   {stage.timestamp && (
-                    <span className={`text-sm ${
-                      isInTransitWithStops ? 'text-white/90' : 'text-gray-500'
+                    <span className={`text-xs font-medium ${
+                      isInTransitWithStops ? 'text-primary-foreground/80' : 'text-muted-foreground'
                     }`}>
                       {stage.timestamp}
                     </span>
@@ -305,20 +303,15 @@ const RideProgress = () => {
                 
                 {/* Extra stop input for "In transit" stage */}
                 {isInTransitWithStops && (
-                  <div className="mt-2 px-3 pb-4">
+                  <div className="px-4 pb-4">
                     <Input
-                      placeholder="Enter address"
+                      placeholder="Enter extra stop address"
                       value={extraStopLocation}
                       onChange={(e) => setExtraStopLocation(e.target.value)}
-                      className="bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                      className="bg-background text-foreground border-border"
                       disabled={!isDriver}
                     />
                   </div>
-                )}
-                
-                {/* Separator line - except for last item */}
-                {index < rideStages.length - 1 && !isInTransitWithStops && (
-                  <div className="border-b border-gray-200 mx-3"></div>
                 )}
               </div>
             );
@@ -326,38 +319,30 @@ const RideProgress = () => {
         </div>
 
         {/* Maps Navigation */}
-        <div className="pt-6 space-y-4">
+        <div className="pt-6">
           <div className="flex justify-center gap-3">
             <Button
               variant="outline"
-              className="px-4 py-2 text-sm"
+              className="flex-1"
               onClick={() => handleMapsClick('google')}
             >
               Google Maps
             </Button>
             <Button
               variant="outline"
-              className="px-4 py-2 text-sm"
+              className="flex-1"
               onClick={() => handleMapsClick('apple')}
             >
               Apple Maps
             </Button>
             <Button
               variant="outline"
-              className="px-4 py-2 text-sm"
+              className="flex-1"
               onClick={() => handleMapsClick('waze')}
             >
               Waze
             </Button>
           </div>
-          
-          <Button 
-            className="w-full bg-gray-900 hover:bg-gray-800 text-white" 
-            size="lg"
-            onClick={() => handleMapsClick('google')}
-          >
-            Open in Maps
-          </Button>
         </div>
       </div>
     </div>
