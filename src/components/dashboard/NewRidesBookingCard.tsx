@@ -235,46 +235,58 @@ export const NewRidesBookingCard = ({ booking, onMessage, onViewSummary }: NewRi
             </Collapsible>
           </div>
 
-          {/* Maps Button */}
-          <div className="mt-4">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button
-                  className="w-full bg-gray-800 hover:bg-gray-900 text-white font-medium py-4 rounded-lg text-base flex items-center justify-center gap-2"
-                >
-                  <Map className="h-5 w-5" />
-                  Maps
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <div className="flex flex-col space-y-4 p-4">
-                  <h3 className="text-lg font-semibold text-center">Choose Navigation App</h3>
-                  <div className="space-y-2">
-                    <Button
-                      onClick={() => handleMapsClick('google')}
-                      className="w-full justify-start"
-                      variant="outline"
-                    >
-                      Google Maps
-                    </Button>
-                    <Button
-                      onClick={() => handleMapsClick('apple')}
-                      className="w-full justify-start"
-                      variant="outline"
-                    >
-                      Apple Maps
-                    </Button>
-                    <Button
-                      onClick={() => handleMapsClick('waze')}
-                      className="w-full justify-start"
-                      variant="outline"
-                    >
-                      Waze
-                    </Button>
+          {/* Action Buttons */}
+          <div className="mt-4 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="flex items-center justify-center gap-2 py-3"
+                  >
+                    <Map className="h-4 w-4" />
+                    Maps
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <div className="flex flex-col space-y-4 p-4">
+                    <h3 className="text-lg font-semibold text-center">Choose Navigation App</h3>
+                    <div className="space-y-2">
+                      <Button
+                        onClick={() => handleMapsClick('google')}
+                        className="w-full justify-start"
+                        variant="outline"
+                      >
+                        Google Maps
+                      </Button>
+                      <Button
+                        onClick={() => handleMapsClick('apple')}
+                        className="w-full justify-start"
+                        variant="outline"
+                      >
+                        Apple Maps
+                      </Button>
+                      <Button
+                        onClick={() => handleMapsClick('waze')}
+                        className="w-full justify-start"
+                        variant="outline"
+                      >
+                        Waze
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </DialogContent>
-            </Dialog>
+                </DialogContent>
+              </Dialog>
+              
+              <Button
+                variant="default"
+                className="flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={() => window.location.href = '/ride-progress'}
+              >
+                <Settings className="h-4 w-4" />
+                Ride Progress
+              </Button>
+            </div>
           </div>
         </div>
       </CardContent>

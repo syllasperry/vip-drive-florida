@@ -24,15 +24,7 @@ export const BottomNavigation = ({ activeTab, onTabChange, userType, pendingActi
     { id: "settings", label: "Settings", icon: Settings }
   ];
 
-  // Add ride progress button when there's an active ride
-  const rideProgressTab = { id: "rideProgress", label: "Ride Progress", icon: Navigation };
-  
-  let finalTabs = userType === "passenger" ? passengerTabs : driverTabs;
-  
-  if (hasActiveRide) {
-    // Insert ride progress as second-to-last tab
-    finalTabs = [...finalTabs.slice(0, -1), rideProgressTab, finalTabs[finalTabs.length - 1]];
-  }
+  const finalTabs = userType === "passenger" ? passengerTabs : driverTabs;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border/50 backdrop-blur-lg z-50">
