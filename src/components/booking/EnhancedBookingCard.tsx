@@ -202,10 +202,17 @@ export const EnhancedBookingCard = ({
 
   const getOtherUserInfo = () => {
     if (userType === "passenger" && booking.drivers) {
+      const carMake = booking.drivers.car_make || booking.drivers.vehicle_make || '';
+      const carModel = booking.drivers.car_model || booking.drivers.vehicle_model || '';
+      const vehicleName = carMake && carModel ? `${carMake} ${carModel}` : 
+                         booking.vehicle_type || 
+                         booking.drivers.car_type ||
+                         'Vehicle details not available';
+      
       return {
         name: booking.drivers.full_name,
         avatar: booking.drivers.profile_photo_url,
-        vehicle: `${booking.drivers.car_make} ${booking.drivers.car_model}`,
+        vehicle: vehicleName,
         label: "Driver"
       };
     } else if (userType === "driver" && booking.passengers) {
@@ -222,8 +229,26 @@ export const EnhancedBookingCard = ({
   const otherUser = getOtherUserInfo();
 
   return (
-    <Card className="hover:shadow-[var(--shadow-subtle)] transition-all duration-300 border-border/50">
+    <Card className={`hover:shadow-[var(--shadow-subtle)] transition-all duration-300 ${booking.payment_confirmation_status === 'all_set' ? 'border-primary/50 border-2' : 'border-border/50'}`}>
       <CardContent className="p-5">
+        {/* All Set Banner for individual booking */}
+        {booking.payment_confirmation_status === 'all_set' && (
+          <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-3 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-6 h-6 bg-green-100 dark:bg-green-900/40 rounded-full flex items-center justify-center">
+                <span className="text-green-600 dark:text-green-400 text-sm">✅</span>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-green-800 dark:text-green-200">
+                  All Set! Your ride is confirmed and ready to go!
+                </h3>
+                <p className="text-xs text-green-600 dark:text-green-400">
+                  Payment confirmed by both parties. Have a great trip!
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3 flex-1">
             <div className="p-2 bg-primary/10 rounded-full">
@@ -344,7 +369,7 @@ export const EnhancedBookingCard = ({
         )}
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 justify-center">
           {getActionButtons()}
         </div>
       </CardContent>

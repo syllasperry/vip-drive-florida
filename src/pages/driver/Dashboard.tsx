@@ -632,7 +632,7 @@ const DriverDashboard = () => {
               <div className="space-y-4">
                 {/* Header */}
                 <div className="text-center py-4">
-                  <h2 className="text-2xl font-bold text-foreground mb-2">📝 To-Do List – Confirmed Rides</h2>
+                  <h2 className="text-2xl font-bold text-foreground mb-2">📝 Confirmed Rides</h2>
                   <p className="text-sm text-muted-foreground">
                     Rides ready to be performed ({filteredRides.length} ride{filteredRides.length !== 1 ? 's' : ''})
                   </p>

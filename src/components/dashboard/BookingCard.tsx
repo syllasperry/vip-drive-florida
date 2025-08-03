@@ -45,7 +45,7 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
   };
 
   return (
-    <Card className="hover:shadow-[var(--shadow-subtle)] transition-all duration-300 border-border/60 shadow-sm bg-card/50 backdrop-blur-sm">
+    <Card className={`hover:shadow-[var(--shadow-subtle)] transition-all duration-300 shadow-sm bg-card/50 backdrop-blur-sm ${booking.payment_confirmation_status === 'all_set' ? 'border-primary/50 border-2' : 'border-border/60'}`}>
       <CardContent className="p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
@@ -176,12 +176,12 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
         )}
 
         {/* Action Buttons */}
-        <div className="flex gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <Button
             onClick={onMessage}
             variant="outline"
             size="sm"
-            className="flex-1 flex items-center gap-2"
+            className="flex items-center justify-center gap-2"
           >
             <MessageCircle className="h-4 w-4" />
             Message
@@ -192,7 +192,7 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
               onClick={onViewSummary}
               variant="outline"
               size="sm"
-              className="flex items-center gap-2"
+              className="flex items-center justify-center gap-2"
             >
               <FileText className="h-4 w-4" />
               Summary
@@ -201,9 +201,9 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
 
           {/* Maps Button for All Set rides */}
           {booking.payment_confirmation_status === 'all_set' && userType === "driver" && (
-            <div className="relative">
+            <div className="relative col-span-2">
               <select 
-                className="appearance-none bg-primary text-primary-foreground px-3 py-2 rounded-md text-sm font-medium h-8 pr-8 cursor-pointer hover:bg-primary/90 transition-colors"
+                className="appearance-none bg-primary text-primary-foreground px-3 py-2 rounded-md text-sm font-medium w-full h-9 pr-8 cursor-pointer hover:bg-primary/90 transition-colors text-center"
                 onChange={(e) => {
                   const navApp = e.target.value;
                   if (!navApp) return;
@@ -251,7 +251,7 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
               onClick={onReview}
               variant="outline"
               size="sm"
-              className="flex items-center gap-2"
+              className="flex items-center justify-center gap-2"
             >
               <Star className="h-4 w-4" />
               Review
@@ -262,7 +262,7 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
           {showPaymentReceivedButton && onConfirmPaymentReceived && (
             <Button
               onClick={onConfirmPaymentReceived}
-              className="flex items-center gap-2 bg-success hover:bg-success/90"
+              className="flex items-center justify-center gap-2 bg-success hover:bg-success/90 col-span-2"
               size="sm"
             >
               <CheckCircle className="h-4 w-4" />
