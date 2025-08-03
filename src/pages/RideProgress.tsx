@@ -151,22 +151,30 @@ const RideProgress = () => {
         if (error) throw error;
       }
 
-      // Update local state - toggle individual stages independently
+      // Sequential progression logic - only one status active at a time
       const timestamp = new Date().toLocaleTimeString('en-US', { 
         hour: '2-digit', 
         minute: '2-digit',
         hour12: true 
       });
 
-      setRideStages(prev => prev.map(stage => {
-        if (stage.id === stageId) {
+      const stageOrder = ['heading_to_pickup', 'arrived_at_pickup', 'passenger_onboard', 'in_transit', 'arrived_at_dropoff', 'ride_completed'];
+      const clickedIndex = stageOrder.indexOf(stageId);
+
+      setRideStages(prev => prev.map((stage, index) => {
+        if (stage.id === stageId && checked) {
           return { 
             ...stage, 
-            completed: checked, 
-            timestamp: checked ? timestamp : undefined 
+            completed: true, 
+            timestamp: timestamp 
+          };
+        } else {
+          return { 
+            ...stage, 
+            completed: false, 
+            timestamp: undefined 
           };
         }
-        return stage;
       }));
 
     } catch (error) {
@@ -319,25 +327,28 @@ const RideProgress = () => {
         </div>
 
         {/* Maps Navigation */}
-        <div className="pt-6">
-          <div className="flex justify-center gap-3">
+        <div className="pt-8">
+          <div className="flex justify-center gap-4 max-w-md mx-auto">
             <Button
               variant="outline"
-              className="flex-1"
+              size="lg"
+              className="flex-1 h-12 font-medium text-base bg-background hover:bg-accent hover:text-accent-foreground border-2 rounded-xl transition-all duration-200 hover:scale-105"
               onClick={() => handleMapsClick('google')}
             >
               Google Maps
             </Button>
             <Button
               variant="outline"
-              className="flex-1"
+              size="lg"
+              className="flex-1 h-12 font-medium text-base bg-background hover:bg-accent hover:text-accent-foreground border-2 rounded-xl transition-all duration-200 hover:scale-105"
               onClick={() => handleMapsClick('apple')}
             >
               Apple Maps
             </Button>
             <Button
               variant="outline"
-              className="flex-1"
+              size="lg"
+              className="flex-1 h-12 font-medium text-base bg-background hover:bg-accent hover:text-accent-foreground border-2 rounded-xl transition-all duration-200 hover:scale-105"
               onClick={() => handleMapsClick('waze')}
             >
               Waze
