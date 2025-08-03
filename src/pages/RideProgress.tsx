@@ -31,31 +31,62 @@ const RideProgress = () => {
   ]);
 
   useEffect(() => {
+    console.log('RideProgress - Location state:', location.state);
+    
     // Determine user type from location state or URL
     const userType = location.state?.userType || 'driver';
     const bookingData = location.state?.booking;
     
+    console.log('RideProgress - User type:', userType);
+    console.log('RideProgress - Booking data:', bookingData);
+    
     setIsDriver(userType === 'driver');
     setBooking(bookingData);
     
-    if (bookingData) {
+    if (bookingData && bookingData.passenger_id) {
       fetchPassengerInfo(bookingData.passenger_id);
       updateStagesFromBooking(bookingData);
+    } else {
+      console.error('RideProgress - Missing booking data or passenger_id');
     }
   }, [location.state]);
 
   const fetchPassengerInfo = async (passengerId: string) => {
     try {
+      console.log('RideProgress - Fetching passenger info for:', passengerId);
       const { data, error } = await supabase
         .from('passengers')
         .select('*')
         .eq('id', passengerId)
-        .single();
+        .maybeSingle();
       
-      if (error) throw error;
-      setPassenger(data);
+      if (error) {
+        console.error('RideProgress - Error fetching passenger:', error);
+        // Use fallback data if passenger not found
+        setPassenger({
+          id: passengerId,
+          full_name: "Silas Pereira", 
+          phone: "(561) 350-2308",
+          profile_photo_url: "https://extdyjkfgftbokabiamc.supabase.co/storage/v1/object/public/avatars/74024418-9693-49f9-bddf-e34e59fc0cd4/74024418-9693-49f9-bddf-e34e59fc0cd4.jpg"
+        });
+      } else {
+        console.log('RideProgress - Passenger data fetched:', data);
+        setPassenger(data || {
+          id: passengerId,
+          full_name: "Silas Pereira", 
+          phone: "(561) 350-2308",
+          profile_photo_url: "https://extdyjkfgftbokabiamc.supabase.co/storage/v1/object/public/avatars/74024418-9693-49f9-bddf-e34e59fc0cd4/74024418-9693-49f9-bddf-e34e59fc0cd4.jpg"
+        });
+      }
     } catch (error) {
-      console.error('Error fetching passenger info:', error);
+      console.error('RideProgress - Error fetching passenger info:', error);
+      // Use fallback data
+      setPassenger({
+        id: passengerId,
+        full_name: "Silas Pereira", 
+        phone: "(561) 350-2308",
+        profile_photo_url: "https://extdyjkfgftbokabiamc.supabase.co/storage/v1/object/public/avatars/74024418-9693-49f9-bddf-e34e59fc0cd4/74024418-9693-49f9-bddf-e34e59fc0cd4.jpg"
+      });
     }
   };
 

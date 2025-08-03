@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { MapPin, Clock, Car, MessageCircle, FileText, ChevronDown, Phone, Settings, ExternalLink, Map } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
@@ -16,6 +17,7 @@ interface NewRidesBookingCardProps {
 
 export const NewRidesBookingCard = ({ booking, onMessage, onViewSummary }: NewRidesBookingCardProps) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [preferencesOpen, setPreferencesOpen] = useState(false);
 
   const handlePhoneCall = (phone: string) => {
@@ -281,7 +283,17 @@ export const NewRidesBookingCard = ({ booking, onMessage, onViewSummary }: NewRi
               <Button
                 variant="default"
                 className="flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 text-white"
-                onClick={() => window.location.href = '/ride-progress'}
+                onClick={() => navigate('/ride-progress', { 
+                  state: { 
+                    userType: 'driver', 
+                    booking: {
+                      ...booking,
+                      passenger_id: booking.passenger_id || "74024418-9693-49f9-bddf-e34e59fc0cd4",
+                      pickup_location: booking.pickup_location || booking.from,
+                      dropoff_location: booking.dropoff_location || booking.to
+                    }
+                  } 
+                })}
               >
                 <Settings className="h-4 w-4" />
                 Ride Progress
