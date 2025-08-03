@@ -11,7 +11,6 @@ interface BottomNavigationProps {
 export const BottomNavigation = ({ activeTab, onTabChange, userType, pendingActionsCount = 0, hasActiveRide = false }: BottomNavigationProps) => {
   const passengerTabs = [
     { id: "bookings", label: "Bookings", icon: Calendar },
-    { id: "todo", label: "To-Do", icon: AlertCircle, badge: pendingActionsCount },
     { id: "messages", label: "Messages", icon: MessageCircle },
     { id: "payments", label: "Payments", icon: CreditCard },
     { id: "settings", label: "Settings", icon: Settings }

@@ -23,7 +23,7 @@ import { FareConfirmationAlert } from "@/components/FareConfirmationAlert";
 import { PaymentConfirmationModal } from "@/components/PaymentConfirmationModal";
 import { PaymentModal } from "@/components/payment/PaymentModal";
 import { OfferAcceptanceModal } from "@/components/booking/OfferAcceptanceModal";
-import { TodoTab } from "@/components/booking/TodoTab";
+
 import { NotificationManager } from "@/components/NotificationManager";
 import { ChatNotificationBadge } from "@/components/ChatNotificationBadge";
 import { supabase } from "@/integrations/supabase/client";
@@ -421,7 +421,6 @@ const Dashboard = () => {
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-2xl font-bold text-foreground">
               {activeTab === 'bookings' && 'Bookings'}
-              {activeTab === 'todo' && 'To-Do'}
               {activeTab === 'messages' && 'Messages'}
               {activeTab === 'payments' && 'Payments'}
               {activeTab === 'settings' && 'Settings'}
@@ -607,25 +606,6 @@ const Dashboard = () => {
             </div>
           )}
 
-          {activeTab === "todo" && (
-            <TodoTab
-              userType="passenger"
-              userId={passenger?.id || ""}
-              onMessage={(booking) => {
-                setSelectedBooking(booking);
-                setMessagingOpen(true);
-              }}
-              onViewSummary={(booking) => {
-                setSelectedBookingForSummary(booking);
-                setSummaryModalOpen(true);
-              }}
-              onMakePayment={(booking) => {
-                setSelectedBookingForPayment(booking);
-                setPaymentModalOpen(true);
-              }}
-              onAcceptOffer={(booking) => handleAcceptFare(booking.id)}
-            />
-          )}
 
           {activeTab === "messages" && !showConversation && (
             <MessagesInbox

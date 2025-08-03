@@ -28,7 +28,8 @@ const stageConfig = {
     description: "Driver is on the way to pick you up",
     color: "bg-blue-100 text-blue-800 border-blue-200",
     nextStage: "driver_arrived_at_pickup" as RideStage,
-    nextButtonText: "Arrived at Pickup"
+    nextButtonText: "Arrived at Pickup",
+    showEstimatedArrival: true
   },
   driver_arrived_at_pickup: {
     icon: MapPin,
@@ -77,6 +78,19 @@ export const RideStatusFlow = ({ booking, userType, onStatusUpdate }: RideStatus
   const [extraStops, setExtraStops] = useState<string[]>(booking.extra_stops || []);
   const [newStop, setNewStop] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
+  
+  // Calculate estimated arrival time (for driver_heading_to_pickup stage)
+  const getEstimatedArrival = () => {
+    if (currentStage === 'driver_heading_to_pickup') {
+      // Simple estimation: add 15 minutes to current time
+      // In a real app, this would use Google Maps API to calculate actual travel time
+      const estimatedMinutes = 15;
+      const estimatedTime = new Date();
+      estimatedTime.setMinutes(estimatedTime.getMinutes() + estimatedMinutes);
+      return estimatedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    return null;
+  };
 
   const currentStage = booking.ride_stage || 'driver_heading_to_pickup';
   const config = stageConfig[currentStage as RideStage];
@@ -199,6 +213,16 @@ export const RideStatusFlow = ({ booking, userType, onStatusUpdate }: RideStatus
               {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </Badge>
           </div>
+          
+          {/* Show estimated arrival for driver heading to pickup */}
+          {currentStage === 'driver_heading_to_pickup' && (
+            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/20">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">
+                Estimated arrival: <span className="font-medium text-foreground">{getEstimatedArrival()}</span>
+              </span>
+            </div>
+          )}
         </CardContent>
       </Card>
 
