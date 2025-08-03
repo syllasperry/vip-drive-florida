@@ -119,13 +119,14 @@ const DriverDashboard = () => {
   const filteredRides = driverRides.filter(ride => {
     console.log('=== FILTERING DEBUG ===');
     console.log('Current view:', rideView);
-    console.log('Ride:', ride.id, 'Status:', ride.status, 'Payment status:', ride.payment_confirmation_status);
+    console.log('Ride:', ride.id, 'Status:', ride.status, 'Payment status:', ride.payment_confirmation_status, 'Ride status:', ride.ride_status);
     console.log('Passenger:', ride.passenger, 'Passengers object:', ride.passengers);
     
     if (rideView === "new-requests") {
       // New Requests: rides waiting for payment confirmation that haven't reached "all_set" status
       const isNewRequest = ride.payment_confirmation_status !== "all_set" && 
                           ride.status !== "completed" &&
+                          ride.ride_status !== "completed" &&
                           (ride.ride_status === "pending_driver" || 
                            ride.payment_confirmation_status === "price_awaiting_acceptance" ||
                            ride.payment_confirmation_status === "waiting_for_payment" ||
@@ -135,13 +136,21 @@ const DriverDashboard = () => {
     } else if (rideView === "new-rides") {
       // New Rides: confirmed rides (All Set) that are ready to be performed but not completed yet
       const isNewRide = ride.payment_confirmation_status === "all_set" && 
-                       ride.status !== "completed";
+                       ride.status !== "completed" &&
+                       ride.ride_status !== "completed";
       console.log('Is new ride:', isNewRide);
       return isNewRide;
     } else {
-      // Past Rides: only rides that have been completed
-      const isPastRide = ride.status === "completed";
-      console.log('Is past ride:', isPastRide);
+      // Past Rides: ONLY rides that have been explicitly completed OR are past their pickup time
+      const now = new Date();
+      const pickupTime = new Date(ride.pickup_time);
+      const isExpiredByTime = pickupTime < now;
+      const isExplicitlyCompleted = ride.status === "completed" || ride.ride_status === "completed";
+      
+      const isPastRide = isExplicitlyCompleted || 
+                        (isExpiredByTime && ride.payment_confirmation_status === "all_set");
+      
+      console.log('Is past ride:', isPastRide, '- Completed:', isExplicitlyCompleted, '- Expired:', isExpiredByTime, '- Pickup time:', ride.pickup_time);
       return isPastRide;
     }
   });
