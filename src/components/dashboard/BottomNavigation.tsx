@@ -28,7 +28,8 @@ export const BottomNavigation = ({ activeTab, onTabChange, userType, pendingActi
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border/50 backdrop-blur-lg z-50">
-      <div className={`grid grid-cols-${finalTabs.length} max-w-lg mx-auto`}>
+      <div className="grid grid-cols-4 max-w-lg mx-auto"
+           style={{ gridTemplateColumns: `repeat(${finalTabs.length}, minmax(0, 1fr))` }}>
         {finalTabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
