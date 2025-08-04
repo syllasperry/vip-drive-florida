@@ -17,8 +17,8 @@ import PassengerDashboard from "./pages/passenger/Dashboard";
 import DriverLogin from "./pages/driver/Login";
 import DriverRegister from "./pages/driver/Register";
 import DriverDashboard from "./pages/driver/Dashboard";
-import RideProgress from "./pages/RideProgress";
 import PassengerRideProgress from "./pages/passenger/RideProgress";
+import { RideProgressScreen } from "./pages/driver/RideProgressScreen";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,7 +43,6 @@ const App = () => (
           <Route path="/driver/login" element={<DriverLogin />} />
           <Route path="/driver/register" element={<DriverRegister />} />
           <Route path="/driver/dashboard" element={<DriverDashboard />} />
-          <Route path="/ride-progress" element={<RideProgress />} />
           <Route path="/passenger/ride-progress" element={<PassengerRideProgress />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

@@ -264,7 +264,7 @@ const Dashboard = () => {
   // Handle tab navigation
   const handleTabChange = (tab: string) => {
     if (tab === 'rideProgress') {
-      navigate('/ride-progress');
+      navigate('/passenger/ride-progress');
       return;
     }
     

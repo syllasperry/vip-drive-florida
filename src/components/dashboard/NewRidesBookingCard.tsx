@@ -283,7 +283,7 @@ export const NewRidesBookingCard = ({ booking, onMessage, onViewSummary }: NewRi
               <Button
                 variant="default"
                 className="flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 text-white"
-                onClick={() => navigate('/ride-progress', { 
+                onClick={() => navigate('/driver/ride-progress', { 
                   state: { 
                     userType: 'driver', 
                     booking: {

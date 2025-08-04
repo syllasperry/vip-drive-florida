@@ -21,8 +21,6 @@ import DriverDashboard from './driver/Dashboard';
 import ToDoPage from './driver/ToDoPage';
 import { RideProgressScreen } from './driver/RideProgressScreen';
 
-// Shared pages
-import RideProgress from './RideProgress';
 
 const Index = () => {
   return (
@@ -51,7 +49,7 @@ const Index = () => {
         <Route path="/driver/ride-progress" element={<RideProgressScreen />} />
         
         {/* Shared routes */}
-        <Route path="/ride-progress" element={<RideProgress />} />
+        <Route path="/ride-progress" element={<RideProgressScreen />} />
         
         {/* 404 */}
         <Route path="*" element={<NotFound />} />

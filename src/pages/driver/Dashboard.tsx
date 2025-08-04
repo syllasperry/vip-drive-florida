@@ -880,7 +880,7 @@ const DriverDashboard = () => {
         activeTab={activeTab}
         onTabChange={(tab) => {
           if (tab === 'rideProgress') {
-            navigate('/ride-progress');
+            navigate('/driver/ride-progress');
           } else {
             setActiveTab(tab);
           }
