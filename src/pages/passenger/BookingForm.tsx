@@ -104,7 +104,19 @@ const BookingForm = () => {
       // For now, assign to the first matching driver (later can implement smart assignment)
       const assignedDriver = matchingDrivers[0];
 
-      // Create booking in database with assigned driver
+      // Get passenger data to denormalize into booking
+      const { data: passengerData, error: passengerError } = await supabase
+        .from('passengers')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+
+      if (passengerError) {
+        console.error('Error fetching passenger data:', passengerError);
+        throw new Error('Please complete your passenger profile before booking');
+      }
+
+      // Create booking in database with assigned driver and denormalized passenger data
       const { data: booking, error } = await supabase
         .from('bookings')
         .insert({
@@ -120,7 +132,19 @@ const BookingForm = () => {
           ride_status: 'pending_driver',
           payment_confirmation_status: 'waiting_for_offer',
           status: 'pending',
-          payment_status: 'pending'
+          payment_status: 'pending',
+          // Denormalized passenger data
+          passenger_first_name: passengerData.full_name?.split(' ')[0] || '',
+          passenger_last_name: passengerData.full_name?.split(' ').slice(1).join(' ') || '',
+          passenger_phone: passengerData.phone || '',
+          passenger_photo_url: passengerData.profile_photo_url || '',
+          passenger_preferences: {
+            temperature: passengerData.preferred_temperature,
+            music: passengerData.music_preference,
+            interaction: passengerData.interaction_preference,
+            trip_purpose: passengerData.trip_purpose,
+            notes: passengerData.additional_notes
+          }
         })
         .select()
         .single();

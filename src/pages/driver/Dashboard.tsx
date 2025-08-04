@@ -187,55 +187,17 @@ const DriverDashboard = () => {
         console.log('Car make/model:', profile?.car_make, profile?.car_model);
 
         const [assignedBookings, pendingBookings] = await Promise.all([
-          // Fetch bookings already assigned to this driver
+          // Fetch bookings already assigned to this driver - passenger data is denormalized
           supabase
             .from('bookings')
-            .select(`
-              *,
-              passengers:passenger_id (
-                id,
-                full_name,
-                email,
-                phone,
-                profile_photo_url,
-                preferred_temperature,
-                music_preference,
-                music_playlist_link,
-                interaction_preference,
-                trip_purpose,
-                additional_notes
-              ),
-              drivers:driver_id (
-                id,
-                full_name,
-                car_make,
-                car_model,
-                car_year,
-                car_color
-              )
-            `)
+            .select('*')
             .eq('driver_id', profile.id)
             .order('pickup_time', { ascending: true }),
           
-          // Fetch new bookings that match this driver's vehicle (pending_driver status)
+          // Fetch new bookings that match this driver's vehicle (pending_driver status) - passenger data is denormalized
           supabase
             .from('bookings')
-            .select(`
-              *,
-              passengers:passenger_id (
-                id,
-                full_name,
-                email,
-                phone,
-                profile_photo_url,
-                preferred_temperature,
-                music_preference,
-                music_playlist_link,
-                interaction_preference,
-                trip_purpose,
-                additional_notes
-              )
-            `)
+            .select('*')
             .eq('ride_status', 'pending_driver')
             .is('driver_id', null)
             .order('pickup_time', { ascending: true })
@@ -285,21 +247,31 @@ const DriverDashboard = () => {
               dropoff_location: booking.dropoff_location,
               from: booking.pickup_location,
               to: booking.dropoff_location,
-              passenger: booking.passengers?.full_name || 'Unknown Passenger',
-              passenger_name: booking.passengers?.full_name || 'Unknown Passenger',
-              passenger_phone: booking.passengers?.phone || '',
-              passenger_email: booking.passengers?.email || '',
-              passenger_photo: booking.passengers?.profile_photo_url || '',
+              passenger: `${booking.passenger_first_name || ''} ${booking.passenger_last_name || ''}`.trim() || 'Unknown Passenger',
+              passenger_name: `${booking.passenger_first_name || ''} ${booking.passenger_last_name || ''}`.trim() || 'Unknown Passenger',
+              passenger_phone: booking.passenger_phone || '',
+              passenger_email: '', // Email not stored in denormalized data for privacy
+              passenger_photo: booking.passenger_photo_url || '',
               passenger_preferences: {
-                temperature: booking.passengers?.preferred_temperature || null,
-                music: booking.passengers?.music_preference || '',
-                music_playlist: booking.passengers?.music_playlist_link || '',
-                interaction: booking.passengers?.interaction_preference || '',
-                trip_purpose: booking.passengers?.trip_purpose || '',
-                notes: booking.passengers?.additional_notes || ''
+                temperature: (booking.passenger_preferences as any)?.temperature || null,
+                music: (booking.passenger_preferences as any)?.music || '',
+                music_playlist: '', // Not stored in denormalized data
+                interaction: (booking.passenger_preferences as any)?.interaction || '',
+                trip_purpose: (booking.passenger_preferences as any)?.trip_purpose || '',
+                notes: (booking.passenger_preferences as any)?.notes || ''
               },
-              // Ensure passenger data is available for the components
-              passengers: booking.passengers,
+              // Create passenger object for component compatibility
+              passengers: {
+                id: booking.passenger_id,
+                full_name: `${booking.passenger_first_name || ''} ${booking.passenger_last_name || ''}`.trim(),
+                phone: booking.passenger_phone,
+                profile_photo_url: booking.passenger_photo_url,
+                preferred_temperature: (booking.passenger_preferences as any)?.temperature,
+                music_preference: (booking.passenger_preferences as any)?.music,
+                interaction_preference: (booking.passenger_preferences as any)?.interaction,
+                trip_purpose: (booking.passenger_preferences as any)?.trip_purpose,
+                additional_notes: (booking.passenger_preferences as any)?.notes
+              },
               drivers: (booking as any).drivers || profile,
               status: booking.status,
               ride_status: booking.ride_status,

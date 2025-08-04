@@ -32,8 +32,13 @@ export type Database = {
           id: string
           luggage_count: number
           passenger_count: number
+          passenger_first_name: string | null
           passenger_id: string
+          passenger_last_name: string | null
           passenger_payment_confirmed_at: string | null
+          passenger_phone: string | null
+          passenger_photo_url: string | null
+          passenger_preferences: Json | null
           payment_confirmation_status: string | null
           payment_expires_at: string | null
           payment_method: string | null
@@ -67,8 +72,13 @@ export type Database = {
           id?: string
           luggage_count?: number
           passenger_count?: number
+          passenger_first_name?: string | null
           passenger_id: string
+          passenger_last_name?: string | null
           passenger_payment_confirmed_at?: string | null
+          passenger_phone?: string | null
+          passenger_photo_url?: string | null
+          passenger_preferences?: Json | null
           payment_confirmation_status?: string | null
           payment_expires_at?: string | null
           payment_method?: string | null
@@ -102,8 +112,13 @@ export type Database = {
           id?: string
           luggage_count?: number
           passenger_count?: number
+          passenger_first_name?: string | null
           passenger_id?: string
+          passenger_last_name?: string | null
           passenger_payment_confirmed_at?: string | null
+          passenger_phone?: string | null
+          passenger_photo_url?: string | null
+          passenger_preferences?: Json | null
           payment_confirmation_status?: string | null
           payment_expires_at?: string | null
           payment_method?: string | null
