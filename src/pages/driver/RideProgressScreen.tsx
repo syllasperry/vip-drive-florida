@@ -129,6 +129,18 @@ export const RideProgressScreen = () => {
       return;
     }
 
+    // Validate that the booking ID is a proper UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(booking.id)) {
+      console.error('Invalid UUID format for booking ID:', booking.id);
+      toast({
+        title: "Error",
+        description: `Invalid booking ID format: ${booking.id}. Please use a proper booking with a valid UUID.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Check if user is authenticated
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
