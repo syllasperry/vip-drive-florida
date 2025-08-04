@@ -43,7 +43,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [passenger, setPassenger] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("bookings");
-  const [bookingView, setBookingView] = useState<"upcoming" | "past">("upcoming");
+  const [bookingView, setBookingView] = useState<"upcoming" | "new-rides" | "past">("upcoming");
   const [messagingOpen, setMessagingOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [profileEditOpen, setProfileEditOpen] = useState(false);
@@ -67,15 +67,22 @@ const Dashboard = () => {
   const [preferencesModalOpen, setPreferencesModalOpen] = useState(false);
   const [bookings, setBookings] = useState<any[]>([]);
 
-  // Group bookings
+  // Group bookings into 3 sections
   const groupedBookings = {
     upcoming: bookings.filter(booking => {
-      // Only show upcoming if NOT completed
-      return booking.ride_stage !== 'completed' && 
+      // Upcoming: rides that are NOT "All Set" and not completed/cancelled
+      return booking.payment_confirmation_status !== 'all_set' && 
+             booking.ride_stage !== 'completed' && 
+             !['completed', 'cancelled', 'declined', 'offer_declined'].includes(booking.ride_status);
+    }),
+    newRides: bookings.filter(booking => {
+      // New Rides: rides that are "All Set" but not completed
+      return booking.payment_confirmation_status === 'all_set' && 
+             booking.ride_stage !== 'completed' && 
              !['completed', 'cancelled', 'declined', 'offer_declined'].includes(booking.ride_status);
     }),
     pastRides: bookings.filter(booking => {
-      // Only show in past rides if actually completed with final status
+      // Past Rides: rides that are completed
       return booking.ride_stage === 'completed';
     })
   };
@@ -414,9 +421,9 @@ const Dashboard = () => {
         />
       )}
       
-      {/* Active Ride Status Card */}
-      {groupedBookings.upcoming.length > 0 && groupedBookings.upcoming[0].ride_stage && groupedBookings.upcoming[0].ride_stage !== 'completed' && (
-        <RideStatusCard booking={groupedBookings.upcoming[0]} />
+      {/* Active Ride Status Card - Show for new rides */}
+      {groupedBookings.newRides.length > 0 && groupedBookings.newRides[0].ride_stage && groupedBookings.newRides[0].ride_stage !== 'completed' && (
+        <RideStatusCard booking={groupedBookings.newRides[0]} />
       )}
 
       {/* Main Container - Clean Mobile Layout inspired by Airbnb */}
@@ -457,18 +464,26 @@ const Dashboard = () => {
               <Button
                 variant={bookingView === "upcoming" ? "default" : "ghost"}
                 size="sm"
-                className="flex-1 text-sm font-medium h-9 rounded-md"
+                className="flex-1 text-xs font-medium h-9 rounded-md"
                 onClick={() => setBookingView("upcoming")}
               >
                 Upcoming
               </Button>
               <Button
+                variant={bookingView === "new-rides" ? "default" : "ghost"}
+                size="sm"
+                className="flex-1 text-xs font-medium h-9 rounded-md"
+                onClick={() => setBookingView("new-rides")}
+              >
+                New Rides
+              </Button>
+              <Button
                 variant={bookingView === "past" ? "default" : "ghost"}
                 size="sm"
-                className="flex-1 text-sm font-medium h-9 rounded-md"
+                className="flex-1 text-xs font-medium h-9 rounded-md"
                 onClick={() => setBookingView("past")}
               >
-                Past Rides
+                Past
               </Button>
             </div>
           )}
@@ -541,6 +556,30 @@ const Dashboard = () => {
                   </div>
                 </div>
               )}
+
+              {bookingView === "new-rides" && groupedBookings.newRides.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground mb-3">New Rides</h3>
+                  <div className="space-y-3">
+                    {groupedBookings.newRides.map((booking) => (
+                      <UniversalRideCard
+                        key={booking.id}
+                        booking={booking}
+                        userType="passenger"
+                        onMessage={() => {
+                          setSelectedBooking(booking);
+                          setMessagingOpen(true);
+                        }}
+                        onViewSummary={() => {
+                          setSelectedBookingForSummary(booking);
+                          setSummaryModalOpen(true);
+                        }}
+                        onStatusUpdate={fetchBookings}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
               
               {bookingView === "past" && groupedBookings.pastRides.length > 0 && (
                 <div>
@@ -587,16 +626,19 @@ const Dashboard = () => {
               )}
 
               {((bookingView === "upcoming" && groupedBookings.upcoming.length === 0) || 
+                (bookingView === "new-rides" && groupedBookings.newRides.length === 0) ||
                 (bookingView === "past" && groupedBookings.pastRides.length === 0)) && (
                 <div className="text-center py-12">
                   <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                     <span className="text-2xl">🚗</span>
                   </div>
                   <h3 className="font-medium text-foreground mb-2">
-                    {bookingView === "upcoming" ? "No upcoming rides" : "No past rides"}
+                    {bookingView === "upcoming" ? "No upcoming rides" : 
+                     bookingView === "new-rides" ? "No confirmed rides" : "No past rides"}
                   </h3>
                   <p className="text-sm text-muted-foreground mb-6">
-                    {bookingView === "upcoming" ? "Book your first ride to get started" : "Your completed rides will appear here"}
+                    {bookingView === "upcoming" ? "Book your first ride to get started" : 
+                     bookingView === "new-rides" ? "Confirmed rides will appear here" : "Your completed rides will appear here"}
                   </p>
                   {bookingView === "upcoming" && (
                     <Button 
