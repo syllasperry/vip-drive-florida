@@ -24,7 +24,11 @@ export const DateTimePicker = ({
   const now = new Date();
   const minDate = addHours(now, 6);
   
-  const parsedSelectedDate = selectedDate ? new Date(selectedDate) : null;
+  // Parse selected date safely to avoid timezone issues
+  const parsedSelectedDate = selectedDate ? (() => {
+    const [year, month, day] = selectedDate.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  })() : null;
 
   // Generate calendar days for the current month
   const generateCalendarDays = () => {
