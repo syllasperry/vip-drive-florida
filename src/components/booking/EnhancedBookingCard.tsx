@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Clock, User, Car, MessageCircle, FileText, DollarSign, CheckCircle, XCircle, Edit3, ChevronDown, Thermometer, Volume2, VolumeX, MessageSquare, MessageSquareOff } from "lucide-react";
 import { StatusBadges } from "../status/StatusBadges";
+import { RideStatusProgression } from "../ride/RideStatusProgression";
 import { useToast } from "@/hooks/use-toast";
 
 interface EnhancedBookingCardProps {
@@ -367,6 +368,12 @@ export const EnhancedBookingCard = ({
             )}
           </div>
         )}
+
+        {/* Ride Status Progression */}
+        <RideStatusProgression 
+          booking={booking}
+          userType={userType}
+        />
 
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-2 justify-center">

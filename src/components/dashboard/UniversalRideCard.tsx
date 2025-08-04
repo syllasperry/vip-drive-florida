@@ -9,6 +9,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { StatusBadges } from "@/components/status/StatusBadges";
 import { RideStatusFlow } from "@/components/ride/RideStatusFlow";
+import { RideStatusProgression } from "@/components/ride/RideStatusProgression";
 import { AirbnbStyleReviewModal } from "@/components/review/AirbnbStyleReviewModal";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -356,18 +357,11 @@ export const UniversalRideCard = ({
             </div>
           )}
 
-          {/* Ride Status Flow - Show for rides that are in progress */}
-          {currentBooking.payment_confirmation_status === 'all_set' && 
-           currentBooking.ride_stage && 
-           currentBooking.ride_stage !== 'completed' && (
-            <div className="mt-4">
-              <RideStatusFlow 
-                booking={currentBooking}
-                userType={userType}
-                onStatusUpdate={onStatusUpdate}
-              />
-            </div>
-          )}
+          {/* Ride Status Progression - Show for all set rides */}
+          <RideStatusProgression 
+            booking={currentBooking}
+            userType={userType}
+          />
 
           {/* Review Button - Show for completed rides (passenger only) */}
           {userType === "passenger" && 
