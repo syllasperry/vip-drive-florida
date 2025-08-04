@@ -122,6 +122,21 @@ const DriverDashboard = () => {
 
   const [driverRides, setDriverRides] = useState<any[]>([]);
 
+  // Auto-open modal when switching to new-requests tab if there are pending requests
+  useEffect(() => {
+    if (rideView === "new-requests" && driverRides.length > 0 && !priceOfferModalOpen) {
+      const pendingRequest = driverRides.find(booking => 
+        booking.ride_status === "pending_driver" && 
+        !booking.driver_id
+      );
+      
+      if (pendingRequest) {
+        setSelectedBookingForOffer(pendingRequest);
+        setPriceOfferModalOpen(true);
+      }
+    }
+  }, [rideView, driverRides, priceOfferModalOpen]);
+
   // Filter rides based on current view
   const filteredRides = driverRides.filter(ride => {
     console.log('=== FILTERING DEBUG ===');
@@ -300,13 +315,14 @@ const DriverDashboard = () => {
 
         setDriverRides(transformedBookings);
         
-        // Auto-detect new ride requests and show price offer modal
+        // Auto-detect new ride requests and show price offer modal immediately
         const newPendingRequest = transformedBookings.find(booking => 
           booking.ride_status === "pending_driver" && 
           !booking.driver_id
         );
         
-        if (newPendingRequest && !priceOfferModalOpen) {
+        // Show modal if there's a pending request and user is on new-requests tab
+        if (newPendingRequest && !priceOfferModalOpen && rideView === "new-requests") {
           setSelectedBookingForOffer(newPendingRequest);
           setPriceOfferModalOpen(true);
         }
