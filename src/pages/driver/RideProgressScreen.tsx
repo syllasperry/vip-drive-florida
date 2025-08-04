@@ -34,6 +34,13 @@ export const RideProgressScreen = () => {
   const [selectedStage, setSelectedStage] = useState<string>('');
   const [isUpdating, setIsUpdating] = useState(false);
 
+  // Load current ride stage on mount
+  React.useEffect(() => {
+    if (booking?.ride_stage) {
+      setSelectedStage(booking.ride_stage);
+    }
+  }, [booking?.ride_stage]);
+
   if (!booking) {
     return (
       <div className="min-h-screen bg-gray-50 p-4">
