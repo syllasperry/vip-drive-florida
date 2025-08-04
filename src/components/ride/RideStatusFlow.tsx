@@ -98,8 +98,10 @@ export const RideStatusFlow = ({ booking, userType, onStatusUpdate }: RideStatus
   const currentStage = booking.ride_stage; // No default - only show if explicitly set by driver
   const config = currentStage ? stageConfig[currentStage as RideStage] : null;
   
-  // Don't render anything if no stage is set
-  if (!config || !currentStage) {
+  // Don't render anything if:
+  // 1. No stage is set OR
+  // 2. Booking is not "All Set"
+  if (!config || !currentStage || booking.payment_confirmation_status !== 'all_set') {
     return null;
   }
 

@@ -227,8 +227,10 @@ export const RideStatusProgression = ({ booking, userType }: RideStatusProgressi
     );
   };
 
-  // Only show progression if ride_stage is explicitly set by driver
-  if (!booking.ride_stage) {
+  // Only show progression if:
+  // 1. ride_stage is explicitly set by driver AND
+  // 2. booking is marked as "All Set"
+  if (!booking.ride_stage || booking.payment_confirmation_status !== 'all_set') {
     return null;
   }
 

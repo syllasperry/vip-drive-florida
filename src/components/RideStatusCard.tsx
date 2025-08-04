@@ -54,10 +54,18 @@ const stageConfig = {
 };
 
 export const RideStatusCard = ({ booking }: RideStatusCardProps) => {
-  const currentStage = booking.ride_stage; // No default - only show if explicitly set by driver
-  const config = currentStage ? stageConfig[currentStage as keyof typeof stageConfig] : null;
+  const currentStage = booking.ride_stage;
+  const isAllSet = booking.payment_confirmation_status === 'all_set';
   
-  if (!config || !currentStage) {
+  // Only show status cards if:
+  // 1. Driver has explicitly set a ride_stage AND
+  // 2. Booking is marked as "All Set"
+  if (!currentStage || !isAllSet) {
+    return null;
+  }
+  
+  const config = stageConfig[currentStage as keyof typeof stageConfig];
+  if (!config) {
     return null;
   }
 
