@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Clock, User, MapPin, Luggage, Edit3, Send, Phone, Navigation, Thermometer, Music, MessageCircle } from "lucide-react";
+import { X, Music, Thermometer, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -41,65 +39,25 @@ interface PendingRequestAlertProps {
 }
 
 const PendingRequestAlert = ({ requests, onAccept, onDecline }: PendingRequestAlertProps) => {
-  const [timeLeft, setTimeLeft] = useState<{ [key: string]: number }>({});
   const [suggestedPrices, setSuggestedPrices] = useState<{ [key: string]: number }>({});
-  const [editingPrice, setEditingPrice] = useState<{ [key: string]: boolean }>({});
   const { toast } = useToast();
 
-  // Initialize countdown timers and suggested prices for each request
+  // Initialize suggested prices for each request
   useEffect(() => {
-    const timers: { [key: string]: number } = {};
     const prices: { [key: string]: number } = {};
     requests.forEach(request => {
-      if (!timeLeft[request.id]) {
-        timers[request.id] = 270; // 4:30 minutes = 270 seconds (matching the image)
-      }
       if (!suggestedPrices[request.id]) {
-        // Calculate suggested price based on estimated distance/time
-        prices[request.id] = calculateSuggestedPrice(request);
+        prices[request.id] = 119; // Default suggested price as shown in reference
       }
     });
-    setTimeLeft(prev => ({ ...prev, ...timers }));
     setSuggestedPrices(prev => ({ ...prev, ...prices }));
   }, [requests]);
-
-  // Update countdown every second
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTimeLeft(prev => {
-        const updated = { ...prev };
-        Object.keys(updated).forEach(requestId => {
-          if (updated[requestId] > 0) {
-            updated[requestId] -= 1;
-          }
-        });
-        return updated;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const calculateSuggestedPrice = (request: PendingRequest): number => {
-    // Basic price calculation - can be enhanced with actual distance API
-    return 100; // Default suggested price
-  };
-
-  const formatTimeLeft = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
-
-  const handlePriceEdit = (requestId: string) => {
-    setEditingPrice(prev => ({ ...prev, [requestId]: true }));
-  };
 
   const handlePriceChange = (requestId: string, newPrice: number) => {
     setSuggestedPrices(prev => ({ ...prev, [requestId]: newPrice }));
   };
 
-  const handleSendPriceToPassenger = async (requestId: string) => {
+  const handleSendOffer = async (requestId: string) => {
     try {
       const price = suggestedPrices[requestId];
       
@@ -131,237 +89,130 @@ const PendingRequestAlert = ({ requests, onAccept, onDecline }: PendingRequestAl
       }
 
       toast({
-        title: "Price sent to passenger",
-        description: `$${price} has been sent to the passenger for confirmation.`,
+        title: "Offer sent!",
+        description: `Your $${price} offer has been sent to the passenger.`,
       });
-
-      setEditingPrice(prev => ({ ...prev, [requestId]: false }));
     } catch (error) {
-      console.error('Error sending price to passenger:', error);
+      console.error('Error sending offer:', error);
       toast({
         title: "Error",
-        description: "Failed to send price to passenger.",
+        description: "Failed to send offer to passenger.",
         variant: "destructive",
       });
     }
   };
 
-  const handleViewRoute = (request: PendingRequest) => {
-    const pickup = encodeURIComponent(request.from);
-    const dropoff = encodeURIComponent(request.to);
-    const url = `https://www.google.com/maps/dir/${pickup}/${dropoff}`;
-    window.open(url, '_blank');
+  const handleClose = (requestId: string) => {
+    onDecline(requestId);
   };
 
   if (requests.length === 0) return null;
 
   return (
-    <div className="space-y-4">
+    <>
       {requests.map((request) => (
-        <Card 
-          key={request.id} 
-          className="border-2 border-primary/20 bg-card shadow-lg hover:shadow-xl transition-shadow"
-        >
-          <CardContent className="p-6">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 bg-destructive rounded-full animate-pulse"></div>
-                <h2 className="text-lg font-bold text-foreground">NEW RIDE REQUEST</h2>
-              </div>
-              <Badge variant="destructive" className="px-3 py-1 text-sm font-semibold">
-                {formatTimeLeft(timeLeft[request.id] || 0)} left
-              </Badge>
-            </div>
+        <div key={request.id} className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-sm w-full mx-auto relative overflow-hidden">
+          {/* Close Button */}
+          <button
+            onClick={() => handleClose(request.id)}
+            className="absolute top-4 right-4 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors z-10"
+          >
+            <X className="h-5 w-5 text-gray-500" />
+          </button>
 
-            {/* Vehicle Match */}
-            <div className="mb-4">
-              <p className="text-sm text-muted-foreground">
-                Vehicle Match: <span className="font-medium text-foreground">{request.vehicle_type}</span>
-              </p>
+          <div className="p-6">
+            {/* Header */}
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                New Ride Request
+              </h2>
             </div>
 
             {/* Passenger Info */}
-            <div className="flex items-center gap-3 mb-6 p-3 bg-muted/30 rounded-lg">
-              <Avatar className="h-12 w-12">
+            <div className="flex items-center gap-4 mb-6">
+              <Avatar className="h-16 w-16">
                 <AvatarImage 
                   src={request.passengers?.profile_photo_url} 
                   alt={request.passenger}
                 />
-                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                <AvatarFallback className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-semibold text-lg">
                   {request.passenger.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
-                <p className="font-semibold text-foreground">{request.passenger}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  {(request.passenger_phone || request.passengers?.phone) && (
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <Phone className="h-3 w-3" />
-                      <span>{request.passenger_phone || request.passengers?.phone}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              {/* Ride Preferences Icons */}
-              <div className="flex items-center gap-1">
-                {request.passengers?.preferred_temperature && (
-                  <div className="p-1 bg-primary/10 rounded-full">
-                    <Thermometer className="h-3 w-3 text-primary" />
-                  </div>
-                )}
-                {request.passengers?.music_preference && (
-                  <div className="p-1 bg-primary/10 rounded-full">
-                    <Music className="h-3 w-3 text-primary" />
-                  </div>
-                )}
-                {request.passengers?.interaction_preference && (
-                  <div className="p-1 bg-primary/10 rounded-full">
-                    <MessageCircle className="h-3 w-3 text-primary" />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Location Details */}
-            <div className="space-y-4 mb-6">
-              <div className="flex items-start gap-3">
-                <div className="w-3 h-3 bg-green-500 rounded-full mt-2"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground mb-1">Pickup:</p>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{request.from}</p>
-                </div>
-              </div>
-              <div className="border-l-2 border-dotted border-muted ml-1.5 h-4"></div>
-              <div className="flex items-start gap-3">
-                <div className="w-3 h-3 bg-destructive rounded-full mt-2"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground mb-1">Dropoff:</p>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{request.to}</p>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {request.passenger}
+                </h3>
+                <div className="text-sm text-gray-500 dark:text-gray-400 space-y-1">
+                  <p>Pickup: {request.from}</p>
+                  <p>Drop-off: {request.to}</p>
                 </div>
               </div>
             </div>
 
-            {/* Trip Details */}
-            <div className="flex items-center gap-6 mb-6 text-sm">
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-primary" />
-                <span className="text-foreground font-medium">{request.date}</span>
-                <span className="text-muted-foreground">at {request.time}</span>
-              </div>
-              {request.luggage_count > 0 && (
-                <div className="flex items-center gap-2">
-                  <Luggage className="h-4 w-4 text-primary" />
-                  <span className="text-foreground">{request.luggage_count} luggage</span>
+            {/* Passenger Preferences Icons */}
+            <div className="flex items-center justify-center gap-4 mb-6">
+              {request.passengers?.music_preference && (
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-full">
+                  <Music className="h-5 w-5 text-red-500" />
+                </div>
+              )}
+              {request.passengers?.preferred_temperature && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-full">
+                  <Thermometer className="h-5 w-5 text-blue-500" />
+                </div>
+              )}
+              {request.passengers?.interaction_preference && (
+                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-full">
+                  <MessageCircle className="h-5 w-5 text-gray-500" />
                 </div>
               )}
             </div>
 
-            {/* Flight Info */}
-            {request.flight_info && (
-              <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <span className="font-medium">Flight:</span> {request.flight_info}
-                </p>
-              </div>
-            )}
-
-            {/* Price Section */}
-            <div className="mb-6 p-4 bg-muted/50 rounded-lg border">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-medium text-foreground">Suggested Price:</p>
-                {!editingPrice[request.id] && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handlePriceEdit(request.id)}
-                    className="h-6 px-2 text-xs"
-                  >
-                    <Edit3 className="h-3 w-3 mr-1" />
-                    Edit
-                  </Button>
-                )}
-              </div>
-              
-              {editingPrice[request.id] ? (
-                <div className="flex items-center gap-2">
-                  <div className="flex-1">
-                    <Input
-                      type="number"
-                      value={suggestedPrices[request.id] || ''}
-                      onChange={(e) => handlePriceChange(request.id, Number(e.target.value))}
-                      className="text-lg font-bold"
-                      placeholder="Enter price"
-                    />
-                  </div>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={() => handleSendPriceToPassenger(request.id)}
-                    className="px-3"
-                  >
-                    <Send className="h-4 w-4 mr-1" />
-                    Send to Passenger
-                  </Button>
+            {/* Editable Fare */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Editable Fare
+              </label>
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <Input
+                    type="number"
+                    value={suggestedPrices[request.id] || 119}
+                    onChange={(e) => handlePriceChange(request.id, Number(e.target.value))}
+                    className="text-lg font-semibold text-center border-2 border-gray-200 dark:border-gray-700 rounded-lg"
+                    placeholder="$119 USD"
+                  />
                 </div>
-              ) : (
-                <p className="text-2xl font-bold text-primary">
-                  ${suggestedPrices[request.id] || 100}
-                </p>
-              )}
-            </div>
-
-            {/* Action Buttons */}
-            <div className="space-y-3">
-              {/* Primary Actions */}
-              <div className="grid grid-cols-2 gap-3">
-                <Button 
-                  onClick={() => onAccept(request.id, suggestedPrices[request.id])}
-                  className="h-12 bg-primary hover:bg-primary/90 font-semibold text-white"
-                >
-                  Accept
-                </Button>
-                <Button 
-                  onClick={() => handleSendPriceToPassenger(request.id)}
-                  variant="secondary"
-                  className="h-12 bg-secondary hover:bg-secondary/90 font-semibold"
+                <Button
+                  onClick={() => handleSendOffer(request.id)}
+                  className="bg-black hover:bg-gray-800 text-white px-6 py-2 rounded-lg font-medium"
                 >
                   Send Offer
                 </Button>
               </div>
-              
-              {/* Secondary Actions */}
-              <div className="grid grid-cols-2 gap-3">
-                <Button 
-                  onClick={() => handleViewRoute(request)}
-                  variant="outline"
-                  className="h-10 font-medium"
-                >
-                  <Navigation className="h-4 w-4 mr-2" />
-                  View Route
-                </Button>
-                <Button 
-                  onClick={() => onDecline(request.id)}
-                  variant="outline"
-                  className="h-10 font-medium text-muted-foreground"
-                >
-                  Reject
-                </Button>
-              </div>
             </div>
 
-            {/* Urgency indicator */}
-            {timeLeft[request.id] && timeLeft[request.id] < 60 && (
-              <div className="mt-4 p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
-                <p className="text-sm text-destructive font-medium text-center">
-                  ⚠️ URGENT: Less than 1 minute left to respond!
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            {/* Action Buttons */}
+            <div className="space-y-3">
+              <Button 
+                onClick={() => onAccept(request.id, suggestedPrices[request.id])}
+                className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-semibold text-lg"
+              >
+                Accept
+              </Button>
+              <Button 
+                onClick={() => onDecline(request.id)}
+                variant="outline"
+                className="w-full border-2 border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 py-3 rounded-lg font-semibold text-lg"
+              >
+                Reject
+              </Button>
+            </div>
+          </div>
+        </div>
       ))}
-    </div>
+    </>
   );
 };
 
