@@ -527,8 +527,31 @@ const DriverDashboard = () => {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/driver/login");
+    try {
+      // Limpar todos os dados de autenticação do localStorage
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+          localStorage.removeItem(key);
+        }
+      });
+
+      // Limpar sessionStorage também
+      Object.keys(sessionStorage || {}).forEach((key) => {
+        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+
+      // Fazer logout global no Supabase
+      await supabase.auth.signOut({ scope: 'global' });
+      
+      // Forçar redirecionamento para login
+      window.location.href = "/driver/login";
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Mesmo se houver erro, forçar redirecionamento
+      window.location.href = "/driver/login";
+    }
   };
 
   if (loading) {
