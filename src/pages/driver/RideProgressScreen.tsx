@@ -135,20 +135,36 @@ export const RideProgressScreen = () => {
             <CardTitle className="text-lg">Ride Progress Status</CardTitle>
           </CardHeader>
           <CardContent className="p-4">
-            <RadioGroup 
-              value={selectedStage} 
-              onValueChange={handleStageChange}
-              disabled={isUpdating}
-              className="space-y-4"
-            >
+            <div className="space-y-4">
               {rideStages.map((stage) => (
                 <div key={stage.value} className="space-y-2">
-                  <div className="flex items-center space-x-3 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
-                    <RadioGroupItem 
-                      value={stage.value} 
-                      id={stage.value}
-                      className="w-5 h-5"
-                    />
+                  <div 
+                    className="flex items-center space-x-3 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
+                    onClick={() => !isUpdating && handleStageChange(stage.value)}
+                  >
+                    <div className="relative">
+                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                        selectedStage === stage.value 
+                          ? 'border-green-500 bg-green-500' 
+                          : 'border-gray-300 bg-white'
+                      }`}>
+                        {selectedStage === stage.value && (
+                          <svg 
+                            className="w-4 h-4 text-white" 
+                            fill="none" 
+                            stroke="currentColor" 
+                            viewBox="0 0 24 24"
+                          >
+                            <path 
+                              strokeLinecap="round" 
+                              strokeLinejoin="round" 
+                              strokeWidth={3} 
+                              d="M5 13l4 4L19 7" 
+                            />
+                          </svg>
+                        )}
+                      </div>
+                    </div>
                     <Label 
                       htmlFor={stage.value} 
                       className="flex-1 text-base font-medium cursor-pointer"
@@ -158,7 +174,7 @@ export const RideProgressScreen = () => {
                   </div>
                 </div>
               ))}
-            </RadioGroup>
+            </div>
             
             {isUpdating && (
               <div className="mt-4 text-center text-gray-600">
