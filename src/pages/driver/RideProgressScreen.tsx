@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Phone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -50,6 +49,7 @@ export const RideProgressScreen = () => {
   }
 
   const handleStageChange = async (newStage: string) => {
+    console.log('Stage change clicked:', newStage);
     setSelectedStage(newStage);
     setIsUpdating(true);
 
@@ -199,7 +199,7 @@ export const RideProgressScreen = () => {
               <div>
                 <h4 className="font-medium text-gray-900">Scheduled Time</h4>
                 <p className="text-sm text-gray-600">
-                  {new Date(booking.pickup_datetime).toLocaleString()}
+                  {booking.pickup_time ? new Date(booking.pickup_time).toLocaleString() : 'Not specified'}
                 </p>
               </div>
             </div>
