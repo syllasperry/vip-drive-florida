@@ -98,11 +98,17 @@ export const RideProgressScreen = () => {
 
   const sendAutomaticMessage = async (messageText: string) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('No authenticated user found');
+        return;
+      }
+
       await supabase
         .from('messages')
         .insert({
           booking_id: booking.id,
-          sender_id: booking.driver_id,
+          sender_id: user.id,
           sender_type: 'driver',
           message_text: messageText
         });
@@ -123,14 +129,32 @@ export const RideProgressScreen = () => {
       return;
     }
 
+    // Check if user is authenticated
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "Please log in to update ride status",
+        variant: "destructive",
+      });
+      return;
+    }
+
     console.log('=== RIDE PROGRESS DEBUG ===');
     console.log('Stage change clicked:', newStage);
     console.log('Current booking:', booking);
     console.log('Booking ID:', booking?.id);
+    console.log('User ID:', user.id);
+    console.log('Driver ID from booking:', booking.driver_id);
     
     setIsUpdating(true);
 
     try {
+      // Verify user can update this booking
+      if (user.id !== booking.driver_id) {
+        throw new Error('Unauthorized: You can only update your own rides');
+      }
+
       const updateData: any = { 
         ride_stage: newStage,
         updated_at: new Date().toISOString()
@@ -147,14 +171,31 @@ export const RideProgressScreen = () => {
 
       console.log('Updating with data:', updateData);
 
+      // First, let's try to get the current booking to confirm access
+      const { data: currentBooking, error: fetchError } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('id', booking.id)
+        .eq('driver_id', user.id)
+        .single();
+
+      if (fetchError || !currentBooking) {
+        console.error('Cannot access booking:', fetchError);
+        throw new Error('Cannot access this booking. Please check permissions.');
+      }
+
+      console.log('Current booking found:', currentBooking);
+
+      // Now perform the update
       const { error, data } = await supabase
         .from('bookings')
         .update(updateData)
         .eq('id', booking.id)
+        .eq('driver_id', user.id)
         .select();
 
       if (error) {
-        console.error('Supabase error:', error);
+        console.error('Supabase update error:', error);
         throw error;
       }
 
@@ -180,7 +221,7 @@ export const RideProgressScreen = () => {
       console.error('Error updating ride status:', error);
       toast({
         title: "Error",
-        description: "Failed to update ride status",
+        description: error instanceof Error ? error.message : "Failed to update ride status",
         variant: "destructive",
       });
     } finally {
