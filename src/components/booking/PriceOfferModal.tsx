@@ -5,7 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { MapPin, Clock, User, DollarSign, Send } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { MapPin, Clock, User, DollarSign, Send, Phone, Music, Thermometer, MessageSquare, Map, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -18,10 +20,43 @@ interface PriceOfferModalProps {
 }
 
 export const PriceOfferModal = ({ isOpen, onClose, booking, driverProfile, onOfferSent }: PriceOfferModalProps) => {
-  const [offerPrice, setOfferPrice] = useState(booking.estimated_fare || 50);
-  const [paymentInstructions, setPaymentInstructions] = useState('');
+  const [offerPrice, setOfferPrice] = useState(booking.estimated_fare || calculateEstimatedPrice());
+  const [isEditing, setIsEditing] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const { toast } = useToast();
+
+  const handleAccept = async () => {
+    await handleSendOffer();
+  };
+
+  const handleReject = async () => {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          ride_status: 'rejected_by_driver',
+          payment_confirmation_status: 'rejected'
+        })
+        .eq('id', booking.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Ride Rejected",
+        description: "The ride request has been rejected.",
+        variant: "default"
+      });
+
+      onClose();
+    } catch (error) {
+      console.error('Error rejecting ride:', error);
+      toast({
+        title: "Error",
+        description: "Failed to reject ride. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
 
   const handleSendOffer = async () => {
     if (!offerPrice || offerPrice <= 0) {
@@ -42,9 +77,9 @@ export const PriceOfferModal = ({ isOpen, onClose, booking, driverProfile, onOff
           ride_status: 'offer_sent',
           payment_confirmation_status: 'price_awaiting_acceptance',
           final_price: offerPrice,
-          driver_payment_instructions: paymentInstructions || getDefaultPaymentInstructions(),
+          driver_payment_instructions: getDefaultPaymentInstructions(),
           driver_id: driverProfile.id,
-          payment_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString() // 15 minutes from now
+          payment_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString()
         })
         .eq('id', booking.id);
 
@@ -79,128 +114,173 @@ export const PriceOfferModal = ({ isOpen, onClose, booking, driverProfile, onOff
     return instructions.join('\n');
   };
 
-  const calculateEstimatedPrice = () => {
+  function calculateEstimatedPrice() {
     // Simple estimation: base rate + distance
     const baseRate = 15;
     const perMileRate = 2;
     const distance = booking.distance_miles || 10;
     return Math.round(baseRate + (distance * perMileRate));
+  }
+
+  const handleViewRoute = () => {
+    const pickup = encodeURIComponent(booking.pickup_location);
+    const dropoff = encodeURIComponent(booking.dropoff_location);
+    const mapsUrl = `https://maps.google.com/maps?saddr=${pickup}&daddr=${dropoff}`;
+    window.open(mapsUrl, '_blank');
   };
+
+  // Get passenger info - handle both direct fields and nested passenger object
+  const passengerName = booking.passenger_name || booking.passengers?.full_name || 'Passenger';
+  const passengerPhone = booking.passenger_phone || booking.passengers?.phone || '';
+  const passengerPhoto = booking.profile_photo_url || booking.passengers?.profile_photo_url || '';
+  const musicPref = booking.music_preference || booking.passengers?.music_preference || '';
+  const tempPref = booking.preferred_temperature || booking.passengers?.preferred_temperature || '';
+  const interactionPref = booking.interaction_preference || booking.passengers?.interaction_preference || '';
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md mx-auto">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-semibold">Send Price Offer</DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-6">
-          {/* Ride Summary */}
-          <Card className="border-border/50">
-            <CardContent className="p-4 space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-full">
-                  <Clock className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <p className="font-medium text-foreground">
-                    {booking.pickup_time ? new Date(booking.pickup_time).toLocaleDateString() : ''} at {booking.pickup_time ? new Date(booking.pickup_time).toLocaleTimeString() : ''}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <MapPin className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                <div className="flex-1 min-w-0 space-y-1">
-                  <p className="text-sm font-medium text-foreground truncate">
-                    {booking.pickup_location}
-                  </p>
-                  <p className="text-sm text-muted-foreground truncate">
-                    {booking.dropoff_location}
-                  </p>
-                  {booking.distance_miles && (
-                    <p className="text-xs text-muted-foreground">
-                      Distance: {booking.distance_miles} miles
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {booking.passengers && (
-                <div className="flex items-center gap-3">
-                  <User className="h-4 w-4 text-primary" />
-                  <span className="text-sm text-foreground">
-                    Passenger: {booking.passengers.full_name}
-                  </span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Price Input */}
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="price" className="text-sm font-medium">Your Price Offer</Label>
-              <div className="relative mt-1">
-                <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="price"
-                  type="number"
-                  min="1"
-                  step="0.01"
-                  value={offerPrice}
-                  onChange={(e) => setOfferPrice(parseFloat(e.target.value) || 0)}
-                  className="pl-10 h-12 text-lg font-medium"
-                  placeholder="0.00"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Suggested: ${calculateEstimatedPrice()} (based on distance)
-              </p>
-            </div>
-
-            <div>
-              <Label htmlFor="instructions" className="text-sm font-medium">Payment Instructions</Label>
-              <Textarea
-                id="instructions"
-                value={paymentInstructions}
-                onChange={(e) => setPaymentInstructions(e.target.value)}
-                placeholder={getDefaultPaymentInstructions()}
-                className="mt-1 min-h-[80px]"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Include your preferred payment methods (Venmo, Zelle, etc.)
-              </p>
-            </div>
+      <DialogContent className="max-w-lg mx-auto p-0">
+        <div className="bg-background rounded-lg">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b">
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <h2 className="text-lg font-semibold">~ New Ride Request</h2>
+            <Badge variant="secondary" className="bg-amber-100 text-amber-800">
+              Pending Driver Offer
+            </Badge>
           </div>
 
-          {/* Action Buttons */}
-          <div className="space-y-3">
-            <Button 
-              onClick={handleSendOffer}
-              disabled={isSending || !offerPrice}
-              className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-medium rounded-xl"
-            >
-              {isSending ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  Sending Offer...
+          <div className="p-4 space-y-4">
+            {/* Passenger Info */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={passengerPhoto} alt={passengerName} />
+                  <AvatarFallback className="bg-gray-200 text-gray-600">
+                    {passengerName.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-sm text-muted-foreground">Passenger</p>
+                  <p className="font-semibold text-lg">{passengerName}</p>
                 </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Send className="h-5 w-5" />
-                  Send Offer - ${offerPrice}
-                </div>
-              )}
-            </Button>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Phone className="h-4 w-4" />
+                <span className="text-sm">{passengerPhone}</span>
+              </div>
+            </div>
 
-            <Button 
-              variant="outline" 
-              onClick={onClose}
-              className="w-full h-12 rounded-xl"
-            >
-              Cancel
-            </Button>
+            {/* Pickup Location */}
+            <div className="space-y-2">
+              <div className="flex items-start gap-3">
+                <div className="mt-1">
+                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm text-muted-foreground">Pickup</p>
+                  <p className="font-medium">{booking.pickup_location}</p>
+                </div>
+                {/* Preference Icons */}
+                <div className="flex gap-2">
+                  {musicPref === 'likes_music' && <Music className="h-4 w-4 text-blue-500" />}
+                  {tempPref && <Thermometer className="h-4 w-4 text-orange-500" />}
+                  {interactionPref === 'quiet_ride' && <MessageSquare className="h-4 w-4 text-gray-500" />}
+                </div>
+              </div>
+
+              {/* Drop-off Location */}
+              <div className="flex items-start gap-3">
+                <div className="mt-1">
+                  <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm text-muted-foreground">Drop-off</p>
+                  <p className="font-medium">{booking.dropoff_location}</p>
+                </div>
+                <div className="flex items-center gap-1 text-muted-foreground">
+                  <MessageSquare className="h-4 w-4" />
+                </div>
+              </div>
+            </div>
+
+            {/* Fare Section */}
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <p className="text-sm text-muted-foreground">Estimated Fare</p>
+                <div className="flex items-center gap-2">
+                  {isEditing ? (
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4" />
+                      <Input
+                        type="number"
+                        value={offerPrice}
+                        onChange={(e) => setOfferPrice(parseFloat(e.target.value) || 0)}
+                        className="w-20 h-8 text-lg font-bold"
+                        onBlur={() => setIsEditing(false)}
+                        autoFocus
+                      />
+                      <span className="text-lg font-bold">USD</span>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={() => setIsEditing(true)}
+                      className="flex items-center gap-1 hover:bg-gray-50 p-1 rounded"
+                    >
+                      <span className="text-2xl font-bold">${offerPrice} USD</span>
+                      <span className="text-sm text-blue-600">(editable)</span>
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {booking.pickup_time ? new Date(booking.pickup_time).toLocaleDateString() + ', ' + new Date(booking.pickup_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-bold">$11,000</p>
+                <p className="text-xs text-muted-foreground">Based on Uber price estimate</p>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 gap-3 pt-4">
+              <Button 
+                onClick={handleAccept}
+                disabled={isSending}
+                className="h-12 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-xl"
+              >
+                {isSending ? "Sending..." : "Accept"}
+              </Button>
+              <Button 
+                onClick={handleSendOffer}
+                disabled={isSending}
+                variant="outline"
+                className="h-12 bg-gray-800 hover:bg-gray-900 text-white border-gray-800 font-medium rounded-xl"
+              >
+                Send Offer
+              </Button>
+            </div>
+
+            {/* View Route & Reject */}
+            <div className="flex items-center justify-between pt-2">
+              <Button 
+                variant="ghost" 
+                onClick={handleViewRoute}
+                className="flex items-center gap-2 text-sm"
+              >
+                <Map className="h-4 w-4" />
+                View Route
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={handleReject}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Reject
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>
