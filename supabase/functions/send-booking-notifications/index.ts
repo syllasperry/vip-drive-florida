@@ -40,7 +40,7 @@ const handler = async (req: Request): Promise<Response> => {
         driver:drivers(full_name, email, car_make, car_model)
       `)
       .eq('id', bookingId)
-      .single();
+      .maybeSingle();
 
     if (bookingError || !booking) {
       console.error('Error fetching booking:', bookingError);

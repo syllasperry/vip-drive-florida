@@ -109,11 +109,22 @@ const BookingForm = () => {
         .from('passengers')
         .select('*')
         .eq('id', session.user.id)
-        .single();
+        .maybeSingle();
 
       if (passengerError) {
         console.error('Error fetching passenger data:', passengerError);
         throw new Error('Please complete your passenger profile before booking');
+      }
+
+      if (!passengerData) {
+        toast({
+          title: "Profile Incomplete",
+          description: "Please complete your passenger profile before booking.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        navigate("/passenger/dashboard");
+        return;
       }
 
       // Create booking in database with assigned driver and denormalized passenger data
