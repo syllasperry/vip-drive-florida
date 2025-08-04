@@ -288,9 +288,17 @@ export const NewRidesBookingCard = ({ booking, onMessage, onViewSummary }: NewRi
                     userType: 'driver', 
                     booking: {
                       ...booking,
+                      id: booking.id,
+                      driver_id: booking.driver_id,
                       passenger_id: booking.passenger_id || "74024418-9693-49f9-bddf-e34e59fc0cd4",
                       pickup_location: booking.pickup_location || booking.from,
-                      dropoff_location: booking.dropoff_location || booking.to
+                      dropoff_location: booking.dropoff_location || booking.to,
+                      passenger_name: overrideData.passenger.full_name,
+                      passenger_phone: overrideData.passenger.phone,
+                      passengers: {
+                        full_name: overrideData.passenger.full_name,
+                        phone: overrideData.passenger.phone
+                      }
                     }
                   } 
                 })}
