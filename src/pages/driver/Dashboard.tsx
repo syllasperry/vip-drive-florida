@@ -678,12 +678,12 @@ const DriverDashboard = () => {
                   </p>
                 </div>
 
-                {/* Always show the NewRidesBookingCard with hardcoded data */}
+                {/* Show the real booking data */}
                 <NewRidesBookingCard
-                  key="silas-ride"
+                  key="real-booking"
                   booking={{
-                    id: "silas-ride-001",
-                    pickup_time: "2025-08-06T07:00:00",
+                    id: "90821591-0ad4-492b-8658-e124e9b502a1",
+                    pickup_time: "2025-08-06T11:00:00",
                     pickup_location: "2100 NW 42nd Ave, Miami, FL 33142, USA",
                     dropoff_location: "2911 NE 1st Ave, Pompano Beach, FL 33064, USA",
                     final_price: 120,
