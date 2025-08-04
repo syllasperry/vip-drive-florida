@@ -304,7 +304,7 @@ export const RideStatusFlow = ({ booking, userType, onStatusUpdate }: RideStatus
               } 
             });
           } else {
-            navigate('/ride-progress', { 
+            navigate('/driver/ride-progress', { 
               state: { 
                 booking: booking, 
                 userType: userType 
