@@ -95,8 +95,13 @@ export const RideStatusFlow = ({ booking, userType, onStatusUpdate }: RideStatus
     return null;
   };
 
-  const currentStage = booking.ride_stage || 'driver_heading_to_pickup';
-  const config = stageConfig[currentStage as RideStage];
+  const currentStage = booking.ride_stage; // No default - only show if explicitly set by driver
+  const config = currentStage ? stageConfig[currentStage as RideStage] : null;
+  
+  // Don't render anything if no stage is set
+  if (!config || !currentStage) {
+    return null;
+  }
 
   const handleStatusUpdate = async (nextStage: RideStage) => {
     if (userType !== "driver") return;

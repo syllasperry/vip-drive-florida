@@ -8,7 +8,7 @@ interface RideStatusProgressionProps {
 }
 
 export const RideStatusProgression = ({ booking, userType }: RideStatusProgressionProps) => {
-  const currentStage = booking.ride_stage || 'driver_heading_to_pickup';
+  const currentStage = booking.ride_stage; // No default - only show if explicitly set
   
   // Define all stages in order
   const stages = [
@@ -227,8 +227,8 @@ export const RideStatusProgression = ({ booking, userType }: RideStatusProgressi
     );
   };
 
-  // Only show progression for rides that are "all_set" or have started
-  if (booking.payment_confirmation_status !== 'all_set' && !booking.ride_stage) {
+  // Only show progression if ride_stage is explicitly set by driver
+  if (!booking.ride_stage) {
     return null;
   }
 
