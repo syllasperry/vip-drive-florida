@@ -62,28 +62,14 @@ export const NewRidesBookingCard = ({ booking, onMessage, onViewSummary }: NewRi
     return purposeMap[purpose] || 'Tourism';
   };
 
-  // Manual override data - using exact values provided
-  const overrideData = {
-    passenger: {
-      full_name: "Silas Pereira",
-      phone: "(561) 350-2308",
-      profile_photo_url: "https://extdyjkfgftbokabiamc.supabase.co/storage/v1/object/public/avatars/74024418-9693-49f9-bddf-e34e59fc0cd4/74024418-9693-49f9-bddf-e34e59fc0cd4.jpg",
-      preferred_temperature: 73,
-      music_preference: "likes_music",
-      interaction_preference: "chatty",
-      trip_purpose: "airport",
-      additional_notes: "None"
-    },
-    pickup_location: "2100 NW 42nd Ave, Miami, FL 33142, USA",
-    dropoff_location: "2911 NE 1st Ave, Pompano Beach, FL 33064, USA",
-    pickup_time: "2025-08-06T07:00:00",
-    vehicle: "Tesla Model Y – Silver",
-    final_price: "120"
-  };
+  // Use actual booking data instead of hardcoded values
+  if (!booking || !booking.passengers) {
+    return null;
+  }
 
   const handleMapsClick = (mapType: string) => {
-    const pickup = encodeURIComponent(overrideData.pickup_location);
-    const dropoff = encodeURIComponent(overrideData.dropoff_location);
+    const pickup = encodeURIComponent(booking.pickup_location || booking.from);
+    const dropoff = encodeURIComponent(booking.dropoff_location || booking.to);
     
     let url = '';
     switch (mapType) {
@@ -123,30 +109,30 @@ export const NewRidesBookingCard = ({ booking, onMessage, onViewSummary }: NewRi
             <div className="relative">
               <Avatar className="h-14 w-14">
                 <AvatarImage 
-                  src={overrideData.passenger.profile_photo_url} 
-                  alt={overrideData.passenger.full_name}
+                  src={booking.passengers?.profile_photo_url} 
+                  alt={booking.passengers?.full_name}
                 />
                 <AvatarFallback className="bg-gray-200 text-gray-700 font-bold text-lg">
-                  {overrideData.passenger.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase()}
+                  {booking.passengers?.full_name?.split(' ').map((n: string) => n[0]).join('').toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white"></div>
             </div>
             <div className="flex-1">
               <h3 className="font-semibold text-xl text-gray-900 mb-1">
-                {overrideData.passenger.full_name}
+                {booking.passengers?.full_name}
               </h3>
               <div className="flex items-center gap-6 text-sm text-gray-600">
                 <span className="font-medium">
-                  {new Date(overrideData.pickup_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {new Date(booking.pickup_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
                 <Button
                   variant="link"
                   size="sm"
                   className="h-auto p-0 text-blue-600 hover:text-blue-800 font-medium text-sm"
-                  onClick={() => handlePhoneCall(overrideData.passenger.phone)}
+                  onClick={() => handlePhoneCall(booking.passengers?.phone)}
                 >
-                  Click {overrideData.passenger.phone}
+                  Click {booking.passengers?.phone}
                 </Button>
               </div>
             </div>
@@ -159,7 +145,7 @@ export const NewRidesBookingCard = ({ booking, onMessage, onViewSummary }: NewRi
               <MapPin className="h-5 w-5 text-gray-500 mt-0.5" />
               <div className="flex-1">
                 <p className="text-sm text-gray-500 font-medium">Pickup</p>
-                <p className="font-medium text-gray-900 text-base">{overrideData.pickup_location}</p>
+                <p className="font-medium text-gray-900 text-base">{booking.pickup_location || booking.from}</p>
               </div>
               <Phone className="h-5 w-5 text-gray-400" />
             </div>
@@ -171,7 +157,7 @@ export const NewRidesBookingCard = ({ booking, onMessage, onViewSummary }: NewRi
               </div>
               <div className="flex-1">
                 <p className="text-sm text-gray-500 font-medium">Drop-Off</p>
-                <p className="font-medium text-gray-900 text-base">{overrideData.dropoff_location}</p>
+                <p className="font-medium text-gray-900 text-base">{booking.dropoff_location || booking.to}</p>
               </div>
               <Car className="h-5 w-5 text-gray-400" />
             </div>
@@ -181,14 +167,14 @@ export const NewRidesBookingCard = ({ booking, onMessage, onViewSummary }: NewRi
           <div className="grid grid-cols-2 gap-4 py-3 border-t border-gray-200">
             <div>
               <p className="text-sm text-gray-600 font-medium">
-                {new Date(overrideData.pickup_time).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}, {new Date(overrideData.pickup_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {new Date(booking.pickup_time).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}, {new Date(booking.pickup_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </p>
-              <p className="text-sm text-gray-500 mt-1">{overrideData.vehicle}</p>
+              <p className="text-sm text-gray-500 mt-1">{booking.vehicle_type || 'Vehicle'}</p>
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-500 font-medium">Ride Fare</p>
               <p className="text-lg font-bold text-gray-900">
-                ${overrideData.final_price} USD
+                {booking.final_price ? `$${booking.final_price}` : booking.estimated_price ? `$${booking.estimated_price}` : 'TBD'} USD
               </p>
             </div>
           </div>
@@ -210,27 +196,27 @@ export const NewRidesBookingCard = ({ booking, onMessage, onViewSummary }: NewRi
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between items-center py-2">
                     <span className="text-gray-700 font-medium">Temperature Preference:</span>
-                    <span className="font-medium text-gray-900">{formatTemperature(overrideData.passenger.preferred_temperature)}</span>
+                    <span className="font-medium text-gray-900">{formatTemperature(booking.passengers?.preferred_temperature)}</span>
                   </div>
                   
                   <div className="flex justify-between items-center py-2">
                     <span className="text-gray-700 font-medium">Music Preference:</span>
-                    <span className="font-medium text-gray-900">{formatMusicPreference(overrideData.passenger.music_preference)}</span>
+                    <span className="font-medium text-gray-900">{formatMusicPreference(booking.passengers?.music_preference)}</span>
                   </div>
                   
                   <div className="flex justify-between items-center py-2">
                     <span className="text-gray-700 font-medium">Interaction:</span>
-                    <span className="font-medium text-gray-900">{formatInteractionPreference(overrideData.passenger.interaction_preference)}</span>
+                    <span className="font-medium text-gray-900">{formatInteractionPreference(booking.passengers?.interaction_preference)}</span>
                   </div>
                   
                   <div className="flex justify-between items-center py-2">
                     <span className="text-gray-700 font-medium">Trip Purpose:</span>
-                    <span className="font-medium text-gray-900">{formatTripPurpose(overrideData.passenger.trip_purpose)}</span>
+                    <span className="font-medium text-gray-900">{formatTripPurpose(booking.passengers?.trip_purpose)}</span>
                   </div>
                   
                   <div className="pt-2 border-t border-gray-200">
                     <p className="text-gray-700 font-medium mb-1">Additional Notes:</p>
-                    <p className="text-gray-900 font-medium">{overrideData.passenger.additional_notes}</p>
+                    <p className="text-gray-900 font-medium">{booking.passengers?.additional_notes || 'None'}</p>
                   </div>
                 </div>
               </CollapsibleContent>
@@ -293,12 +279,9 @@ export const NewRidesBookingCard = ({ booking, onMessage, onViewSummary }: NewRi
                       passenger_id: booking.passenger_id || "74024418-9693-49f9-bddf-e34e59fc0cd4",
                       pickup_location: booking.pickup_location || booking.from,
                       dropoff_location: booking.dropoff_location || booking.to,
-                      passenger_name: overrideData.passenger.full_name,
-                      passenger_phone: overrideData.passenger.phone,
-                      passengers: {
-                        full_name: overrideData.passenger.full_name,
-                        phone: overrideData.passenger.phone
-                      }
+                      passenger_name: booking.passengers?.full_name,
+                      passenger_phone: booking.passengers?.phone,
+                      passengers: booking.passengers
                     }
                   } 
                 })}
