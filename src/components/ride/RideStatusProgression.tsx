@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Send, MapPin, User, Map, Flag, CheckCircle } from "lucide-react";
+import { AddStopModal } from "./AddStopModal";
 
 interface RideStatusProgressionProps {
   booking: any;
@@ -9,6 +10,8 @@ interface RideStatusProgressionProps {
 
 export const RideStatusProgression = ({ booking, userType }: RideStatusProgressionProps) => {
   const currentStage = booking.ride_stage; // No default - only show if explicitly set
+  const [isAddStopModalOpen, setIsAddStopModalOpen] = useState(false);
+  const [localExtraStops, setLocalExtraStops] = useState(booking.extra_stops || []);
   
   // Define all stages in order
   const stages = [
@@ -131,13 +134,13 @@ export const RideStatusProgression = ({ booking, userType }: RideStatusProgressi
 
     return (
       <div key={stage} className={`border-2 ${config.cardBorder} ${config.cardBg} rounded-2xl p-4 mb-3 relative`}>
-        {/* Time Badge */}
-        <div className={`absolute top-4 right-4 ${config.timeBg} text-white px-3 py-1 rounded-full text-sm font-medium`}>
+        {/* Time Badge - Repositioned to avoid text overlap */}
+        <div className={`absolute top-2 right-2 ${config.timeBg} text-white px-2 py-1 rounded-lg text-xs font-medium opacity-90`}>
           {getCurrentTime()}
         </div>
         
         {config.timeLabel && (
-          <div className="absolute top-0 right-4 bg-gray-600 text-white px-2 py-1 rounded-b-lg text-xs">
+          <div className="absolute top-0 right-2 bg-gray-600 text-white px-2 py-0.5 rounded-b-md text-xs opacity-80">
             {config.timeLabel}
           </div>
         )}
@@ -176,24 +179,47 @@ export const RideStatusProgression = ({ booking, userType }: RideStatusProgressi
               </div>
             )}
 
-            {/* Route Info */}
+            {/* Route Info with Add Stop functionality for passengers */}
             {config.route && (
-              <div className="mt-4 flex items-center gap-4">
-                <div className="flex flex-col items-center">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
-                    <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
-                    <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
-                    <MapPin className="h-4 w-4 text-yellow-500" />
+              <div className="mt-4">
+                <div className="flex items-center gap-4 mb-3">
+                  <div className="flex flex-col items-center">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
+                      <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
+                      <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
+                      <MapPin className="h-4 w-4 text-yellow-500" />
+                    </div>
+                    <div className="w-px h-8 bg-yellow-300"></div>
                   </div>
-                  <div className="w-px h-8 bg-yellow-300"></div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">
+                      Next scheduled stop: [Optional]
+                    </p>
+                    <p className="text-sm text-gray-600">Direct to destination</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-800">
-                    Next scheduled stop: [Optional]
-                  </p>
-                  <p className="text-sm text-gray-600">Direct to destination</p>
-                </div>
+                
+                {userType === 'passenger' && (
+                  <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-sm font-medium text-blue-900 mb-2">Add optional stops</p>
+                    {localExtraStops && localExtraStops.length > 0 && (
+                      <div className="mb-2">
+                        {localExtraStops.map((stop: any, idx: number) => (
+                          <p key={idx} className="text-xs text-blue-800 mb-1">
+                            {idx + 1}. {stop.address}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                    <button 
+                      onClick={() => setIsAddStopModalOpen(true)}
+                      className="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors"
+                    >
+                      + Add Stop
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -206,19 +232,19 @@ export const RideStatusProgression = ({ booking, userType }: RideStatusProgressi
               </div>
             )}
 
-            {/* Completed Actions */}
+            {/* Completed Actions - Enhanced star rating only */}
             {config.completed && userType === 'passenger' && (
               <div className="mt-4">
-                <div className="flex items-center gap-1 mb-3">
+                <div className="flex items-center justify-center gap-2 mb-2">
                   {[1, 2, 3, 4, 5].map((star) => (
-                    <div key={star} className="w-6 h-6 text-yellow-400">
+                    <div key={star} className="w-8 h-8 text-yellow-400 text-2xl">
                       ⭐
                     </div>
                   ))}
                 </div>
-                <button className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-xl transition-colors">
-                  Leave a review
-                </button>
+                <p className="text-center text-sm text-gray-600 font-medium">
+                  Rate your experience
+                </p>
               </div>
             )}
           </div>
@@ -246,6 +272,17 @@ export const RideStatusProgression = ({ booking, userType }: RideStatusProgressi
           return null;
         })}
       </div>
+      
+      {/* Add Stop Modal for passengers */}
+      {userType === 'passenger' && (
+        <AddStopModal
+          isOpen={isAddStopModalOpen}
+          onClose={() => setIsAddStopModalOpen(false)}
+          bookingId={booking.id}
+          existingStops={localExtraStops}
+          onStopsUpdated={setLocalExtraStops}
+        />
+      )}
     </div>
   );
 };

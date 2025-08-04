@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
+import { AddStopModal } from '@/components/ride/AddStopModal';
 
 const PassengerRideProgress = () => {
   const navigate = useNavigate();
@@ -14,6 +15,8 @@ const PassengerRideProgress = () => {
   const [activeStageId, setActiveStageId] = useState<string | null>(null);
   const [stageTimestamps, setStageTimestamps] = useState<Record<string, string>>({});
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
+  const [isAddStopModalOpen, setIsAddStopModalOpen] = useState(false);
+  const [localExtraStops, setLocalExtraStops] = useState(booking?.extra_stops || []);
   const [rideStages, setRideStages] = useState([
     { id: 'heading_to_pickup', title: 'Driver heading to pickup', completed: false },
     { id: 'arrived_at_pickup', title: 'Driver arrived at pickup', completed: false },
@@ -252,24 +255,36 @@ const PassengerRideProgress = () => {
                     </div>
                   </div>
                   {timestamp && (
-                    <span className={`text-xs font-medium ${
-                      isInTransitWithStops ? 'text-primary-foreground/80' : 'text-muted-foreground'
+                    <span className={`text-xs font-medium px-2 py-1 rounded-md ${
+                      isInTransitWithStops ? 'text-primary-foreground/80 bg-primary-foreground/10' : 'text-muted-foreground bg-muted/50'
                     }`}>
                       {timestamp}
                     </span>
                   )}
                 </div>
                 
-                {/* Show extra stops info if any */}
-                {isInTransitWithStops && booking.extra_stops && booking.extra_stops.length > 0 && (
+                {/* Show extra stops info and add stop functionality */}
+                {isInTransitWithStops && (
                   <div className="px-4 pb-4">
                     <div className="bg-background text-foreground border border-border rounded-md p-3">
-                      <p className="text-sm font-medium mb-2">Extra Stops:</p>
-                      {booking.extra_stops.map((stop: any, index: number) => (
-                        <p key={index} className="text-sm text-muted-foreground">
-                          {index + 1}. {stop.address}
-                        </p>
-                      ))}
+                      {localExtraStops && localExtraStops.length > 0 ? (
+                        <>
+                          <p className="text-sm font-medium mb-2">Extra Stops:</p>
+                          {localExtraStops.map((stop: any, index: number) => (
+                            <p key={index} className="text-sm text-muted-foreground mb-1">
+                              {index + 1}. {stop.address}
+                            </p>
+                          ))}
+                        </>
+                      ) : (
+                        <p className="text-sm font-medium mb-2">Add optional stops along your route</p>
+                      )}
+                      <button 
+                        onClick={() => setIsAddStopModalOpen(true)}
+                        className="mt-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium py-2 px-3 rounded-md transition-colors"
+                      >
+                        + Add Stop
+                      </button>
                     </div>
                   </div>
                 )}
@@ -324,6 +339,21 @@ const PassengerRideProgress = () => {
             </DialogContent>
           </Dialog>
         </div>
+        
+        {/* Add Stop Modal */}
+        <AddStopModal
+          isOpen={isAddStopModalOpen}
+          onClose={() => setIsAddStopModalOpen(false)}
+          bookingId={booking?.id || ''}
+          existingStops={localExtraStops}
+          onStopsUpdated={(stops) => {
+            setLocalExtraStops(stops);
+            // Update the booking state as well
+            if (booking) {
+              setBooking({...booking, extra_stops: stops});
+            }
+          }}
+        />
       </div>
     </div>
   );

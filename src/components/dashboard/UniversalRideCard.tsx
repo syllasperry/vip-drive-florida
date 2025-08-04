@@ -389,17 +389,18 @@ export const UniversalRideCard = ({
             </div>
           )}
 
-          {/* Maps Button - Always shown at bottom */}
-          <div className="mt-4">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button
-                  className="w-full bg-gray-800 hover:bg-gray-900 text-white font-medium py-4 rounded-lg text-base flex items-center justify-center gap-2"
-                >
-                  <Map className="h-5 w-5" />
-                  Maps
-                </Button>
-              </DialogTrigger>
+          {/* Maps Button - Hidden for passengers on completed rides */}
+          {!(userType === "passenger" && currentBooking.ride_stage === 'completed') && (
+            <div className="mt-4">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button
+                    className="w-full bg-gray-800 hover:bg-gray-900 text-white font-medium py-4 rounded-lg text-base flex items-center justify-center gap-2"
+                  >
+                    <Map className="h-5 w-5" />
+                    Maps
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="sm:max-w-md">
                 <div className="flex flex-col space-y-4 p-4">
                   <h3 className="text-lg font-semibold text-center">Choose Navigation App</h3>
@@ -429,7 +430,8 @@ export const UniversalRideCard = ({
                 </div>
               </DialogContent>
             </Dialog>
-          </div>
+            </div>
+          )}
 
           {/* Review Modal */}
           <AirbnbStyleReviewModal
