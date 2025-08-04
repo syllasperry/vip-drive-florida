@@ -133,7 +133,7 @@ export const RideProgressScreen = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       toast({
-        title: "Error",
+        title: "Error", 
         description: "Please log in to update ride status",
         variant: "destructive",
       });
@@ -166,7 +166,7 @@ export const RideProgressScreen = () => {
 
       console.log('Updating with data:', updateData);
 
-      // Perform the update
+      // Perform the update with RLS-friendly approach
       const { error, data } = await supabase
         .from('bookings')
         .update(updateData)
@@ -180,7 +180,7 @@ export const RideProgressScreen = () => {
 
       console.log('Updated booking:', data);
 
-      // Only set selectedStage AFTER successful update
+      // Update local state
       setSelectedStage(newStage);
 
       // Send automatic message to passenger
@@ -191,11 +191,11 @@ export const RideProgressScreen = () => {
 
       const stageLabel = stage?.label;
       toast({
-        title: "Status Updated",
-        description: `Ride status updated to: ${stageLabel}`,
+        title: "Success",
+        description: "Status sent to passenger successfully",
       });
 
-      console.log('Toast sent with message:', stageLabel);
+      console.log('Status updated successfully:', stageLabel);
     } catch (error) {
       console.error('Error updating ride status:', error);
       toast({
