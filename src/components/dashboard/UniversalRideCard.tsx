@@ -11,6 +11,7 @@ import { StatusBadges } from "@/components/status/StatusBadges";
 import { RideStatusFlow } from "@/components/ride/RideStatusFlow";
 import { RideStatusProgression } from "@/components/ride/RideStatusProgression";
 import { AirbnbStyleReviewModal } from "@/components/review/AirbnbStyleReviewModal";
+import { RideStatusMessage } from "@/components/RideStatusMessage";
 import { supabase } from "@/integrations/supabase/client";
 
 interface UniversalRideCardProps {
@@ -357,11 +358,23 @@ export const UniversalRideCard = ({
             </div>
           )}
 
-          {/* Ride Status Progression - Show for all set rides */}
-          <RideStatusProgression 
-            booking={currentBooking}
-            userType={userType}
-          />
+           {/* Driver Status Message - Show for passengers when driver has set a status */}
+           {userType === "passenger" && 
+            currentBooking.payment_confirmation_status === 'all_set' && 
+            currentBooking.ride_stage && (
+             <div className="mt-4">
+               <RideStatusMessage 
+                 rideStage={currentBooking.ride_stage}
+                 timestamp={lastUpdated}
+               />
+             </div>
+           )}
+
+           {/* Ride Status Progression - Show for all set rides */}
+           <RideStatusProgression 
+             booking={currentBooking}
+             userType={userType}
+           />
 
           {/* Review Button - Show for completed rides (passenger only) */}
           {userType === "passenger" && 

@@ -150,6 +150,31 @@ export const RideProgressScreen = () => {
     setIsUpdating(true);
 
     try {
+      // First check if the driver has permission to update this booking
+      const { data: checkData, error: checkError } = await supabase
+        .from('bookings')
+        .select('id, driver_id, passenger_id, ride_stage')
+        .eq('id', booking.id)
+        .single();
+
+      if (checkError) {
+        console.error('Error checking booking:', checkError);
+        throw new Error('Unable to access booking details');
+      }
+
+      if (!checkData) {
+        throw new Error('Booking not found');
+      }
+
+      console.log('Current booking data:', checkData);
+      console.log('Authenticated user:', user.id);
+      console.log('Booking driver_id:', checkData.driver_id);
+
+      // Verify this driver can update this booking
+      if (checkData.driver_id !== user.id) {
+        throw new Error('You can only update rides assigned to you');
+      }
+
       const updateData: any = { 
         ride_stage: newStage,
         updated_at: new Date().toISOString()
@@ -166,16 +191,19 @@ export const RideProgressScreen = () => {
 
       console.log('Updating with data:', updateData);
 
-      // Perform the update with RLS-friendly approach
+      // Perform the update
       const { error, data } = await supabase
         .from('bookings')
         .update(updateData)
         .eq('id', booking.id)
+        .eq('driver_id', user.id) // Additional security check
         .select();
 
       if (error) {
         console.error('Supabase update error:', error);
-        throw error;
+        console.error('Error details:', error.message);
+        console.error('Error code:', error.code);
+        throw new Error(`Failed to update ride status: ${error.message}`);
       }
 
       console.log('Updated booking:', data);
