@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Phone, Send, MapPin, Users, Route, Flag, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Phone, Send, MapPin, Users, Route, Flag, CheckCircle, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -20,42 +20,48 @@ const rideStages = [
     label: 'Heading to Pickup',
     icon: Send,
     bgColor: 'bg-blue-500',
-    textColor: 'text-white'
+    textColor: 'text-white',
+    message: 'I\'m heading to your pickup location. Estimated arrival in 10 minutes.'
   },
   { 
     value: 'driver_arrived_at_pickup', 
     label: 'Arrived at Pickup',
     icon: MapPin,
     bgColor: 'bg-green-500',
-    textColor: 'text-white'
+    textColor: 'text-white',
+    message: 'I\'m at the pickup location. Please meet me promptly.'
   },
   { 
     value: 'passenger_onboard', 
     label: 'Passenger Onboard',
-    icon: Users,
+    icon: User,
     bgColor: 'bg-orange-500',
-    textColor: 'text-white'
+    textColor: 'text-white',
+    message: 'Passenger onboard. Ride started. Enjoy the trip!'
   },
   { 
     value: 'in_transit', 
     label: 'In Transit with Stops',
     icon: Route,
     bgColor: 'bg-yellow-400',
-    textColor: 'text-white'
+    textColor: 'text-white',
+    message: 'We are on the way. Quick stops may happen during the ride.'
   },
   { 
     value: 'driver_arrived_at_dropoff', 
     label: 'Arrived at Drop-off',
     icon: Flag,
     bgColor: 'bg-purple-500',
-    textColor: 'text-white'
+    textColor: 'text-white',
+    message: 'We\'ve arrived at your destination. Please exit the vehicle safely.'
   },
   { 
     value: 'completed', 
     label: 'Ride Completed',
     icon: CheckCircle,
     bgColor: 'bg-stone-100',
-    textColor: 'text-stone-700'
+    textColor: 'text-stone-700',
+    message: 'Thank you for riding with us! Please leave a review if you\'d like.'
   }
 ];
 
@@ -89,6 +95,23 @@ export const RideProgressScreen = () => {
       </div>
     );
   }
+
+  const sendAutomaticMessage = async (messageText: string) => {
+    try {
+      await supabase
+        .from('messages')
+        .insert({
+          booking_id: booking.id,
+          sender_id: booking.driver_id,
+          sender_type: 'driver',
+          message_text: messageText
+        });
+      
+      console.log('Automatic message sent:', messageText);
+    } catch (error) {
+      console.error('Error sending automatic message:', error);
+    }
+  };
 
   const handleStageChange = async (newStage: string) => {
     console.log('=== RIDE PROGRESS DEBUG ===');
@@ -129,7 +152,13 @@ export const RideProgressScreen = () => {
 
       console.log('Updated booking:', data);
 
-      const stageLabel = rideStages.find(stage => stage.value === newStage)?.label;
+      // Send automatic message to passenger
+      const stage = rideStages.find(stage => stage.value === newStage);
+      if (stage?.message) {
+        await sendAutomaticMessage(stage.message);
+      }
+
+      const stageLabel = stage?.label;
       toast({
         title: "Status Updated",
         description: `Ride status updated to: ${stageLabel}`,
