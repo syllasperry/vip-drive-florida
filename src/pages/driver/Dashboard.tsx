@@ -632,9 +632,9 @@ const DriverDashboard = () => {
 
       {/* Floating Pending Request Alert Popup */}
       {(() => {
-        // Show popup for any rides with pending_driver status (without driver assigned)
+        // Show popup for any rides with pending_driver status
         const pendingRides = driverRides.filter(ride => 
-          ride.ride_status === "pending_driver" && !ride.driver_id
+          ride.ride_status === "pending_driver"
         );
         console.log('=== POPUP DEBUG ===');
         console.log('All driver rides:', driverRides);
@@ -646,7 +646,7 @@ const DriverDashboard = () => {
           <div className="max-w-md w-full max-h-[90vh] overflow-y-auto">
             <PendingRequestAlert 
               requests={driverRides
-                .filter(ride => ride.ride_status === "pending_driver" && !ride.driver_id)
+                .filter(ride => ride.ride_status === "pending_driver")
                 .map(ride => ({
                   id: ride.id,
                   passenger: ride.passenger_name || ride.passenger,
