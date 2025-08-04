@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Clock, User, MapPin, Luggage, Edit3, Send } from "lucide-react";
+import { Clock, User, MapPin, Luggage, Edit3, Send, Phone, Navigation, Thermometer, Music, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -17,6 +17,11 @@ interface PendingRequest {
     profile_photo_url?: string;
     phone?: string;
     email?: string;
+    preferred_temperature?: number;
+    music_preference?: string;
+    interaction_preference?: string;
+    trip_purpose?: string;
+    additional_notes?: string;
   };
   from: string;
   to: string;
@@ -26,6 +31,7 @@ interface PendingRequest {
   passenger_count: number;
   luggage_count: number;
   flight_info?: string;
+  passenger_phone?: string;
 }
 
 interface PendingRequestAlertProps {
@@ -140,6 +146,13 @@ const PendingRequestAlert = ({ requests, onAccept, onDecline }: PendingRequestAl
     }
   };
 
+  const handleViewRoute = (request: PendingRequest) => {
+    const pickup = encodeURIComponent(request.from);
+    const dropoff = encodeURIComponent(request.to);
+    const url = `https://www.google.com/maps/dir/${pickup}/${dropoff}`;
+    window.open(url, '_blank');
+  };
+
   if (requests.length === 0) return null;
 
   return (
@@ -181,9 +194,32 @@ const PendingRequestAlert = ({ requests, onAccept, onDecline }: PendingRequestAl
               </Avatar>
               <div className="flex-1">
                 <p className="font-semibold text-foreground">{request.passenger}</p>
-                <p className="text-sm text-muted-foreground">
-                  {request.passenger_count} passenger{request.passenger_count !== 1 ? 's' : ''}
-                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  {(request.passenger_phone || request.passengers?.phone) && (
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <Phone className="h-3 w-3" />
+                      <span>{request.passenger_phone || request.passengers?.phone}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              {/* Ride Preferences Icons */}
+              <div className="flex items-center gap-1">
+                {request.passengers?.preferred_temperature && (
+                  <div className="p-1 bg-primary/10 rounded-full">
+                    <Thermometer className="h-3 w-3 text-primary" />
+                  </div>
+                )}
+                {request.passengers?.music_preference && (
+                  <div className="p-1 bg-primary/10 rounded-full">
+                    <Music className="h-3 w-3 text-primary" />
+                  </div>
+                )}
+                {request.passengers?.interaction_preference && (
+                  <div className="p-1 bg-primary/10 rounded-full">
+                    <MessageCircle className="h-3 w-3 text-primary" />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -276,20 +312,42 @@ const PendingRequestAlert = ({ requests, onAccept, onDecline }: PendingRequestAl
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3 px-2">
-              <Button 
-                onClick={() => onDecline(request.id)}
-                variant="outline"
-                className="flex-1 h-11 border-border hover:bg-muted/50 font-medium"
-              >
-                Decline
-              </Button>
-              <Button 
-                onClick={() => onAccept(request.id, suggestedPrices[request.id])}
-                className="flex-1 h-11 bg-primary hover:bg-primary/90 font-medium shadow-sm"
-              >
-                Accept Ride
-              </Button>
+            <div className="space-y-3">
+              {/* Primary Actions */}
+              <div className="grid grid-cols-2 gap-3">
+                <Button 
+                  onClick={() => onAccept(request.id, suggestedPrices[request.id])}
+                  className="h-12 bg-primary hover:bg-primary/90 font-semibold text-white"
+                >
+                  Accept
+                </Button>
+                <Button 
+                  onClick={() => handleSendPriceToPassenger(request.id)}
+                  variant="secondary"
+                  className="h-12 bg-secondary hover:bg-secondary/90 font-semibold"
+                >
+                  Send Offer
+                </Button>
+              </div>
+              
+              {/* Secondary Actions */}
+              <div className="grid grid-cols-2 gap-3">
+                <Button 
+                  onClick={() => handleViewRoute(request)}
+                  variant="outline"
+                  className="h-10 font-medium"
+                >
+                  <Navigation className="h-4 w-4 mr-2" />
+                  View Route
+                </Button>
+                <Button 
+                  onClick={() => onDecline(request.id)}
+                  variant="outline"
+                  className="h-10 font-medium text-muted-foreground"
+                >
+                  Reject
+                </Button>
+              </div>
             </div>
 
             {/* Urgency indicator */}

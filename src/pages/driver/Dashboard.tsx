@@ -120,6 +120,39 @@ const DriverDashboard = () => {
     checkAuthAndLoadData();
   }, [navigate, toast]);
 
+  // Real-time listener for new booking requests
+  useEffect(() => {
+    if (!userProfile) return;
+
+    const channel = supabase
+      .channel('booking-requests')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'bookings',
+          filter: `ride_status=eq.pending_driver`
+        },
+        (payload) => {
+          console.log('New booking request received:', payload);
+          // Refresh bookings when a new request comes in
+          fetchDriverBookings(userProfile);
+          
+          // Show notification
+          toast({
+            title: "🚗 New Ride Request!",
+            description: "A new ride request is waiting for your response.",
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userProfile, toast]);
+
   const [driverRides, setDriverRides] = useState<any[]>([]);
 
   // Auto-open modal when switching to new-requests tab if there are pending requests
@@ -597,8 +630,41 @@ const DriverDashboard = () => {
         onProfileUpdate={() => fetchDriverBookings(userProfile)}
       />
 
+      {/* Pending Request Alerts - Fixed position at top */}
+      {filteredRides.some(ride => 
+        ride.ride_status === "pending_driver" && !ride.driver_id
+      ) && (
+        <div className="fixed top-0 left-0 right-0 z-50 p-4 bg-background/95 backdrop-blur-sm border-b">
+          <PendingRequestAlert 
+            requests={filteredRides
+              .filter(ride => ride.ride_status === "pending_driver" && !ride.driver_id)
+              .map(ride => ({
+                id: ride.id,
+                passenger: ride.passenger_name || ride.passenger,
+                passengers: ride.passengers,
+                passenger_phone: ride.passenger_phone,
+                from: ride.pickup_location,
+                to: ride.dropoff_location,
+                time: ride.time,
+                date: ride.date,
+                vehicle_type: ride.vehicle_type || 'Vehicle',
+                passenger_count: ride.passenger_count || 1,
+                luggage_count: ride.luggage_count || 0,
+                flight_info: ride.flight_info
+              }))
+            }
+            onAccept={(requestId, price) => handleAcceptRide(requestId)}
+            onDecline={(requestId) => handleDeclineRide(requestId)}
+          />
+        </div>
+      )}
+
       {/* Main Content */}
-      <div className="container mx-auto p-4 pb-20 space-y-6">
+      <div className="container mx-auto p-4 pb-20 space-y-6" style={{
+        marginTop: filteredRides.some(ride => 
+          ride.ride_status === "pending_driver" && !ride.driver_id
+        ) ? '200px' : '0'
+      }}>
         {/* Tab Content */}
         {activeTab === "rides" && (
           <div className="space-y-4">
