@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { MessagingInterface } from "@/components/MessagingInterface";
 import { MessagesTab } from "@/components/dashboard/MessagesTab";
 import { PriceEditModal } from "@/components/PriceEditModal";
+import { PriceOfferModal } from "@/components/booking/PriceOfferModal";
 import { DriverScheduleModal } from "@/components/DriverScheduleModal";
 import { DriverSettingsModal } from "@/components/DriverSettingsModal";
 import { DriverPaymentMethodsModal } from "@/components/DriverPaymentMethodsModal";
@@ -58,6 +59,10 @@ const DriverDashboard = () => {
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [showContributorModal, setShowContributorModal] = useState(false);
   const [pdfAction, setPdfAction] = useState<'download' | 'email'>('download');
+  
+  // Price Offer Modal state
+  const [priceOfferModalOpen, setPriceOfferModalOpen] = useState(false);
+  const [selectedBookingForOffer, setSelectedBookingForOffer] = useState<any>(null);
   
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -294,6 +299,17 @@ const DriverDashboard = () => {
           });
 
         setDriverRides(transformedBookings);
+        
+        // Auto-detect new ride requests and show price offer modal
+        const newPendingRequest = transformedBookings.find(booking => 
+          booking.ride_status === "pending_driver" && 
+          !booking.driver_id
+        );
+        
+        if (newPendingRequest && !priceOfferModalOpen) {
+          setSelectedBookingForOffer(newPendingRequest);
+          setPriceOfferModalOpen(true);
+        }
       } catch (error) {
         console.error('Error fetching driver bookings:', error);
       }
@@ -910,6 +926,24 @@ const DriverDashboard = () => {
             payment_instructions: userProfile.payment_instructions
           }}
           onUpdate={() => fetchDriverBookings(userProfile)}
+        />
+      )}
+
+      {/* Price Offer Modal */}
+      {priceOfferModalOpen && selectedBookingForOffer && userProfile && (
+        <PriceOfferModal
+          isOpen={priceOfferModalOpen}
+          onClose={() => {
+            setPriceOfferModalOpen(false);
+            setSelectedBookingForOffer(null);
+          }}
+          booking={selectedBookingForOffer}
+          driverProfile={userProfile}
+          onOfferSent={() => {
+            setPriceOfferModalOpen(false);
+            setSelectedBookingForOffer(null);
+            fetchDriverBookings(userProfile);
+          }}
         />
       )}
 
