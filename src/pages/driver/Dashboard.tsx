@@ -298,6 +298,7 @@ const DriverDashboard = () => {
                 trip_purpose: booking.passengers?.trip_purpose || '',
                 notes: booking.passengers?.additional_notes || ''
               },
+              // Ensure passenger data is available for the components
               passengers: booking.passengers,
               drivers: (booking as any).drivers || profile,
               status: booking.status,
