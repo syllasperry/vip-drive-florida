@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { ArrowLeft, Phone } from 'lucide-react';
+import { ArrowLeft, Phone, Send, MapPin, Users, Route, Flag, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -16,12 +15,48 @@ export type RideStage =
   | 'completed';
 
 const rideStages = [
-  { value: 'driver_heading_to_pickup', label: 'Driver heading to pickup' },
-  { value: 'driver_arrived_at_pickup', label: 'Driver arrived at pickup' },
-  { value: 'passenger_onboard', label: 'Passenger onboard' },
-  { value: 'in_transit', label: 'In transit with optional stops' },
-  { value: 'driver_arrived_at_dropoff', label: 'Driver arrived at drop-off location' },
-  { value: 'completed', label: 'Ride completed successfully' }
+  { 
+    value: 'driver_heading_to_pickup', 
+    label: 'Heading to Pickup',
+    icon: Send,
+    bgColor: 'bg-blue-500',
+    textColor: 'text-white'
+  },
+  { 
+    value: 'driver_arrived_at_pickup', 
+    label: 'Arrived at Pickup',
+    icon: MapPin,
+    bgColor: 'bg-green-500',
+    textColor: 'text-white'
+  },
+  { 
+    value: 'passenger_onboard', 
+    label: 'Passenger Onboard',
+    icon: Users,
+    bgColor: 'bg-orange-500',
+    textColor: 'text-white'
+  },
+  { 
+    value: 'in_transit', 
+    label: 'In Transit with Stops',
+    icon: Route,
+    bgColor: 'bg-yellow-400',
+    textColor: 'text-white'
+  },
+  { 
+    value: 'driver_arrived_at_dropoff', 
+    label: 'Arrived at Drop-off',
+    icon: Flag,
+    bgColor: 'bg-purple-500',
+    textColor: 'text-white'
+  },
+  { 
+    value: 'completed', 
+    label: 'Ride Completed',
+    icon: CheckCircle,
+    bgColor: 'bg-stone-100',
+    textColor: 'text-stone-700'
+  }
 ];
 
 export const RideProgressScreen = () => {
@@ -116,118 +151,76 @@ export const RideProgressScreen = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-md mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Button variant="ghost" onClick={() => navigate(-1)}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <h1 className="text-lg font-semibold">Ride Progress</h1>
-            <div className="w-10" /> {/* Spacer */}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 relative">
+      {/* Background overlay for glass effect */}
+      <div className="absolute inset-0 bg-black/5"></div>
+      
+      {/* Floating Status Panel */}
+      <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
+        <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-6 w-full max-w-sm">
+          {/* Panel Header */}
+          <div className="flex items-center justify-center relative mb-6">
+            <button 
+              onClick={() => navigate(-1)}
+              className="absolute left-0 text-gray-600 hover:text-gray-800 transition-colors"
+            >
+              <ArrowLeft className="h-6 w-6" />
+            </button>
+            <h2 className="text-lg font-semibold text-gray-800">Ride Status Update</h2>
+          </div>
+
+          {/* Status Grid */}
+          <div className="grid grid-cols-2 gap-4">
+            {rideStages.map((stage) => {
+              const IconComponent = stage.icon;
+              return (
+                <button
+                  key={stage.value}
+                  onClick={() => !isUpdating && handleStageChange(stage.value)}
+                  disabled={isUpdating}
+                  className={`
+                    ${stage.bgColor} ${stage.textColor}
+                    flex items-center gap-3 p-4 rounded-xl
+                    font-semibold text-sm text-left
+                    transition-all duration-200 ease-in-out
+                    hover:scale-105 hover:shadow-lg
+                    active:scale-95
+                    disabled:opacity-50 disabled:cursor-not-allowed
+                    ${selectedStage === stage.value ? 'ring-4 ring-blue-200 shadow-lg' : ''}
+                  `}
+                >
+                  <IconComponent className="h-5 w-5 flex-shrink-0" />
+                  <span className="leading-tight">{stage.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Loading State */}
+          {isUpdating && (
+            <div className="mt-6 text-center">
+              <div className="inline-flex items-center gap-2 text-gray-600">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent"></div>
+                <span className="text-sm">Updating status...</span>
+              </div>
+            </div>
+          )}
+
+          {/* Trip Info */}
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <span className="font-medium text-gray-700">Passenger:</span>
+                <span className="text-gray-600">{booking.passenger_name || 'Unknown'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Phone className="h-3 w-3 text-gray-500" />
+                <span className="text-gray-600">{booking.passenger_phone || 'No phone'}</span>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-
-      <div className="max-w-md mx-auto p-4 space-y-6">
-        {/* Passenger Info */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-                <span className="text-lg font-semibold text-gray-600">
-                  {booking.passenger_name?.charAt(0) || 'P'}
-                </span>
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-lg">{booking.passenger_name || 'Passenger'}</h3>
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Phone className="h-4 w-4" />
-                  <span className="text-sm">{booking.passenger_phone || 'No phone'}</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Ride Status Selection */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Ride Progress Status</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className="space-y-3">
-              {rideStages.map((stage) => (
-                <div 
-                  key={stage.value}
-                  className="flex items-center space-x-4 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer active:bg-gray-100"
-                  onClick={() => !isUpdating && handleStageChange(stage.value)}
-                >
-                  {/* Custom Radio Button with Checkmark */}
-                  <div className="relative flex-shrink-0">
-                    <div className={`
-                      w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-200
-                      ${selectedStage === stage.value 
-                        ? 'border-green-500 bg-green-500 shadow-sm' 
-                        : 'border-gray-300 bg-white hover:border-gray-400'
-                      }
-                    `}>
-                      {selectedStage === stage.value && (
-                        <svg 
-                          className="w-4 h-4 text-white" 
-                          fill="currentColor" 
-                          viewBox="0 0 20 20"
-                        >
-                          <path 
-                            fillRule="evenodd" 
-                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" 
-                            clipRule="evenodd" 
-                          />
-                        </svg>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {/* Label */}
-                  <div className="flex-1">
-                    <span className="text-base font-medium text-gray-900 leading-relaxed">
-                      {stage.label}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            {isUpdating && (
-              <div className="mt-4 text-center text-gray-600">
-                <p>Updating status...</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Trip Details */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="space-y-3">
-              <div>
-                <h4 className="font-medium text-gray-900">Pickup</h4>
-                <p className="text-sm text-gray-600">{booking.pickup_location}</p>
-              </div>
-              <div>
-                <h4 className="font-medium text-gray-900">Drop-off</h4>
-                <p className="text-sm text-gray-600">{booking.dropoff_location}</p>
-              </div>
-              <div>
-                <h4 className="font-medium text-gray-900">Scheduled Time</h4>
-                <p className="text-sm text-gray-600">
-                  {booking.pickup_time ? new Date(booking.pickup_time).toLocaleString() : 'Not specified'}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
