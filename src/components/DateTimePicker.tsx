@@ -189,6 +189,7 @@ export const DateTimePicker = ({
             {timeOptions.map((time) => (
               <button
                 key={time.value}
+                type="button"
                 onClick={() => !time.disabled && handleTimeClick(time.value)}
                 disabled={time.disabled}
                 className={cn(
