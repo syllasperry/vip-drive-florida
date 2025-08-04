@@ -43,6 +43,7 @@ const App = () => (
           <Route path="/driver/login" element={<DriverLogin />} />
           <Route path="/driver/register" element={<DriverRegister />} />
           <Route path="/driver/dashboard" element={<DriverDashboard />} />
+          <Route path="/driver/ride-progress" element={<RideProgressScreen />} />
           <Route path="/passenger/ride-progress" element={<PassengerRideProgress />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
