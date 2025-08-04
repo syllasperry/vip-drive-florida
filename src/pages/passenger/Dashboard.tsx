@@ -23,6 +23,7 @@ import { FareConfirmationAlert } from "@/components/FareConfirmationAlert";
 import { PaymentConfirmationModal } from "@/components/PaymentConfirmationModal";
 import { PaymentModal } from "@/components/payment/PaymentModal";
 import { OfferAcceptanceModal } from "@/components/booking/OfferAcceptanceModal";
+import { CancelBookingButton } from "@/components/dashboard/CancelBookingButton";
 
 import { NotificationManager } from "@/components/NotificationManager";
 import { ChatNotificationBadge } from "@/components/ChatNotificationBadge";
@@ -67,19 +68,25 @@ const Dashboard = () => {
   const [preferencesModalOpen, setPreferencesModalOpen] = useState(false);
   const [bookings, setBookings] = useState<any[]>([]);
 
-  // Group bookings into 3 sections
+  // Group bookings into 4 sections
   const groupedBookings = {
     upcoming: bookings.filter(booking => {
       // Upcoming: rides that are NOT "All Set" and not completed/cancelled
       return booking.payment_confirmation_status !== 'all_set' && 
              booking.ride_stage !== 'completed' && 
-             !['completed', 'cancelled', 'declined', 'offer_declined'].includes(booking.ride_status);
+             !['completed', 'cancelled', 'declined', 'offer_declined', 'cancelled_by_passenger'].includes(booking.ride_status) &&
+             booking.status !== 'cancelled_by_passenger';
+    }),
+    cancelled: bookings.filter(booking => {
+      // Cancelled: rides that were cancelled by passenger
+      return ['cancelled_by_passenger'].includes(booking.ride_status) || 
+             booking.status === 'cancelled_by_passenger';
     }),
     newRides: bookings.filter(booking => {
       // New Rides: rides that are "All Set" but not completed
       return booking.payment_confirmation_status === 'all_set' && 
              booking.ride_stage !== 'completed' && 
-             !['completed', 'cancelled', 'declined', 'offer_declined'].includes(booking.ride_status);
+             !['completed', 'cancelled', 'declined', 'offer_declined', 'cancelled_by_passenger'].includes(booking.ride_status);
     }),
     pastRides: bookings.filter(booking => {
       // Past Rides: rides that are completed
@@ -508,48 +515,88 @@ const Dashboard = () => {
         <div className="flex-1 overflow-auto">
           {activeTab === "bookings" && (
             <div className="p-4 space-y-4">
-              {bookingView === "upcoming" && groupedBookings.upcoming.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground mb-3">Upcoming</h3>
-                  <div className="space-y-3">
-                     {groupedBookings.upcoming.map((booking) => (
-                       booking.payment_confirmation_status === 'all_set' ? (
-                         <UniversalRideCard
-                           key={booking.id}
-                           booking={booking}
-                           userType="passenger"
-                           onMessage={() => {
-                             setSelectedBooking(booking);
-                             setMessagingOpen(true);
-                           }}
-                           onViewSummary={() => {
-                             setSelectedBookingForSummary(booking);
-                             setSummaryModalOpen(true);
-                           }}
-                           onStatusUpdate={fetchBookings}
-                         />
-                       ) : (
-                         <EnhancedBookingCard 
-                           key={booking.id} 
-                           booking={booking} 
-                           userType="passenger"
-                           onMessage={() => {
-                             setSelectedBooking(booking);
-                             setMessagingOpen(true);
-                           }}
-                           onViewSummary={() => {
-                             setSelectedBookingForSummary(booking);
-                             setSummaryModalOpen(true);
-                           }}
-                           onMakePayment={() => {
-                             setSelectedBookingForPayment(booking);
-                             setPaymentModalOpen(true);
-                           }}
-                           onAcceptOffer={() => handleAcceptFare(booking.id)}
-                         />
-                       )
-                     ))}
-                  </div>
+              {bookingView === "upcoming" && (groupedBookings.upcoming.length > 0 || groupedBookings.cancelled.length > 0) && (
+                <div className="space-y-6">
+                  {/* Active Upcoming Rides */}
+                  {groupedBookings.upcoming.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-foreground mb-3">Upcoming</h3>
+                      <div className="space-y-3">
+                         {groupedBookings.upcoming.map((booking) => (
+                           <div key={booking.id} className="relative">
+                             {booking.payment_confirmation_status === 'all_set' ? (
+                               <UniversalRideCard
+                                 booking={booking}
+                                 userType="passenger"
+                                 onMessage={() => {
+                                   setSelectedBooking(booking);
+                                   setMessagingOpen(true);
+                                 }}
+                                 onViewSummary={() => {
+                                   setSelectedBookingForSummary(booking);
+                                   setSummaryModalOpen(true);
+                                 }}
+                                 onStatusUpdate={fetchBookings}
+                               />
+                             ) : (
+                               <div>
+                                 <EnhancedBookingCard 
+                                   booking={booking} 
+                                   userType="passenger"
+                                   onMessage={() => {
+                                     setSelectedBooking(booking);
+                                     setMessagingOpen(true);
+                                   }}
+                                   onViewSummary={() => {
+                                     setSelectedBookingForSummary(booking);
+                                     setSummaryModalOpen(true);
+                                   }}
+                                   onMakePayment={() => {
+                                     setSelectedBookingForPayment(booking);
+                                     setPaymentModalOpen(true);
+                                   }}
+                                   onAcceptOffer={() => handleAcceptFare(booking.id)}
+                                 />
+                                 {/* Cancel Button */}
+                                 <div className="mt-2 px-4">
+                                   <CancelBookingButton 
+                                     bookingId={booking.id}
+                                     pickupTime={booking.pickup_time}
+                                     onCancelSuccess={fetchBookings}
+                                   />
+                                 </div>
+                               </div>
+                             )}
+                           </div>
+                         ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Cancelled Rides Section */}
+                  {groupedBookings.cancelled.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-muted-foreground mb-3">❌ Cancelled Rides</h3>
+                      <div className="space-y-3">
+                         {groupedBookings.cancelled.map((booking) => (
+                           <div key={booking.id} className="opacity-60">
+                             <EnhancedBookingCard 
+                               booking={booking} 
+                               userType="passenger"
+                               onMessage={() => {
+                                 setSelectedBooking(booking);
+                                 setMessagingOpen(true);
+                               }}
+                               onViewSummary={() => {
+                                 setSelectedBookingForSummary(booking);
+                                 setSummaryModalOpen(true);
+                               }}
+                             />
+                           </div>
+                         ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -621,7 +668,7 @@ const Dashboard = () => {
                 </div>
               )}
 
-              {((bookingView === "upcoming" && groupedBookings.upcoming.length === 0) || 
+              {((bookingView === "upcoming" && groupedBookings.upcoming.length === 0 && groupedBookings.cancelled.length === 0) || 
                 (bookingView === "new-rides" && groupedBookings.newRides.length === 0) ||
                 (bookingView === "past" && groupedBookings.pastRides.length === 0)) && (
                 <div className="text-center py-12">
