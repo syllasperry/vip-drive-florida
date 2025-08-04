@@ -15,19 +15,19 @@ export const CancelBookingButton = ({ bookingId, pickupTime, onCancelSuccess }: 
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  // Check if cancellation is allowed (24 hours before pickup)
+  // Check if cancellation is allowed (1 hour before pickup)
   const canCancel = () => {
     const pickup = new Date(pickupTime);
     const now = new Date();
     const hoursUntilPickup = (pickup.getTime() - now.getTime()) / (1000 * 60 * 60);
-    return hoursUntilPickup >= 24;
+    return hoursUntilPickup >= 1;
   };
 
   const handleCancel = async () => {
     if (!canCancel()) {
       toast({
         title: "Cannot Cancel",
-        description: "Bookings can only be cancelled 24 hours before pickup time.",
+        description: "According to our cancellation policy, rides can only be cancelled at least 1 hour before the scheduled pickup time. This ride is no longer eligible for cancellation or refund.",
         variant: "destructive",
       });
       return;
@@ -36,12 +36,12 @@ export const CancelBookingButton = ({ bookingId, pickupTime, onCancelSuccess }: 
     setLoading(true);
     
     try {
-      // Update booking status to canceled
+      // Update booking status to cancelled_by_passenger
       const { error: updateError } = await supabase
         .from('bookings')
-        .update({ status: 'canceled' })
+        .update({ status: 'cancelled_by_passenger' })
         .eq('id', bookingId)
-        .in('status', ['pending', 'accepted']); // Only allow cancellation for these statuses
+        .in('status', ['pending', 'accepted', 'all_set']); // Allow cancellation for these statuses
 
       if (updateError) {
         console.error('Error cancelling booking:', updateError);
@@ -91,7 +91,7 @@ export const CancelBookingButton = ({ bookingId, pickupTime, onCancelSuccess }: 
       <div className="text-xs text-muted-foreground bg-muted/30 px-3 py-2 rounded-md border">
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-3 w-3" />
-          <span>Cannot cancel (less than 24h before pickup)</span>
+          <span>Cannot cancel (less than 1h before pickup)</span>
         </div>
       </div>
     );
