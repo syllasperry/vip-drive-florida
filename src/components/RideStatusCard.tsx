@@ -54,10 +54,10 @@ const stageConfig = {
 };
 
 export const RideStatusCard = ({ booking }: RideStatusCardProps) => {
-  const currentStage = booking.ride_stage || 'driver_heading_to_pickup';
-  const config = stageConfig[currentStage as keyof typeof stageConfig];
+  const currentStage = booking.ride_stage; // No default - only show if explicitly set by driver
+  const config = currentStage ? stageConfig[currentStage as keyof typeof stageConfig] : null;
   
-  if (!config) {
+  if (!config || !currentStage) {
     return null;
   }
 

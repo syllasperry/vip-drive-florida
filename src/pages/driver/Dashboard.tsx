@@ -283,7 +283,7 @@ const DriverDashboard = () => {
               passenger_id: booking.passenger_id,
               payment_status: booking.payment_status,
               payment_confirmation_status: booking.payment_confirmation_status,
-              ride_stage: booking.ride_stage || 'driver_heading_to_pickup',
+              ride_stage: booking.ride_stage, // No default - only show if explicitly set
               extra_stops: booking.extra_stops || []
             };
           })
