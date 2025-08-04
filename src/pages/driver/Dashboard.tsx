@@ -286,6 +286,18 @@ const DriverDashboard = () => {
               from: booking.pickup_location,
               to: booking.dropoff_location,
               passenger: booking.passengers?.full_name || 'Unknown Passenger',
+              passenger_name: booking.passengers?.full_name || 'Unknown Passenger',
+              passenger_phone: booking.passengers?.phone || '',
+              passenger_email: booking.passengers?.email || '',
+              passenger_photo: booking.passengers?.profile_photo_url || '',
+              passenger_preferences: {
+                temperature: booking.passengers?.preferred_temperature || null,
+                music: booking.passengers?.music_preference || '',
+                music_playlist: booking.passengers?.music_playlist_link || '',
+                interaction: booking.passengers?.interaction_preference || '',
+                trip_purpose: booking.passengers?.trip_purpose || '',
+                notes: booking.passengers?.additional_notes || ''
+              },
               passengers: booking.passengers,
               drivers: (booking as any).drivers || profile,
               status: booking.status,
