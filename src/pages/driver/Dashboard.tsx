@@ -667,48 +667,37 @@ const DriverDashboard = () => {
               </div>
             )}
 
-            {/* New Rides Tab */}
             {rideView === "new-rides" && (
               <div className="space-y-4">
-                {/* Header */}
-                <div className="text-center py-4">
-                  <h2 className="text-2xl font-bold text-foreground mb-2">📝 Confirmed Rides</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Rides ready to be performed (1 ride)
-                  </p>
-                </div>
+                {filteredRides.length > 0 ? (
+                  <>
+                    {/* Header */}
+                    <div className="text-center py-4">
+                      <h2 className="text-2xl font-bold text-foreground mb-2">📝 Confirmed Rides</h2>
+                      <p className="text-sm text-muted-foreground">
+                        Rides ready to be performed ({filteredRides.length} ride{filteredRides.length !== 1 ? 's' : ''})
+                      </p>
+                    </div>
 
-                {/* Show the real booking data */}
-                <NewRidesBookingCard
-                  key="real-booking"
-                  booking={{
-                    id: "90821591-0ad4-492b-8658-e124e9b502a1",
-                    pickup_time: "2025-08-06T11:00:00",
-                    pickup_location: "2100 NW 42nd Ave, Miami, FL 33142, USA",
-                    dropoff_location: "2911 NE 1st Ave, Pompano Beach, FL 33064, USA",
-                    final_price: 120,
-                    passengers: {
-                      full_name: "Silas Pereira",
-                      phone: "(561) 350-2308",
-                      profile_photo_url: "https://extdyjkfgftbokabiamc.supabase.co/storage/v1/object/public/avatars/74024418-9693-49f9-bddf-e34e59fc0cd4/74024418-9693-49f9-bddf-e34e59fc0cd4.jpg",
-                      preferred_temperature: 73,
-                      music_preference: "likes_music",
-                      interaction_preference: "chatty",
-                      trip_purpose: "airport",
-                      additional_notes: "None"
-                    },
-                    drivers: {
-                      car_make: "Tesla",
-                      car_model: "Model Y",
-                      car_color: "Silver"
-                    }
-                  }}
-                  onMessage={(booking) => {
-                    setSelectedBookingForMessaging(booking);
-                    setMessagingOpen(true);
-                  }}
-                  onViewSummary={(booking) => handleViewSummary(booking)}
-                />
+                    {/* Show actual booking data from database */}
+                    {filteredRides.map((booking, index) => (
+                      <NewRidesBookingCard
+                        key={booking.id || index}
+                        booking={booking}
+                        onMessage={(booking) => {
+                          setSelectedBookingForMessaging(booking);
+                          setMessagingOpen(true);
+                        }}
+                        onViewSummary={(booking) => handleViewSummary(booking)}
+                      />
+                    ))}
+                  </>
+                ) : (
+                  <div className="text-center py-8">
+                    <h3 className="text-lg font-semibold text-muted-foreground mb-2">No confirmed rides</h3>
+                    <p className="text-sm text-muted-foreground">New rides will appear here when passengers book with you.</p>
+                  </div>
+                )}
               </div>
             )}
 

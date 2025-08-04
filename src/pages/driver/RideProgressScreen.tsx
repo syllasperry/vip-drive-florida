@@ -287,13 +287,13 @@ export const RideProgressScreen = () => {
                 <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                 <span className="font-medium text-gray-700">Passenger:</span>
                 <span className="text-gray-600">
-                  {booking.passengers?.full_name || booking.passenger_name || 'Silas Pereira'}
+                  {booking.passengers?.full_name || booking.passenger_name || 'Passenger'}
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="h-3 w-3 text-gray-500" />
                 <span className="text-gray-600">
-                  {booking.passengers?.phone || booking.passenger_phone || '(561) 350-2308'}
+                  {booking.passengers?.phone || booking.passenger_phone || 'N/A'}
                 </span>
               </div>
             </div>
