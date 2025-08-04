@@ -114,12 +114,20 @@ export const RideProgressScreen = () => {
   };
 
   const handleStageChange = async (newStage: string) => {
+    if (!booking?.id) {
+      toast({
+        title: "Error",
+        description: "No booking ID found",
+        variant: "destructive",
+      });
+      return;
+    }
+
     console.log('=== RIDE PROGRESS DEBUG ===');
     console.log('Stage change clicked:', newStage);
     console.log('Current booking:', booking);
     console.log('Booking ID:', booking?.id);
     
-    setSelectedStage(newStage);
     setIsUpdating(true);
 
     try {
@@ -152,6 +160,9 @@ export const RideProgressScreen = () => {
 
       console.log('Updated booking:', data);
 
+      // Only set selectedStage AFTER successful update
+      setSelectedStage(newStage);
+
       // Send automatic message to passenger
       const stage = rideStages.find(stage => stage.value === newStage);
       if (stage?.message) {
@@ -172,7 +183,6 @@ export const RideProgressScreen = () => {
         description: "Failed to update ride status",
         variant: "destructive",
       });
-      setSelectedStage(''); // Reset on error
     } finally {
       setIsUpdating(false);
       console.log('=== END DEBUG ===');
@@ -215,11 +225,17 @@ export const RideProgressScreen = () => {
                     hover:scale-105 hover:shadow-lg
                     active:scale-95
                     disabled:opacity-50 disabled:cursor-not-allowed
-                    ${selectedStage === stage.value ? 'ring-4 ring-blue-200 shadow-lg' : ''}
+                    relative
+                    ${selectedStage === stage.value ? 'ring-4 ring-blue-300 shadow-xl scale-105' : ''}
                   `}
                 >
                   <IconComponent className="h-5 w-5 flex-shrink-0" />
                   <span className="leading-tight">{stage.label}</span>
+                  {selectedStage === stage.value && (
+                    <div className="absolute -top-1 -right-1 bg-white rounded-full p-1 shadow-lg">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    </div>
+                  )}
                 </button>
               );
             })}
