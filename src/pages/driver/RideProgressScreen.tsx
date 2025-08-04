@@ -49,7 +49,11 @@ export const RideProgressScreen = () => {
   }
 
   const handleStageChange = async (newStage: string) => {
+    console.log('=== RIDE PROGRESS DEBUG ===');
     console.log('Stage change clicked:', newStage);
+    console.log('Current booking:', booking);
+    console.log('Booking ID:', booking?.id);
+    
     setSelectedStage(newStage);
     setIsUpdating(true);
 
@@ -68,18 +72,28 @@ export const RideProgressScreen = () => {
         updateData.ride_status = 'completed';
       }
 
-      const { error } = await supabase
+      console.log('Updating with data:', updateData);
+
+      const { error, data } = await supabase
         .from('bookings')
         .update(updateData)
-        .eq('id', booking.id);
+        .eq('id', booking.id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
+      console.log('Updated booking:', data);
 
       const stageLabel = rideStages.find(stage => stage.value === newStage)?.label;
       toast({
         title: "Status Updated",
         description: `Ride status updated to: ${stageLabel}`,
       });
+
+      console.log('Toast sent with message:', stageLabel);
     } catch (error) {
       console.error('Error updating ride status:', error);
       toast({
@@ -90,6 +104,7 @@ export const RideProgressScreen = () => {
       setSelectedStage(''); // Reset on error
     } finally {
       setIsUpdating(false);
+      console.log('=== END DEBUG ===');
     }
   };
 
@@ -135,42 +150,43 @@ export const RideProgressScreen = () => {
             <CardTitle className="text-lg">Ride Progress Status</CardTitle>
           </CardHeader>
           <CardContent className="p-4">
-            <div className="space-y-4">
+            <div className="space-y-3">
               {rideStages.map((stage) => (
-                <div key={stage.value} className="space-y-2">
-                  <div 
-                    className="flex items-center space-x-3 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
-                    onClick={() => !isUpdating && handleStageChange(stage.value)}
-                  >
-                    <div className="relative">
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                        selectedStage === stage.value 
-                          ? 'border-green-500 bg-green-500' 
-                          : 'border-gray-300 bg-white'
-                      }`}>
-                        {selectedStage === stage.value && (
-                          <svg 
-                            className="w-4 h-4 text-white" 
-                            fill="none" 
-                            stroke="currentColor" 
-                            viewBox="0 0 24 24"
-                          >
-                            <path 
-                              strokeLinecap="round" 
-                              strokeLinejoin="round" 
-                              strokeWidth={3} 
-                              d="M5 13l4 4L19 7" 
-                            />
-                          </svg>
-                        )}
-                      </div>
+                <div 
+                  key={stage.value}
+                  className="flex items-center space-x-4 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer active:bg-gray-100"
+                  onClick={() => !isUpdating && handleStageChange(stage.value)}
+                >
+                  {/* Custom Radio Button with Checkmark */}
+                  <div className="relative flex-shrink-0">
+                    <div className={`
+                      w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-200
+                      ${selectedStage === stage.value 
+                        ? 'border-green-500 bg-green-500 shadow-sm' 
+                        : 'border-gray-300 bg-white hover:border-gray-400'
+                      }
+                    `}>
+                      {selectedStage === stage.value && (
+                        <svg 
+                          className="w-4 h-4 text-white" 
+                          fill="currentColor" 
+                          viewBox="0 0 20 20"
+                        >
+                          <path 
+                            fillRule="evenodd" 
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" 
+                            clipRule="evenodd" 
+                          />
+                        </svg>
+                      )}
                     </div>
-                    <Label 
-                      htmlFor={stage.value} 
-                      className="flex-1 text-base font-medium cursor-pointer"
-                    >
+                  </div>
+                  
+                  {/* Label */}
+                  <div className="flex-1">
+                    <span className="text-base font-medium text-gray-900 leading-relaxed">
                       {stage.label}
-                    </Label>
+                    </span>
                   </div>
                 </div>
               ))}
