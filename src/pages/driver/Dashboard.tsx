@@ -447,7 +447,7 @@ const DriverDashboard = () => {
 
       toast({
         title: "Ride Accepted!",
-        description: "The passenger has been notified.",
+        description: "You will now be connected with the passenger.",
       });
     } catch (error) {
       console.error('Error accepting ride:', error);

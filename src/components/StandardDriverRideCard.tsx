@@ -116,29 +116,21 @@ export const StandardDriverRideCard = ({
 
   // Helper function to determine if reopen button should show
   const shouldShowReopenButton = (booking: any) => {
-    // Show if booking is in pending states where driver can still respond
-    const pendingStatuses = [
-      'pending_driver', 
-      'new_request', 
-      'passenger_requested'
-    ];
+    // Only show if driver hasn't made a decision yet (no offer sent, not accepted, not rejected)
+    const hasDecided = booking.ride_status === 'driver_accepted' ||
+                      booking.ride_status === 'driver_rejected' ||
+                      booking.ride_status === 'rejected_by_driver' ||
+                      booking.ride_status === 'offer_sent' ||
+                      booking.ride_status === 'completed' ||
+                      booking.status === 'accepted' ||
+                      booking.status === 'declined' ||
+                      booking.payment_confirmation_status === 'all_set';
     
-    const pendingDriverStatuses = [
-      'new_request',
-      'pending_response'
-    ];
+    // Show only if still pending and driver hasn't decided
+    const isPending = booking.ride_status === 'pending_driver' ||
+                     booking.payment_confirmation_status === 'waiting_for_offer';
     
-    const pendingPaymentStatuses = [
-      'waiting_for_offer',
-      'pending'
-    ];
-    
-    return (
-      pendingStatuses.includes(booking.ride_status) ||
-      pendingDriverStatuses.includes(booking.status_driver) ||
-      pendingPaymentStatuses.includes(booking.payment_status) ||
-      shouldShowOpenOfferButton(booking)
-    );
+    return isPending && !hasDecided;
   };
 
   // Get passenger info from booking
