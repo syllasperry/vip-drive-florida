@@ -6,7 +6,8 @@ import { MapPin, Clock, Phone, Map, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { StatusBadges } from "@/components/status/StatusBadges";
-import { StatusTimeline } from "@/components/StatusTimeline";
+import { RideStatusButton } from "@/components/RideStatusButton";
+import { RideStatusModal } from "@/components/RideStatusModal";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { shouldShowOpenOfferButton } from "@/utils/statusManager";
@@ -36,6 +37,7 @@ export const StandardDriverRideCard = ({
 }: StandardDriverRideCardProps) => {
   const { toast } = useToast();
   const [preferencesOpen, setPreferencesOpen] = useState(true);
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
 
   const handlePhoneCall = (phone: string) => {
     if (phone) {
@@ -134,6 +136,18 @@ export const StandardDriverRideCard = ({
     return isPending && !hasDecided;
   };
 
+  // Helper function to determine if status button should show
+  const shouldShowStatusButton = (booking: any) => {
+    // Show status button if there's pending action from driver or passenger
+    const hasPendingDriverAction = booking.ride_status === 'pending_driver' ||
+                                  booking.payment_confirmation_status === 'waiting_for_offer';
+    
+    const hasPendingPassengerAction = booking.ride_status === 'driver_accepted' &&
+                                     booking.payment_confirmation_status !== 'all_set';
+    
+    return hasPendingDriverAction || hasPendingPassengerAction;
+  };
+
   // Get passenger info from booking
   const passengerInfo = booking.passengers || booking.passenger;
 
@@ -144,16 +158,18 @@ export const StandardDriverRideCard = ({
   return (
     <Card className="transition-all duration-300 shadow-md hover:shadow-lg mx-4 my-2 rounded-lg border-border hover:border-primary/50">
       <CardContent className="p-0">
-        {/* Header with Status Timeline */}
-        {showStatusBadge && (
+        {/* Header with Status Button */}
+        {showStatusBadge && shouldShowStatusButton(booking) && (
           <div className="p-4 bg-white rounded-t-lg">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Ride Details</h2>
             </div>
-            <StatusTimeline
+            <RideStatusButton
               userType="driver"
-              driverStatus={booking.driver_status || 'Pending Response'}
-              passengerStatus={booking.passenger_status || 'Waiting for Driver'}
+              currentStatus={booking.driver_status || 'Pending Response'}
+              nextStatus={booking.passenger_status || 'Waiting for Driver'}
+              hasPendingAction={shouldShowStatusButton(booking)}
+              onClick={() => setStatusModalOpen(true)}
             />
           </div>
         )}
@@ -362,6 +378,16 @@ export const StandardDriverRideCard = ({
           </div>
         </div>
       </CardContent>
+
+      {/* Status Modal */}
+      <RideStatusModal
+        isOpen={statusModalOpen}
+        onClose={() => setStatusModalOpen(false)}
+        userType="driver"
+        currentStatus={booking.driver_status || 'Pending Response'}
+        nextStatus={booking.passenger_status || 'Waiting for Driver'}
+        booking={booking}
+      />
     </Card>
   );
 };

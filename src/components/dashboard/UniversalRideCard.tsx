@@ -8,7 +8,8 @@ import { useState, useEffect } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { StatusBadges } from "@/components/status/StatusBadges";
-import { StatusTimeline } from "@/components/StatusTimeline";
+import { RideStatusButton } from "@/components/RideStatusButton";
+import { RideStatusModal } from "@/components/RideStatusModal";
 import { RideStatusFlow } from "@/components/ride/RideStatusFlow";
 import { RideStatusProgression } from "@/components/ride/RideStatusProgression";
 import { AirbnbStyleReviewModal } from "@/components/review/AirbnbStyleReviewModal";
@@ -35,6 +36,7 @@ export const UniversalRideCard = ({
   const { toast } = useToast();
   const [preferencesOpen, setPreferencesOpen] = useState(true);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [currentBooking, setCurrentBooking] = useState(booking);
   const [lastUpdated, setLastUpdated] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
 
@@ -153,6 +155,26 @@ export const UniversalRideCard = ({
     return null; // Don't render card if no passenger info for drivers
   }
 
+  // Helper function to determine if status button should show
+  const shouldShowStatusButton = (booking: any) => {
+    // For passengers: show button if waiting for their action (accept offer, payment, etc.)
+    if (userType === 'passenger') {
+      const hasPendingPassengerAction = booking.ride_status === 'offer_sent' ||
+                                       (booking.ride_status === 'driver_accepted' && 
+                                        booking.payment_confirmation_status !== 'all_set');
+      return hasPendingPassengerAction;
+    }
+    
+    // For drivers: show button if waiting for their action or passenger action
+    const hasPendingDriverAction = booking.ride_status === 'pending_driver' ||
+                                  booking.payment_confirmation_status === 'waiting_for_offer';
+    
+    const hasPendingPassengerAction = booking.ride_status === 'driver_accepted' &&
+                                     booking.payment_confirmation_status !== 'all_set';
+    
+    return hasPendingDriverAction || hasPendingPassengerAction;
+  };
+
   // Create status display text based on current ride stage
   const getStatusDisplayText = () => {
     const stage = currentBooking.ride_stage;
@@ -199,11 +221,19 @@ export const UniversalRideCard = ({
                 </div>
               )}
             </div>
-            {currentBooking.payment_confirmation_status !== 'all_set' && (
-              <StatusTimeline
+            {currentBooking.payment_confirmation_status !== 'all_set' && shouldShowStatusButton(currentBooking) && (
+              <RideStatusButton
                 userType={userType}
-                driverStatus={currentBooking.driver_status || 'Pending Response'}
-                passengerStatus={currentBooking.passenger_status || 'Waiting for Driver'}
+                currentStatus={userType === 'driver' 
+                  ? (currentBooking.driver_status || 'Pending Response')
+                  : (currentBooking.passenger_status || 'Waiting for Driver')
+                }
+                nextStatus={userType === 'driver' 
+                  ? (currentBooking.passenger_status || 'Waiting for Driver')
+                  : (currentBooking.driver_status || 'Pending Response')
+                }
+                hasPendingAction={shouldShowStatusButton(currentBooking)}
+                onClick={() => setStatusModalOpen(true)}
               />
             )}
           </div>
@@ -439,6 +469,22 @@ export const UniversalRideCard = ({
           <AirbnbStyleReviewModal
             isOpen={reviewModalOpen}
             onClose={() => setReviewModalOpen(false)}
+            booking={currentBooking}
+          />
+
+          {/* Status Modal */}
+          <RideStatusModal
+            isOpen={statusModalOpen}
+            onClose={() => setStatusModalOpen(false)}
+            userType={userType}
+            currentStatus={userType === 'driver' 
+              ? (currentBooking.driver_status || 'Pending Response')
+              : (currentBooking.passenger_status || 'Waiting for Driver')
+            }
+            nextStatus={userType === 'driver' 
+              ? (currentBooking.passenger_status || 'Waiting for Driver')
+              : (currentBooking.driver_status || 'Pending Response')
+            }
             booking={currentBooking}
           />
         </div>
