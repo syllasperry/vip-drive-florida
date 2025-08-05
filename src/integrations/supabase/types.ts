@@ -23,6 +23,7 @@ export type Database = {
           driver_location_lng: number | null
           driver_payment_confirmed_at: string | null
           driver_payment_instructions: string | null
+          driver_status: string | null
           dropoff_location: string
           estimated_fare: number | null
           estimated_price: number | null
@@ -39,6 +40,7 @@ export type Database = {
           passenger_phone: string | null
           passenger_photo_url: string | null
           passenger_preferences: Json | null
+          passenger_status: string | null
           payment_confirmation_status: string | null
           payment_expires_at: string | null
           payment_method: string | null
@@ -65,6 +67,7 @@ export type Database = {
           driver_location_lng?: number | null
           driver_payment_confirmed_at?: string | null
           driver_payment_instructions?: string | null
+          driver_status?: string | null
           dropoff_location: string
           estimated_fare?: number | null
           estimated_price?: number | null
@@ -81,6 +84,7 @@ export type Database = {
           passenger_phone?: string | null
           passenger_photo_url?: string | null
           passenger_preferences?: Json | null
+          passenger_status?: string | null
           payment_confirmation_status?: string | null
           payment_expires_at?: string | null
           payment_method?: string | null
@@ -107,6 +111,7 @@ export type Database = {
           driver_location_lng?: number | null
           driver_payment_confirmed_at?: string | null
           driver_payment_instructions?: string | null
+          driver_status?: string | null
           dropoff_location?: string
           estimated_fare?: number | null
           estimated_price?: number | null
@@ -123,6 +128,7 @@ export type Database = {
           passenger_phone?: string | null
           passenger_photo_url?: string | null
           passenger_preferences?: Json | null
+          passenger_status?: string | null
           payment_confirmation_status?: string | null
           payment_expires_at?: string | null
           payment_method?: string | null

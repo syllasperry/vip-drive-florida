@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { StatusBadges } from "@/components/status/StatusBadges";
+import { StatusTimeline } from "@/components/StatusTimeline";
 import { RideStatusFlow } from "@/components/ride/RideStatusFlow";
 import { RideStatusProgression } from "@/components/ride/RideStatusProgression";
 import { AirbnbStyleReviewModal } from "@/components/review/AirbnbStyleReviewModal";
@@ -175,29 +176,34 @@ export const UniversalRideCard = ({
       <CardContent className="p-0">
         {/* Header with Status */}
         {showStatusBadge && (
-          <div className="flex items-center justify-between p-4 bg-white rounded-t-lg">
-            <h2 className="text-lg font-semibold text-gray-900">
-              {currentBooking.payment_confirmation_status === 'all_set' ? 'Real Time' : 'Ride Details'}
-            </h2>
-            {currentBooking.payment_confirmation_status === 'all_set' && currentBooking.ride_stage ? (
-              <div className="flex flex-col items-end">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-sm font-semibold text-gray-900">{getStatusDisplayText()}</span>
+          <div className="p-4 bg-white rounded-t-lg">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">
+                {currentBooking.payment_confirmation_status === 'all_set' ? 'Real Time' : 'Ride Details'}
+              </h2>
+              {currentBooking.payment_confirmation_status === 'all_set' && currentBooking.ride_stage && (
+                <div className="flex flex-col items-end">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-sm font-semibold text-gray-900">{getStatusDisplayText()}</span>
+                  </div>
+                  <span className="text-xs text-gray-500">Updated: {lastUpdated}</span>
                 </div>
-                <span className="text-xs text-gray-500">Updated: {lastUpdated}</span>
-              </div>
-            ) : currentBooking.payment_confirmation_status === 'all_set' ? (
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                  <div className="w-3 h-3 text-white">✓</div>
+              )}
+              {currentBooking.payment_confirmation_status === 'all_set' && !currentBooking.ride_stage && (
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                    <div className="w-3 h-3 text-white">✓</div>
+                  </div>
+                  <span className="text-sm font-semibold text-gray-900">ALL SET</span>
                 </div>
-                <span className="text-sm font-semibold text-gray-900">ALL SET</span>
-              </div>
-            ) : (
-              <StatusBadges 
-                rideStatus={currentBooking.ride_status || currentBooking.status || 'pending'} 
-                paymentStatus={currentBooking.payment_confirmation_status || 'waiting_for_offer'}
+              )}
+            </div>
+            {currentBooking.payment_confirmation_status !== 'all_set' && (
+              <StatusTimeline
+                userType={userType}
+                driverStatus={currentBooking.driver_status || 'Pending Response'}
+                passengerStatus={currentBooking.passenger_status || 'Waiting for Driver'}
               />
             )}
           </div>

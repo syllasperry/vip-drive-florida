@@ -6,6 +6,7 @@ import { MapPin, Clock, Phone, Map, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { StatusBadges } from "@/components/status/StatusBadges";
+import { StatusTimeline } from "@/components/StatusTimeline";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { shouldShowOpenOfferButton } from "@/utils/statusManager";
@@ -143,16 +144,16 @@ export const StandardDriverRideCard = ({
   return (
     <Card className="transition-all duration-300 shadow-md hover:shadow-lg mx-4 my-2 rounded-lg border-border hover:border-primary/50">
       <CardContent className="p-0">
-        {/* Header with Status */}
+        {/* Header with Status Timeline */}
         {showStatusBadge && (
-          <div className="flex items-center justify-between p-4 bg-white rounded-t-lg">
-            <h2 className="text-lg font-semibold text-gray-900">Ride Details</h2>
-            <StatusBadges 
-              rideStatus={booking.ride_status || booking.status || 'pending'} 
-              paymentStatus={booking.payment_confirmation_status || 'waiting_for_offer'}
-              onReopenAlert={onReopenAlert}
-              showReopenButton={shouldShowOpenOfferButton(booking)}
-              booking={booking}
+          <div className="p-4 bg-white rounded-t-lg">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Ride Details</h2>
+            </div>
+            <StatusTimeline
+              userType="driver"
+              driverStatus={booking.driver_status || 'Pending Response'}
+              passengerStatus={booking.passenger_status || 'Waiting for Driver'}
             />
           </div>
         )}
