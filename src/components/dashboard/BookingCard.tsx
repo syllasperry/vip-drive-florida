@@ -54,7 +54,10 @@ export const BookingCard = ({ booking, userType, onMessage, onReview, onViewSumm
             </div>
             <div>
               <p className="text-sm font-medium text-foreground">
-                {booking.pickup_time ? new Date(booking.pickup_time).toLocaleDateString() : ''} at {booking.pickup_time ? new Date(booking.pickup_time).toLocaleTimeString() : ''}
+                {booking.pickup_time ? (() => {
+                  const date = new Date(booking.pickup_time);
+                  return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()} at ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+                })() : 'Date & Time TBD'}
               </p>
               {booking.countdown && (
                 <p className="text-xs text-orange-600 font-medium">

@@ -53,8 +53,10 @@ const BookingForm = () => {
         return;
       }
 
-      // Combine date and time for pickup_time
-      const pickupDateTime = new Date(`${formData.date}T${formData.time}`);
+      // Combine date and time for pickup_time - parse safely without timezone issues
+      const [year, month, day] = formData.date.split('-').map(Number);
+      const [hours, minutes] = formData.time.split(':').map(Number);
+      const pickupDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
       
       // Validate 6-hour minimum notice
       const now = new Date();

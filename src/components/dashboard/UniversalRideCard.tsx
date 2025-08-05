@@ -224,10 +224,10 @@ export const UniversalRideCard = ({
               </h3>
               <div className="flex items-center gap-6 text-sm text-gray-600">
                 <span className="font-medium">
-                  {booking.pickup_time ? new Date(booking.pickup_time).toLocaleTimeString([], { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  }) : 'Time TBD'}
+                  {booking.pickup_time ? (() => {
+                    const date = new Date(booking.pickup_time);
+                    return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+                  })() : 'Time TBD'}
                 </span>
                 {displayUser?.phone && (
                   <Button
@@ -275,17 +275,13 @@ export const UniversalRideCard = ({
           <div className="grid grid-cols-2 gap-4 py-3 border-t border-gray-200">
             <div>
               <p className="text-sm text-gray-600 font-medium">
-                {booking.pickup_time ? (
-                  <>
-                    {new Date(booking.pickup_time).toLocaleDateString('en-US', { 
-                      month: 'long', 
-                      day: 'numeric' 
-                    })}, {new Date(booking.pickup_time).toLocaleTimeString([], { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    })}
-                  </>
-                ) : 'Date & Time TBD'}
+                {booking.pickup_time ? (() => {
+                  const date = new Date(booking.pickup_time);
+                  const month = date.toLocaleDateString('en-US', { month: 'long' });
+                  const day = date.getDate();
+                  const time = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+                  return `${month} ${day}, ${time}`;
+                })() : 'Date & Time TBD'}
               </p>
               <p className="text-sm text-gray-500 mt-1">
                 {booking.vehicle_type || 
