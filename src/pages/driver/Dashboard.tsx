@@ -24,6 +24,7 @@ import { EarningsSection } from "@/components/dashboard/EarningsSection";
 import { BookingToggle } from "@/components/dashboard/BookingToggle";
 import { StandardDriverRideCard } from "@/components/StandardDriverRideCard";
 import { NewRidesBookingCard } from "@/components/dashboard/NewRidesBookingCard";
+import { NewRequestsCard } from "@/components/dashboard/NewRequestsCard";
 import { UniversalRideCard } from "@/components/dashboard/UniversalRideCard";
 import OrganizedBookingsList from "@/components/dashboard/OrganizedBookingsList";
 import PendingRequestAlert from "@/components/dashboard/PendingRequestAlert";
@@ -163,23 +164,43 @@ const DriverDashboard = () => {
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*', // Listen to all changes
           schema: 'public',
-          table: 'bookings',
-          filter: `ride_status=in.(pending_driver,offer_sent)`
+          table: 'bookings'
         },
         (payload) => {
-          console.log('New booking request received:', payload);
-          // Reset user closed flag for new incoming requests
-          setUserClosedAlert(false);
-          // Refresh bookings when a new request comes in
-          fetchDriverBookings(userProfile);
+          console.log('🔄 Booking update received:', payload);
+          const booking = payload.new as any;
           
-          // Show notification
-          toast({
-            title: "🚗 New Ride Request!",
-            description: "A new ride request is waiting for your response.",
-          });
+          // Check if this booking is relevant to current driver
+          const isRelevantToDriver = 
+            // Direct assignment to this driver
+            booking?.driver_id === userProfile.id ||
+            // New request that matches driver's vehicle
+            (!booking?.driver_id && 
+             booking?.vehicle_type && 
+             userProfile.car_make && 
+             userProfile.car_model &&
+             booking.vehicle_type.toLowerCase() === `${userProfile.car_make} ${userProfile.car_model}`.toLowerCase()) ||
+            // Status changes for pending requests
+            (booking?.ride_status === 'pending_driver' || booking?.ride_status === 'offer_sent');
+
+          if (isRelevantToDriver) {
+            console.log('📡 Processing relevant booking update for driver:', userProfile.id);
+            // Reset user closed flag for new incoming requests
+            setUserClosedAlert(false);
+            // Refresh bookings when a relevant change occurs
+            fetchDriverBookings(userProfile);
+            
+            // Show notification for new requests
+            if (payload.eventType === 'INSERT' || 
+                (payload.eventType === 'UPDATE' && booking?.ride_status === 'pending_driver')) {
+              toast({
+                title: "🚗 New Ride Request!",
+                description: "A new ride request is waiting for your response.",
+              });
+            }
+          }
         }
       )
       .subscribe();
@@ -202,12 +223,24 @@ const DriverDashboard = () => {
     // Auto-open booking request modal for new requests
     if (driverRides.length > 0 && !bookingRequestModalOpen && !userClosedAlert) {
       const newRequests = driverRides.filter(booking => {
-        console.log('Checking booking:', booking.id, 'ride_status:', booking.ride_status, 'status_driver:', booking.status_driver);
+        console.log('🔍 Checking booking for new request modal:', {
+          id: booking.id,
+          ride_status: booking.ride_status,
+          status: booking.status,
+          driver_id: booking.driver_id,
+          status_driver: booking.status_driver,
+          status_passenger: booking.status_passenger
+        });
+        
         // Check for completely new requests that need initial driver response
-        return booking.status_driver === 'new_request' && 
-               booking.status_passenger === 'passenger_requested' &&
-               !booking.driver_id; // Only truly new requests without assigned driver
+        return (
+          booking.ride_status === 'pending_driver' && 
+          booking.status === 'pending' &&
+          !booking.driver_id // Only truly new requests without assigned driver
+        );
       });
+
+      console.log('📊 Found new requests for modal:', newRequests.length, newRequests);
 
       if (newRequests.length > 0 && !selectedBookingForRequest) {
         const firstRequest = newRequests[0];
@@ -220,17 +253,25 @@ const DriverDashboard = () => {
     // Also check for other pending actions that need driver attention
     if (driverRides.length > 0 && !pendingRequestAlertOpen && !userClosedAlert) {
       const pendingRequestsData = driverRides.filter(booking => {
-        console.log('Checking booking:', booking.id, 'ride_status:', booking.ride_status, 'status:', booking.status);
-        // Check for rides that need driver attention - payment confirmations, etc.
-        return (booking.ride_status === "pending_driver" && booking.status === "pending") ||
-               (booking.ride_status === "offer_sent" && !booking.driver_id);
+        console.log('🔍 Checking booking for pending alert:', {
+          id: booking.id,
+          ride_status: booking.ride_status,
+          status: booking.status,
+          driver_id: booking.driver_id
+        });
+        
+        // Check for rides that need driver attention - new requests and payment confirmations
+        return (
+          (booking.ride_status === "pending_driver" && booking.status === "pending" && !booking.driver_id) ||
+          (booking.ride_status === "offer_sent") ||
+          (booking.payment_confirmation_status === "passenger_paid" && booking.status_driver !== "driver_accepted")
+        );
       });
       
-      console.log('Found pending requests:', pendingRequestsData.length);
-      console.log('Pending requests data:', pendingRequestsData);
+      console.log('📊 Found pending requests for alert:', pendingRequestsData.length, pendingRequestsData);
       
       if (pendingRequestsData.length > 0) {
-        console.log('Setting pending requests and opening alert');
+        console.log('🚨 Setting pending requests and opening alert');
         setPendingRequests(pendingRequestsData);
         setPendingRequestAlertOpen(true);
       }
@@ -260,7 +301,21 @@ const DriverDashboard = () => {
     
     // Use new status manager for tab placement
     if (rideView === "new-requests") {
-      return getTabPlacement(ride) === 'new-requests';
+      // Show new requests that need driver attention
+      const isNewRequest = 
+        (ride.ride_status === 'pending_driver' && ride.status === 'pending' && !ride.driver_id) ||
+        (ride.status_driver === 'new_request' && !ride.driver_id) ||
+        getTabPlacement(ride) === 'new-requests';
+      
+      console.log('🔍 New request filter for ride', ride.id, ':', {
+        ride_status: ride.ride_status,
+        status: ride.status,
+        driver_id: ride.driver_id,
+        status_driver: ride.status_driver,
+        isNewRequest
+      });
+      
+      return isNewRequest;
     }
     
     // Default: don't show in other tabs
@@ -289,12 +344,13 @@ const DriverDashboard = () => {
             .eq('driver_id', profile.id)
             .order('pickup_time', { ascending: true }),
           
-          // Fetch new bookings that match this driver's vehicle (pending_driver status) - passenger data is denormalized
+          // Fetch new bookings that match this driver's vehicle (ALL statuses for new requests)
           supabase
             .from('bookings')
             .select('*')
+            .in('status', ['pending'])
             .in('ride_status', ['pending_driver', 'offer_sent'])
-            .or(`driver_id.is.null,driver_id.eq.${profile.id}`)
+            .is('driver_id', null) // Only unassigned bookings
             .order('pickup_time', { ascending: true })
         ]);
 
@@ -309,13 +365,27 @@ const DriverDashboard = () => {
 
         // Filter pending bookings to match driver's vehicle make and model
         const filteredPendingBookings = (pendingBookings.data || []).filter(booking => {
-          if (!booking.vehicle_type || !profile.car_make || !profile.car_model) return true; 
+          console.log('🔍 Filtering pending booking:', {
+            bookingId: booking.id,
+            vehicleType: booking.vehicle_type,
+            driverVehicle: `${profile.car_make} ${profile.car_model}`,
+            rideStatus: booking.ride_status,
+            status: booking.status
+          });
+          
+          if (!booking.vehicle_type || !profile.car_make || !profile.car_model) {
+            console.log('⚠️ Missing vehicle info, including booking');
+            return true; 
+          }
           
           // Match both make and model for exact vehicle matching
-          const requestedVehicle = booking.vehicle_type.toLowerCase();
-          const driverVehicle = `${profile.car_make} ${profile.car_model}`.toLowerCase();
+          const requestedVehicle = booking.vehicle_type.toLowerCase().trim();
+          const driverVehicle = `${profile.car_make} ${profile.car_model}`.toLowerCase().trim();
           
-          return requestedVehicle === driverVehicle;
+          const isMatch = requestedVehicle === driverVehicle;
+          console.log('🎯 Vehicle match result:', isMatch, {requestedVehicle, driverVehicle});
+          
+          return isMatch;
         });
 
         // Combine and deduplicate bookings
@@ -545,6 +615,48 @@ const DriverDashboard = () => {
     // Reopen the alert for a specific ride
     setPendingRequests([ride]);
     setPendingRequestAlertOpen(true);
+  };
+
+  const handleDeclineBooking = async (booking: any) => {
+    try {
+      setLoading(true);
+      
+      const { error } = await supabase
+        .from('bookings')
+        .update({
+          ride_status: 'driver_rejected',
+          status_driver: 'driver_rejected',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', booking.id);
+
+      if (error) {
+        console.error('Error declining booking:', error);
+        toast({
+          title: "Error",
+          description: "Failed to decline booking. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Booking Declined",
+        description: "The booking request has been declined.",
+      });
+
+      // Refresh bookings to remove declined request
+      fetchDriverBookings(userProfile);
+    } catch (error) {
+      console.error('Decline booking error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to decline booking",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleConfirmPaymentFromCard = async (booking: any) => {
@@ -804,30 +916,23 @@ const DriverDashboard = () => {
                   </Card>
                 ) : (
                   filteredRides.map((ride) => (
-                    <StandardDriverRideCard
+                    <NewRequestsCard
                       key={ride.id}
                       booking={ride}
-                      onReopenAlert={() => handleReopenPendingAlert(ride)}
-                      onMessage={(booking) => {
-                        setSelectedBookingForMessaging(booking);
-                        if (booking.passenger_id) {
-                          supabase
-                            .from('passengers')
-                            .select('*')
-                            .eq('id', booking.passenger_id)
-                            .maybeSingle()
-                            .then(({ data: passenger, error }) => {
-                              if (passenger && !error) {
-                                setPassengerProfile(passenger);
-                              }
-                            });
-                        }
-                        setMessagingOpen(true);
+                      onAccept={(booking) => {
+                        console.log('💚 Accept booking:', booking.id);
+                        setSelectedBookingForRequest(booking);
+                        setBookingRequestModalOpen(true);
                       }}
-                      onViewSummary={(booking) => handleViewSummary(booking)}
-                      onCancelSuccess={() => fetchDriverBookings(userProfile)}
-                      showPaymentReceivedButton={ride.payment_confirmation_status === 'passenger_paid'}
-                      onConfirmPaymentReceived={() => handleConfirmPaymentFromCard(ride)}
+                      onDecline={(booking) => {
+                        console.log('❌ Decline booking:', booking.id);
+                        handleDeclineBooking(booking);
+                      }}
+                      onSendOffer={(booking) => {
+                        console.log('💰 Send offer for booking:', booking.id);
+                        setSelectedBookingForOffer(booking);
+                        setPriceOfferModalOpen(true);
+                      }}
                     />
                   ))
                 )}
