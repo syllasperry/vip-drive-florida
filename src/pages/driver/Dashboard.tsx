@@ -217,10 +217,13 @@ const DriverDashboard = () => {
                           ride.payment_confirmation_status === "price_awaiting_acceptance" ||
                           ride.payment_confirmation_status === "waiting_for_payment" ||
                           ride.payment_confirmation_status === "passenger_paid" ||
-                          (ride.payment_confirmation_status === "waiting_for_offer" && 
-                           ride.ride_status === "pending_driver");
+                          ride.payment_confirmation_status === "waiting_for_offer" ||
+                          (ride.status === "pending" && !ride.driver_id) ||
+                          (ride.status === "canceled by passenger") ||
+                          (ride.status === "canceled by driver");
       console.log('Is new request:', isNewRequest);
-      return isNewRequest && ride.ride_stage !== "completed";
+      // Only exclude truly completed rides, not rides that are just waiting for next step
+      return isNewRequest && ride.ride_stage !== "completed" && ride.status !== "completed";
     }
     
     // Default: don't show in other tabs
