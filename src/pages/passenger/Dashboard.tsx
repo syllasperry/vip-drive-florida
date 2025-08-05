@@ -76,15 +76,30 @@ const Dashboard = () => {
     fetchBookings();
     
     // Show toast for important status changes
-    if (updatedBooking.status_passenger === 'offer_sent') {
+    if (updatedBooking.status_passenger === 'offer_sent' || updatedBooking.ride_status === 'offer_sent') {
       toast({
-        title: "New Offer Received!",
+        title: "🎯 New Offer Received!",
         description: "Driver has sent you a price offer. Please review.",
       });
-    } else if (updatedBooking.status_driver === 'all_set') {
+    } else if (updatedBooking.status_driver === 'driver_accepted') {
       toast({
-        title: "Driver Ready!",
-        description: "Your driver is all set and ready for pickup.",
+        title: "✅ Driver Accepted!",
+        description: "Your driver has accepted the request and is ready.",
+      });
+    } else if (updatedBooking.payment_confirmation_status === 'all_set') {
+      toast({
+        title: "🚀 All Set!",
+        description: "Everything is confirmed. Your ride is ready!",
+      });
+    } else if (updatedBooking.ride_stage === 'driver_heading_to_pickup') {
+      toast({
+        title: "🚗 Driver En Route!",
+        description: "Your driver is heading to the pickup location.",
+      });
+    } else if (updatedBooking.ride_stage === 'driver_arrived_at_pickup') {
+      toast({
+        title: "📍 Driver Arrived!",
+        description: "Your driver has arrived at the pickup location.",
       });
     }
   };

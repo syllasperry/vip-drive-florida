@@ -36,21 +36,21 @@ export const RideFlowManager = ({
     const { status_passenger, status_driver, ride_status, payment_confirmation_status } = booking;
 
     if (userType === 'passenger') {
-      if (status_passenger === 'offer_sent') {
+      if (status_passenger === 'offer_sent' || ride_status === 'offer_sent') {
         setCurrentStep('offer_acceptance');
-      } else if (status_passenger === 'passenger_accepted') {
+      } else if (status_passenger === 'passenger_accepted' || status_passenger === 'driver_accepted') {
         setCurrentStep('payment_instructions');
       } else if (status_passenger === 'passenger_canceled') {
         setCurrentStep('passenger_cancellation');
-      } else if (status_passenger === 'all_set') {
+      } else if (status_passenger === 'all_set' || payment_confirmation_status === 'all_set') {
         setCurrentStep('all_set_confirmation');
       } else {
         setCurrentStep(null);
       }
     } else if (userType === 'driver') {
-      if (status_driver === 'payment_confirmed') {
+      if (status_driver === 'payment_confirmed' || payment_confirmation_status === 'passenger_paid') {
         setCurrentStep('driver_payment_confirmation');
-      } else if (status_driver === 'all_set') {
+      } else if (status_driver === 'all_set' || payment_confirmation_status === 'all_set') {
         setCurrentStep('all_set_confirmation');
       } else {
         setCurrentStep(null);

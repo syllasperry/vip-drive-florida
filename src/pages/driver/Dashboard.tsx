@@ -7,6 +7,7 @@ import { MessagingInterface } from "@/components/MessagingInterface";
 import { MessagesTab } from "@/components/dashboard/MessagesTab";
 import { PriceEditModal } from "@/components/PriceEditModal";
 import { PriceOfferModal } from "@/components/booking/PriceOfferModal";
+import { BookingRequestModal } from "@/components/booking/BookingRequestModal";
 import { DriverScheduleModal } from "@/components/DriverScheduleModal";
 import { DriverSettingsModal } from "@/components/DriverSettingsModal";
 import { DriverPaymentMethodsModal } from "@/components/DriverPaymentMethodsModal";
@@ -66,6 +67,10 @@ const DriverDashboard = () => {
   // Price Offer Modal state
   const [priceOfferModalOpen, setPriceOfferModalOpen] = useState(false);
   const [selectedBookingForOffer, setSelectedBookingForOffer] = useState<any>(null);
+  
+  // Booking Request Modal state
+  const [bookingRequestModalOpen, setBookingRequestModalOpen] = useState(false);
+  const [selectedBookingForRequest, setSelectedBookingForRequest] = useState<any>(null);
   
   // Pending Request Alert state
   const [pendingRequestAlertOpen, setPendingRequestAlertOpen] = useState(false);
@@ -193,11 +198,29 @@ const DriverDashboard = () => {
     console.log('userClosedAlert:', userClosedAlert);
     console.log('All driverRides:', driverRides);
     
-    // Don't auto-open if user manually closed the alert
+    // Auto-open booking request modal for new requests
+    if (driverRides.length > 0 && !bookingRequestModalOpen && !userClosedAlert) {
+      const newRequests = driverRides.filter(booking => {
+        console.log('Checking booking:', booking.id, 'ride_status:', booking.ride_status, 'status_driver:', booking.status_driver);
+        // Check for completely new requests that need initial driver response
+        return booking.status_driver === 'new_request' && 
+               booking.status_passenger === 'passenger_requested' &&
+               !booking.driver_id; // Only truly new requests without assigned driver
+      });
+
+      if (newRequests.length > 0 && !selectedBookingForRequest) {
+        const firstRequest = newRequests[0];
+        console.log('🚨 Opening booking request modal for:', firstRequest.id);
+        setSelectedBookingForRequest(firstRequest);
+        setBookingRequestModalOpen(true);
+      }
+    }
+
+    // Also check for other pending actions that need driver attention
     if (driverRides.length > 0 && !pendingRequestAlertOpen && !userClosedAlert) {
       const pendingRequestsData = driverRides.filter(booking => {
         console.log('Checking booking:', booking.id, 'ride_status:', booking.ride_status, 'status:', booking.status);
-        // Check for rides that need driver attention - both new requests and offers sent
+        // Check for rides that need driver attention - payment confirmations, etc.
         return (booking.ride_status === "pending_driver" && booking.status === "pending") ||
                (booking.ride_status === "offer_sent" && !booking.driver_id);
       });
@@ -1054,6 +1077,88 @@ const DriverDashboard = () => {
             payment_instructions: userProfile.payment_instructions
           }}
           onUpdate={() => fetchDriverBookings(userProfile)}
+        />
+      )}
+
+      {/* Booking Request Modal */}
+      {bookingRequestModalOpen && selectedBookingForRequest && userProfile && (
+        <BookingRequestModal
+          isOpen={bookingRequestModalOpen}
+          onClose={() => {
+            setBookingRequestModalOpen(false);
+            setSelectedBookingForRequest(null);
+            setUserClosedAlert(true); // Prevent reopening until new request
+          }}
+          booking={selectedBookingForRequest}
+          onAccept={async () => {
+            try {
+              // Accept the request and assign driver
+              const { error } = await supabase
+                .from('bookings')
+                .update({
+                  driver_id: userProfile.id,
+                  status_driver: 'driver_accepted',
+                  status_passenger: 'driver_accepted',
+                  ride_status: 'driver_accepted',
+                  payment_confirmation_status: 'waiting_for_payment'
+                })
+                .eq('id', selectedBookingForRequest.id);
+
+              if (error) throw error;
+
+              toast({
+                title: "Request Accepted!",
+                description: "You've accepted the ride request. Passenger will be notified.",
+              });
+
+              setBookingRequestModalOpen(false);
+              setSelectedBookingForRequest(null);
+              fetchDriverBookings(userProfile);
+            } catch (error) {
+              console.error('Error accepting request:', error);
+              toast({
+                title: "Error",
+                description: "Failed to accept request",
+                variant: "destructive",
+              });
+            }
+          }}
+          onReject={async () => {
+            try {
+              const { error } = await supabase
+                .from('bookings')
+                .update({
+                  status_driver: 'driver_rejected',
+                  ride_status: 'driver_rejected'
+                })
+                .eq('id', selectedBookingForRequest.id);
+
+              if (error) throw error;
+
+              toast({
+                title: "Request Declined",
+                description: "The passenger has been notified.",
+              });
+
+              setBookingRequestModalOpen(false);
+              setSelectedBookingForRequest(null);
+              fetchDriverBookings(userProfile);
+            } catch (error) {
+              console.error('Error rejecting request:', error);
+              toast({
+                title: "Error",
+                description: "Failed to reject request",
+                variant: "destructive",
+              });
+            }
+          }}
+          onSendOffer={() => {
+            // Close request modal and open price offer modal
+            setBookingRequestModalOpen(false);
+            setSelectedBookingForOffer(selectedBookingForRequest);
+            setPriceOfferModalOpen(true);
+            setSelectedBookingForRequest(null);
+          }}
         />
       )}
 
