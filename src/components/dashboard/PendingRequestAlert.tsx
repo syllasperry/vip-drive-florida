@@ -45,12 +45,27 @@ const PendingRequestAlert = ({ requests, onAccept, onDecline, onClose }: Pending
   const [isEditingPrice, setIsEditingPrice] = useState<{ [key: string]: boolean }>({});
   const { toast } = useToast();
 
+  // Calculate realistic fare using Uber Black estimate logic
+  const calculateUberBlackEstimate = (pickup: string, dropoff: string, vehicleType: string) => {
+    // Base rate for Uber Black
+    const baseRate = 25;
+    const perMileRate = 4.5; // Higher rate for premium vehicles
+    
+    // Estimate distance (simplified - in real app would use Google Maps API)
+    const estimatedDistance = 10; // Default 10 miles
+    const timeMultiplier = 1.2; // Peak time adjustment
+    
+    const estimate = (baseRate + (estimatedDistance * perMileRate)) * timeMultiplier;
+    return Math.max(estimate, 100); // Minimum $100 for premium service
+  };
+
   // Initialize suggested prices for each request
   useEffect(() => {
     const prices: { [key: string]: number } = {};
     requests.forEach(request => {
       if (!suggestedPrices[request.id]) {
-        prices[request.id] = 25; // Default suggested price as shown in reference
+        const estimate = calculateUberBlackEstimate(request.from, request.to, request.vehicle_type);
+        prices[request.id] = Math.round(estimate);
       }
     });
     setSuggestedPrices(prev => ({ ...prev, ...prices }));
@@ -92,8 +107,8 @@ const PendingRequestAlert = ({ requests, onAccept, onDecline, onClose }: Pending
       }
 
       toast({
-        title: "Offer sent!",
-        description: `Your $${price} offer has been sent to the passenger.`,
+        title: "Price offer sent to passenger successfully",
+        description: `Fare proposal of $${price.toFixed(2)} has been sent. Awaiting passenger response.`,
       });
 
       // Auto-close the alert after successful offer
@@ -112,10 +127,38 @@ const PendingRequestAlert = ({ requests, onAccept, onDecline, onClose }: Pending
 
   const handleAcceptRide = async (requestId: string) => {
     try {
-      await onAccept(requestId, suggestedPrices[requestId]);
+      const price = suggestedPrices[requestId];
+      
+      // Update booking to driver accepted status
+      const { data: sessionData } = await supabase.auth.getSession();
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          ride_status: 'driver_accepted',
+          payment_confirmation_status: 'driver_accepted',
+          final_price: price,
+          driver_id: sessionData?.session?.user?.id,
+          payment_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString()
+        })
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      // Send notification message to passenger
+      if (sessionData?.session?.user?.id) {
+        await supabase
+          .from('messages')
+          .insert({
+            booking_id: requestId,
+            sender_id: sessionData.session.user.id,
+            sender_type: 'driver',
+            message_text: `Driver accepted your request. Final fare: $${price.toFixed(2)}. Payment instructions will be provided.`
+          });
+      }
+
       toast({
-        title: "Ride accepted!",
-        description: "The passenger has been notified.",
+        title: "Ride accepted and passenger notified",
+        description: `Fare confirmed at $${price.toFixed(2)}. Passenger has been notified.`,
       });
       
       // Auto-close the alert after successful accept
@@ -262,13 +305,21 @@ const PendingRequestAlert = ({ requests, onAccept, onDecline, onClose }: Pending
                   <div className="flex items-center justify-between border border-gray-600 rounded-lg p-3 bg-gray-700">
                     <span className="text-gray-300">Editable Fare</span>
                     <div className="flex items-center gap-2">
+                      <span className="text-white font-semibold">$</span>
                       <Input
-                        type="number"
-                        value={suggestedPrices[request.id] || 25}
-                        onChange={(e) => handlePriceChange(request.id, Number(e.target.value))}
+                        type="text"
+                        value={suggestedPrices[request.id]?.toFixed(2) || "100.00"}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^0-9.]/g, '');
+                          const numValue = parseFloat(value) || 0;
+                          handlePriceChange(request.id, numValue);
+                        }}
+                        onBlur={(e) => {
+                          const value = parseFloat(e.target.value) || 0;
+                          handlePriceChange(request.id, value);
+                        }}
                         className="w-20 text-right bg-transparent border-none text-white font-semibold p-0 focus:ring-0"
-                        step="0.01"
-                        min="0"
+                        placeholder="100.00"
                       />
                       <ChevronDown className="h-4 w-4 text-gray-400" />
                     </div>
