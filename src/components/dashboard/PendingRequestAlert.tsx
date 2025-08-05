@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { X, MapPin, Car, Navigation, ChevronDown } from "lucide-react";
+import { X, MapPin, Car, Navigation, ChevronDown, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -43,6 +43,8 @@ interface PendingRequestAlertProps {
 const PendingRequestAlert = ({ requests, onAccept, onDecline, onClose }: PendingRequestAlertProps) => {
   const [suggestedPrices, setSuggestedPrices] = useState<{ [key: string]: number }>({});
   const [isEditingPrice, setIsEditingPrice] = useState<{ [key: string]: boolean }>({});
+  const [timeLeft, setTimeLeft] = useState<{ [key: string]: number }>({});
+  const [requestStartTime, setRequestStartTime] = useState<{ [key: string]: number }>({});
   const { toast } = useToast();
 
   // Calculate realistic fare using Uber Black estimate logic
@@ -59,17 +61,88 @@ const PendingRequestAlert = ({ requests, onAccept, onDecline, onClose }: Pending
     return Math.max(estimate, 100); // Minimum $100 for premium service
   };
 
-  // Initialize suggested prices for each request
+  // Initialize suggested prices and countdown timers when requests change
   useEffect(() => {
-    const prices: { [key: string]: number } = {};
+    const newPrices = { ...suggestedPrices };
+    const newStartTimes = { ...requestStartTime };
+    const newTimeLeft = { ...timeLeft };
+    
     requests.forEach(request => {
-      if (!suggestedPrices[request.id]) {
-        const estimate = calculateUberBlackEstimate(request.from, request.to, request.vehicle_type);
-        prices[request.id] = Math.round(estimate);
+      if (!newPrices[request.id]) {
+        newPrices[request.id] = calculateUberBlackEstimate(request.from, request.to, request.vehicle_type);
+      }
+      if (!newStartTimes[request.id]) {
+        newStartTimes[request.id] = Date.now();
+        newTimeLeft[request.id] = 600; // 10 minutes in seconds
       }
     });
-    setSuggestedPrices(prev => ({ ...prev, ...prices }));
+    
+    setSuggestedPrices(newPrices);
+    setRequestStartTime(newStartTimes);
+    setTimeLeft(newTimeLeft);
   }, [requests]);
+
+  // Countdown timer effect
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        const updated = { ...prev };
+        let hasChanges = false;
+        
+        Object.keys(updated).forEach(requestId => {
+          if (updated[requestId] > 0) {
+            updated[requestId] -= 1;
+            hasChanges = true;
+            
+            // Auto-reassign when time expires (10 minutes and 1 second)
+            if (updated[requestId] === 0) {
+              handleAutoReassign(requestId);
+            }
+          }
+        });
+        
+        return hasChanges ? updated : prev;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Format time left display
+  const formatTimeLeft = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  // Handle auto-reassignment
+  const handleAutoReassign = async (requestId: string) => {
+    try {
+      console.log('Auto-reassigning request:', requestId);
+      
+      // Call edge function to reassign the ride
+      const { error } = await supabase.functions.invoke('reassign-ride', {
+        body: { bookingId: requestId }
+      });
+
+      if (error) {
+        console.error('Auto-reassignment error:', error);
+      } else {
+        toast({
+          title: "Request Expired",
+          description: "This ride request has been reassigned to another driver.",
+          variant: "destructive"
+        });
+        
+        // Close the dialog
+        if (onClose) {
+          onClose(requestId);
+        }
+      }
+    } catch (error) {
+      console.error('Auto-reassignment failed:', error);
+    }
+  };
 
   const handlePriceChange = (requestId: string, newPrice: number) => {
     setSuggestedPrices(prev => ({ ...prev, [requestId]: newPrice }));
@@ -286,6 +359,14 @@ const PendingRequestAlert = ({ requests, onAccept, onDecline, onClose }: Pending
               <div className="flex items-center gap-3 mb-4">
                 <Car className="h-5 w-5 text-gray-400" />
                 <span className="text-gray-200">{request.to}</span>
+              </div>
+
+              {/* Countdown Timer */}
+              <div className="flex items-center justify-center mb-4 p-3 bg-red-900/50 border border-red-700 rounded-lg">
+                <Clock className="h-5 w-5 text-red-400 mr-2" />
+                <span className="text-red-400 font-semibold">
+                  Time to respond: {formatTimeLeft(timeLeft[request.id] || 0)}
+                </span>
               </div>
 
               {/* Date/Time and Maps Button */}
