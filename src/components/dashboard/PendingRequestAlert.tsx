@@ -241,7 +241,7 @@ const PendingRequestAlert = ({ requests, onAccept, onDecline, onClose }: Pending
         handleCloseDialog();
       }
     }}>
-      <DialogContent className="max-w-md mx-auto bg-gray-800 text-white border-none p-0 gap-0"
+      <DialogContent className="max-w-md mx-auto bg-gray-800 text-white border-none p-0 gap-0 [&>button]:hidden"
                      onEscapeKeyDown={handleCloseDialog}
                      onPointerDownOutside={handleCloseDialog}>
         {requests.map((request) => (
