@@ -53,10 +53,7 @@ export const StatusBadges = ({ rideStatus, paymentStatus, className = "", onReop
 
   // Check if we should show the reopen button based on status
   const shouldShowReopen = showReopenButton && onReopenAlert && (
-    rideStatus === 'offer_sent' ||
-    rideStatus === 'offer_declined' ||
-    (rideStatus === 'passenger_approved' && paymentStatus === 'waiting_for_payment') ||
-    (rideStatus === 'all_set' && paymentStatus === 'all_set')
+    rideStatus === 'pending_driver' && paymentStatus === 'waiting_for_offer'
   );
 
   return (

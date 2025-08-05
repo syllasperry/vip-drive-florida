@@ -210,10 +210,11 @@ const DriverDashboard = () => {
     
     // Priority 3: All rides except "all_set" go to New Requests
     if (rideView === "new-requests") {
-      // Simple rule: Everything stays in New Requests EXCEPT all_set status
+      // Simple rule: Everything stays in New Requests EXCEPT all_set status or completed rides
       const isNewRequest = ride.payment_confirmation_status !== "all_set" && 
                           ride.ride_stage !== "completed" && 
-                          ride.status !== "completed";
+                          ride.status !== "completed" &&
+                          ride.ride_status !== "all_set";
       console.log('Is new request:', isNewRequest, 'payment_confirmation_status:', ride.payment_confirmation_status);
       return isNewRequest;
     }
