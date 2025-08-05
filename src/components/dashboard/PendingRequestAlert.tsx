@@ -92,6 +92,11 @@ const PendingRequestAlert = ({ requests, onAccept, onDecline }: PendingRequestAl
         title: "Offer sent!",
         description: `Your $${price} offer has been sent to the passenger.`,
       });
+
+      // Auto-close the alert after successful offer
+      setTimeout(() => {
+        onDecline(requestId);
+      }, 1500);
     } catch (error) {
       console.error('Error sending offer:', error);
       toast({
@@ -196,7 +201,13 @@ const PendingRequestAlert = ({ requests, onAccept, onDecline }: PendingRequestAl
             {/* Action Buttons */}
             <div className="space-y-3">
               <Button 
-                onClick={() => onAccept(request.id, suggestedPrices[request.id])}
+                onClick={async () => {
+                  await onAccept(request.id, suggestedPrices[request.id]);
+                  // Auto-close the alert after successful accept
+                  setTimeout(() => {
+                    onDecline(request.id);
+                  }, 1500);
+                }}
                 className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-semibold text-lg"
               >
                 Accept
