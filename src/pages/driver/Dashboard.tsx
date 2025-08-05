@@ -117,6 +117,8 @@ const DriverDashboard = () => {
 
         setIsAuthenticated(true);
         
+        console.log('🔐 Session user ID:', session.user.id);
+        
         // Fetch driver profile
         const { data: driver, error } = await supabase
           .from('drivers')
@@ -124,8 +126,10 @@ const DriverDashboard = () => {
           .eq('id', session.user.id)
           .maybeSingle();
 
+        console.log('👤 Driver profile query result:', { driver, error });
+
         if (error) {
-          console.error('Error fetching driver profile:', error);
+          console.error('❌ Error fetching driver profile:', error);
           toast({
             title: "Error", 
             description: "Failed to load driver profile",
@@ -133,13 +137,14 @@ const DriverDashboard = () => {
           });
         } else if (!driver) {
           // No driver profile found, this might be a new user
-          console.log('No driver profile found for user:', session.user.id);
+          console.log('❌ No driver profile found for user:', session.user.id);
           toast({
             title: "Profile Setup Required",
             description: "Please complete your driver profile setup",
             variant: "default",
           });
         } else {
+          console.log('✅ Driver profile loaded successfully:', driver);
           setUserProfile(driver);
           // If authentication is successful, start fetching bookings
           fetchDriverBookings(driver);
@@ -157,7 +162,13 @@ const DriverDashboard = () => {
 
   // Real-time listener for new booking requests
   useEffect(() => {
-    if (!userProfile) return;
+    if (!userProfile) {
+      console.log('❌ No userProfile available for realtime listener');
+      return;
+    }
+
+    console.log('📡 Setting up realtime listener for driver:', userProfile.id);
+    console.log('Driver vehicle:', userProfile.car_make, userProfile.car_model);
 
     const channel = supabase
       .channel('booking-requests')
@@ -172,6 +183,15 @@ const DriverDashboard = () => {
           console.log('🔄 Booking update received:', payload);
           const booking = payload.new as any;
           
+          console.log('📊 Booking details:', {
+            id: booking?.id,
+            ride_status: booking?.ride_status,
+            status: booking?.status,
+            driver_id: booking?.driver_id,
+            vehicle_type: booking?.vehicle_type,
+            eventType: payload.eventType
+          });
+          
           // Check if this booking is relevant to current driver
           const isRelevantToDriver = 
             // Direct assignment to this driver
@@ -185,6 +205,8 @@ const DriverDashboard = () => {
             // Status changes for pending requests
             (booking?.ride_status === 'pending_driver' || booking?.ride_status === 'offer_sent');
 
+          console.log('🎯 Is relevant to driver?', isRelevantToDriver);
+
           if (isRelevantToDriver) {
             console.log('📡 Processing relevant booking update for driver:', userProfile.id);
             // Reset user closed flag for new incoming requests
@@ -195,17 +217,23 @@ const DriverDashboard = () => {
             // Show notification for new requests
             if (payload.eventType === 'INSERT' || 
                 (payload.eventType === 'UPDATE' && booking?.ride_status === 'pending_driver')) {
+              console.log('🚨 Showing notification for new request');
               toast({
                 title: "🚗 New Ride Request!",
                 description: "A new ride request is waiting for your response.",
               });
             }
+          } else {
+            console.log('⏭️ Ignoring booking update (not relevant to this driver)');
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('📡 Realtime connection status:', status);
+      });
 
     return () => {
+      console.log('🔌 Disconnecting realtime channel');
       supabase.removeChannel(channel);
     };
   }, [userProfile, toast]);
@@ -354,6 +382,18 @@ const DriverDashboard = () => {
             .order('pickup_time', { ascending: true })
         ]);
 
+        console.log('📊 Query results:');
+        console.log('Assigned bookings:', assignedBookings.data?.length || 0);
+        console.log('Pending bookings:', pendingBookings.data?.length || 0);
+        
+        if (assignedBookings.error) {
+          console.error('❌ Error fetching assigned bookings:', assignedBookings.error);
+        }
+        
+        if (pendingBookings.error) {
+          console.error('❌ Error fetching pending bookings:', pendingBookings.error);
+        }
+
         if (assignedBookings.error) {
           console.error('Error fetching assigned bookings:', assignedBookings.error);
           return;
@@ -373,8 +413,15 @@ const DriverDashboard = () => {
             status: booking.status
           });
           
-          if (!booking.vehicle_type || !profile.car_make || !profile.car_model) {
-            console.log('⚠️ Missing vehicle info, including booking');
+          // If no vehicle type specified, include it (could be an old booking)
+          if (!booking.vehicle_type) {
+            console.log('⚠️ No vehicle type specified, including booking');
+            return true; 
+          }
+          
+          // If driver vehicle info is missing, include all bookings
+          if (!profile.car_make || !profile.car_model) {
+            console.log('⚠️ Missing driver vehicle info, including booking');
             return true; 
           }
           
@@ -383,10 +430,15 @@ const DriverDashboard = () => {
           const driverVehicle = `${profile.car_make} ${profile.car_model}`.toLowerCase().trim();
           
           const isMatch = requestedVehicle === driverVehicle;
-          console.log('🎯 Vehicle match result:', isMatch, {requestedVehicle, driverVehicle});
+          console.log('🎯 Vehicle match result:', isMatch, {
+            requested: requestedVehicle, 
+            driver: driverVehicle
+          });
           
           return isMatch;
         });
+
+        console.log('✅ Filtered pending bookings count:', filteredPendingBookings.length);
 
         // Combine and deduplicate bookings
         const allBookingsData = [
@@ -863,6 +915,39 @@ const DriverDashboard = () => {
         {/* Tab Content */}
         {activeTab === "rides" && (
           <div className="space-y-4">
+            {/* DEBUG: Test button for simulating new requests */}
+            <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-4">
+              <p className="text-sm text-yellow-800 mb-2">🔧 Debug Tools</p>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    console.log('🧪 Manual refresh triggered');
+                    if (userProfile) {
+                      fetchDriverBookings(userProfile);
+                    }
+                  }}
+                >
+                  Refresh Bookings
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    console.log('🧪 Current state:', {
+                      userProfile: userProfile?.id,
+                      driverRidesCount: driverRides.length,
+                      filteredRidesCount: filteredRides.length,
+                      currentView: rideView
+                    });
+                  }}
+                >
+                  Log State
+                </Button>
+              </div>
+            </div>
+
             {/* Enhanced Rides Header with Three Tabs */}
             <div className="bg-white rounded-2xl p-1 shadow-sm border border-border/50">
               <div className="grid grid-cols-3 gap-1">
