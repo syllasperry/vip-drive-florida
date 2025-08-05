@@ -214,12 +214,13 @@ const DriverDashboard = () => {
                           ride.ride_status === "offer_sent" ||
                           ride.status === "accepted" ||
                           ride.status === "pending" ||
-                          (ride.payment_confirmation_status === "price_awaiting_acceptance" ||
-                           ride.payment_confirmation_status === "waiting_for_payment" ||
-                           ride.payment_confirmation_status === "passenger_paid") &&
-                          ride.ride_stage !== "completed";
+                          ride.payment_confirmation_status === "price_awaiting_acceptance" ||
+                          ride.payment_confirmation_status === "waiting_for_payment" ||
+                          ride.payment_confirmation_status === "passenger_paid" ||
+                          (ride.payment_confirmation_status === "waiting_for_offer" && 
+                           ride.ride_status === "pending_driver");
       console.log('Is new request:', isNewRequest);
-      return isNewRequest;
+      return isNewRequest && ride.ride_stage !== "completed";
     }
     
     // Default: don't show in other tabs
