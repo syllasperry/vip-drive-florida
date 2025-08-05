@@ -216,13 +216,14 @@ const PendingRequestAlert = ({ requests, onAccept, onDecline, onClose }: Pending
   };
 
   const formatDateTime = (date: string, time: string) => {
-    const dateObj = new Date(date);
-    const timeStr = time;
-    // Usar métodos diretos consistentes com outros componentes
+    // Parse the date string and time string properly without timezone conversion
+    const [year, month, day] = date.split('-').map(Number);
+    const dateObj = new Date(year, month - 1, day); // month is 0-indexed in JS Date
+    
     const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     
-    return `${weekdays[dateObj.getDay()]}, ${months[dateObj.getMonth()]} ${dateObj.getDate()}, ${timeStr}`;
+    return `${weekdays[dateObj.getDay()]}, ${months[dateObj.getMonth()]} ${dateObj.getDate()}, ${time}`;
   };
 
   if (requests.length === 0) return null;
@@ -235,15 +236,19 @@ const PendingRequestAlert = ({ requests, onAccept, onDecline, onClose }: Pending
   };
 
   return (
-    <Dialog open={requests.length > 0} onOpenChange={() => {}}>
-      <DialogContent className="max-w-md mx-auto bg-gray-800 text-white border-none p-0 gap-0 [&>button]:hidden"
+    <Dialog open={requests.length > 0} onOpenChange={(open) => {
+      if (!open) {
+        handleCloseDialog();
+      }
+    }}>
+      <DialogContent className="max-w-md mx-auto bg-gray-800 text-white border-none p-0 gap-0"
                      onEscapeKeyDown={handleCloseDialog}
                      onPointerDownOutside={handleCloseDialog}>
         {requests.map((request) => (
           <div key={request.id} className="relative">
             {/* Close Button - Single, larger, more visible */}
             <button
-              onClick={() => onClose ? onClose(request.id) : onDecline(request.id)}
+              onClick={handleCloseDialog}
               className="absolute top-3 right-3 p-3 hover:bg-gray-700/80 rounded-full transition-colors z-10 bg-gray-700/50"
             >
               <X className="h-6 w-6 text-white" />
