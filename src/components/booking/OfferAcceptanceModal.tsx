@@ -30,13 +30,22 @@ export const OfferAcceptanceModal = ({
   useEffect(() => {
     if (!isOpen || !booking) return;
 
-    const expiryTime = booking.payment_expires_at 
-      ? new Date(booking.payment_expires_at) 
-      : new Date(Date.now() + 15 * 60 * 1000); // 15 minutes from now
+    // Default to 15 minutes from now if no expiry time is set
+    let expiryTime: Date;
+    
+    if (booking.payment_expires_at) {
+      expiryTime = new Date(booking.payment_expires_at);
+      console.log('Using existing expiry time:', expiryTime.toISOString());
+    } else {
+      expiryTime = new Date(Date.now() + 15 * 60 * 1000);
+      console.log('Setting new expiry time:', expiryTime.toISOString());
+    }
 
     const updateTimer = () => {
       const now = new Date();
       const timeDiff = expiryTime.getTime() - now.getTime();
+      
+      console.log('Timer update - Now:', now.toISOString(), 'Expiry:', expiryTime.toISOString(), 'Diff:', timeDiff);
       
       if (timeDiff <= 0) {
         setTimeLeft("Expired");
@@ -49,11 +58,12 @@ export const OfferAcceptanceModal = ({
       setTimeLeft(`${minutes}:${seconds.toString().padStart(2, '0')}`);
     };
 
+    // Initialize timer immediately
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
 
     return () => clearInterval(interval);
-  }, [isOpen, booking]);
+  }, [isOpen, booking?.id, booking?.payment_expires_at]);
 
   const handleAccept = async () => {
     try {
@@ -116,7 +126,7 @@ export const OfferAcceptanceModal = ({
   if (!booking) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={() => {}} modal>
+    <Dialog open={isOpen} onOpenChange={onClose} modal>
       <DialogContent 
         className="max-w-sm mx-auto bg-background border shadow-lg p-4"
       >
