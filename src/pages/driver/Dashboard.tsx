@@ -160,9 +160,9 @@ const DriverDashboard = () => {
 
   const [driverRides, setDriverRides] = useState<any[]>([]);
 
-  // Auto-open pending request alert when switching to new-requests tab if there are pending requests
+  // Auto-open pending request alert whenever there are pending requests (regardless of tab)
   useEffect(() => {
-    if (rideView === "new-requests" && driverRides.length > 0 && !pendingRequestAlertOpen) {
+    if (driverRides.length > 0 && !pendingRequestAlertOpen) {
       const pendingRequestsData = driverRides.filter(booking => 
         booking.ride_status === "pending_driver" && 
         !booking.driver_id
@@ -173,7 +173,7 @@ const DriverDashboard = () => {
         setPendingRequestAlertOpen(true);
       }
     }
-  }, [rideView, driverRides, pendingRequestAlertOpen]);
+  }, [driverRides, pendingRequestAlertOpen]);
 
   // Filter rides based on current view
   const filteredRides = driverRides.filter(ride => {
@@ -344,8 +344,8 @@ const DriverDashboard = () => {
           !booking.driver_id
         );
         
-        // Show alert if there are pending requests and user is on new-requests tab
-        if (newPendingRequests.length > 0 && !pendingRequestAlertOpen && rideView === "new-requests") {
+        // Show alert if there are pending requests (regardless of current tab)
+        if (newPendingRequests.length > 0 && !pendingRequestAlertOpen) {
           setPendingRequests(newPendingRequests);
           setPendingRequestAlertOpen(true);
         }
