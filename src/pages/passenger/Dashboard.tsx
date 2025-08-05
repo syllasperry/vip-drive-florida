@@ -31,6 +31,7 @@ import { ChatNotificationBadge } from "@/components/ChatNotificationBadge";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useRealtimeBookings } from "@/hooks/useRealtimeBookings";
 import { User, LogOut, Clock, MessageCircle, CreditCard, Settings, Car, CalendarDays, History, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -69,7 +70,31 @@ const Dashboard = () => {
   const [forceAlertStep, setForceAlertStep] = useState<string | null>(null);
   const [forceAlertBooking, setForceAlertBooking] = useState<any>(null);
 
-  // Function to reopen alerts
+  // Real-time updates for bookings
+  const handleBookingUpdate = (updatedBooking: any) => {
+    console.log('📡 Real-time booking update received (passenger):', updatedBooking);
+    fetchBookings();
+    
+    // Show toast for important status changes
+    if (updatedBooking.status_passenger === 'offer_sent') {
+      toast({
+        title: "New Offer Received!",
+        description: "Driver has sent you a price offer. Please review.",
+      });
+    } else if (updatedBooking.status_driver === 'all_set') {
+      toast({
+        title: "Driver Ready!",
+        description: "Your driver is all set and ready for pickup.",
+      });
+    }
+  };
+
+  useRealtimeBookings({
+    userId: passenger?.id || '',
+    userType: 'passenger',
+    onBookingUpdate: handleBookingUpdate
+  });
+
   const reopenAlert = (booking: any) => {
     const { ride_status, payment_confirmation_status } = booking;
     
