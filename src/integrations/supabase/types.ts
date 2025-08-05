@@ -549,6 +549,50 @@ export type Database = {
           },
         ]
       }
+      ride_status: {
+        Row: {
+          actor_role: string
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          ride_id: string
+          status_code: string
+          status_label: string
+          status_timestamp: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          actor_role: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          ride_id: string
+          status_code: string
+          status_label: string
+          status_timestamp?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          actor_role?: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          ride_id?: string
+          status_code?: string
+          status_label?: string
+          status_timestamp?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_status_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scheduled_messages: {
         Row: {
           booking_id: string
@@ -681,6 +725,26 @@ export type Database = {
           driver_name: string
           driver_email: string
           driver_phone: string
+        }[]
+      }
+      get_ride_status_summary: {
+        Args: { p_ride_id: string }
+        Returns: {
+          actor_role: string
+          status_code: string
+          status_label: string
+          status_timestamp: string
+          metadata: Json
+        }[]
+      }
+      get_ride_timeline: {
+        Args: { p_ride_id: string }
+        Returns: {
+          status_code: string
+          status_label: string
+          actor_role: string
+          status_timestamp: string
+          metadata: Json
         }[]
       }
     }
