@@ -37,9 +37,10 @@ interface PendingRequestAlertProps {
   requests: PendingRequest[];
   onAccept: (requestId: string, price?: number) => void;
   onDecline: (requestId: string) => void;
+  onClose?: (requestId: string) => void;
 }
 
-const PendingRequestAlert = ({ requests, onAccept, onDecline }: PendingRequestAlertProps) => {
+const PendingRequestAlert = ({ requests, onAccept, onDecline, onClose }: PendingRequestAlertProps) => {
   const [suggestedPrices, setSuggestedPrices] = useState<{ [key: string]: number }>({});
   const [isEditingPrice, setIsEditingPrice] = useState<{ [key: string]: boolean }>({});
   const { toast } = useToast();
@@ -193,7 +194,7 @@ const PendingRequestAlert = ({ requests, onAccept, onDecline }: PendingRequestAl
           <div key={request.id} className="relative">
             {/* Close Button */}
             <button
-              onClick={() => onDecline(request.id)}
+              onClick={() => onClose ? onClose(request.id) : onDecline(request.id)}
               className="absolute top-4 right-4 p-2 hover:bg-gray-700 rounded-full transition-colors z-10"
             >
               <X className="h-5 w-5 text-gray-300" />

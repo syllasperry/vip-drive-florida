@@ -65,6 +65,10 @@ const DriverDashboard = () => {
   const [priceOfferModalOpen, setPriceOfferModalOpen] = useState(false);
   const [selectedBookingForOffer, setSelectedBookingForOffer] = useState<any>(null);
   
+  // Pending Request Alert state
+  const [pendingRequestAlertOpen, setPendingRequestAlertOpen] = useState(false);
+  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
+  
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -156,20 +160,20 @@ const DriverDashboard = () => {
 
   const [driverRides, setDriverRides] = useState<any[]>([]);
 
-  // Auto-open modal when switching to new-requests tab if there are pending requests
+  // Auto-open pending request alert when switching to new-requests tab if there are pending requests
   useEffect(() => {
-    if (rideView === "new-requests" && driverRides.length > 0 && !priceOfferModalOpen) {
-      const pendingRequest = driverRides.find(booking => 
+    if (rideView === "new-requests" && driverRides.length > 0 && !pendingRequestAlertOpen) {
+      const pendingRequestsData = driverRides.filter(booking => 
         booking.ride_status === "pending_driver" && 
         !booking.driver_id
       );
       
-      if (pendingRequest) {
-        setSelectedBookingForOffer(pendingRequest);
-        setPriceOfferModalOpen(true);
+      if (pendingRequestsData.length > 0) {
+        setPendingRequests(pendingRequestsData);
+        setPendingRequestAlertOpen(true);
       }
     }
-  }, [rideView, driverRides, priceOfferModalOpen]);
+  }, [rideView, driverRides, pendingRequestAlertOpen]);
 
   // Filter rides based on current view
   const filteredRides = driverRides.filter(ride => {
@@ -334,16 +338,16 @@ const DriverDashboard = () => {
 
         setDriverRides(transformedBookings);
         
-        // Auto-detect new ride requests and show price offer modal immediately
-        const newPendingRequest = transformedBookings.find(booking => 
+        // Auto-detect new ride requests and show pending request alert immediately
+        const newPendingRequests = transformedBookings.filter(booking => 
           booking.ride_status === "pending_driver" && 
           !booking.driver_id
         );
         
-        // Show modal if there's a pending request and user is on new-requests tab
-        if (newPendingRequest && !priceOfferModalOpen && rideView === "new-requests") {
-          setSelectedBookingForOffer(newPendingRequest);
-          setPriceOfferModalOpen(true);
+        // Show alert if there are pending requests and user is on new-requests tab
+        if (newPendingRequests.length > 0 && !pendingRequestAlertOpen && rideView === "new-requests") {
+          setPendingRequests(newPendingRequests);
+          setPendingRequestAlertOpen(true);
         }
       } catch (error) {
         console.error('Error fetching driver bookings:', error);
@@ -468,6 +472,18 @@ const DriverDashboard = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleClosePendingAlert = (rideId: string) => {
+    // Simply close the alert without taking any action on the ride
+    setPendingRequestAlertOpen(false);
+    setPendingRequests([]);
+  };
+
+  const handleReopenPendingAlert = (ride: any) => {
+    // Reopen the alert for a specific ride
+    setPendingRequests([ride]);
+    setPendingRequestAlertOpen(true);
   };
 
   const handleConfirmPaymentFromCard = async (booking: any) => {
@@ -631,43 +647,35 @@ const DriverDashboard = () => {
         onProfileUpdate={() => fetchDriverBookings(userProfile)}
       />
 
-      {/* Floating Pending Request Alert Popup */}
-      {(() => {
-        // Show popup for rides with pending_driver status that don't have a driver assigned yet
-        const pendingRides = driverRides.filter(ride => 
-          ride.ride_status === "pending_driver" && !ride.driver_id
-        );
-        console.log('=== POPUP DEBUG ===');
-        console.log('All driver rides:', driverRides);
-        console.log('Pending rides for popup:', pendingRides);
-        console.log('Should show popup:', pendingRides.length > 0);
-        return pendingRides.length > 0;
-      })() && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <PendingRequestAlert 
-              requests={driverRides
-                .filter(ride => ride.ride_status === "pending_driver" && !ride.driver_id)
-                .map(ride => ({
-                  id: ride.id,
-                  passenger: ride.passenger_name || ride.passenger,
-                  passengers: ride.passengers,
-                  passenger_phone: ride.passenger_phone,
-                  from: ride.pickup_location,
-                  to: ride.dropoff_location,
-                  time: ride.time,
-                  date: ride.date,
-                  vehicle_type: ride.vehicle_type || 'Vehicle',
-                  passenger_count: ride.passenger_count || 1,
-                  luggage_count: ride.luggage_count || 0,
-                  flight_info: ride.flight_info
-                }))
-              }
-              onAccept={(requestId, price) => handleAcceptRide(requestId)}
-              onDecline={(requestId) => handleDeclineRide(requestId)}
-            />
-          </div>
-        </div>
+      {/* Pending Request Alert */}
+      {pendingRequestAlertOpen && pendingRequests.length > 0 && (
+        <PendingRequestAlert 
+          requests={pendingRequests.map(ride => ({
+            id: ride.id,
+            passenger: ride.passenger_name || ride.passenger,
+            passengers: ride.passengers,
+            passenger_phone: ride.passenger_phone,
+            from: ride.pickup_location,
+            to: ride.dropoff_location,
+            time: ride.time,
+            date: ride.date,
+            vehicle_type: ride.vehicle_type || 'Vehicle',
+            passenger_count: ride.passenger_count || 1,
+            luggage_count: ride.luggage_count || 0,
+            flight_info: ride.flight_info
+          }))}
+          onAccept={(requestId, price) => {
+            handleAcceptRide(requestId);
+            setPendingRequestAlertOpen(false);
+            setPendingRequests([]);
+          }}
+          onDecline={(requestId) => {
+            handleDeclineRide(requestId);
+            setPendingRequestAlertOpen(false);
+            setPendingRequests([]);
+          }}
+          onClose={handleClosePendingAlert}
+        />
       )}
 
       {/* Main Content */}
@@ -751,6 +759,8 @@ const DriverDashboard = () => {
                       onCancelSuccess={() => fetchDriverBookings(userProfile)}
                       showPaymentReceivedButton={ride.payment_confirmation_status === 'passenger_paid'}
                       onConfirmPaymentReceived={() => handleConfirmPaymentFromCard(ride)}
+                      onReopenAlert={ride.ride_status === "pending_driver" && !ride.driver_id ? 
+                        () => handleReopenPendingAlert(ride) : undefined}
                     />
                   ))
                 )}

@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Clock, Phone, Map } from "lucide-react";
+import { MapPin, Clock, Phone, Map, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { StatusBadges } from "@/components/status/StatusBadges";
@@ -18,6 +18,7 @@ interface StandardDriverRideCardProps {
   onConfirmPaymentReceived?: () => void;
   onReview?: (booking?: any) => void;
   showStatusBadge?: boolean;
+  onReopenAlert?: () => void;
 }
 
 export const StandardDriverRideCard = ({ 
@@ -28,7 +29,8 @@ export const StandardDriverRideCard = ({
   showPaymentReceivedButton,
   onConfirmPaymentReceived,
   onReview,
-  showStatusBadge = true
+  showStatusBadge = true,
+  onReopenAlert
 }: StandardDriverRideCardProps) => {
   const { toast } = useToast();
   const [preferencesOpen, setPreferencesOpen] = useState(true);
@@ -285,8 +287,20 @@ export const StandardDriverRideCard = ({
             </Collapsible>
           </div>
 
-          {/* Maps Button (only button allowed) */}
-          <div className="mt-4">
+          {/* Action Buttons */}
+          <div className="mt-4 space-y-3">
+            {/* Reopen Alert Button (for pending driver status) */}
+            {onReopenAlert && (
+              <Button
+                onClick={onReopenAlert}
+                className="w-full bg-primary hover:bg-primary/90 text-white font-medium py-4 rounded-lg text-base flex items-center justify-center gap-2"
+              >
+                <AlertCircle className="h-5 w-5" />
+                Open Offer Window
+              </Button>
+            )}
+
+            {/* Maps Button */}
             <Dialog>
               <DialogTrigger asChild>
                 <Button
