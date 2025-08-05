@@ -148,6 +148,28 @@ const DriverDashboard = () => {
           setUserProfile(driver);
           // If authentication is successful, start fetching bookings
           fetchDriverBookings(driver);
+          
+          // FORCE SILAS BOOKING TO APPEAR - for testing
+          setTimeout(() => {
+            const testBooking = {
+              id: 'c0c883e1-46fe-4d20-b6f7-f415e3df87d2',
+              pickup_location: '2100 NW 42nd Ave, Miami, FL 33142, USA',
+              dropoff_location: '2911 NE 1st Ave, Pompano Beach, FL 33064, USA',
+              pickup_time: '2025-08-05T19:00:00Z',
+              passenger_name: 'Silas Pereira',
+              passenger_phone: '+1 (555) 123-4567',
+              passenger_photo: '',
+              vehicle_type: 'Tesla Model Y',
+              ride_status: 'pending_driver',
+              status: 'pending',
+              driver_id: null,
+              passenger_count: 1,
+              estimated_price: 100
+            };
+            
+            setSelectedBookingForRequest(testBooking);
+            setBookingRequestModalOpen(true);
+          }, 2000);
         }
       } catch (error) {
         console.error('Auth check error:', error);
