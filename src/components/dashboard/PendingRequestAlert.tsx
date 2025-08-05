@@ -218,11 +218,11 @@ const PendingRequestAlert = ({ requests, onAccept, onDecline, onClose }: Pending
   const formatDateTime = (date: string, time: string) => {
     const dateObj = new Date(date);
     const timeStr = time;
-    return `${dateObj.toLocaleDateString('en-US', { 
-      weekday: 'short', 
-      month: 'short', 
-      day: 'numeric' 
-    })}, ${timeStr}`;
+    // Usar métodos diretos consistentes com outros componentes
+    const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    return `${weekdays[dateObj.getDay()]}, ${months[dateObj.getMonth()]} ${dateObj.getDate()}, ${timeStr}`;
   };
 
   if (requests.length === 0) return null;
@@ -236,7 +236,9 @@ const PendingRequestAlert = ({ requests, onAccept, onDecline, onClose }: Pending
 
   return (
     <Dialog open={requests.length > 0} onOpenChange={(open) => !open && handleCloseDialog()}>
-      <DialogContent className="max-w-md mx-auto bg-gray-800 text-white border-none p-0 gap-0 [&>button]:hidden">
+      <DialogContent className="max-w-md mx-auto bg-gray-800 text-white border-none p-0 gap-0 [&>button]:hidden"
+                     onEscapeKeyDown={handleCloseDialog}
+                     onPointerDownOutside={handleCloseDialog}>
         {requests.map((request) => (
           <div key={request.id} className="relative">
             {/* Close Button - Single, larger, more visible */}
