@@ -358,6 +358,10 @@ const DriverDashboard = () => {
   console.log('Completed rides:', driverRides.filter(r => r.status === "completed"));
 
   const fetchDriverBookings = async (profile: any) => {
+      console.log('🚀 FUNCTION CALLED: fetchDriverBookings');
+      console.error('🚀 ERROR LOG: fetchDriverBookings called - this should appear in console');
+      alert('Debug: fetchDriverBookings function called!');
+      
       try {
         console.log('=== FETCHING DRIVER BOOKINGS ===');
         console.log('Driver profile:', profile);
@@ -947,8 +951,14 @@ const DriverDashboard = () => {
                   variant="outline"
                   onClick={() => {
                     console.log('🧪 Manual refresh triggered');
+                    console.error('🧪 ERROR LOG TEST - This should appear in console');
+                    alert('Debug: Refresh button clicked! Check console for logs.');
                     if (userProfile) {
+                      console.log('🧪 User profile exists:', userProfile.id, userProfile.car_make, userProfile.car_model);
                       fetchDriverBookings(userProfile);
+                    } else {
+                      console.log('🧪 No user profile available');
+                      alert('Error: No user profile loaded!');
                     }
                   }}
                 >
@@ -964,6 +974,7 @@ const DriverDashboard = () => {
                       filteredRidesCount: filteredRides.length,
                       currentView: rideView
                     });
+                    alert(`State: User: ${userProfile?.id || 'none'}, Rides: ${driverRides.length}, Filtered: ${filteredRides.length}, View: ${rideView}`);
                   }}
                 >
                   Log State
