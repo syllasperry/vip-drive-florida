@@ -792,7 +792,8 @@ const Dashboard = () => {
       <RideFlowManager
         booking={forceAlertBooking || bookings.find(b => 
           ['offer_sent', 'passenger_approved', 'awaiting_driver_confirmation', 'all_set'].includes(b.ride_status) ||
-          ['price_awaiting_acceptance', 'waiting_for_payment', 'passenger_paid', 'all_set'].includes(b.payment_confirmation_status)
+          ['waiting_for_payment', 'passenger_paid', 'all_set'].includes(b.payment_confirmation_status) ||
+          (b.ride_status === 'offer_sent' && b.payment_confirmation_status === 'price_awaiting_acceptance')
         )}
         userType="passenger"
         onFlowComplete={() => {
