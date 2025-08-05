@@ -530,54 +530,23 @@ const Dashboard = () => {
                     <div>
                       <h3 className="text-lg font-semibold text-foreground mb-3">Upcoming</h3>
                       <div className="space-y-3">
-                         {groupedBookings.upcoming.map((booking) => (
-                           <div key={booking.id} className="relative">
-                             {booking.payment_confirmation_status === 'all_set' ? (
-                               <UniversalRideCard
-                                 booking={booking}
-                                 userType="passenger"
-                                 onMessage={() => {
-                                   setSelectedBooking(booking);
-                                   setMessagingOpen(true);
-                                 }}
-                                 onViewSummary={() => {
-                                   setSelectedBookingForSummary(booking);
-                                   setSummaryModalOpen(true);
-                                 }}
-                                 onStatusUpdate={fetchBookings}
-                               />
-                             ) : (
-                               <div>
-                                 <EnhancedBookingCard 
-                                   booking={booking} 
-                                   userType="passenger"
-                                   onMessage={() => {
-                                     setSelectedBooking(booking);
-                                     setMessagingOpen(true);
-                                   }}
-                                   onViewSummary={() => {
-                                     setSelectedBookingForSummary(booking);
-                                     setSummaryModalOpen(true);
-                                   }}
-                                   onMakePayment={() => {
-                                     setSelectedBookingForPayment(booking);
-                                     setPaymentModalOpen(true);
-                                   }}
-                                  onAcceptOffer={() => handleAcceptFare(booking.id)}
-                                  onReopenAlert={() => reopenAlert(booking)}
-                                 />
-                                 {/* Cancel Button */}
-                                 <div className="mt-2 px-4">
-                                   <CancelBookingButton 
-                                     bookingId={booking.id}
-                                     pickupTime={booking.pickup_time}
-                                     onCancelSuccess={fetchBookings}
-                                   />
-                                 </div>
-                               </div>
-                             )}
-                           </div>
-                         ))}
+                          {groupedBookings.upcoming.map((booking) => (
+                            <div key={booking.id} className="relative">
+                                <UniversalRideCard
+                                  booking={booking}
+                                  userType="passenger"
+                                  onMessage={() => {
+                                    setSelectedBooking(booking);
+                                    setMessagingOpen(true);
+                                  }}
+                                  onViewSummary={() => {
+                                    setSelectedBookingForSummary(booking);
+                                    setSummaryModalOpen(true);
+                                  }}
+                                  onStatusUpdate={fetchBookings}
+                                />
+                            </div>
+                          ))}
                       </div>
                     </div>
                   )}
