@@ -51,6 +51,8 @@ export type Database = {
           ride_started_at: string | null
           ride_status: string | null
           status: string
+          status_driver: string | null
+          status_passenger: string | null
           updated_at: string | null
           vehicle_id: string | null
           vehicle_type: string | null
@@ -91,6 +93,8 @@ export type Database = {
           ride_started_at?: string | null
           ride_status?: string | null
           status?: string
+          status_driver?: string | null
+          status_passenger?: string | null
           updated_at?: string | null
           vehicle_id?: string | null
           vehicle_type?: string | null
@@ -131,6 +135,8 @@ export type Database = {
           ride_started_at?: string | null
           ride_status?: string | null
           status?: string
+          status_driver?: string | null
+          status_passenger?: string | null
           updated_at?: string | null
           vehicle_id?: string | null
           vehicle_type?: string | null
