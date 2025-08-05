@@ -14,6 +14,7 @@ import { RideStatusFlow } from "@/components/ride/RideStatusFlow";
 import { RideStatusProgression } from "@/components/ride/RideStatusProgression";
 import { AirbnbStyleReviewModal } from "@/components/review/AirbnbStyleReviewModal";
 import { RideStatusMessage } from "@/components/RideStatusMessage";
+import { WriteUnderlinedStatus } from "@/components/ride/WriteUnderlinedStatus";
 import { supabase } from "@/integrations/supabase/client";
 
 interface UniversalRideCardProps {
@@ -476,6 +477,14 @@ export const UniversalRideCard = ({
               </Collapsible>
             </div>
           )}
+
+          {/* WriteUnderlinedStatus - New comprehensive status tracking */}
+          <div className="mt-4">
+            <WriteUnderlinedStatus 
+              rideId={currentBooking.id}
+              userType={userType}
+            />
+          </div>
 
            {/* Driver Status Message - Show for passengers when driver has set a status */}
            {userType === "passenger" && 

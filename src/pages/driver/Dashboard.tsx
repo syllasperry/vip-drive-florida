@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { createBookingStatusEntries } from "@/utils/rideStatusManager";
 import { MessagingInterface } from "@/components/MessagingInterface";
 import { MessagesTab } from "@/components/dashboard/MessagesTab";
 import { PriceEditModal } from "@/components/PriceEditModal";
@@ -1105,6 +1106,21 @@ const DriverDashboard = () => {
                 .eq('id', selectedBookingForRequest.id);
 
               if (error) throw error;
+
+              // Create status tracking entry
+              try {
+                await createBookingStatusEntries.driverRequestReceived(
+                  selectedBookingForRequest.id,
+                  {
+                    name: userProfile.full_name,
+                    photo: userProfile.profile_photo_url,
+                    vehicle: `${userProfile.car_make} ${userProfile.car_model}`,
+                    plate: userProfile.license_plate
+                  }
+                );
+              } catch (statusError) {
+                console.error('Error creating status entry:', statusError);
+              }
 
               toast({
                 title: "Request Accepted!",

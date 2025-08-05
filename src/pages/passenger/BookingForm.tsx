@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { DateTimePicker } from "@/components/DateTimePicker";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { createBookingStatusEntries } from "@/utils/rideStatusManager";
 
 const BookingForm = () => {
   const navigate = useNavigate();
@@ -167,7 +168,32 @@ const BookingForm = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating booking:', error);
+        toast({
+          title: "Error",
+          description: "Failed to create booking",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('✅ Booking created:', booking);
+
+      // Create initial status entries
+      try {
+        await createBookingStatusEntries.passengerRequestSent(booking.id, {
+          name: passengerData?.full_name || 'Passenger',
+          photo: passengerData?.profile_photo_url,
+          pickup: pickup,
+          dropoff: dropoff
+        });
+
+        console.log('✅ Initial status entry created');
+      } catch (statusError) {
+        console.error('Error creating status entry:', statusError);
+        // Don't fail the booking for status entry errors
+      }
 
       // Send booking request notification to all matching drivers
       try {

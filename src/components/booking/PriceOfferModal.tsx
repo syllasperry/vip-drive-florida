@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { createBookingStatusEntries } from "@/utils/rideStatusManager";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -84,6 +85,22 @@ export const PriceOfferModal = ({ isOpen, onClose, booking, driverProfile, onOff
         .eq('id', booking.id);
 
       if (error) throw error;
+
+      // Create status tracking entry for driver offer
+      try {
+        await createBookingStatusEntries.driverOfferSent(
+          booking.id,
+          {
+            name: driverProfile.full_name,
+            photo: driverProfile.profile_photo_url,
+            vehicle: `${driverProfile.car_make} ${driverProfile.car_model}`,
+            plate: driverProfile.license_plate
+          },
+          offerPrice
+        );
+      } catch (statusError) {
+        console.error('Error creating status entry:', statusError);
+      }
 
       toast({
         title: "Offer Sent!",
