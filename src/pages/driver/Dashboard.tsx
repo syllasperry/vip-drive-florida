@@ -383,15 +383,17 @@ const DriverDashboard = () => {
         ]);
 
         console.log('📊 Query results:');
-        console.log('Assigned bookings:', assignedBookings.data?.length || 0);
-        console.log('Pending bookings:', pendingBookings.data?.length || 0);
+        console.log('Assigned bookings:', assignedBookings.data?.length || 0, assignedBookings.data);
+        console.log('Pending bookings:', pendingBookings.data?.length || 0, pendingBookings.data);
         
         if (assignedBookings.error) {
           console.error('❌ Error fetching assigned bookings:', assignedBookings.error);
+          return;
         }
         
         if (pendingBookings.error) {
           console.error('❌ Error fetching pending bookings:', pendingBookings.error);
+          return;
         }
 
         if (assignedBookings.error) {
@@ -447,6 +449,15 @@ const DriverDashboard = () => {
         ].filter((booking, index, self) => 
           index === self.findIndex(b => b.id === booking.id)
         );
+
+        console.log('📋 Combined bookings data:', allBookingsData.length, allBookingsData.map(b => ({
+          id: b.id,
+          vehicle_type: b.vehicle_type,
+          ride_status: b.ride_status,
+          status: b.status,
+          driver_id: b.driver_id,
+          passenger_name: `${b.passenger_first_name} ${b.passenger_last_name}`
+        })));
 
         // Transform Supabase data to match expected format and sort by pickup time
         const transformedBookings = allBookingsData
@@ -516,6 +527,15 @@ const DriverDashboard = () => {
             return dateA.getTime() - dateB.getTime();
           });
 
+        console.log('🎯 Final transformed bookings:', transformedBookings.length, transformedBookings.map(b => ({
+          id: b.id,
+          vehicle_type: b.vehicle_type,
+          ride_status: b.ride_status,
+          status: b.status,
+          driver_id: b.driver_id,
+          passenger_name: b.passenger_name
+        })));
+
         setDriverRides(transformedBookings);
         
         // Auto-detect new ride requests and show pending request alert immediately
@@ -524,14 +544,17 @@ const DriverDashboard = () => {
           (booking.ride_status === "offer_sent" && !booking.driver_id) // Include offer_sent without driver assigned
         );
         
+        console.log('🚨 New pending requests found:', newPendingRequests.length, newPendingRequests);
+        
         // Show alert if there are pending requests (regardless of current tab)
         if (newPendingRequests.length > 0 && !pendingRequestAlertOpen) {
+          console.log('🔔 Opening pending request alert');
           setUserClosedAlert(false); // Reset user closed flag for new requests
           setPendingRequests(newPendingRequests);
           setPendingRequestAlertOpen(true);
         }
       } catch (error) {
-        console.error('Error fetching driver bookings:', error);
+        console.error('❌ Error fetching driver bookings:', error);
       }
   };
 
