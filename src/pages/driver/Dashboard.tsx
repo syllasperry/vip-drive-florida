@@ -162,13 +162,22 @@ const DriverDashboard = () => {
 
   // Auto-open pending request alert whenever there are pending requests (regardless of tab)
   useEffect(() => {
+    console.log('=== PENDING ALERT EFFECT ===');
+    console.log('driverRides.length:', driverRides.length);
+    console.log('pendingRequestAlertOpen:', pendingRequestAlertOpen);
+    console.log('All driverRides:', driverRides);
+    
     if (driverRides.length > 0 && !pendingRequestAlertOpen) {
-      const pendingRequestsData = driverRides.filter(booking => 
-        booking.ride_status === "pending_driver" && 
-        !booking.driver_id
-      );
+      const pendingRequestsData = driverRides.filter(booking => {
+        console.log('Checking booking:', booking.id, 'ride_status:', booking.ride_status, 'driver_id:', booking.driver_id);
+        return booking.ride_status === "pending_driver" && !booking.driver_id;
+      });
+      
+      console.log('Found pending requests:', pendingRequestsData.length);
+      console.log('Pending requests data:', pendingRequestsData);
       
       if (pendingRequestsData.length > 0) {
+        console.log('Setting pending requests and opening alert');
         setPendingRequests(pendingRequestsData);
         setPendingRequestAlertOpen(true);
       }
