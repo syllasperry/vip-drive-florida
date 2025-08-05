@@ -227,17 +227,24 @@ const PendingRequestAlert = ({ requests, onAccept, onDecline, onClose }: Pending
 
   if (requests.length === 0) return null;
 
+  const handleCloseDialog = () => {
+    if (requests.length > 0) {
+      const firstRequestId = requests[0].id;
+      onClose ? onClose(firstRequestId) : onDecline(firstRequestId);
+    }
+  };
+
   return (
-    <Dialog open={requests.length > 0} onOpenChange={() => {}}>
-      <DialogContent className="max-w-md mx-auto bg-gray-800 text-white border-none p-0 gap-0">
+    <Dialog open={requests.length > 0} onOpenChange={(open) => !open && handleCloseDialog()}>
+      <DialogContent className="max-w-md mx-auto bg-gray-800 text-white border-none p-0 gap-0 [&>button]:hidden">
         {requests.map((request) => (
           <div key={request.id} className="relative">
-            {/* Close Button */}
+            {/* Close Button - Single, larger, more visible */}
             <button
               onClick={() => onClose ? onClose(request.id) : onDecline(request.id)}
-              className="absolute top-4 right-4 p-2 hover:bg-gray-700 rounded-full transition-colors z-10"
+              className="absolute top-3 right-3 p-3 hover:bg-gray-700/80 rounded-full transition-colors z-10 bg-gray-700/50"
             >
-              <X className="h-5 w-5 text-gray-300" />
+              <X className="h-6 w-6 text-white" />
             </button>
 
             <div className="p-6">
