@@ -358,9 +358,7 @@ const DriverDashboard = () => {
   console.log('Completed rides:', driverRides.filter(r => r.status === "completed"));
 
   const fetchDriverBookings = async (profile: any) => {
-      console.log('🚀 FUNCTION CALLED: fetchDriverBookings');
-      console.error('🚀 ERROR LOG: fetchDriverBookings called - this should appear in console');
-      alert('Debug: fetchDriverBookings function called!');
+      console.log('🚀 fetchDriverBookings STARTED');
       
       try {
         console.log('=== FETCHING DRIVER BOOKINGS ===');
@@ -951,14 +949,11 @@ const DriverDashboard = () => {
                   variant="outline"
                   onClick={() => {
                     console.log('🧪 Manual refresh triggered');
-                    console.error('🧪 ERROR LOG TEST - This should appear in console');
-                    alert('Debug: Refresh button clicked! Check console for logs.');
                     if (userProfile) {
                       console.log('🧪 User profile exists:', userProfile.id, userProfile.car_make, userProfile.car_model);
                       fetchDriverBookings(userProfile);
                     } else {
                       console.log('🧪 No user profile available');
-                      alert('Error: No user profile loaded!');
                     }
                   }}
                 >
@@ -974,10 +969,31 @@ const DriverDashboard = () => {
                       filteredRidesCount: filteredRides.length,
                       currentView: rideView
                     });
-                    alert(`State: User: ${userProfile?.id || 'none'}, Rides: ${driverRides.length}, Filtered: ${filteredRides.length}, View: ${rideView}`);
                   }}
                 >
                   Log State
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={async () => {
+                    console.log('🔍 DIRECT QUERY TEST');
+                    try {
+                      const { data, error } = await supabase
+                        .from('bookings')
+                        .select('*')
+                        .in('status', ['pending'])
+                        .in('ride_status', ['pending_driver', 'offer_sent'])
+                        .is('driver_id', null);
+                      
+                      console.log('📊 Direct query result:', { data, error });
+                      console.log('📊 Found bookings:', data?.length || 0);
+                    } catch (err) {
+                      console.error('❌ Direct query error:', err);
+                    }
+                  }}
+                >
+                  Test Query
                 </Button>
               </div>
             </div>
