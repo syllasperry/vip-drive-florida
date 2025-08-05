@@ -114,6 +114,33 @@ export const StandardDriverRideCard = ({
     return purposeMap[purpose] || purpose;
   };
 
+  // Helper function to determine if reopen button should show
+  const shouldShowReopenButton = (booking: any) => {
+    // Show if booking is in pending states where driver can still respond
+    const pendingStatuses = [
+      'pending_driver', 
+      'new_request', 
+      'passenger_requested'
+    ];
+    
+    const pendingDriverStatuses = [
+      'new_request',
+      'pending_response'
+    ];
+    
+    const pendingPaymentStatuses = [
+      'waiting_for_offer',
+      'pending'
+    ];
+    
+    return (
+      pendingStatuses.includes(booking.ride_status) ||
+      pendingDriverStatuses.includes(booking.status_driver) ||
+      pendingPaymentStatuses.includes(booking.payment_status) ||
+      shouldShowOpenOfferButton(booking)
+    );
+  };
+
   // Get passenger info from booking
   const passengerInfo = booking.passengers || booking.passenger;
 
@@ -289,16 +316,16 @@ export const StandardDriverRideCard = ({
 
           {/* Action Buttons */}
           <div className="mt-4 space-y-3">
-            {/* Open Offer Window Button - Only show when appropriate */}
-            {onReopenAlert && shouldShowOpenOfferButton(booking) && (
-              <Button
-                onClick={onReopenAlert}
-                className="w-full bg-primary hover:bg-primary/90 text-white font-medium py-4 rounded-lg text-base flex items-center justify-center gap-2"
-              >
-                <AlertCircle className="h-5 w-5" />
-                Open Offer Window
-              </Button>
-            )}
+          {/* Open Request Window Button - Only show when appropriate */}
+          {onReopenAlert && shouldShowReopenButton(booking) && (
+            <Button
+              onClick={onReopenAlert}
+              className="w-full bg-primary hover:bg-primary/90 text-white font-medium py-4 rounded-lg text-base flex items-center justify-center gap-2"
+            >
+              <AlertCircle className="h-5 w-5" />
+              Open Request Window
+            </Button>
+          )}
 
             {/* Maps Button */}
             <Dialog>
