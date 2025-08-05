@@ -943,58 +943,36 @@ const DriverDashboard = () => {
             {/* DEBUG: Test button for simulating new requests */}
             <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-4">
               <p className="text-sm text-yellow-800 mb-2">🔧 Debug Tools</p>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  className="px-3 py-1 bg-blue-500 text-white rounded text-sm"
+                  onClick={() => console.log('BASIC TEST BUTTON WORKS!')}
+                >
+                  Basic Test
+                </button>
+                <button
+                  className="px-3 py-1 bg-green-500 text-white rounded text-sm"
                   onClick={() => {
-                    console.log('🧪 Manual refresh triggered');
-                    if (userProfile) {
-                      console.log('🧪 User profile exists:', userProfile.id, userProfile.car_make, userProfile.car_model);
-                      fetchDriverBookings(userProfile);
-                    } else {
-                      console.log('🧪 No user profile available');
-                    }
+                    console.log('USER PROFILE:', userProfile?.id);
+                    console.log('DRIVER RIDES COUNT:', driverRides.length);
                   }}
                 >
-                  Refresh Bookings
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    console.log('🧪 Current state:', {
-                      userProfile: userProfile?.id,
-                      driverRidesCount: driverRides.length,
-                      filteredRidesCount: filteredRides.length,
-                      currentView: rideView
-                    });
-                  }}
-                >
-                  Log State
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
+                  Check State
+                </button>
+                <button
+                  className="px-3 py-1 bg-red-500 text-white rounded text-sm"
                   onClick={async () => {
-                    console.log('🔍 DIRECT QUERY TEST');
                     try {
-                      const { data, error } = await supabase
-                        .from('bookings')
-                        .select('*')
-                        .in('status', ['pending'])
-                        .in('ride_status', ['pending_driver', 'offer_sent'])
-                        .is('driver_id', null);
-                      
-                      console.log('📊 Direct query result:', { data, error });
-                      console.log('📊 Found bookings:', data?.length || 0);
+                      console.log('TESTING SUPABASE...');
+                      const { data } = await supabase.from('bookings').select('count').single();
+                      console.log('SUPABASE WORKS:', data);
                     } catch (err) {
-                      console.error('❌ Direct query error:', err);
+                      console.error('SUPABASE ERROR:', err);
                     }
                   }}
                 >
-                  Test Query
-                </Button>
+                  Test Supabase
+                </button>
               </div>
             </div>
 
