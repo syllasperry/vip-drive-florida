@@ -235,7 +235,7 @@ const PendingRequestAlert = ({ requests, onAccept, onDecline, onClose }: Pending
   };
 
   return (
-    <Dialog open={requests.length > 0} onOpenChange={(open) => !open && handleCloseDialog()}>
+    <Dialog open={requests.length > 0} onOpenChange={() => {}}>
       <DialogContent className="max-w-md mx-auto bg-gray-800 text-white border-none p-0 gap-0 [&>button]:hidden"
                      onEscapeKeyDown={handleCloseDialog}
                      onPointerDownOutside={handleCloseDialog}>

@@ -681,20 +681,27 @@ const DriverDashboard = () => {
       {/* Pending Request Alert */}
       {pendingRequestAlertOpen && pendingRequests.length > 0 && (
         <PendingRequestAlert 
-          requests={pendingRequests.map(ride => ({
-            id: ride.id,
-            passenger: ride.passenger_name || ride.passenger,
-            passengers: ride.passengers,
-            passenger_phone: ride.passenger_phone,
-            from: ride.pickup_location,
-            to: ride.dropoff_location,
-            time: ride.time,
-            date: ride.date,
-            vehicle_type: ride.vehicle_type || 'Vehicle',
-            passenger_count: ride.passenger_count || 1,
-            luggage_count: ride.luggage_count || 0,
-            flight_info: ride.flight_info
-          }))}
+          requests={pendingRequests.map(ride => {
+            // Parse pickup_time to extract date and time consistently
+            const pickupDateTime = new Date(ride.pickup_time);
+            const formattedDate = pickupDateTime.toISOString().split('T')[0]; // YYYY-MM-DD
+            const formattedTime = pickupDateTime.toTimeString().split(' ')[0].substring(0, 5); // HH:MM
+            
+            return {
+              id: ride.id,
+              passenger: ride.passenger_name || ride.passenger,
+              passengers: ride.passengers,
+              passenger_phone: ride.passenger_phone,
+              from: ride.pickup_location,
+              to: ride.dropoff_location,
+              time: formattedTime,
+              date: formattedDate,
+              vehicle_type: ride.vehicle_type || 'Vehicle',
+              passenger_count: ride.passenger_count || 1,
+              luggage_count: ride.luggage_count || 0,
+              flight_info: ride.flight_info
+            };
+          })}
           onAccept={(requestId, price) => {
             handleAcceptRide(requestId);
             setPendingRequestAlertOpen(false);
