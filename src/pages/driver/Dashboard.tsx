@@ -70,6 +70,7 @@ const DriverDashboard = () => {
   // Pending Request Alert state
   const [pendingRequestAlertOpen, setPendingRequestAlertOpen] = useState(false);
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
+  const [userClosedAlert, setUserClosedAlert] = useState(false);
   
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -163,6 +164,8 @@ const DriverDashboard = () => {
         },
         (payload) => {
           console.log('New booking request received:', payload);
+          // Reset user closed flag for new incoming requests
+          setUserClosedAlert(false);
           // Refresh bookings when a new request comes in
           fetchDriverBookings(userProfile);
           
@@ -187,9 +190,11 @@ const DriverDashboard = () => {
     console.log('=== PENDING ALERT EFFECT ===');
     console.log('driverRides.length:', driverRides.length);
     console.log('pendingRequestAlertOpen:', pendingRequestAlertOpen);
+    console.log('userClosedAlert:', userClosedAlert);
     console.log('All driverRides:', driverRides);
     
-    if (driverRides.length > 0 && !pendingRequestAlertOpen) {
+    // Don't auto-open if user manually closed the alert
+    if (driverRides.length > 0 && !pendingRequestAlertOpen && !userClosedAlert) {
       const pendingRequestsData = driverRides.filter(booking => {
         console.log('Checking booking:', booking.id, 'ride_status:', booking.ride_status, 'status:', booking.status);
         // Check for rides assigned to this driver that are still pending driver response
@@ -207,7 +212,7 @@ const DriverDashboard = () => {
         setPendingRequestAlertOpen(true);
       }
     }
-  }, [driverRides, pendingRequestAlertOpen, userProfile?.id]);
+  }, [driverRides, pendingRequestAlertOpen, userClosedAlert, userProfile?.id]);
 
   // Filter rides based on current view
   const filteredRides = driverRides.filter(ride => {
@@ -376,6 +381,7 @@ const DriverDashboard = () => {
         
         // Show alert if there are pending requests (regardless of current tab)
         if (newPendingRequests.length > 0 && !pendingRequestAlertOpen) {
+          setUserClosedAlert(false); // Reset user closed flag for new requests
           setPendingRequests(newPendingRequests);
           setPendingRequestAlertOpen(true);
         }
@@ -505,8 +511,9 @@ const DriverDashboard = () => {
   };
 
   const handleClosePendingAlert = (rideId: string) => {
-    // Simply close the alert without taking any action on the ride
-    // The ride remains in the list and can be reopened
+    console.log('🔴 User manually closed pending alert for ride:', rideId);
+    // Mark that user closed the alert manually to prevent auto-reopening
+    setUserClosedAlert(true);
     setPendingRequestAlertOpen(false);
     setPendingRequests([]);
   };
