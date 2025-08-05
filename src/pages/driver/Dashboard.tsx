@@ -208,22 +208,14 @@ const DriverDashboard = () => {
       return shouldBeInNewRides;
     }
     
-    // Priority 3: Pending/Waiting rides go to New Requests  
+    // Priority 3: All rides except "all_set" go to New Requests
     if (rideView === "new-requests") {
-      const isNewRequest = ride.ride_status === "pending_driver" || 
-                          ride.ride_status === "offer_sent" ||
-                          ride.status === "accepted" ||
-                          ride.status === "pending" ||
-                          ride.payment_confirmation_status === "price_awaiting_acceptance" ||
-                          ride.payment_confirmation_status === "waiting_for_payment" ||
-                          ride.payment_confirmation_status === "passenger_paid" ||
-                          ride.payment_confirmation_status === "waiting_for_offer" ||
-                          (ride.status === "pending" && !ride.driver_id) ||
-                          (ride.status === "canceled by passenger") ||
-                          (ride.status === "canceled by driver");
-      console.log('Is new request:', isNewRequest);
-      // Only exclude truly completed rides, not rides that are just waiting for next step
-      return isNewRequest && ride.ride_stage !== "completed" && ride.status !== "completed";
+      // Simple rule: Everything stays in New Requests EXCEPT all_set status
+      const isNewRequest = ride.payment_confirmation_status !== "all_set" && 
+                          ride.ride_stage !== "completed" && 
+                          ride.status !== "completed";
+      console.log('Is new request:', isNewRequest, 'payment_confirmation_status:', ride.payment_confirmation_status);
+      return isNewRequest;
     }
     
     // Default: don't show in other tabs
