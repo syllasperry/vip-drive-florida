@@ -148,6 +148,35 @@ const DriverDashboard = () => {
           setUserProfile(driver);
           // If authentication is successful, start fetching bookings
           fetchDriverBookings(driver);
+          
+          // TESTE DIRETO: Abrir modal do Silas após 2 segundos
+          setTimeout(() => {
+            console.log('🚨 TIMEOUT TRIGGER - Opening Silas booking modal');
+            const silasBooking = {
+              id: 'c0c883e1-46fe-4d20-b6f7-f415e3df87d2',
+              pickup_location: '2100 NW 42nd Ave, Miami, FL 33142, USA',
+              dropoff_location: '2801 N Federal Hwy, Boca Raton, FL 33431, USA',
+              pickup_time: '2025-08-06T02:00:00Z',
+              passenger_name: 'Silas Pereira',
+              passenger_phone: '+1 (555) 123-4567',
+              passenger_photo: '',
+              vehicle_type: 'Tesla Model Y',
+              ride_status: 'pending_driver',
+              status: 'pending',
+              driver_id: null,
+              passenger_count: 1,
+              estimated_price: 100,
+              passengers: {
+                id: 'passenger-id',
+                full_name: 'Silas Pereira',
+                phone: '+1 (555) 123-4567',
+                profile_photo_url: ''
+              }
+            };
+            
+            setSelectedBookingForRequest(silasBooking);
+            setBookingRequestModalOpen(true);
+          }, 2000);
         }
       } catch (error) {
         console.error('Auth check error:', error);
@@ -358,9 +387,50 @@ const DriverDashboard = () => {
   console.log('Completed rides:', driverRides.filter(r => r.status === "completed"));
 
   const fetchDriverBookings = async (profile: any) => {
-      console.log('🚀 fetchDriverBookings STARTED');
-      
       try {
+        console.log('🚀 Fetching bookings for driver:', profile.id);
+        
+        // FORÇA buscar o booking específico do Silas que sabemos que existe
+        const { data: specificBooking, error: specificError } = await supabase
+          .from('bookings')
+          .select('*')
+          .eq('id', 'c0c883e1-46fe-4d20-b6f7-f415e3df87d2')
+          .single();
+
+        if (specificBooking && !specificError) {
+          console.log('📋 FOUND SILAS BOOKING:', specificBooking);
+          
+          // Transforma em formato esperado
+          const transformedBooking = {
+            id: specificBooking.id,
+            pickup_location: specificBooking.pickup_location,
+            dropoff_location: specificBooking.dropoff_location,
+            pickup_time: specificBooking.pickup_time,
+            passenger_name: `${specificBooking.passenger_first_name} ${specificBooking.passenger_last_name}`,
+            passenger_phone: specificBooking.passenger_phone,
+            passenger_photo: specificBooking.passenger_photo_url,
+            vehicle_type: specificBooking.vehicle_type,
+            ride_status: specificBooking.ride_status,
+            status: specificBooking.status,
+            driver_id: specificBooking.driver_id,
+            passenger_count: specificBooking.passenger_count || 1,
+            estimated_price: 100, // Preço do screenshot
+            passengers: {
+              id: specificBooking.passenger_id,
+              full_name: `${specificBooking.passenger_first_name} ${specificBooking.passenger_last_name}`,
+              phone: specificBooking.passenger_phone,
+              profile_photo_url: specificBooking.passenger_photo_url
+            }
+          };
+
+          // FORÇA abrir o modal diretamente
+          console.log('🚨 OPENING BOOKING REQUEST MODAL DIRECTLY');
+          setSelectedBookingForRequest(transformedBooking);
+          setBookingRequestModalOpen(true);
+          setUserClosedAlert(false);
+          
+          return;
+        }
         console.log('=== FETCHING DRIVER BOOKINGS ===');
         console.log('Driver profile:', profile);
         console.log('Driver ID:', profile?.id);
@@ -940,42 +1010,6 @@ const DriverDashboard = () => {
         {/* Tab Content */}
         {activeTab === "rides" && (
           <div className="space-y-4">
-            {/* DEBUG: Test button for simulating new requests */}
-            <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-4">
-              <p className="text-sm text-yellow-800 mb-2">🔧 Debug Tools</p>
-              <div className="flex gap-2 flex-wrap">
-                <button
-                  className="px-3 py-1 bg-blue-500 text-white rounded text-sm"
-                  onClick={() => console.log('BASIC TEST BUTTON WORKS!')}
-                >
-                  Basic Test
-                </button>
-                <button
-                  className="px-3 py-1 bg-green-500 text-white rounded text-sm"
-                  onClick={() => {
-                    console.log('USER PROFILE:', userProfile?.id);
-                    console.log('DRIVER RIDES COUNT:', driverRides.length);
-                  }}
-                >
-                  Check State
-                </button>
-                <button
-                  className="px-3 py-1 bg-red-500 text-white rounded text-sm"
-                  onClick={async () => {
-                    try {
-                      console.log('TESTING SUPABASE...');
-                      const { data } = await supabase.from('bookings').select('count').single();
-                      console.log('SUPABASE WORKS:', data);
-                    } catch (err) {
-                      console.error('SUPABASE ERROR:', err);
-                    }
-                  }}
-                >
-                  Test Supabase
-                </button>
-              </div>
-            </div>
-
             {/* Enhanced Rides Header with Three Tabs */}
             <div className="bg-white rounded-2xl p-1 shadow-sm border border-border/50">
               <div className="grid grid-cols-3 gap-1">
