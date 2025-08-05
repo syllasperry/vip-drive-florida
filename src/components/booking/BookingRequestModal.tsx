@@ -1,8 +1,10 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Clock, User, Phone, Music, Thermometer, MessageSquare, DollarSign } from "lucide-react";
+import { MapPin, Clock, User, Phone, Music, Thermometer, MessageSquare, DollarSign, X, Map } from "lucide-react";
 import { format } from "date-fns";
 
 interface BookingRequestModalProps {
@@ -22,166 +24,190 @@ export const BookingRequestModal = ({
   onReject, 
   onSendOffer 
 }: BookingRequestModalProps) => {
+  const [timeLeft, setTimeLeft] = useState(600); // 10 minutos em segundos
+  const [suggestedFare, setSuggestedFare] = useState(booking?.estimated_price || 100);
+  const [editableFare, setEditableFare] = useState(booking?.estimated_price || 100);
+
   if (!booking) return null;
 
-  const passengerName = booking.passenger_first_name && booking.passenger_last_name 
-    ? `${booking.passenger_first_name} ${booking.passenger_last_name}`
-    : "Passenger";
+  const passengerName = booking.passenger_name || 
+    (booking.passenger_first_name && booking.passenger_last_name 
+      ? `${booking.passenger_first_name} ${booking.passenger_last_name}`
+      : "Passenger");
+
+  // Countdown effect
+  useEffect(() => {
+    if (!isOpen || timeLeft <= 0) return;
+
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          // Auto-reject when time runs out
+          onReject();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isOpen, timeLeft, onReject]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   const formatDateTime = (dateString: string) => {
     try {
-      return format(new Date(dateString), "MMM d, yyyy 'at' h:mm a");
+      const date = new Date(dateString);
+      const day = format(date, "EEE, MMM d");
+      const time = format(date, "HH:mm");
+      return { day, time };
     } catch (error) {
-      return dateString;
+      return { day: "Invalid date", time: "Invalid time" };
     }
   };
 
-  const renderPreferenceIcon = (type: string, value: any) => {
-    if (!value) return null;
-    
-    switch (type) {
-      case 'music':
-        return <Music className="h-4 w-4 text-blue-500" />;
-      case 'temperature':
-        return <Thermometer className="h-4 w-4 text-orange-500" />;
-      case 'interaction':
-        return <MessageSquare className="h-4 w-4 text-green-500" />;
-      default:
-        return null;
-    }
+  const handleViewRoute = () => {
+    const pickup = encodeURIComponent(booking.pickup_location);
+    const dropoff = encodeURIComponent(booking.dropoff_location);
+    const mapsUrl = `https://maps.google.com/maps?saddr=${pickup}&daddr=${dropoff}`;
+    window.open(mapsUrl, '_blank');
   };
+
+  const { day, time } = formatDateTime(booking.pickup_time);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose} modal>
-      <DialogContent className="max-w-md mx-auto bg-background border shadow-lg">
-        <DialogHeader className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-            <User className="h-8 w-8 text-primary" />
-          </div>
-          
-          <div className="space-y-2">
-            <p className="text-xs text-primary font-medium tracking-wider uppercase">
-              NEW RIDE REQUEST
-            </p>
-            <DialogTitle className="text-xl font-bold text-foreground">
-              Booking Request from {passengerName}
-            </DialogTitle>
-          </div>
-        </DialogHeader>
-
-        <div className="space-y-6 mt-6">
-          {/* Passenger Info */}
-          <div className="flex items-center space-x-4">
+      <DialogContent className="max-w-lg mx-auto p-0 bg-gray-900 text-white border-gray-700">
+        {/* Header with close button */}
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center gap-3">
             <Avatar className="h-12 w-12">
               <AvatarImage 
-                src={booking.passenger_photo_url} 
+                src={booking.passenger_photo || booking.passenger_photo_url} 
                 alt={passengerName}
               />
-              <AvatarFallback className="bg-primary/10 text-primary font-medium">
+              <AvatarFallback className="bg-gray-700 text-white">
                 {passengerName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div className="flex-1">
-              <p className="font-semibold text-foreground">{passengerName}</p>
-              {booking.passenger_phone && (
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <Phone className="h-4 w-4 mr-1" />
-                  {booking.passenger_phone}
-                </div>
-              )}
+            <div>
+              <h3 className="text-lg font-semibold text-white">{passengerName}</h3>
+              <p className="text-sm text-gray-300">Requested Vehicle Type: {booking.vehicle_type}</p>
             </div>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="text-white hover:bg-gray-700 rounded-full p-2"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
 
-          {/* Trip Details */}
-          <div className="space-y-4">
-            <div className="flex items-start space-x-3">
-              <MapPin className="h-5 w-5 text-green-500 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-foreground">Pickup</p>
-                <p className="text-sm text-muted-foreground">{booking.pickup_location}</p>
-              </div>
-            </div>
-            
-            <div className="flex items-start space-x-3">
-              <MapPin className="h-5 w-5 text-red-500 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-foreground">Drop-off</p>
-                <p className="text-sm text-muted-foreground">{booking.dropoff_location}</p>
-              </div>
-            </div>
-            
-            <div className="flex items-start space-x-3">
-              <Clock className="h-5 w-5 text-blue-500 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-foreground">Pickup Time</p>
-                <p className="text-sm text-muted-foreground">{formatDateTime(booking.pickup_time)}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Vehicle & Passenger Preferences */}
+        <div className="px-4 space-y-4">
+          {/* Pickup and Drop-off */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-foreground">Vehicle Requested:</span>
-              <Badge variant="secondary">{booking.vehicle_type}</Badge>
+            <div className="flex items-start gap-3">
+              <div className="w-4 h-4 bg-green-500 rounded-full mt-1"></div>
+              <div className="flex-1">
+                <p className="text-sm text-gray-300 border-b border-dotted border-gray-600 pb-1">
+                  {booking.pickup_location}
+                </p>
+              </div>
             </div>
             
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-foreground">Passengers:</span>
-              <Badge variant="outline">{booking.passenger_count || 1}</Badge>
-            </div>
-
-            {booking.passenger_preferences && (
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-foreground">Preferences:</p>
-                <div className="flex flex-wrap gap-2">
-                  {booking.passenger_preferences.temperature && (
-                    <div className="flex items-center space-x-1 text-xs bg-muted p-2 rounded">
-                      {renderPreferenceIcon('temperature', booking.passenger_preferences.temperature)}
-                      <span>{booking.passenger_preferences.temperature}°F</span>
-                    </div>
-                  )}
-                  {booking.passenger_preferences.music && (
-                    <div className="flex items-center space-x-1 text-xs bg-muted p-2 rounded">
-                      {renderPreferenceIcon('music', booking.passenger_preferences.music)}
-                      <span>{booking.passenger_preferences.music}</span>
-                    </div>
-                  )}
-                  {booking.passenger_preferences.interaction && (
-                    <div className="flex items-center space-x-1 text-xs bg-muted p-2 rounded">
-                      {renderPreferenceIcon('interaction', booking.passenger_preferences.interaction)}
-                      <span>{booking.passenger_preferences.interaction}</span>
-                    </div>
-                  )}
-                </div>
+            <div className="flex items-start gap-3">
+              <div className="w-4 h-4 bg-red-500 rounded-full mt-1"></div>
+              <div className="flex-1">
+                <p className="text-sm text-gray-300 border-b border-dotted border-gray-600 pb-1">
+                  {booking.dropoff_location}
+                </p>
               </div>
-            )}
+            </div>
           </div>
 
-          {/* Estimated Fare */}
-          {booking.estimated_fare && (
-            <div className="flex items-center justify-between p-3 bg-primary/5 rounded-lg">
-              <div className="flex items-center space-x-2">
-                <DollarSign className="h-5 w-5 text-primary" />
-                <span className="font-medium text-foreground">Estimated Fare</span>
-              </div>
-              <span className="text-lg font-bold text-primary">${booking.estimated_fare}</span>
+          {/* Time to respond countdown */}
+          <div className="bg-red-600 text-white p-3 rounded-lg text-center">
+            <div className="flex items-center justify-center gap-2">
+              <Clock className="h-4 w-4" />
+              <span className="font-medium">Time to respond: {formatTime(timeLeft)}</span>
             </div>
-          )}
+          </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-col space-y-3">
-            <Button onClick={onAccept} className="w-full">
-              Accept Request
+          {/* Date and Time + Open in Maps */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-white font-medium">{day}, {time}</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleViewRoute}
+              className="bg-gray-700 border-gray-600 text-white hover:bg-gray-600"
+            >
+              <Map className="h-4 w-4 mr-2" />
+              Open in Maps
             </Button>
-            <Button onClick={onSendOffer} variant="outline" className="w-full">
-              Send Custom Offer
+          </div>
+
+          {/* Suggested fare */}
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm text-gray-400">Suggested fare</p>
+              <p className="text-3xl font-bold text-white">${suggestedFare.toFixed(2)}</p>
+            </div>
+
+            {/* Editable Fare */}
+            <div className="bg-gray-800 p-4 rounded-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-white">Editable Fare</span>
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-white" />
+                  <Input
+                    type="number"
+                    value={editableFare}
+                    onChange={(e) => setEditableFare(parseFloat(e.target.value) || 0)}
+                    className="w-20 bg-gray-700 border-gray-600 text-white text-right"
+                    step="0.01"
+                  />
+                  <span className="text-white text-sm">▼</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Send Offer Button */}
+            <Button
+              onClick={onSendOffer}
+              className="w-full bg-gray-700 hover:bg-gray-600 text-white border border-gray-600"
+              variant="outline"
+            >
+              Send Offer
             </Button>
-            <Button onClick={onReject} variant="ghost" className="w-full text-destructive hover:text-destructive">
-              Decline Request
-            </Button>
+
+            {/* Accept and Reject buttons */}
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                onClick={onAccept}
+                className="bg-green-600 hover:bg-green-700 text-white font-medium"
+              >
+                Accept Ride
+              </Button>
+              <Button
+                onClick={onReject}
+                className="bg-red-600 hover:bg-red-700 text-white font-medium"
+              >
+                Reject Ride
+              </Button>
+            </div>
           </div>
         </div>
+
+        <div className="p-4"></div>
       </DialogContent>
     </Dialog>
   );

@@ -148,35 +148,6 @@ const DriverDashboard = () => {
           setUserProfile(driver);
           // If authentication is successful, start fetching bookings
           fetchDriverBookings(driver);
-          
-          // TESTE DIRETO: Abrir modal do Silas após 2 segundos
-          setTimeout(() => {
-            console.log('🚨 TIMEOUT TRIGGER - Opening Silas booking modal');
-            const silasBooking = {
-              id: 'c0c883e1-46fe-4d20-b6f7-f415e3df87d2',
-              pickup_location: '2100 NW 42nd Ave, Miami, FL 33142, USA',
-              dropoff_location: '2801 N Federal Hwy, Boca Raton, FL 33431, USA',
-              pickup_time: '2025-08-06T02:00:00Z',
-              passenger_name: 'Silas Pereira',
-              passenger_phone: '+1 (555) 123-4567',
-              passenger_photo: '',
-              vehicle_type: 'Tesla Model Y',
-              ride_status: 'pending_driver',
-              status: 'pending',
-              driver_id: null,
-              passenger_count: 1,
-              estimated_price: 100,
-              passengers: {
-                id: 'passenger-id',
-                full_name: 'Silas Pereira',
-                phone: '+1 (555) 123-4567',
-                profile_photo_url: ''
-              }
-            };
-            
-            setSelectedBookingForRequest(silasBooking);
-            setBookingRequestModalOpen(true);
-          }, 2000);
         }
       } catch (error) {
         console.error('Auth check error:', error);
@@ -387,247 +358,117 @@ const DriverDashboard = () => {
   console.log('Completed rides:', driverRides.filter(r => r.status === "completed"));
 
   const fetchDriverBookings = async (profile: any) => {
-      try {
-        console.log('🚀 Fetching bookings for driver:', profile.id);
-        
-        // FORÇA buscar o booking específico do Silas que sabemos que existe
-        const { data: specificBooking, error: specificError } = await supabase
-          .from('bookings')
-          .select('*')
-          .eq('id', 'c0c883e1-46fe-4d20-b6f7-f415e3df87d2')
-          .single();
+    try {
+      console.log('🚀 Fetching bookings for driver:', profile.id);
+      
+      // Fetch all bookings that might be relevant to this driver
+      const { data: allBookings, error } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          passengers (
+            id,
+            full_name,
+            phone,
+            profile_photo_url,
+            music_preference,
+            preferred_temperature,
+            interaction_preference
+          )
+        `)
+        .or(`driver_id.eq.${profile.id},driver_id.is.null`)
+        .order('created_at', { ascending: false });
 
-        if (specificBooking && !specificError) {
-          console.log('📋 FOUND SILAS BOOKING:', specificBooking);
-          
-          // Transforma em formato esperado
-          const transformedBooking = {
-            id: specificBooking.id,
-            pickup_location: specificBooking.pickup_location,
-            dropoff_location: specificBooking.dropoff_location,
-            pickup_time: specificBooking.pickup_time,
-            passenger_name: `${specificBooking.passenger_first_name} ${specificBooking.passenger_last_name}`,
-            passenger_phone: specificBooking.passenger_phone,
-            passenger_photo: specificBooking.passenger_photo_url,
-            vehicle_type: specificBooking.vehicle_type,
-            ride_status: specificBooking.ride_status,
-            status: specificBooking.status,
-            driver_id: specificBooking.driver_id,
-            passenger_count: specificBooking.passenger_count || 1,
-            estimated_price: 100, // Preço do screenshot
-            passengers: {
-              id: specificBooking.passenger_id,
-              full_name: `${specificBooking.passenger_first_name} ${specificBooking.passenger_last_name}`,
-              phone: specificBooking.passenger_phone,
-              profile_photo_url: specificBooking.passenger_photo_url
-            }
-          };
+      if (error) {
+        console.error('❌ Error fetching bookings:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load bookings",
+          variant: "destructive",
+        });
+        return;
+      }
 
-          // FORÇA abrir o modal diretamente
-          console.log('🚨 OPENING BOOKING REQUEST MODAL DIRECTLY');
-          setSelectedBookingForRequest(transformedBooking);
-          setBookingRequestModalOpen(true);
-          setUserClosedAlert(false);
-          
-          return;
-        }
-        console.log('=== FETCHING DRIVER BOOKINGS ===');
-        console.log('Driver profile:', profile);
-        console.log('Driver ID:', profile?.id);
-        console.log('Car make/model:', profile?.car_make, profile?.car_model);
+      console.log('📋 Raw bookings from database:', allBookings);
 
-        const [assignedBookings, pendingBookings] = await Promise.all([
-          // Fetch bookings already assigned to this driver - passenger data is denormalized
-          supabase
-            .from('bookings')
-            .select('*')
-            .eq('driver_id', profile.id)
-            .order('pickup_time', { ascending: true }),
-          
-          // Fetch new bookings that match this driver's vehicle (ALL statuses for new requests)
-          supabase
-            .from('bookings')
-            .select('*')
-            .in('status', ['pending'])
-            .in('ride_status', ['pending_driver', 'offer_sent'])
-            .is('driver_id', null) // Only unassigned bookings
-            .order('pickup_time', { ascending: true })
-        ]);
+      if (!allBookings || allBookings.length === 0) {
+        console.log('📋 No bookings found');
+        setDriverRides([]);
+        return;
+      }
 
-        console.log('📊 Query results:');
-        console.log('Assigned bookings:', assignedBookings.data?.length || 0, assignedBookings.data);
-        console.log('Pending bookings:', pendingBookings.data?.length || 0, pendingBookings.data);
-        
-        if (assignedBookings.error) {
-          console.error('❌ Error fetching assigned bookings:', assignedBookings.error);
-          return;
-        }
-        
-        if (pendingBookings.error) {
-          console.error('❌ Error fetching pending bookings:', pendingBookings.error);
-          return;
-        }
-
-        if (assignedBookings.error) {
-          console.error('Error fetching assigned bookings:', assignedBookings.error);
-          return;
-        }
-
-        if (pendingBookings.error) {
-          console.error('Error fetching pending bookings:', pendingBookings.error);
-        }
-
-        // Filter pending bookings to match driver's vehicle make and model
-        const filteredPendingBookings = (pendingBookings.data || []).filter(booking => {
-          console.log('🔍 Filtering pending booking:', {
-            bookingId: booking.id,
-            vehicleType: booking.vehicle_type,
-            driverVehicle: `${profile.car_make} ${profile.car_model}`,
-            rideStatus: booking.ride_status,
-            status: booking.status
-          });
-          
-          // If no vehicle type specified, include it (could be an old booking)
-          if (!booking.vehicle_type) {
-            console.log('⚠️ No vehicle type specified, including booking');
-            return true; 
-          }
-          
-          // If driver vehicle info is missing, include all bookings
-          if (!profile.car_make || !profile.car_model) {
-            console.log('⚠️ Missing driver vehicle info, including booking');
-            return true; 
-          }
-          
-          // Match both make and model for exact vehicle matching
-          const requestedVehicle = booking.vehicle_type.toLowerCase().trim();
-          const driverVehicle = `${profile.car_make} ${profile.car_model}`.toLowerCase().trim();
-          
-          const isMatch = requestedVehicle === driverVehicle;
-          console.log('🎯 Vehicle match result:', isMatch, {
-            requested: requestedVehicle, 
-            driver: driverVehicle
-          });
-          
-          return isMatch;
+      // Filter and transform bookings
+      const relevantBookings = allBookings.filter(booking => {
+        console.log('🔍 Filtering booking:', {
+          id: booking.id,
+          driver_id: booking.driver_id,
+          ride_status: booking.ride_status,
+          status: booking.status,
+          vehicle_type: booking.vehicle_type,
+          driver_vehicle: `${profile.car_make} ${profile.car_model}`.toLowerCase(),
         });
 
-        console.log('✅ Filtered pending bookings count:', filteredPendingBookings.length);
-
-        // Combine and deduplicate bookings
-        const allBookingsData = [
-          ...(assignedBookings.data || []),
-          ...filteredPendingBookings
-        ].filter((booking, index, self) => 
-          index === self.findIndex(b => b.id === booking.id)
-        );
-
-        console.log('📋 Combined bookings data:', allBookingsData.length, allBookingsData.map(b => ({
-          id: b.id,
-          vehicle_type: b.vehicle_type,
-          ride_status: b.ride_status,
-          status: b.status,
-          driver_id: b.driver_id,
-          passenger_name: `${b.passenger_first_name} ${b.passenger_last_name}`
-        })));
-
-        // Transform Supabase data to match expected format and sort by pickup time
-        const transformedBookings = allBookingsData
-          .map(booking => {
-            const pickupDate = new Date(booking.pickup_time);
-            return {
-              id: booking.id,
-              date: pickupDate.toISOString().split('T')[0],
-              time: pickupDate.toLocaleTimeString('en-US', { 
-                hour: '2-digit', 
-                minute: '2-digit',
-                hour12: false 
-              }),
-              pickup_time: booking.pickup_time,
-              pickup_location: booking.pickup_location,
-              dropoff_location: booking.dropoff_location,
-              from: booking.pickup_location,
-              to: booking.dropoff_location,
-              passenger: `${booking.passenger_first_name || ''} ${booking.passenger_last_name || ''}`.trim() || 'Unknown Passenger',
-              passenger_name: `${booking.passenger_first_name || ''} ${booking.passenger_last_name || ''}`.trim() || 'Unknown Passenger',
-              passenger_phone: booking.passenger_phone || '',
-              passenger_email: '', // Email not stored in denormalized data for privacy
-              passenger_photo: booking.passenger_photo_url || '',
-              passenger_preferences: {
-                temperature: (booking.passenger_preferences as any)?.temperature || null,
-                music: (booking.passenger_preferences as any)?.music || '',
-                music_playlist: '', // Not stored in denormalized data
-                interaction: (booking.passenger_preferences as any)?.interaction || '',
-                trip_purpose: (booking.passenger_preferences as any)?.trip_purpose || '',
-                notes: (booking.passenger_preferences as any)?.notes || ''
-              },
-              // Create passenger object for component compatibility
-              passengers: {
-                id: booking.passenger_id,
-                full_name: `${booking.passenger_first_name || ''} ${booking.passenger_last_name || ''}`.trim(),
-                phone: booking.passenger_phone,
-                profile_photo_url: booking.passenger_photo_url,
-                preferred_temperature: (booking.passenger_preferences as any)?.temperature,
-                music_preference: (booking.passenger_preferences as any)?.music,
-                interaction_preference: (booking.passenger_preferences as any)?.interaction,
-                trip_purpose: (booking.passenger_preferences as any)?.trip_purpose,
-                additional_notes: (booking.passenger_preferences as any)?.notes
-              },
-              drivers: (booking as any).drivers || profile,
-              status: booking.status,
-              ride_status: booking.ride_status,
-              driver_id: booking.driver_id,
-              payment: booking.final_price ? `$${booking.final_price}` : (booking.estimated_price ? `$${booking.estimated_price}` : "TBD"),
-              paymentMethod: booking.payment_status === 'completed' ? 'Completed' : null,
-              countdown: null,
-              flight_info: booking.flight_info,
-              passenger_count: booking.passenger_count || 1,
-              luggage_count: booking.luggage_count || 0,
-              vehicle_type: booking.vehicle_type || 'Vehicle',
-              final_price: booking.final_price,
-              estimated_price: booking.estimated_price,
-              passenger_id: booking.passenger_id,
-              payment_status: booking.payment_status,
-              payment_confirmation_status: booking.payment_confirmation_status,
-              ride_stage: booking.ride_stage, // No default - only show if explicitly set
-              extra_stops: booking.extra_stops || []
-            };
-          })
-          .sort((a, b) => {
-            const dateA = new Date(a.pickup_time);
-            const dateB = new Date(b.pickup_time);
-            return dateA.getTime() - dateB.getTime();
-          });
-
-        console.log('🎯 Final transformed bookings:', transformedBookings.length, transformedBookings.map(b => ({
-          id: b.id,
-          vehicle_type: b.vehicle_type,
-          ride_status: b.ride_status,
-          status: b.status,
-          driver_id: b.driver_id,
-          passenger_name: b.passenger_name
-        })));
-
-        setDriverRides(transformedBookings);
-        
-        // Auto-detect new ride requests and show pending request alert immediately
-        const newPendingRequests = transformedBookings.filter(booking => 
-          (booking.ride_status === "pending_driver" && booking.status === "pending") ||
-          (booking.ride_status === "offer_sent" && !booking.driver_id) // Include offer_sent without driver assigned
-        );
-        
-        console.log('🚨 New pending requests found:', newPendingRequests.length, newPendingRequests);
-        
-        // Show alert if there are pending requests (regardless of current tab)
-        if (newPendingRequests.length > 0 && !pendingRequestAlertOpen) {
-          console.log('🔔 Opening pending request alert');
-          setUserClosedAlert(false); // Reset user closed flag for new requests
-          setPendingRequests(newPendingRequests);
-          setPendingRequestAlertOpen(true);
+        // Include if assigned to this driver
+        if (booking.driver_id === profile.id) {
+          console.log('✅ Booking assigned to this driver');
+          return true;
         }
-      } catch (error) {
-        console.error('❌ Error fetching driver bookings:', error);
-      }
+
+        // Include if new request that matches driver's vehicle
+        if (!booking.driver_id && 
+            booking.vehicle_type &&
+            profile.car_make &&
+            profile.car_model) {
+          const requestedVehicle = booking.vehicle_type.toLowerCase();
+          const driverVehicle = `${profile.car_make} ${profile.car_model}`.toLowerCase();
+          
+          const isMatch = requestedVehicle === driverVehicle;
+          console.log('🚗 Vehicle match check:', { requestedVehicle, driverVehicle, isMatch });
+          
+          if (isMatch && booking.ride_status === 'pending_driver') {
+            console.log('✅ New request matches driver vehicle');
+            return true;
+          }
+        }
+
+        console.log('❌ Booking not relevant to this driver');
+        return false;
+      });
+
+      console.log('📊 Relevant bookings after filtering:', relevantBookings.length);
+
+      // Transform bookings to expected format
+      const transformedBookings = relevantBookings.map(booking => ({
+        id: booking.id,
+        pickup_location: booking.pickup_location,
+        dropoff_location: booking.dropoff_location,
+        pickup_time: booking.pickup_time,
+        passenger_name: booking.passenger_first_name && booking.passenger_last_name 
+          ? `${booking.passenger_first_name} ${booking.passenger_last_name}` 
+          : booking.passengers?.full_name || 'Passenger',
+        passenger_phone: booking.passenger_phone || booking.passengers?.phone,
+        passenger_photo: booking.passenger_photo_url || booking.passengers?.profile_photo_url,
+        vehicle_type: booking.vehicle_type,
+        ride_status: booking.ride_status,
+        status: booking.status,
+        driver_id: booking.driver_id,
+        passenger_count: booking.passenger_count || 1,
+        estimated_price: booking.estimated_price || 100,
+        passengers: booking.passengers,
+        ...booking
+      }));
+
+      console.log('✅ Final transformed bookings:', transformedBookings);
+      setDriverRides(transformedBookings);
+
+    } catch (error) {
+      console.error('❌ Error in fetchDriverBookings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load bookings",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleAcceptRide = async (rideId: string) => {
