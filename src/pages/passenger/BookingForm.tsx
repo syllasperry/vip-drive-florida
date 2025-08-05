@@ -107,8 +107,7 @@ const BookingForm = () => {
         return;
       }
 
-      // For now, assign to the first matching driver (later can implement smart assignment)
-      const assignedDriver = matchingDrivers[0];
+      // Don't assign driver immediately - send request to drivers first
 
       // Get passenger data to denormalize into booking
       const { data: passengerData, error: passengerError } = await supabase
@@ -133,12 +132,12 @@ const BookingForm = () => {
         return;
       }
 
-      // Create booking in database with assigned driver and denormalized passenger data
+      // Create booking request in database WITHOUT driver assigned yet
       const { data: booking, error } = await supabase
         .from('bookings')
         .insert({
           passenger_id: session.user.id,
-          driver_id: assignedDriver.id,
+          driver_id: null, // No driver assigned yet - this is a request
           pickup_location: pickup,
           dropoff_location: dropoff,
           pickup_time: pickupDateTime.toISOString(),
@@ -150,6 +149,8 @@ const BookingForm = () => {
           payment_confirmation_status: 'waiting_for_offer',
           status: 'pending',
           payment_status: 'pending',
+          status_passenger: 'passenger_requested',
+          status_driver: 'new_request',
           // Denormalized passenger data
           passenger_first_name: passengerData.full_name?.split(' ')[0] || '',
           passenger_last_name: passengerData.full_name?.split(' ').slice(1).join(' ') || '',
@@ -168,23 +169,24 @@ const BookingForm = () => {
 
       if (error) throw error;
 
-      // Send email notification for new booking
+      // Send booking request notification to all matching drivers
       try {
         await supabase.functions.invoke('send-booking-notifications', {
           body: {
             bookingId: booking.id,
-            status: 'pending',
-            triggerType: 'new_booking'
+            status: 'pending_driver',
+            triggerType: 'new_booking_request',
+            matchingDrivers: matchingDrivers.map(d => d.id)
           }
         });
       } catch (emailError) {
-        console.error('Failed to send email notification:', emailError);
+        console.error('Failed to send booking request notifications:', emailError);
         // Don't fail the booking creation if email fails
       }
 
       toast({
-        title: "Booking submitted!",
-        description: "Your booking request has been sent to drivers.",
+        title: "Booking request sent!",
+        description: `Your request has been sent to ${matchingDrivers.length} available driver(s). You'll be notified when a driver responds.`,
       });
 
       // Navigate to confirmation page
