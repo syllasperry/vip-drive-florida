@@ -77,13 +77,8 @@ export const OfferAcceptanceModal = ({
 
       if (error) throw error;
 
-      toast({
-        title: "Price Accepted!",
-        description: "Proceeding to payment instructions.",
-      });
-
       onAccept();
-      onClose(); // Close the modal and return to dashboard
+      onClose();
     } catch (error) {
       console.error('Error accepting offer:', error);
       toast({

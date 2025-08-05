@@ -22,7 +22,8 @@ import { FloatingActionButton } from "@/components/dashboard/FloatingActionButto
 import { FareConfirmationAlert } from "@/components/FareConfirmationAlert";
 import { PaymentConfirmationModal } from "@/components/PaymentConfirmationModal";
 import { PaymentModal } from "@/components/payment/PaymentModal";
-import { OfferAcceptanceModal } from "@/components/booking/OfferAcceptanceModal";
+
+import { RideFlowManager } from "@/components/booking/RideFlowManager";
 import { CancelBookingButton } from "@/components/dashboard/CancelBookingButton";
 
 import { NotificationManager } from "@/components/NotificationManager";
@@ -56,8 +57,6 @@ const Dashboard = () => {
   const [selectedOtherUser, setSelectedOtherUser] = useState<any>(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedBookingForPayment, setSelectedBookingForPayment] = useState<any>(null);
-  const [offerAcceptanceModalOpen, setOfferAcceptanceModalOpen] = useState(false);
-  const [selectedBookingForOffer, setSelectedBookingForOffer] = useState<any>(null);
   const [pendingActionsCount, setPendingActionsCount] = useState(0);
 
   // Keep existing state variables
@@ -328,18 +327,6 @@ const Dashboard = () => {
 
       setBookings(bookingsData || []);
       
-      // Check for pending offer acceptance - driver sent price and waiting for passenger approval
-      const pendingOfferBooking = bookingsData?.find(booking => 
-        booking.ride_status === 'offer_sent' && 
-        booking.payment_confirmation_status === 'price_awaiting_acceptance' &&
-        booking.final_price // Ensure there's a price to show
-      );
-      
-      if (pendingOfferBooking && !offerAcceptanceModalOpen) {
-        console.log('Found pending offer booking:', pendingOfferBooking);
-        setSelectedBookingForOffer(pendingOfferBooking);
-        setOfferAcceptanceModalOpen(true);
-      }
       
       // Check for pending fare confirmation (legacy support)
       const pendingBooking = bookingsData?.find(booking => booking.status === 'price_proposed');
@@ -778,6 +765,16 @@ const Dashboard = () => {
         )}
       </div>
 
+      {/* Ride Flow Manager - Handles the complete offer/payment/confirmation flow */}
+      <RideFlowManager
+        booking={bookings.find(b => 
+          ['offer_sent', 'passenger_approved', 'offer_declined', 'awaiting_driver_confirmation', 'all_set'].includes(b.ride_status) ||
+          ['waiting_for_passenger', 'waiting_for_payment', 'passenger_paid', 'all_set'].includes(b.payment_confirmation_status)
+        )}
+        userType="passenger"
+        onFlowComplete={fetchBookings}
+      />
+
       {/* Modals */}
       
       <EnhancedSettingsModal
@@ -816,23 +813,6 @@ const Dashboard = () => {
         onClose={() => setShowRideConfirmation(false)}
       />
 
-      <OfferAcceptanceModal
-        isOpen={offerAcceptanceModalOpen}
-        onClose={() => setOfferAcceptanceModalOpen(false)}
-        booking={selectedBookingForOffer}
-        onAccept={() => {
-          setOfferAcceptanceModalOpen(false);
-          // Automatically open payment modal after accepting offer
-          setSelectedBookingForPayment(selectedBookingForOffer);
-          setPaymentModalOpen(true);
-          fetchBookings();
-        }}
-        onDecline={() => {
-          setOfferAcceptanceModalOpen(false);
-          setSelectedBookingForOffer(null);
-          fetchBookings();
-        }}
-      />
 
       {selectedBookingForPayment && (
         <PaymentModal

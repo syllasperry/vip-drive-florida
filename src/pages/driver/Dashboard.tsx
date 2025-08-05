@@ -34,6 +34,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { BookingSummaryModal } from "@/components/BookingSummaryModal";
 import { ContributorInfoModal } from "@/components/pdf/ContributorInfoModal";
 import { PDFGenerator } from "@/components/pdf/PDFGenerator";
+import { RideFlowManager } from "@/components/booking/RideFlowManager";
 
 
 const DriverDashboard = () => {
@@ -1019,6 +1020,26 @@ const DriverDashboard = () => {
           }}
         />
       )}
+
+      {/* Ride Flow Manager - Handles payment confirmation and all set flow */}
+      <RideFlowManager
+        booking={driverRides.find(r => 
+          ['awaiting_driver_confirmation', 'all_set'].includes(r.ride_status) ||
+          ['passenger_paid', 'all_set'].includes(r.payment_confirmation_status)
+        )}
+        userType="driver"
+        onFlowComplete={() => fetchDriverBookings(userProfile)}
+        onMessagePassenger={() => {
+          const booking = driverRides.find(r => 
+            ['awaiting_driver_confirmation', 'all_set'].includes(r.ride_status) ||
+            ['passenger_paid', 'all_set'].includes(r.payment_confirmation_status)
+          );
+          if (booking) {
+            setSelectedBookingForMessaging(booking);
+            setMessagingOpen(true);
+          }
+        }}
+      />
 
       {/* Messaging Modal */}
       {messagingOpen && selectedBookingForMessaging && (
