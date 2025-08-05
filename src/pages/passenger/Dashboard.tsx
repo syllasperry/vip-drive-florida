@@ -87,6 +87,12 @@ const Dashboard = () => {
   };
 
   // Group bookings into 4 sections
+  const cancelled = bookings.filter(booking => {
+    // Cancelled: rides that were cancelled by passenger (moved to Past tab)
+    return ['cancelled_by_passenger', 'offer_declined'].includes(booking.ride_status) || 
+           booking.status === 'cancelled_by_passenger';
+  });
+
   const groupedBookings = {
     upcoming: bookings.filter(booking => {
       // Upcoming: rides that are NOT "All Set" and not completed/cancelled
@@ -95,21 +101,17 @@ const Dashboard = () => {
              !['completed', 'cancelled', 'declined', 'offer_declined', 'cancelled_by_passenger'].includes(booking.ride_status) &&
              booking.status !== 'cancelled_by_passenger';
     }),
-    cancelled: bookings.filter(booking => {
-      // Cancelled: rides that were cancelled by passenger
-      return ['cancelled_by_passenger'].includes(booking.ride_status) || 
-             booking.status === 'cancelled_by_passenger';
-    }),
+    cancelled,
     newRides: bookings.filter(booking => {
       // New Rides: rides that are "All Set" but not completed
       return booking.payment_confirmation_status === 'all_set' && 
              booking.ride_stage !== 'completed' && 
              !['completed', 'cancelled', 'declined', 'offer_declined', 'cancelled_by_passenger'].includes(booking.ride_status);
     }),
-    pastRides: bookings.filter(booking => {
-      // Past Rides: rides that are completed
-      return booking.ride_stage === 'completed';
-    })
+    pastRides: [
+      ...bookings.filter(booking => booking.ride_stage === 'completed'),
+      ...cancelled // Include cancelled bookings in Past tab
+    ]
   };
 
   const handleAcceptFare = async (bookingId: string) => {
@@ -789,7 +791,7 @@ const Dashboard = () => {
       {/* Ride Flow Manager - Handles the complete offer/payment/confirmation flow */}
       <RideFlowManager
         booking={forceAlertBooking || bookings.find(b => 
-          ['offer_sent', 'passenger_approved', 'offer_declined', 'awaiting_driver_confirmation', 'all_set'].includes(b.ride_status) ||
+          ['offer_sent', 'passenger_approved', 'awaiting_driver_confirmation', 'all_set'].includes(b.ride_status) ||
           ['waiting_for_passenger', 'waiting_for_payment', 'passenger_paid', 'all_set'].includes(b.payment_confirmation_status)
         )}
         userType="passenger"

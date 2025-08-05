@@ -14,6 +14,14 @@ export const PassengerCancellationAlert = ({
     <Dialog open={isOpen} onOpenChange={onClose} modal>
       <DialogContent className="max-w-sm mx-auto bg-background border shadow-lg p-6">
         <DialogHeader className="text-center space-y-4">
+          <div className="flex justify-end">
+            <button 
+              onClick={onClose}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
           <div className="mx-auto w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center">
             <X className="h-8 w-8 text-destructive" />
           </div>
