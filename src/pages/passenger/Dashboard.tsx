@@ -66,6 +66,25 @@ const Dashboard = () => {
   const [pendingFareBooking, setPendingFareBooking] = useState<any>(null);
   const [preferencesModalOpen, setPreferencesModalOpen] = useState(false);
   const [bookings, setBookings] = useState<any[]>([]);
+  const [forceAlertStep, setForceAlertStep] = useState<string | null>(null);
+  const [forceAlertBooking, setForceAlertBooking] = useState<any>(null);
+
+  // Function to reopen alerts
+  const reopenAlert = (booking: any) => {
+    const { ride_status, payment_confirmation_status } = booking;
+    
+    if (ride_status === 'offer_sent' && payment_confirmation_status === 'price_awaiting_acceptance') {
+      setForceAlertStep('offer_acceptance');
+    } else if (ride_status === 'passenger_approved' && payment_confirmation_status === 'waiting_for_payment') {
+      setForceAlertStep('payment_instructions');
+    } else if (ride_status === 'offer_declined') {
+      setForceAlertStep('passenger_cancellation');
+    } else if (ride_status === 'all_set' && payment_confirmation_status === 'all_set') {
+      setForceAlertStep('all_set_confirmation');
+    }
+    
+    setForceAlertBooking(booking);
+  };
 
   // Group bookings into 4 sections
   const groupedBookings = {
@@ -542,7 +561,8 @@ const Dashboard = () => {
                                      setSelectedBookingForPayment(booking);
                                      setPaymentModalOpen(true);
                                    }}
-                                   onAcceptOffer={() => handleAcceptFare(booking.id)}
+                                  onAcceptOffer={() => handleAcceptFare(booking.id)}
+                                  onReopenAlert={() => reopenAlert(booking)}
                                  />
                                  {/* Cancel Button */}
                                  <div className="mt-2 px-4">
@@ -574,10 +594,11 @@ const Dashboard = () => {
                                  setSelectedBooking(booking);
                                  setMessagingOpen(true);
                                }}
-                               onViewSummary={() => {
-                                 setSelectedBookingForSummary(booking);
-                                 setSummaryModalOpen(true);
-                               }}
+                                onViewSummary={() => {
+                                  setSelectedBookingForSummary(booking);
+                                  setSummaryModalOpen(true);
+                                }}
+                                onReopenAlert={() => reopenAlert(booking)}
                              />
                            </div>
                          ))}
@@ -767,12 +788,17 @@ const Dashboard = () => {
 
       {/* Ride Flow Manager - Handles the complete offer/payment/confirmation flow */}
       <RideFlowManager
-        booking={bookings.find(b => 
+        booking={forceAlertBooking || bookings.find(b => 
           ['offer_sent', 'passenger_approved', 'offer_declined', 'awaiting_driver_confirmation', 'all_set'].includes(b.ride_status) ||
           ['waiting_for_passenger', 'waiting_for_payment', 'passenger_paid', 'all_set'].includes(b.payment_confirmation_status)
         )}
         userType="passenger"
-        onFlowComplete={fetchBookings}
+        onFlowComplete={() => {
+          setForceAlertStep(null);
+          setForceAlertBooking(null);
+          fetchBookings();
+        }}
+        forceOpenStep={forceAlertStep}
       />
 
       {/* Modals */}

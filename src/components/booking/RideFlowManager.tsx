@@ -10,17 +10,25 @@ interface RideFlowManagerProps {
   userType: 'passenger' | 'driver';
   onFlowComplete: () => void;
   onMessagePassenger?: () => void;
+  forceOpenStep?: string | null;
 }
 
 export const RideFlowManager = ({ 
   booking, 
   userType, 
   onFlowComplete,
-  onMessagePassenger 
+  onMessagePassenger,
+  forceOpenStep 
 }: RideFlowManagerProps) => {
   const [currentStep, setCurrentStep] = useState<string | null>(null);
 
   useEffect(() => {
+    // If forceOpenStep is provided, use it
+    if (forceOpenStep) {
+      setCurrentStep(forceOpenStep);
+      return;
+    }
+
     if (!booking) return;
 
     // Determine which alert to show based on booking status and user type
@@ -47,7 +55,11 @@ export const RideFlowManager = ({
         setCurrentStep(null);
       }
     }
-  }, [booking, userType]);
+  }, [booking, userType, forceOpenStep]);
+
+  const handleClose = () => {
+    setCurrentStep(null);
+  };
 
   const handleStepComplete = () => {
     setCurrentStep(null);
@@ -77,7 +89,7 @@ export const RideFlowManager = ({
     <>
       <OfferAcceptanceModal
         isOpen={currentStep === 'offer_acceptance'}
-        onClose={handleStepComplete}
+        onClose={handleClose}
         booking={booking}
         onAccept={handleOfferAccepted}
         onDecline={handleOfferDeclined}
@@ -85,19 +97,19 @@ export const RideFlowManager = ({
 
       <PaymentInstructionsAlert
         isOpen={currentStep === 'payment_instructions'}
-        onClose={handleStepComplete}
+        onClose={handleClose}
         booking={booking}
         onPaymentConfirmed={handlePaymentConfirmed}
       />
 
       <PassengerCancellationAlert
         isOpen={currentStep === 'passenger_cancellation'}
-        onClose={handleStepComplete}
+        onClose={handleClose}
       />
 
       <DriverPaymentConfirmationAlert
         isOpen={currentStep === 'driver_payment_confirmation'}
-        onClose={handleStepComplete}
+        onClose={handleClose}
         booking={booking}
         onPaymentConfirmed={handleDriverPaymentConfirmed}
         onMessagePassenger={onMessagePassenger || (() => {})}
@@ -105,7 +117,7 @@ export const RideFlowManager = ({
 
       <AllSetConfirmationAlert
         isOpen={currentStep === 'all_set_confirmation'}
-        onClose={handleStepComplete}
+        onClose={handleClose}
         booking={booking}
       />
     </>

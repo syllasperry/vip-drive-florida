@@ -18,6 +18,7 @@ interface EnhancedBookingCardProps {
   onDeclineOffer?: () => void;
   onEditPrice?: () => void;
   onCancelBooking?: () => void;
+  onReopenAlert?: () => void;
 }
 
 export const EnhancedBookingCard = ({ 
@@ -30,7 +31,8 @@ export const EnhancedBookingCard = ({
   onAcceptOffer,
   onDeclineOffer,
   onEditPrice,
-  onCancelBooking
+  onCancelBooking,
+  onReopenAlert
 }: EnhancedBookingCardProps) => {
   const { toast } = useToast();
   
@@ -270,6 +272,8 @@ export const EnhancedBookingCard = ({
           <StatusBadges 
             rideStatus={booking.ride_status || booking.status} 
             paymentStatus={booking.payment_confirmation_status || "waiting_for_offer"}
+            onReopenAlert={onReopenAlert}
+            showReopenButton={true}
           />
         </div>
 

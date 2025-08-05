@@ -1,12 +1,15 @@
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 interface StatusBadgesProps {
   rideStatus: string;
   paymentStatus: string;
   className?: string;
+  onReopenAlert?: () => void;
+  showReopenButton?: boolean;
 }
 
-export const StatusBadges = ({ rideStatus, paymentStatus, className = "" }: StatusBadgesProps) => {
+export const StatusBadges = ({ rideStatus, paymentStatus, className = "", onReopenAlert, showReopenButton = false }: StatusBadgesProps) => {
   const getRideStatusConfig = (status: string) => {
     switch (status) {
       case 'pending_driver':
@@ -48,11 +51,31 @@ export const StatusBadges = ({ rideStatus, paymentStatus, className = "" }: Stat
   const rideConfig = getRideStatusConfig(rideStatus);
   const paymentConfig = getPaymentStatusConfig(paymentStatus);
 
+  // Check if we should show the reopen button based on status
+  const shouldShowReopen = showReopenButton && onReopenAlert && (
+    rideStatus === 'offer_sent' ||
+    rideStatus === 'offer_declined' ||
+    (rideStatus === 'passenger_approved' && paymentStatus === 'waiting_for_payment') ||
+    (rideStatus === 'all_set' && paymentStatus === 'all_set')
+  );
+
   return (
     <div className={`flex flex-col gap-1 ${className}`}>
-      <Badge className={`${rideConfig.color} text-xs font-medium`}>
-        {rideConfig.text}
-      </Badge>
+      <div className="flex items-center gap-2">
+        <Badge className={`${rideConfig.color} text-xs font-medium`}>
+          {rideConfig.text}
+        </Badge>
+        {shouldShowReopen && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onReopenAlert}
+            className="h-6 px-2 py-0 text-xs text-primary hover:bg-primary/10"
+          >
+            View Details
+          </Button>
+        )}
+      </div>
       <Badge className={`${paymentConfig.color} text-xs font-medium`}>
         {paymentConfig.text}
       </Badge>
