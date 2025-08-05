@@ -130,6 +130,8 @@ export const StandardDriverRideCard = ({
             <StatusBadges 
               rideStatus={booking.ride_status || booking.status || 'pending'} 
               paymentStatus={booking.payment_confirmation_status || 'waiting_for_offer'}
+              onReopenAlert={onReopenAlert}
+              showReopenButton={booking.ride_status === "pending_driver" || booking.ride_status === "offer_sent" || booking.payment_confirmation_status === "price_awaiting_acceptance"}
             />
           </div>
         )}

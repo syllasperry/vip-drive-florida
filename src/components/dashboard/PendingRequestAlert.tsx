@@ -111,10 +111,7 @@ const PendingRequestAlert = ({ requests, onAccept, onDecline, onClose }: Pending
         description: `Fare proposal of $${price.toFixed(2)} has been sent. Awaiting passenger response.`,
       });
 
-      // Auto-close the alert after successful offer
-      setTimeout(() => {
-        onDecline(requestId);
-      }, 1500);
+      // Don't auto-close the modal - keep it available for driver
     } catch (error) {
       console.error('Error sending offer:', error);
       toast({
@@ -308,15 +305,28 @@ const PendingRequestAlert = ({ requests, onAccept, onDecline, onClose }: Pending
                       <span className="text-white font-semibold">$</span>
                       <Input
                         type="text"
-                        value={suggestedPrices[request.id]?.toFixed(2) || "100.00"}
+                        value={isEditingPrice[request.id] ? suggestedPrices[request.id]?.toString() || "" : (suggestedPrices[request.id]?.toFixed(2) || "100.00")}
                         onChange={(e) => {
                           const value = e.target.value.replace(/[^0-9.]/g, '');
                           const numValue = parseFloat(value) || 0;
                           handlePriceChange(request.id, numValue);
                         }}
+                        onFocus={() => {
+                          setIsEditingPrice(prev => ({ ...prev, [request.id]: true }));
+                        }}
                         onBlur={(e) => {
-                          const value = parseFloat(e.target.value) || 0;
+                          const value = parseFloat(e.target.value) || 100;
                           handlePriceChange(request.id, value);
+                          setIsEditingPrice(prev => ({ ...prev, [request.id]: false }));
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Delete' || e.key === 'Backspace') {
+                            if (e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === e.currentTarget.value.length) {
+                              e.preventDefault();
+                              handlePriceChange(request.id, 0);
+                              e.currentTarget.value = "";
+                            }
+                          }
                         }}
                         className="w-20 text-right bg-transparent border-none text-white font-semibold p-0 focus:ring-0"
                         placeholder="100.00"

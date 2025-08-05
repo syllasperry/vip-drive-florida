@@ -208,12 +208,14 @@ const DriverDashboard = () => {
       return shouldBeInNewRides;
     }
     
-    // Priority 3: Pending/Waiting rides go to New Requests
+    // Priority 3: Pending/Waiting rides go to New Requests  
     if (rideView === "new-requests") {
       const isNewRequest = ride.ride_status === "pending_driver" || 
+                          ride.ride_status === "offer_sent" ||
                           ride.payment_confirmation_status === "price_awaiting_acceptance" ||
                           ride.payment_confirmation_status === "waiting_for_payment" ||
-                          ride.payment_confirmation_status === "passenger_paid";
+                          ride.payment_confirmation_status === "passenger_paid" ||
+                          ride.status === "accepted";
       console.log('Is new request:', isNewRequest);
       return isNewRequest;
     }
@@ -489,6 +491,7 @@ const DriverDashboard = () => {
 
   const handleClosePendingAlert = (rideId: string) => {
     // Simply close the alert without taking any action on the ride
+    // The ride remains in the list and can be reopened
     setPendingRequestAlertOpen(false);
     setPendingRequests([]);
   };
@@ -752,6 +755,7 @@ const DriverDashboard = () => {
                     <StandardDriverRideCard
                       key={ride.id}
                       booking={ride}
+                      onReopenAlert={() => handleReopenPendingAlert(ride)}
                       onMessage={(booking) => {
                         setSelectedBookingForMessaging(booking);
                         if (booking.passenger_id) {
@@ -772,8 +776,6 @@ const DriverDashboard = () => {
                       onCancelSuccess={() => fetchDriverBookings(userProfile)}
                       showPaymentReceivedButton={ride.payment_confirmation_status === 'passenger_paid'}
                       onConfirmPaymentReceived={() => handleConfirmPaymentFromCard(ride)}
-                      onReopenAlert={ride.ride_status === "pending_driver" && !ride.driver_id ? 
-                        () => handleReopenPendingAlert(ride) : undefined}
                     />
                   ))
                 )}
@@ -842,6 +844,7 @@ const DriverDashboard = () => {
                     <StandardDriverRideCard
                       key={ride.id}
                       booking={ride}
+                      onReopenAlert={() => handleReopenPendingAlert(ride)}
                       onMessage={(booking) => {
                         setSelectedBookingForMessaging(booking);
                         if (booking.passenger_id) {
