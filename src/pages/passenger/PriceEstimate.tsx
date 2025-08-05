@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useScrollToTop } from "@/hooks/useScrollToTop";
 import { MapPin, ArrowRight, Info, User, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,9 @@ const PriceEstimate = () => {
   const [isPickupValid, setIsPickupValid] = useState(true);
   const [isDropoffValid, setIsDropoffValid] = useState(true);
   const navigate = useNavigate();
+  
+  // Auto-scroll to top when this page loads
+  useScrollToTop();
   
   // Check if user is logged in
   const isPassengerLoggedIn = localStorage.getItem("passenger_logged_in") === "true";

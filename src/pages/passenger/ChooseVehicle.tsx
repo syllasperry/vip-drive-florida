@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useScrollToTop } from "@/hooks/useScrollToTop";
 import { Users, Luggage, Check, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -69,6 +70,9 @@ const ChooseVehicle = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const bookingData = location.state;
+  
+  // Auto-scroll to top when this page loads
+  useScrollToTop();
 
   useEffect(() => {
     const fetchUserData = async () => {

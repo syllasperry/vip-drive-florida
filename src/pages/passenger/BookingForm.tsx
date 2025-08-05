@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useScrollToTop } from "@/hooks/useScrollToTop";
 import { Users, Luggage, Plane, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,9 @@ const BookingForm = () => {
   const { pickup, dropoff, selectedVehicle } = location.state || {};
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  
+  // Auto-scroll to top when this page loads
+  useScrollToTop();
 
   const [formData, setFormData] = useState({
     flightInfo: "",

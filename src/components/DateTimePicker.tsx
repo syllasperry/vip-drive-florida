@@ -220,7 +220,12 @@ export const DateTimePicker = ({
       {/* Confirmation Message */}
       {selectedDate && selectedTime ? (
         <div className="p-3 bg-primary/10 text-primary rounded-lg text-sm text-center font-medium border border-primary/20">
-          Selected: {format(new Date(selectedDate), "EEEE, MMMM d")} at {format(new Date(`2000-01-01T${selectedTime}`), "h:mm a")}
+          Selected: {parsedSelectedDate ? format(parsedSelectedDate, "EEEE, MMMM d") : "Invalid date"} at {(() => {
+            const [hours, minutes] = selectedTime.split(':').map(Number);
+            const timeDate = new Date();
+            timeDate.setHours(hours, minutes, 0, 0);
+            return format(timeDate, "h:mm a");
+          })()}
         </div>
       ) : (
         <div className="p-3 bg-muted/50 text-muted-foreground rounded-lg text-sm text-center border border-dashed">

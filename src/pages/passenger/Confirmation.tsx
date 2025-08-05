@@ -1,11 +1,15 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { CheckCircle, CreditCard, Smartphone, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useScrollToTop } from "@/hooks/useScrollToTop";
 
 const Confirmation = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { pickup, dropoff, selectedVehicle, bookingDetails } = location.state || {};
+  
+  // Auto-scroll to top when this page loads
+  useScrollToTop();
 
   const handleReturnToDashboard = () => {
     navigate("/passenger/dashboard");
