@@ -212,10 +212,12 @@ const DriverDashboard = () => {
     if (rideView === "new-requests") {
       const isNewRequest = ride.ride_status === "pending_driver" || 
                           ride.ride_status === "offer_sent" ||
-                          ride.payment_confirmation_status === "price_awaiting_acceptance" ||
-                          ride.payment_confirmation_status === "waiting_for_payment" ||
-                          ride.payment_confirmation_status === "passenger_paid" ||
-                          ride.status === "accepted";
+                          ride.status === "accepted" ||
+                          ride.status === "pending" ||
+                          (ride.payment_confirmation_status === "price_awaiting_acceptance" ||
+                           ride.payment_confirmation_status === "waiting_for_payment" ||
+                           ride.payment_confirmation_status === "passenger_paid") &&
+                          ride.ride_stage !== "completed";
       console.log('Is new request:', isNewRequest);
       return isNewRequest;
     }
