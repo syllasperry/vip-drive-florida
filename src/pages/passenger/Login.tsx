@@ -82,8 +82,11 @@ const PassengerLogin = () => {
           description: "You've been successfully signed in.",
         });
 
-        navigate(bookingData ? "/passenger/choose-vehicle" : "/passenger/dashboard", 
-               { state: bookingData });
+        // Use setTimeout to ensure toast shows briefly before navigation
+        setTimeout(() => {
+          navigate(bookingData ? "/passenger/choose-vehicle" : "/passenger/dashboard", 
+                 { state: bookingData, replace: true });
+        }, 100);
       } else {
         // Check if email already exists in passengers table
         const { data: existingPassenger } = await supabase
