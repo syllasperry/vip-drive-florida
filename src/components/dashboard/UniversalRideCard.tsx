@@ -147,8 +147,13 @@ export const UniversalRideCard = ({
   const passengerInfo = userType === "driver" ? currentBooking.passengers : currentBooking.passenger;
   const driverInfo = userType === "passenger" ? currentBooking.drivers : currentBooking.driver;
 
-  // Determine which user info to display
-  const displayUser = userType === "driver" ? passengerInfo : driverInfo;
+  // Determine which user info to display - but only show driver info if offer was accepted
+  const shouldShowDriverInfo = userType === "passenger" && 
+    (currentBooking.payment_confirmation_status === 'passenger_paid' || 
+     currentBooking.payment_confirmation_status === 'all_set' ||
+     currentBooking.ride_status === 'driver_accepted');
+  
+  const displayUser = userType === "driver" ? passengerInfo : (shouldShowDriverInfo ? driverInfo : null);
   const displayUserType = userType === "driver" ? "Passenger" : "Driver";
 
   if (!displayUser && userType === "driver") {
@@ -283,75 +288,83 @@ export const UniversalRideCard = ({
           </div>
         )}
 
-        {/* Enhanced User Information - Mockup Style */}
-        <div className="p-4 pt-2">
-          <div className="flex items-start gap-4 mb-6">
-            <div className="relative">
-              <Avatar className="h-16 w-16 border-2 border-gray-200">
-                <AvatarImage 
-                  src={displayUser?.profile_photo_url} 
-                  alt={displayUser?.full_name}
-                />
-                <AvatarFallback className="bg-gray-200 text-gray-700 font-bold text-xl">
-                  {displayUser?.full_name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white"></div>
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <h3 className="font-bold text-xl text-gray-900">
-                  {displayUser?.full_name || `${displayUserType} Name`}
-                </h3>
-                {userType === 'passenger' && (
-                  <div className="flex items-center gap-1 bg-yellow-100 px-2 py-1 rounded-full">
-                    <svg className="w-3 h-3 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                    <span className="text-xs font-bold text-yellow-700">4.9</span>
+        {/* Enhanced User Information - Only show when appropriate */}
+        {displayUser && (
+          <div className="p-4 pt-2">
+            <div className="flex items-start gap-4 mb-6">
+              <div className="relative">
+                <Avatar className="h-16 w-16 border-2 border-gray-200">
+                  <AvatarImage 
+                    src={displayUser?.profile_photo_url} 
+                    alt={displayUser?.full_name}
+                  />
+                  <AvatarFallback className="bg-gray-200 text-gray-700 font-bold text-xl">
+                    {displayUser?.full_name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white"></div>
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <h3 className="font-bold text-xl text-gray-900">
+                    {displayUser?.full_name}
+                  </h3>
+                  {userType === 'passenger' && shouldShowDriverInfo && (
+                    <div className="flex items-center gap-1 bg-yellow-100 px-2 py-1 rounded-full">
+                      <svg className="w-3 h-3 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                      <span className="text-xs font-bold text-yellow-700">4.9</span>
+                    </div>
+                  )}
+                </div>
+                
+                {/* ETA and Contact - Only show if driver accepted */}
+                {shouldShowDriverInfo && (
+                  <div className="flex items-center gap-4 mb-3">
+                    <div className="bg-blue-50 px-3 py-1 rounded-full">
+                      <span className="text-sm font-semibold text-blue-700">ETA 5 min</span>
+                    </div>
+                    {displayUser?.phone && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-3 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full border border-blue-200"
+                        onClick={() => handlePhoneCall(displayUser.phone)}
+                      >
+                        <Phone className="h-3 w-3 mr-1" />
+                        Call
+                      </Button>
+                    )}
                   </div>
                 )}
-              </div>
-              
-              {/* ETA and Contact */}
-              <div className="flex items-center gap-4 mb-3">
-                <div className="bg-blue-50 px-3 py-1 rounded-full">
-                  <span className="text-sm font-semibold text-blue-700">ETA 5 min</span>
-                </div>
-                {displayUser?.phone && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 px-3 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full border border-blue-200"
-                    onClick={() => handlePhoneCall(displayUser.phone)}
-                  >
-                    <Phone className="h-3 w-3 mr-1" />
-                    Call
-                  </Button>
-                )}
-              </div>
 
-              {/* Vehicle Info for Passenger View */}
-              {userType === 'passenger' && (
-                <div className="bg-gray-50 rounded-lg p-3 border">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-gray-600">Vehicle</span>
-                    <div className="text-right">
-                      <div className="font-semibold text-gray-900">
-                        {booking.vehicle_type || 
-                         (driverInfo?.car_make && driverInfo?.car_model ? 
-                           `${driverInfo.car_make} ${driverInfo.car_model}` : 
-                           'Tesla Model Y')}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        {driverInfo?.license_plate || 'ABC-123'}
+                {/* Vehicle Info for Passenger View - Only show if driver assigned */}
+                {userType === 'passenger' && shouldShowDriverInfo && (
+                  <div className="bg-gray-50 rounded-lg p-3 border">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-gray-600">Vehicle</span>
+                      <div className="text-right">
+                        <div className="font-semibold text-gray-900">
+                          {booking.vehicle_type || 
+                           (driverInfo?.car_make && driverInfo?.car_model ? 
+                             `${driverInfo.car_make} ${driverInfo.car_model}` : 
+                             'Tesla Model Y')}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {driverInfo?.license_plate || 'ABC-123'}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
+        )}
+
+        {/* Route Information - Always show */}
+        <div className="p-4 pt-2">
 
           {/* Enhanced Route Information - Mockup Style */}
           <div className="space-y-4 mb-6">
@@ -385,26 +398,28 @@ export const UniversalRideCard = ({
             </div>
           </div>
 
-          {/* Enhanced Trip Summary - Mockup Style */}
-          <div className="bg-blue-50 rounded-lg p-4 border border-blue-100 mb-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-xs text-gray-600 font-medium uppercase tracking-wide">Pickup Trip</p>
-                <p className="font-bold text-lg text-gray-900">
-                  {booking.pickup_time ? (() => {
-                    const date = new Date(booking.pickup_time);
-                    return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}m`;
-                  })() : '12:00m'}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-gray-600 font-medium">31cm</p>
-                <p className="text-3xl font-bold text-gray-900">
-                  ${booking.final_price || booking.estimated_price || '150'}.00
-                </p>
+          {/* Enhanced Trip Summary - Only show price if offer was accepted */}
+          {(userType === 'driver' || shouldShowDriverInfo || currentBooking.final_price) && (
+            <div className="bg-blue-50 rounded-lg p-4 border border-blue-100 mb-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-xs text-gray-600 font-medium uppercase tracking-wide">Pickup Trip</p>
+                  <p className="font-bold text-lg text-gray-900">
+                    {booking.pickup_time ? (() => {
+                      const date = new Date(booking.pickup_time);
+                      return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}m`;
+                    })() : '12:00m'}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-600 font-medium">31cm</p>
+                  <p className="text-3xl font-bold text-gray-900">
+                    ${booking.final_price || booking.estimated_price || '150'}.00
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Passenger Preferences - Only show for drivers viewing passenger info */}
           {userType === "driver" && passengerInfo && (
