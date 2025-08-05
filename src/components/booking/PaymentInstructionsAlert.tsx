@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Car, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { updateBookingStatus } from "@/utils/statusManager";
 
 interface PaymentInstructionsAlertProps {
   isOpen: boolean;
@@ -23,15 +24,8 @@ export const PaymentInstructionsAlert = ({
 
   const handleConfirmPayment = async () => {
     try {
-      const { error } = await supabase
-        .from('bookings')
-        .update({ 
-          payment_confirmation_status: 'passenger_paid',
-          ride_status: 'awaiting_driver_confirmation'
-        })
-        .eq('id', booking.id);
-
-      if (error) throw error;
+      // Update using new status system
+      await updateBookingStatus(booking.id, 'passenger', 'payment_confirmed');
 
       toast({
         title: "Payment Confirmed!",

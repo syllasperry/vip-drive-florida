@@ -8,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { StatusBadges } from "@/components/status/StatusBadges";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { shouldShowOpenOfferButton } from "@/utils/statusManager";
 
 interface StandardDriverRideCardProps {
   booking: any;
@@ -131,7 +132,8 @@ export const StandardDriverRideCard = ({
               rideStatus={booking.ride_status || booking.status || 'pending'} 
               paymentStatus={booking.payment_confirmation_status || 'waiting_for_offer'}
               onReopenAlert={onReopenAlert}
-              showReopenButton={booking.ride_status === "pending_driver" && booking.payment_confirmation_status === "waiting_for_offer"}
+              showReopenButton={shouldShowOpenOfferButton(booking)}
+              booking={booking}
             />
           </div>
         )}
@@ -291,8 +293,8 @@ export const StandardDriverRideCard = ({
 
           {/* Action Buttons */}
           <div className="mt-4 space-y-3">
-            {/* Reopen Alert Button (only for pending driver status and waiting for offer) */}
-            {onReopenAlert && booking.ride_status === "pending_driver" && booking.payment_confirmation_status === "waiting_for_offer" && (
+            {/* Open Offer Window Button - Only show when appropriate */}
+            {onReopenAlert && shouldShowOpenOfferButton(booking) && (
               <Button
                 onClick={onReopenAlert}
                 className="w-full bg-primary hover:bg-primary/90 text-white font-medium py-4 rounded-lg text-base flex items-center justify-center gap-2"

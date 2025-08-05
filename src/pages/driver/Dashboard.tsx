@@ -30,6 +30,8 @@ import { StatusBadges } from "@/components/status/StatusBadges";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Car, DollarSign, User, LogOut, Clock, CheckCircle, Calendar, MessageCircle, Edit, CreditCard, Settings, Navigation, MapPin, Users, Map, ChevronDown, AlertCircle, Download, Mail, FileText, Bell, Shield } from "lucide-react";
+import { useRealtimeBookings } from "@/hooks/useRealtimeBookings";
+import { getTabPlacement } from "@/utils/statusManager";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { BookingSummaryModal } from "@/components/BookingSummaryModal";
 import { ContributorInfoModal } from "@/components/pdf/ContributorInfoModal";
@@ -73,6 +75,26 @@ const DriverDashboard = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
+
+  // Real-time updates for bookings
+  const handleBookingUpdate = (updatedBooking: any) => {
+    console.log('📡 Real-time booking update received:', updatedBooking);
+    fetchDriverBookings(userProfile);
+    
+    // Show toast for important status changes
+    if (updatedBooking.status_passenger === 'payment_confirmed') {
+      toast({
+        title: "Payment Confirmed!",
+        description: "Passenger has confirmed payment. Please verify receipt.",
+      });
+    }
+  };
+
+  useRealtimeBookings({
+    userId: userProfile?.id || '',
+    userType: 'driver',
+    onBookingUpdate: handleBookingUpdate
+  });
 
   // Authentication check and user data fetching
   useEffect(() => {
@@ -208,15 +230,9 @@ const DriverDashboard = () => {
       return shouldBeInNewRides;
     }
     
-    // Priority 3: All rides except "all_set" go to New Requests
+    // Use new status manager for tab placement
     if (rideView === "new-requests") {
-      // Simple rule: Everything stays in New Requests EXCEPT all_set status or completed rides
-      const isNewRequest = ride.payment_confirmation_status !== "all_set" && 
-                          ride.ride_stage !== "completed" && 
-                          ride.status !== "completed" &&
-                          ride.ride_status !== "all_set";
-      console.log('Is new request:', isNewRequest, 'payment_confirmation_status:', ride.payment_confirmation_status);
-      return isNewRequest;
+      return getTabPlacement(ride) === 'new-requests';
     }
     
     // Default: don't show in other tabs

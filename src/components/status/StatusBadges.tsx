@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { shouldShowOpenOfferButton } from "@/utils/statusManager";
 
 interface StatusBadgesProps {
   rideStatus: string;
@@ -7,9 +8,10 @@ interface StatusBadgesProps {
   className?: string;
   onReopenAlert?: () => void;
   showReopenButton?: boolean;
+  booking?: any; // For status checking
 }
 
-export const StatusBadges = ({ rideStatus, paymentStatus, className = "", onReopenAlert, showReopenButton = false }: StatusBadgesProps) => {
+export const StatusBadges = ({ rideStatus, paymentStatus, className = "", onReopenAlert, showReopenButton = false, booking }: StatusBadgesProps) => {
   const getRideStatusConfig = (status: string) => {
     switch (status) {
       case 'pending_driver':
@@ -52,9 +54,7 @@ export const StatusBadges = ({ rideStatus, paymentStatus, className = "", onReop
   const paymentConfig = getPaymentStatusConfig(paymentStatus);
 
   // Check if we should show the reopen button based on status
-  const shouldShowReopen = showReopenButton && onReopenAlert && (
-    rideStatus === 'pending_driver' && paymentStatus === 'waiting_for_offer'
-  );
+  const shouldShowReopen = showReopenButton && onReopenAlert && booking && shouldShowOpenOfferButton(booking);
 
   return (
     <div className={`flex flex-col gap-1 ${className}`}>

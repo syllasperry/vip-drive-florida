@@ -4,6 +4,7 @@ import { PaymentInstructionsAlert } from "./PaymentInstructionsAlert";
 import { PassengerCancellationAlert } from "./PassengerCancellationAlert";
 import { DriverPaymentConfirmationAlert } from "./DriverPaymentConfirmationAlert";
 import { AllSetConfirmationAlert } from "./AllSetConfirmationAlert";
+import { getStatusConfig } from "@/utils/statusManager";
 
 interface RideFlowManagerProps {
   booking: any;
@@ -31,25 +32,25 @@ export const RideFlowManager = ({
 
     if (!booking) return;
 
-    // Determine which alert to show based on booking status and user type
-    const { ride_status, payment_confirmation_status } = booking;
+    // Use new status system
+    const { status_passenger, status_driver, ride_status, payment_confirmation_status } = booking;
 
     if (userType === 'passenger') {
-      if (ride_status === 'offer_sent' && payment_confirmation_status === 'price_awaiting_acceptance') {
+      if (status_passenger === 'offer_sent') {
         setCurrentStep('offer_acceptance');
-      } else if (ride_status === 'passenger_approved' && payment_confirmation_status === 'waiting_for_payment') {
+      } else if (status_passenger === 'passenger_accepted') {
         setCurrentStep('payment_instructions');
-      } else if (ride_status === 'offer_declined') {
+      } else if (status_passenger === 'passenger_canceled') {
         setCurrentStep('passenger_cancellation');
-      } else if (ride_status === 'all_set' && payment_confirmation_status === 'all_set') {
+      } else if (status_passenger === 'all_set') {
         setCurrentStep('all_set_confirmation');
       } else {
         setCurrentStep(null);
       }
     } else if (userType === 'driver') {
-      if (ride_status === 'awaiting_driver_confirmation' && payment_confirmation_status === 'passenger_paid') {
+      if (status_driver === 'payment_confirmed') {
         setCurrentStep('driver_payment_confirmation');
-      } else if (ride_status === 'all_set' && payment_confirmation_status === 'all_set') {
+      } else if (status_driver === 'all_set') {
         setCurrentStep('all_set_confirmation');
       } else {
         setCurrentStep(null);
