@@ -169,8 +169,11 @@ const DriverDashboard = () => {
     
     if (driverRides.length > 0 && !pendingRequestAlertOpen) {
       const pendingRequestsData = driverRides.filter(booking => {
-        console.log('Checking booking:', booking.id, 'ride_status:', booking.ride_status, 'driver_id:', booking.driver_id);
-        return booking.ride_status === "pending_driver" && !booking.driver_id;
+        console.log('Checking booking:', booking.id, 'ride_status:', booking.ride_status, 'status:', booking.status);
+        // Check for rides assigned to this driver that are still pending driver response
+        return booking.ride_status === "pending_driver" && 
+               booking.status === "pending" &&
+               booking.driver_id === userProfile?.id;
       });
       
       console.log('Found pending requests:', pendingRequestsData.length);
@@ -182,7 +185,7 @@ const DriverDashboard = () => {
         setPendingRequestAlertOpen(true);
       }
     }
-  }, [driverRides, pendingRequestAlertOpen]);
+  }, [driverRides, pendingRequestAlertOpen, userProfile?.id]);
 
   // Filter rides based on current view
   const filteredRides = driverRides.filter(ride => {
@@ -350,7 +353,8 @@ const DriverDashboard = () => {
         // Auto-detect new ride requests and show pending request alert immediately
         const newPendingRequests = transformedBookings.filter(booking => 
           booking.ride_status === "pending_driver" && 
-          !booking.driver_id
+          booking.status === "pending" &&
+          booking.driver_id === profile.id
         );
         
         // Show alert if there are pending requests (regardless of current tab)
