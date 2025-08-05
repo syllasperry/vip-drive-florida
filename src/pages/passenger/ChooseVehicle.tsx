@@ -67,6 +67,7 @@ const ChooseVehicle = () => {
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [driverInfo, setDriverInfo] = useState<any>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const bookingData = location.state;
@@ -99,13 +100,70 @@ const ChooseVehicle = () => {
     }
   }, []);
 
+  // Function to fetch driver info based on vehicle selection
+  const fetchDriverInfo = async (vehicleMake: string, vehicleModel: string) => {
+    try {
+      const { data, error } = await supabase.rpc('find_matching_drivers', {
+        p_vehicle_make: vehicleMake,
+        p_vehicle_model: vehicleModel
+      });
+
+      if (error) {
+        console.error('Error fetching driver info:', error);
+        return null;
+      }
+
+      if (data && data.length > 0) {
+        // Get the first matching driver
+        const driver = data[0];
+        
+        // Fetch additional driver details from drivers table
+        const { data: driverDetails, error: driverError } = await supabase
+          .from('drivers')
+          .select('*')
+          .eq('id', driver.driver_id)
+          .single();
+
+        if (!driverError && driverDetails) {
+          return {
+            id: driverDetails.id,
+            name: driverDetails.full_name,
+            photo: driverDetails.profile_photo_url,
+            phone: driverDetails.phone,
+            car_make: driverDetails.car_make,
+            car_model: driverDetails.car_model,
+            car_color: driverDetails.car_color,
+            license_plate: driverDetails.license_plate
+          };
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error('Error in fetchDriverInfo:', error);
+      return null;
+    }
+  };
+
+  // Handle vehicle selection and fetch driver info
+  const handleVehicleSelect = async (vehicleId: string) => {
+    const vehicle = vehicles.find(v => v.id === vehicleId);
+    if (!vehicle) return;
+
+    setSelectedVehicle(vehicleId);
+    
+    // Fetch driver info for the selected vehicle
+    const driver = await fetchDriverInfo(vehicle.make, vehicle.model);
+    setDriverInfo(driver);
+  };
+
   const handleContinue = () => {
     if (selectedVehicle) {
       const vehicle = vehicles.find(v => v.id === selectedVehicle);
       navigate("/passenger/booking-form", { 
         state: { 
           ...bookingData, 
-          selectedVehicle: vehicle 
+          selectedVehicle: vehicle,
+          driverInfo: driverInfo
         } 
       });
     }
@@ -160,7 +218,7 @@ const ChooseVehicle = () => {
                   ? "opacity-60" 
                   : "cursor-pointer"
               }`}
-              onClick={() => vehicle.available && setSelectedVehicle(vehicle.id)}
+              onClick={() => vehicle.available && handleVehicleSelect(vehicle.id)}
             >
               <div className="relative">
                 <img 
@@ -208,6 +266,39 @@ const ChooseVehicle = () => {
                     </span>
                   </div>
                 </div>
+
+                {/* Driver Info Display */}
+                {selectedVehicle === vehicle.id && driverInfo && (
+                  <div className="mt-4 p-4 bg-muted/30 rounded-lg border border-border/50">
+                    <h4 className="font-semibold text-card-foreground mb-3">Your Driver</h4>
+                    <div className="flex items-center space-x-3">
+                      <Avatar className="w-12 h-12">
+                        <AvatarImage src={driverInfo.photo} alt={driverInfo.name} />
+                        <AvatarFallback>
+                          {driverInfo.name ? driverInfo.name.charAt(0).toUpperCase() : 'D'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className="font-medium text-card-foreground">{driverInfo.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {driverInfo.car_color} {driverInfo.car_make} {driverInfo.car_model}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          License: {driverInfo.license_plate}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedVehicle === vehicle.id && !driverInfo && vehicle.available && (
+                  <div className="mt-4 p-4 bg-muted/30 rounded-lg border border-border/50">
+                    <div className="flex items-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                      <p className="text-sm text-muted-foreground">Loading driver information...</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ))}

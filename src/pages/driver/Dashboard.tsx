@@ -160,7 +160,7 @@ const DriverDashboard = () => {
           event: 'INSERT',
           schema: 'public',
           table: 'bookings',
-          filter: `ride_status=eq.pending_driver`
+          filter: `ride_status=in.(pending_driver,offer_sent)`
         },
         (payload) => {
           console.log('New booking request received:', payload);
@@ -197,10 +197,9 @@ const DriverDashboard = () => {
     if (driverRides.length > 0 && !pendingRequestAlertOpen && !userClosedAlert) {
       const pendingRequestsData = driverRides.filter(booking => {
         console.log('Checking booking:', booking.id, 'ride_status:', booking.ride_status, 'status:', booking.status);
-        // Check for rides assigned to this driver that are still pending driver response
-        return booking.ride_status === "pending_driver" && 
-               booking.status === "pending" &&
-               booking.driver_id === userProfile?.id;
+        // Check for rides that need driver attention - both new requests and offers sent
+        return (booking.ride_status === "pending_driver" && booking.status === "pending") ||
+               (booking.ride_status === "offer_sent" && !booking.driver_id);
       });
       
       console.log('Found pending requests:', pendingRequestsData.length);
@@ -270,8 +269,8 @@ const DriverDashboard = () => {
           supabase
             .from('bookings')
             .select('*')
-            .eq('ride_status', 'pending_driver')
-            .is('driver_id', null)
+            .in('ride_status', ['pending_driver', 'offer_sent'])
+            .or(`driver_id.is.null,driver_id.eq.${profile.id}`)
             .order('pickup_time', { ascending: true })
         ]);
 
@@ -284,14 +283,15 @@ const DriverDashboard = () => {
           console.error('Error fetching pending bookings:', pendingBookings.error);
         }
 
-        // Filter pending bookings to match driver's vehicle make (first word only)
+        // Filter pending bookings to match driver's vehicle make and model
         const filteredPendingBookings = (pendingBookings.data || []).filter(booking => {
-          if (!booking.vehicle_type || !profile.car_make) return true; // Show if no vehicle specified
+          if (!booking.vehicle_type || !profile.car_make || !profile.car_model) return true; 
           
-          const requestedMake = booking.vehicle_type.split(' ')[0].toLowerCase();
-          const driverMake = profile.car_make.toLowerCase();
+          // Match both make and model for exact vehicle matching
+          const requestedVehicle = booking.vehicle_type.toLowerCase();
+          const driverVehicle = `${profile.car_make} ${profile.car_model}`.toLowerCase();
           
-          return requestedMake === driverMake;
+          return requestedVehicle === driverVehicle;
         });
 
         // Combine and deduplicate bookings
@@ -374,9 +374,8 @@ const DriverDashboard = () => {
         
         // Auto-detect new ride requests and show pending request alert immediately
         const newPendingRequests = transformedBookings.filter(booking => 
-          booking.ride_status === "pending_driver" && 
-          booking.status === "pending" &&
-          booking.driver_id === profile.id
+          (booking.ride_status === "pending_driver" && booking.status === "pending") ||
+          (booking.ride_status === "offer_sent" && !booking.driver_id) // Include offer_sent without driver assigned
         );
         
         // Show alert if there are pending requests (regardless of current tab)
@@ -1108,6 +1107,25 @@ const DriverDashboard = () => {
           currentUserAvatar={userProfile?.profile_photo_url}
           otherUserName={passengerProfile?.full_name || selectedBookingForMessaging.passenger}
           otherUserAvatar={passengerProfile?.profile_photo_url}
+        />
+      )}
+
+      {/* RideFlowManager for Driver Side */}
+      {userProfile && (
+        <RideFlowManager 
+          booking={pendingRequests.length > 0 ? pendingRequests[0] : null}
+          userType="driver"
+          onFlowComplete={() => {
+            // Refresh bookings after flow complete
+            fetchDriverBookings(userProfile);
+          }}
+          onMessagePassenger={() => {
+            // Open messaging for the current booking
+            if (pendingRequests.length > 0) {
+              setSelectedBookingForMessaging(pendingRequests[0]);
+              setMessagingOpen(true);
+            }
+          }}
         />
       )}
     </div>
