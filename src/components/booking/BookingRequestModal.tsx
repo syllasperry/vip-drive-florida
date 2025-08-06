@@ -35,6 +35,13 @@ export const BookingRequestModal = ({
       ? `${booking.passenger_first_name} ${booking.passenger_last_name}`
       : "Passenger");
 
+  // Reset countdown when modal opens with new booking
+  useEffect(() => {
+    if (isOpen && booking) {
+      setTimeLeft(600); // Reset to 10 minutes
+    }
+  }, [isOpen, booking?.id]);
+
   // Countdown effect
   useEffect(() => {
     if (!isOpen || timeLeft <= 0) return;
@@ -102,31 +109,21 @@ export const BookingRequestModal = ({
   return (
     <Dialog open={isOpen} onOpenChange={onClose} modal>
       <DialogContent className="max-w-lg mx-auto p-0 bg-gray-900 text-white border-gray-700">
-        {/* Header with close button */}
-        <div className="flex items-center justify-between p-4">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-12 w-12">
-              <AvatarImage 
-                src={booking.passenger_photo || booking.passenger_photo_url} 
-                alt={passengerName}
-              />
-              <AvatarFallback className="bg-gray-700 text-white">
-                {passengerName.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <h3 className="text-lg font-semibold text-white">{passengerName}</h3>
-              <p className="text-sm text-gray-300">Requested Vehicle Type: {booking.vehicle_type}</p>
-            </div>
+        {/* Header without close button - using default Dialog close button */}
+        <div className="flex items-center gap-3 p-4 pt-8">
+          <Avatar className="h-12 w-12">
+            <AvatarImage 
+              src={booking.passenger_photo || booking.passenger_photo_url} 
+              alt={passengerName}
+            />
+            <AvatarFallback className="bg-gray-700 text-white">
+              {passengerName.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <h3 className="text-lg font-semibold text-white">{passengerName}</h3>
+            <p className="text-sm text-gray-300">Requested Vehicle Type: {booking.vehicle_type}</p>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            className="text-white hover:bg-gray-700 rounded-full p-2"
-          >
-            <X className="h-5 w-5" />
-          </Button>
         </div>
 
         <div className="px-4 space-y-4">

@@ -912,7 +912,13 @@ const DriverDashboard = () => {
             {/* New Requests Tab */}
             {rideView === "new-requests" && (
               <div className="space-y-3">
-                {filteredRides.length === 0 ? (
+                {/* Show all pending requests that haven't been definitively closed */}
+                {driverRides.filter(ride => 
+                  ride.status === 'pending' || 
+                  ride.ride_status === 'pending_driver' ||
+                  ride.status_driver === 'new_request' ||
+                  (ride.ride_status === 'driver_accepted' && ride.status_passenger !== 'payment_confirmed')
+                ).length === 0 ? (
                   <Card className="bg-white border-0 shadow-sm">
                     <CardContent className="p-8 text-center">
                       <div className="p-4 bg-muted/30 rounded-full w-fit mx-auto mb-4">
@@ -925,7 +931,12 @@ const DriverDashboard = () => {
                     </CardContent>
                   </Card>
                 ) : (
-                  filteredRides.map((ride) => (
+                  driverRides.filter(ride => 
+                    ride.status === 'pending' || 
+                    ride.ride_status === 'pending_driver' ||
+                    ride.status_driver === 'new_request' ||
+                    (ride.ride_status === 'driver_accepted' && ride.status_passenger !== 'payment_confirmed')
+                  ).map((ride) => (
                     <NewRequestsCard
                       key={ride.id}
                       booking={ride}
