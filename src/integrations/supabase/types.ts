@@ -20,6 +20,7 @@ export type Database = {
           changed_by: string | null
           created_at: string | null
           id: number
+          metadata: Json | null
           role: string | null
           status: string
           timestamp: string | null
@@ -31,6 +32,7 @@ export type Database = {
           changed_by?: string | null
           created_at?: string | null
           id?: number
+          metadata?: Json | null
           role?: string | null
           status: string
           timestamp?: string | null
@@ -42,6 +44,7 @@ export type Database = {
           changed_by?: string | null
           created_at?: string | null
           id?: number
+          metadata?: Json | null
           role?: string | null
           status?: string
           timestamp?: string | null
