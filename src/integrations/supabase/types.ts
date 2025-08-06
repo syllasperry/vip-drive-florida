@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      booking_status_history: {
+        Row: {
+          booking_id: string
+          changed_by: string | null
+          id: number
+          role: string | null
+          status: string
+          timestamp: string | null
+        }
+        Insert: {
+          booking_id: string
+          changed_by?: string | null
+          id?: number
+          role?: string | null
+          status: string
+          timestamp?: string | null
+        }
+        Update: {
+          booking_id?: string
+          changed_by?: string | null
+          id?: number
+          role?: string | null
+          status?: string
+          timestamp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           created_at: string
@@ -746,6 +781,10 @@ export type Database = {
           status_timestamp: string
           metadata: Json
         }[]
+      }
+      user_owns_booking: {
+        Args: { booking_id: string }
+        Returns: boolean
       }
     }
     Enums: {
