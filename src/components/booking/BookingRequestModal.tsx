@@ -6,6 +6,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Clock, User, Phone, Music, Thermometer, MessageSquare, DollarSign, X, Map } from "lucide-react";
 import { format } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface BookingRequestModalProps {
   isOpen: boolean;
@@ -24,41 +26,105 @@ export const BookingRequestModal = ({
   onReject, 
   onSendOffer 
 }: BookingRequestModalProps) => {
-  const [timeLeft, setTimeLeft] = useState(600); // 10 minutos em segundos
+  const { toast } = useToast();
+  const [timeLeft, setTimeLeft] = useState(600); // 10 minutes in seconds
   const [suggestedFare, setSuggestedFare] = useState(booking?.estimated_price || 100);
   const [editableFare, setEditableFare] = useState((booking?.estimated_price || 100).toString());
+  const [validBooking, setValidBooking] = useState<any>(null);
 
-  if (!booking) return null;
+  // Validate booking exists in database before showing modal
+  useEffect(() => {
+    const validateBooking = async () => {
+      if (!booking?.id || !isOpen) {
+        setValidBooking(null);
+        return;
+      }
 
-  const passengerName = booking.passenger_name || 
-    (booking.passenger_first_name && booking.passenger_last_name 
-      ? `${booking.passenger_first_name} ${booking.passenger_last_name}`
+      try {
+        const { data, error } = await supabase
+          .from('bookings')
+          .select('*')
+          .eq('id', booking.id)
+          .eq('status', 'pending')
+          .single();
+
+        if (error || !data) {
+          console.log('No valid booking found, closing modal');
+          setValidBooking(null);
+          onClose();
+          return;
+        }
+
+        setValidBooking(data);
+        
+        // Calculate remaining time from database timestamp
+        const createdAt = new Date(data.created_at).getTime();
+        const now = Date.now();
+        const elapsed = Math.floor((now - createdAt) / 1000);
+        const remaining = Math.max(0, 600 - elapsed); // 10 minutes total
+        
+        if (remaining <= 0) {
+          await handleExpireBooking(data.id);
+          return;
+        }
+        
+        setTimeLeft(remaining);
+      } catch (error) {
+        console.error('Error validating booking:', error);
+        onClose();
+      }
+    };
+
+    validateBooking();
+  }, [booking?.id, isOpen, onClose]);
+
+  if (!validBooking) return null;
+
+  const passengerName = validBooking.passenger_name || 
+    (validBooking.passenger_first_name && validBooking.passenger_last_name 
+      ? `${validBooking.passenger_first_name} ${validBooking.passenger_last_name}`
       : "Passenger");
 
-  // Reset countdown when modal opens with new booking
-  useEffect(() => {
-    if (isOpen && booking) {
-      setTimeLeft(600); // Reset to 10 minutes
-    }
-  }, [isOpen, booking?.id]);
+  // Auto-expire booking when countdown reaches zero
+  const handleExpireBooking = async (bookingId: string) => {
+    try {
+      await supabase
+        .from('bookings')
+        .update({ 
+          status: 'expired',
+          ride_status: 'expired'
+        })
+        .eq('id', bookingId);
 
-  // Countdown effect
+      toast({
+        title: "Booking Expired",
+        description: "This booking request has expired due to timeout.",
+        variant: "destructive",
+      });
+
+      onClose();
+    } catch (error) {
+      console.error('Error expiring booking:', error);
+    }
+  };
+
+  // Real-time countdown effect
   useEffect(() => {
-    if (!isOpen || timeLeft <= 0) return;
+    if (!validBooking || timeLeft <= 0) return;
 
     const timer = setInterval(() => {
       setTimeLeft(prev => {
-        if (prev <= 1) {
-          // Auto-reject when time runs out
-          onReject();
+        const newTime = prev - 1;
+        if (newTime <= 0) {
+          handleExpireBooking(validBooking.id);
           return 0;
         }
-        return prev - 1;
+        return newTime;
       });
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isOpen, timeLeft, onReject]);
+  }, [validBooking, timeLeft]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -78,33 +144,135 @@ export const BookingRequestModal = ({
   };
 
   const handleViewRoute = () => {
-    const pickup = encodeURIComponent(booking.pickup_location);
-    const dropoff = encodeURIComponent(booking.dropoff_location);
+    const pickup = encodeURIComponent(validBooking.pickup_location);
+    const dropoff = encodeURIComponent(validBooking.dropoff_location);
     const mapsUrl = `https://maps.google.com/maps?saddr=${pickup}&daddr=${dropoff}`;
     window.open(mapsUrl, '_blank');
   };
 
-  // Função para atualizar o valor removendo prefixo zero
+  const handleSendOfferClick = async () => {
+    if (!editableFare || isNaN(Number(editableFare)) || Number(editableFare) <= 0) {
+      toast({
+        title: "Invalid Fare",
+        description: "Please enter a valid fare amount.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await supabase
+        .from('bookings')
+        .update({ 
+          status: 'offered',
+          ride_status: 'offer_sent',
+          estimated_price: Number(editableFare),
+          final_price: Number(editableFare)
+        })
+        .eq('id', validBooking.id);
+
+      toast({
+        title: "Offer Sent",
+        description: `Your offer of $${editableFare} has been sent to the passenger.`,
+      });
+
+      onSendOffer();
+    } catch (error) {
+      console.error('Error sending offer:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send offer. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAcceptClick = async () => {
+    try {
+      await supabase
+        .from('bookings')
+        .update({ 
+          status: 'accepted',
+          ride_status: 'driver_accepted',
+          status_driver: 'driver_accepted'
+        })
+        .eq('id', validBooking.id);
+
+      toast({
+        title: "Ride Accepted",
+        description: "You have accepted this ride request.",
+      });
+
+      onAccept();
+    } catch (error) {
+      console.error('Error accepting ride:', error);
+      toast({
+        title: "Error",
+        description: "Failed to accept ride. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRejectClick = async () => {
+    try {
+      await supabase
+        .from('bookings')
+        .update({ 
+          status: 'rejected',
+          ride_status: 'driver_rejected',
+          status_driver: 'driver_rejected'
+        })
+        .eq('id', validBooking.id);
+
+      toast({
+        title: "Ride Rejected",
+        description: "You have rejected this ride request.",
+      });
+
+      onReject();
+    } catch (error) {
+      console.error('Error rejecting ride:', error);
+      toast({
+        title: "Error",
+        description: "Failed to reject ride. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Fix editable fare - remove leading zeros and allow clean editing
   const handleFareChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value;
 
-    // Remove qualquer caractere que não seja número ou ponto decimal
+    // Remove any non-numeric characters except decimal point
     value = value.replace(/[^0-9.]/g, '');
 
-    // Remove zeros à esquerda, exceto se for "0." para valores decimais
+    // Handle multiple decimal points
+    const decimalCount = (value.match(/\./g) || []).length;
+    if (decimalCount > 1) {
+      value = value.replace(/\.(?=.*\.)/g, '');
+    }
+
+    // Remove leading zeros unless it's "0." for decimal values
     if (value.length > 1 && value.startsWith('0') && !value.startsWith('0.')) {
       value = value.replace(/^0+/, '');
+    }
+
+    // Prevent empty value from being just a decimal point
+    if (value === '.') {
+      value = '0.';
     }
 
     setEditableFare(value);
   };
 
-  // Função para selecionar todo o valor quando o campo é focado
+  // Select all value when field is focused for easy replacement
   const handleFareFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     e.target.select();
   };
 
-  const { day, time } = formatDateTime(booking.pickup_time);
+  const { day, time } = formatDateTime(validBooking.pickup_time);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose} modal>
@@ -113,7 +281,7 @@ export const BookingRequestModal = ({
         <div className="flex items-center gap-3 p-4 pt-8">
           <Avatar className="h-12 w-12">
             <AvatarImage 
-              src={booking.passenger_photo || booking.passenger_photo_url} 
+              src={validBooking.passenger_photo || validBooking.passenger_photo_url} 
               alt={passengerName}
             />
             <AvatarFallback className="bg-gray-700 text-white">
@@ -122,7 +290,7 @@ export const BookingRequestModal = ({
           </Avatar>
           <div>
             <h3 className="text-lg font-semibold text-white">{passengerName}</h3>
-            <p className="text-sm text-gray-300">Requested Vehicle Type: {booking.vehicle_type}</p>
+            <p className="text-sm text-gray-300">Requested Vehicle Type: {validBooking.vehicle_type}</p>
           </div>
         </div>
 
@@ -133,7 +301,7 @@ export const BookingRequestModal = ({
               <div className="w-4 h-4 bg-green-500 rounded-full mt-1"></div>
               <div className="flex-1">
                 <p className="text-sm text-gray-300 border-b border-dotted border-gray-600 pb-1">
-                  {booking.pickup_location}
+                  {validBooking.pickup_location}
                 </p>
               </div>
             </div>
@@ -142,7 +310,7 @@ export const BookingRequestModal = ({
               <div className="w-4 h-4 bg-red-500 rounded-full mt-1"></div>
               <div className="flex-1">
                 <p className="text-sm text-gray-300 border-b border-dotted border-gray-600 pb-1">
-                  {booking.dropoff_location}
+                  {validBooking.dropoff_location}
                 </p>
               </div>
             </div>
@@ -199,7 +367,7 @@ export const BookingRequestModal = ({
 
             {/* Send Offer Button */}
             <Button
-              onClick={onSendOffer}
+              onClick={handleSendOfferClick}
               className="w-full bg-gray-700 hover:bg-gray-600 text-white border border-gray-600"
               variant="outline"
             >
@@ -209,13 +377,13 @@ export const BookingRequestModal = ({
             {/* Accept and Reject buttons */}
             <div className="grid grid-cols-2 gap-3">
               <Button
-                onClick={onAccept}
+                onClick={handleAcceptClick}
                 className="bg-green-600 hover:bg-green-700 text-white font-medium"
               >
                 Accept Ride
               </Button>
               <Button
-                onClick={onReject}
+                onClick={handleRejectClick}
                 className="bg-red-600 hover:bg-red-700 text-white font-medium"
               >
                 Reject Ride

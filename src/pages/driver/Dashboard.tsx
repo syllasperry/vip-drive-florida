@@ -73,6 +73,8 @@ const DriverDashboard = () => {
   // Booking Request Modal state
   const [bookingRequestModalOpen, setBookingRequestModalOpen] = useState(false);
   const [selectedBookingForRequest, setSelectedBookingForRequest] = useState<any>(null);
+  const [activeBookingRequest, setActiveBookingRequest] = useState<any>(null);
+  const [showBookingModal, setShowBookingModal] = useState(false);
   
   // Pending Request Alert state
   const [pendingRequestAlertOpen, setPendingRequestAlertOpen] = useState(false);
@@ -235,6 +237,12 @@ const DriverDashboard = () => {
             setUserClosedAlert(false);
             // Refresh bookings when a relevant change occurs
             fetchDriverBookings(userProfile);
+            
+            // Auto-show modal for pending requests
+            if (booking?.status === 'pending' && booking?.driver_id === userProfile.id) {
+              setActiveBookingRequest(booking);
+              setShowBookingModal(true);
+            }
             
             // Show notification for new requests
             if (payload.eventType === 'INSERT' || 
@@ -1207,15 +1215,43 @@ const DriverDashboard = () => {
         />
       )}
 
-      {/* Booking Request Modal */}
+      {/* New Booking Request Modal */}
+      <BookingRequestModal
+        isOpen={showBookingModal}
+        onClose={() => {
+          setShowBookingModal(false);
+          setActiveBookingRequest(null);
+          setUserClosedAlert(true);
+        }}
+        booking={activeBookingRequest}
+        onAccept={() => {
+          console.log('Ride accepted');
+          setShowBookingModal(false);
+          setActiveBookingRequest(null);
+          fetchDriverBookings(userProfile);
+        }}
+        onReject={() => {
+          console.log('Ride rejected');
+          setShowBookingModal(false);
+          setActiveBookingRequest(null);
+          fetchDriverBookings(userProfile);
+        }}
+        onSendOffer={() => {
+          console.log('Offer sent');
+          setShowBookingModal(false);
+          setActiveBookingRequest(null);
+          fetchDriverBookings(userProfile);
+        }}
+      />
+
+      {/* Legacy Booking Request Modal */}
       {bookingRequestModalOpen && selectedBookingForRequest && userProfile && (
         <BookingRequestModal
           isOpen={bookingRequestModalOpen}
           onClose={() => {
               setBookingRequestModalOpen(false);
               setSelectedBookingForRequest(null);
-              setUserClosedAlert(true); // Prevent reopening until new request
-              // Não recarregamos os bookings - o histórico deve permanecer visível na aba "New Requests"
+              setUserClosedAlert(true);
           }}
           booking={selectedBookingForRequest}
           onAccept={async () => {
