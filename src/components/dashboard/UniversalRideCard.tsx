@@ -203,12 +203,13 @@ export const UniversalRideCard = ({
     }`}>
       <CardContent className="p-0">
         {/* Header with Mockup-Style Status Display */}
-        {showStatusBadge && (
+        {showStatusBadge && currentBooking.payment_confirmation_status !== 'waiting_for_offer' && 
+         currentBooking.ride_status !== 'pending_driver' && (
           <div className="p-4 bg-white rounded-t-lg">
             {/* Title */}
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">
-                {currentBooking.payment_confirmation_status === 'all_set' ? 'Real Time' : 'Ride Details'}
+                {currentBooking.payment_confirmation_status === 'all_set' ? 'Real Time' : 'Driver Information'}
               </h2>
               {currentBooking.payment_confirmation_status === 'all_set' && currentBooking.ride_stage && (
                 <div className="flex flex-col items-end">
@@ -258,14 +259,16 @@ export const UniversalRideCard = ({
                 <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <Clock className="w-6 h-6 text-blue-500" />
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">
-                      {currentBooking.ride_stage === 'driver_heading_to_pickup' ? 'Driver Heading to Pickup' :
-                       currentBooking.ride_stage === 'driver_arrived_at_pickup' ? 'Driver Arrived' :
-                       currentBooking.ride_stage === 'in_transit' ? 'In Transit' :
-                       currentBooking.ride_stage === 'completed' ? 'Ride Completed' :
-                       currentBooking.status_driver === 'driver_accepted' ? 'Driver Accepted' :
-                       currentBooking.driver_status || 'Waiting for Driver'}
-                    </h3>
+                     <h3 className="font-semibold text-gray-900">
+                       {currentBooking.ride_stage === 'driver_heading_to_pickup' ? 'Driver Heading to Pickup' :
+                        currentBooking.ride_stage === 'driver_arrived_at_pickup' ? 'Driver Arrived' :
+                        currentBooking.ride_stage === 'in_transit' ? 'In Transit' :
+                        currentBooking.ride_stage === 'completed' ? 'Ride Completed' :
+                        currentBooking.status_driver === 'driver_accepted' && currentBooking.final_price ? 'Driver Accepted & Sent Offer' :
+                        currentBooking.status_driver === 'driver_accepted' ? 'Driver Accepted' :
+                        currentBooking.final_price && currentBooking.payment_confirmation_status === 'price_awaiting_acceptance' ? 'Driver Accepted & Sent Offer' :
+                        currentBooking.driver_status || 'Waiting for Driver'}
+                     </h3>
                     <p className="text-xs text-gray-600 font-medium">DRIVER ACTION</p>
                   </div>
                 </div>
@@ -400,7 +403,9 @@ export const UniversalRideCard = ({
           </div>
 
           {/* Enhanced Trip Summary - Only show price if offer was accepted */}
-          {(userType === 'driver' || shouldShowDriverInfo || currentBooking.final_price) && (
+          {(userType === 'driver' || 
+            (userType === 'passenger' && currentBooking.status_passenger === 'offer_accepted') ||
+            currentBooking.payment_confirmation_status === 'all_set') && (
             <div className="bg-blue-50 rounded-lg p-4 border border-blue-100 mb-4">
               <div className="flex justify-between items-center">
                 <div>
@@ -413,7 +418,6 @@ export const UniversalRideCard = ({
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-gray-600 font-medium">31cm</p>
                   <p className="text-3xl font-bold text-gray-900">
                     ${booking.final_price || booking.estimated_price || '150'}.00
                   </p>

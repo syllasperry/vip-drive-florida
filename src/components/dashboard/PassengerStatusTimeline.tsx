@@ -129,8 +129,8 @@ export const PassengerStatusTimeline = ({
   };
 
   const steps = getStatusSteps();
-  const shouldShowTripDetails = booking.payment_confirmation_status !== 'waiting_for_offer' && 
-                                booking.ride_status !== 'offer_sent';
+  const shouldShowTripDetails = booking.payment_confirmation_status === 'all_set' || 
+                                booking.status_passenger === 'offer_accepted';
 
   return (
     <div className="w-full space-y-4">
@@ -240,7 +240,6 @@ export const PassengerStatusTimeline = ({
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm text-muted-foreground">31cm</div>
                   <div className="text-xl font-bold">${(booking.estimated_price || booking.final_price || 0).toFixed(2)}</div>
                 </div>
               </div>

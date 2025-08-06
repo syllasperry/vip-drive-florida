@@ -77,7 +77,9 @@ const Dashboard = () => {
     fetchBookings();
     
     // Show toast for important status changes
-    if (updatedBooking.status_passenger === 'offer_sent' || updatedBooking.ride_status === 'offer_sent') {
+    if (updatedBooking.status_passenger === 'offer_sent' || updatedBooking.ride_status === 'offer_sent' ||
+        (updatedBooking.status_driver === 'offer_sent') || 
+        (updatedBooking.final_price && updatedBooking.payment_confirmation_status === 'price_awaiting_acceptance')) {
       toast({
         title: "🎯 New Offer Received!",
         description: "Driver has sent you a price offer. Please review.",
@@ -112,9 +114,15 @@ const Dashboard = () => {
   });
 
   const reopenAlert = (booking: any) => {
-    const { ride_status, payment_confirmation_status } = booking;
+    const { ride_status, payment_confirmation_status, status_driver, final_price } = booking;
     
-    if (ride_status === 'offer_sent' && payment_confirmation_status === 'price_awaiting_acceptance') {
+    // Check for offer sent by driver
+    if ((ride_status === 'offer_sent' || status_driver === 'offer_sent') && 
+        payment_confirmation_status === 'price_awaiting_acceptance') {
+      setForceAlertStep('offer_acceptance');
+    } else if (ride_status === 'driver_accepted' && final_price && 
+               payment_confirmation_status === 'price_awaiting_acceptance') {
+      // Alternative check for when driver accepts and sends offer
       setForceAlertStep('offer_acceptance');
     } else if (ride_status === 'passenger_approved' && payment_confirmation_status === 'waiting_for_payment') {
       setForceAlertStep('payment_instructions');
@@ -429,12 +437,20 @@ const Dashboard = () => {
             console.log('Booking update received:', payload);
             
             // Check if this is a driver offering a price
-            if (payload.new?.ride_status === 'offer_sent' && 
+            if ((payload.new?.ride_status === 'offer_sent' || payload.new?.status_driver === 'offer_sent') && 
                 payload.new?.payment_confirmation_status === 'price_awaiting_acceptance' &&
                 payload.new?.final_price) {
               console.log('Driver sent price offer, showing modal');
               
               // Show toast notification
+              toast({
+                title: "New Price Offer!",
+                description: `Your driver has offered $${payload.new.final_price} for the ride.`,
+                duration: 5000,
+              });
+            } else if (payload.new?.final_price && payload.new?.payment_confirmation_status === 'price_awaiting_acceptance') {
+              // Alternative check for offer scenarios
+              console.log('Driver offer detected (alternative check)', payload.new);
               toast({
                 title: "New Price Offer!",
                 description: `Your driver has offered $${payload.new.final_price} for the ride.`,
