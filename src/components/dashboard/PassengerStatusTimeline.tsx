@@ -192,8 +192,44 @@ export const PassengerStatusTimeline = ({
             ))}
           </div>
 
-        {/* Driver Information */}
-        {booking.drivers && (
+        {/* Driver Status - Show "Offer Sent" when driver has sent offer */}
+        {booking.drivers && (booking.ride_status === 'offer_sent' || 
+         (booking.status_driver === 'driver_accepted' && booking.final_price) ||
+         (booking.status_driver === 'offer_sent') ||
+         booking.payment_confirmation_status === 'price_awaiting_acceptance') && (
+          <div className="space-y-3">
+            <div className="text-sm font-medium text-muted-foreground">DRIVER STATUS</div>
+            <div className="bg-orange-50 border border-orange-200 p-4 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage 
+                    src={booking.drivers.profile_photo_url} 
+                    alt={driverName}
+                  />
+                  <AvatarFallback className="bg-primary/10 text-primary">
+                    {driverName.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <div className="font-semibold text-orange-800">Offer Sent - Awaiting passenger confirmation</div>
+                  <div className="text-sm text-orange-600 flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {booking.updated_at ? format(new Date(booking.updated_at), "MMM d, h:mm a") : "Just now"}
+                  </div>
+                </div>
+                <div className="bg-gray-800 text-white px-4 py-2 rounded-full font-bold text-lg">
+                  ${(booking.estimated_price || booking.final_price || 0).toFixed(0)}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Driver Information - Show when no offer sent yet */}
+        {booking.drivers && !(booking.ride_status === 'offer_sent' || 
+         (booking.status_driver === 'driver_accepted' && booking.final_price) ||
+         (booking.status_driver === 'offer_sent') ||
+         booking.payment_confirmation_status === 'price_awaiting_acceptance') && (
           <div className="bg-primary/5 p-4 rounded-lg">
             <div className="flex items-center gap-3 mb-3">
               <Avatar className="h-12 w-12">
