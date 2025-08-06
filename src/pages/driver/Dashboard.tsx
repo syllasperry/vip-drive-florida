@@ -1201,9 +1201,10 @@ const DriverDashboard = () => {
         <BookingRequestModal
           isOpen={bookingRequestModalOpen}
           onClose={() => {
-            setBookingRequestModalOpen(false);
-            setSelectedBookingForRequest(null);
-            setUserClosedAlert(true); // Prevent reopening until new request
+              setBookingRequestModalOpen(false);
+              setSelectedBookingForRequest(null);
+              setUserClosedAlert(true); // Prevent reopening until new request
+              // Não recarregamos os bookings - o histórico deve permanecer visível na aba "New Requests"
           }}
           booking={selectedBookingForRequest}
           onAccept={async () => {

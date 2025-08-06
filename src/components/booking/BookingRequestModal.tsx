@@ -26,7 +26,7 @@ export const BookingRequestModal = ({
 }: BookingRequestModalProps) => {
   const [timeLeft, setTimeLeft] = useState(600); // 10 minutos em segundos
   const [suggestedFare, setSuggestedFare] = useState(booking?.estimated_price || 100);
-  const [editableFare, setEditableFare] = useState(booking?.estimated_price || 100);
+  const [editableFare, setEditableFare] = useState((booking?.estimated_price || 100).toString());
 
   if (!booking) return null;
 
@@ -75,6 +75,26 @@ export const BookingRequestModal = ({
     const dropoff = encodeURIComponent(booking.dropoff_location);
     const mapsUrl = `https://maps.google.com/maps?saddr=${pickup}&daddr=${dropoff}`;
     window.open(mapsUrl, '_blank');
+  };
+
+  // Função para atualizar o valor removendo prefixo zero
+  const handleFareChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value;
+
+    // Remove qualquer caractere que não seja número ou ponto decimal
+    value = value.replace(/[^0-9.]/g, '');
+
+    // Remove zeros à esquerda, exceto se for "0." para valores decimais
+    if (value.length > 1 && value.startsWith('0') && !value.startsWith('0.')) {
+      value = value.replace(/^0+/, '');
+    }
+
+    setEditableFare(value);
+  };
+
+  // Função para selecionar todo o valor quando o campo é focado
+  const handleFareFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.target.select();
   };
 
   const { day, time } = formatDateTime(booking.pickup_time);
@@ -169,11 +189,11 @@ export const BookingRequestModal = ({
                 <div className="flex items-center gap-2">
                   <DollarSign className="h-4 w-4 text-white" />
                   <Input
-                    type="number"
+                    type="text"
                     value={editableFare}
-                    onChange={(e) => setEditableFare(parseFloat(e.target.value) || 0)}
-                    className="w-20 bg-gray-700 border-gray-600 text-white text-right"
-                    step="0.01"
+                    onChange={handleFareChange}
+                    onFocus={handleFareFocus}
+                    className="w-20 bg-gray-700 border-gray-600 text-white text-center font-bold"
                   />
                   <span className="text-white text-sm">▼</span>
                 </div>
