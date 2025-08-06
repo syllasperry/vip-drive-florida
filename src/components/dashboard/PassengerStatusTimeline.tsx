@@ -164,33 +164,64 @@ export const PassengerStatusTimeline = ({
         onStepClick={onStatusClick}
       />
 
-      {/* Legacy Timeline for Reference (can be removed once roadmap is fully tested) */}
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="text-lg">Legacy Timeline</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Status Timeline */}
-          <div className="space-y-3">
-            {steps.map((step, index) => (
-              <div key={step.id} className="flex items-center gap-3">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                  step.status === 'completed' ? 'bg-green-100' : 'bg-blue-100'
-                }`}>
-                  <step.icon className={`h-4 w-4 ${step.color}`} />
-                </div>
-                <div 
-                  className={`flex-1 p-3 rounded-lg ${
-                    step.status === 'current' ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200'
-                  } ${step.clickable ? 'cursor-pointer hover:bg-blue-100' : ''}`}
-                  onClick={() => step.clickable && onStatusClick?.(step.id)}
-                >
-                  <div className="font-medium text-foreground">{step.label}</div>
-                  <div className="text-sm text-muted-foreground">{step.sublabel}</div>
+        {/* Status Section - Shows current status based on booking state */}
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle className="text-lg">Status</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Current Status Display - Bottom section with YOUR STATUS and DRIVER STATUS */}
+            <div className="space-y-4">
+              {/* YOUR STATUS */}
+              <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                <div className="text-sm font-medium text-muted-foreground mb-2">YOUR STATUS</div>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                    <CheckCircle className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-blue-800">
+                      {booking.status_passenger === 'offer_accepted' || booking.payment_confirmation_status === 'passenger_paid' || booking.payment_confirmation_status === 'all_set' 
+                        ? 'Booking Confirmed' 
+                        : booking.ride_status === 'offer_sent' || booking.payment_confirmation_status === 'price_awaiting_acceptance'
+                        ? 'Review Offer'
+                        : 'Booking Request Sent'
+                      }
+                    </div>
+                    <div className="text-sm text-blue-600 flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {booking.updated_at ? format(new Date(booking.updated_at), "MMM d, h:mm a") : "Aug 6, 6:54 PM"}
+                    </div>
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
+
+              {/* DRIVER STATUS */}
+              <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
+                <div className="text-sm font-medium text-muted-foreground mb-2">DRIVER STATUS</div>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                    {booking.ride_status === 'offer_sent' || booking.payment_confirmation_status === 'price_awaiting_acceptance' || booking.status_driver === 'driver_accepted' ? (
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                    ) : (
+                      <Clock className="h-5 w-5 text-orange-600" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-green-800">
+                      {booking.ride_status === 'offer_sent' || booking.payment_confirmation_status === 'price_awaiting_acceptance' || booking.status_driver === 'driver_accepted' 
+                        ? 'Driver Accepted & Sent Offer' 
+                        : 'Waiting for response...'
+                      }
+                    </div>
+                    <div className="text-sm text-green-600 flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {booking.updated_at ? format(new Date(booking.updated_at), "MMM d, h:mm a") : "Just now"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
         {/* Driver Status - Show "Offer Sent" when driver has sent offer */}
         {booking.drivers && (booking.ride_status === 'offer_sent' || 
