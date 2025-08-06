@@ -8,6 +8,7 @@ import { MapPin, Clock, User, Phone, Music, Thermometer, MessageSquare, DollarSi
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { BookingStatusPatterns } from "@/utils/bookingStatusUpdater";
 
 interface BookingRequestModalProps {
   isOpen: boolean;
@@ -161,15 +162,17 @@ export const BookingRequestModal = ({
     }
 
     try {
+      // Update the price fields first
       await supabase
         .from('bookings')
         .update({ 
-          status: 'offered',
-          ride_status: 'offer_sent',
           estimated_price: Number(editableFare),
           final_price: Number(editableFare)
         })
         .eq('id', validBooking.id);
+
+      // Use the new status updater for consistent roadmap sync
+      await BookingStatusPatterns.driverSendOffer(validBooking.id, Number(editableFare));
 
       toast({
         title: "Offer Sent",
@@ -189,14 +192,8 @@ export const BookingRequestModal = ({
 
   const handleAcceptClick = async () => {
     try {
-      await supabase
-        .from('bookings')
-        .update({ 
-          status: 'accepted',
-          ride_status: 'driver_accepted',
-          status_driver: 'driver_accepted'
-        })
-        .eq('id', validBooking.id);
+      // Use the new status updater for consistent roadmap sync
+      await BookingStatusPatterns.driverAccept(validBooking.id);
 
       toast({
         title: "Ride Accepted",
@@ -216,14 +213,8 @@ export const BookingRequestModal = ({
 
   const handleRejectClick = async () => {
     try {
-      await supabase
-        .from('bookings')
-        .update({ 
-          status: 'rejected',
-          ride_status: 'driver_rejected',
-          status_driver: 'driver_rejected'
-        })
-        .eq('id', validBooking.id);
+      // Use the new status updater for consistent roadmap sync
+      await BookingStatusPatterns.driverReject(validBooking.id);
 
       toast({
         title: "Ride Rejected",

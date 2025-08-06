@@ -195,16 +195,17 @@ const DriverDashboard = () => {
     console.log('Driver vehicle:', userProfile.car_make, userProfile.car_model);
 
     const channel = supabase
-      .channel('booking-requests')
+      .channel('booking-requests-driver')
       .on(
         'postgres_changes',
         {
           event: '*', // Listen to all changes
           schema: 'public',
-          table: 'bookings'
+          table: 'bookings',
+          filter: `driver_id=eq.${userProfile.id}` // Only listen to bookings assigned to this driver
         },
         (payload) => {
-          console.log('🔄 Booking update received:', payload);
+          console.log('🔄 Booking update received for driver:', payload);
           const booking = payload.new as any;
           
           console.log('📊 Booking details:', {
@@ -216,45 +217,27 @@ const DriverDashboard = () => {
             eventType: payload.eventType
           });
           
-          // Check if this booking is relevant to current driver
-          const isRelevantToDriver = 
-            // Direct assignment to this driver
-            booking?.driver_id === userProfile.id ||
-            // New request that matches driver's vehicle
-            (!booking?.driver_id && 
-             booking?.vehicle_type && 
-             userProfile.car_make && 
-             userProfile.car_model &&
-             booking.vehicle_type.toLowerCase() === `${userProfile.car_make} ${userProfile.car_model}`.toLowerCase()) ||
-            // Status changes for pending requests
-            (booking?.ride_status === 'pending_driver' || booking?.ride_status === 'offer_sent');
-
-          console.log('🎯 Is relevant to driver?', isRelevantToDriver);
-
-          if (isRelevantToDriver) {
-            console.log('📡 Processing relevant booking update for driver:', userProfile.id);
-            // Reset user closed flag for new incoming requests
-            setUserClosedAlert(false);
-            // Refresh bookings when a relevant change occurs
-            fetchDriverBookings(userProfile);
-            
-            // Auto-show modal for pending requests
-            if (booking?.status === 'pending' && booking?.driver_id === userProfile.id) {
-              setActiveBookingRequest(booking);
-              setShowBookingModal(true);
-            }
-            
-            // Show notification for new requests
-            if (payload.eventType === 'INSERT' || 
-                (payload.eventType === 'UPDATE' && booking?.ride_status === 'pending_driver')) {
-              console.log('🚨 Showing notification for new request');
-              toast({
-                title: "🚗 New Ride Request!",
-                description: "A new ride request is waiting for your response.",
-              });
-            }
-          } else {
-            console.log('⏭️ Ignoring booking update (not relevant to this driver)');
+          console.log('📡 Processing booking update for driver:', userProfile.id);
+          // Reset user closed flag for new incoming requests
+          setUserClosedAlert(false);
+          // Refresh bookings when a relevant change occurs
+          fetchDriverBookings(userProfile);
+          
+          // Auto-show BookingRequestModal for new pending requests
+          if (payload.eventType === 'INSERT' && booking?.status === 'pending' && booking?.driver_id === userProfile.id) {
+            console.log('🚨 New booking request assigned - opening modal');
+            setSelectedBookingForRequest(booking);
+            setBookingRequestModalOpen(true);
+          }
+          
+          // Show notification for new requests
+          if (payload.eventType === 'INSERT' || 
+              (payload.eventType === 'UPDATE' && booking?.ride_status === 'pending_driver')) {
+            console.log('🚨 Showing notification for new request');
+            toast({
+              title: "🚗 New Ride Request!",
+              description: "A new ride request is waiting for your response.",
+            });
           }
         }
       )
@@ -278,7 +261,7 @@ const DriverDashboard = () => {
     console.log('userClosedAlert:', userClosedAlert);
     console.log('All driverRides:', driverRides);
     
-    // Auto-open booking request modal for new requests
+    // Auto-open booking request modal for new requests assigned to this driver
     if (driverRides.length > 0 && !bookingRequestModalOpen && !userClosedAlert) {
       const newRequests = driverRides.filter(booking => {
         console.log('🔍 Checking booking for new request modal:', {
@@ -290,11 +273,11 @@ const DriverDashboard = () => {
           status_passenger: booking.status_passenger
         });
         
-        // Check for completely new requests that need initial driver response
+        // Check for requests assigned to this driver that need response
         return (
           booking.ride_status === 'pending_driver' && 
           booking.status === 'pending' &&
-          !booking.driver_id // Only truly new requests without assigned driver
+          booking.driver_id === userProfile?.id // Only requests assigned to this driver
         );
       });
 
@@ -318,9 +301,9 @@ const DriverDashboard = () => {
           driver_id: booking.driver_id
         });
         
-        // Check for rides that need driver attention - new requests and payment confirmations
+        // Check for rides that need driver attention - assigned requests and payment confirmations
         return (
-          (booking.ride_status === "pending_driver" && booking.status === "pending" && !booking.driver_id) ||
+          (booking.ride_status === "pending_driver" && booking.status === "pending" && booking.driver_id === userProfile?.id) ||
           (booking.ride_status === "offer_sent") ||
           (booking.payment_confirmation_status === "passenger_paid" && booking.status_driver !== "driver_accepted")
         );
@@ -359,10 +342,10 @@ const DriverDashboard = () => {
     
     // Use new status manager for tab placement
     if (rideView === "new-requests") {
-      // Show new requests that need driver attention
+      // Show requests assigned to this driver that need attention
       const isNewRequest = 
-        (ride.ride_status === 'pending_driver' && ride.status === 'pending' && !ride.driver_id) ||
-        (ride.status_driver === 'new_request' && !ride.driver_id) ||
+        (ride.ride_status === 'pending_driver' && ride.status === 'pending' && ride.driver_id === userProfile?.id) ||
+        (ride.status_driver === 'new_request' && ride.driver_id === userProfile?.id) ||
         getTabPlacement(ride) === 'new-requests';
       
       console.log('🔍 New request filter for ride', ride.id, ':', {
@@ -370,6 +353,7 @@ const DriverDashboard = () => {
         status: ride.status,
         driver_id: ride.driver_id,
         status_driver: ride.status_driver,
+        userProfileId: userProfile?.id,
         isNewRequest
       });
       
@@ -406,6 +390,7 @@ const DriverDashboard = () => {
             interaction_preference
           )
         `)
+        .eq('driver_id', profile.id) // Only fetch bookings assigned to this driver
         .or(`driver_id.eq.${profile.id},driver_id.is.null`)
         .order('created_at', { ascending: false });
 

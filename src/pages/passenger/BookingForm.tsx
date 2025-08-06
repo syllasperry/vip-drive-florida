@@ -108,7 +108,7 @@ const BookingForm = () => {
         return;
       }
 
-      // Don't assign driver immediately - send request to drivers first
+      // The database trigger will automatically assign a matching driver
 
       // Get passenger data to denormalize into booking
       const { data: passengerData, error: passengerError } = await supabase
@@ -133,12 +133,12 @@ const BookingForm = () => {
         return;
       }
 
-      // Create booking request in database WITHOUT driver assigned yet
+      // Create booking request in database - trigger will assign matching driver
       const { data: booking, error } = await supabase
         .from('bookings')
         .insert({
           passenger_id: session.user.id,
-          driver_id: null, // No driver assigned yet - this is a request
+          driver_id: null, // Database trigger will assign matching driver
           pickup_location: pickup,
           dropoff_location: dropoff,
           pickup_time: pickupDateTime.toISOString(),
