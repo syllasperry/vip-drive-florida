@@ -43,7 +43,7 @@ export const PassengerStatusTimeline = ({
       }
     ];
 
-    // Driver status step
+    // Driver offer step
     if (booking.ride_status === 'offer_sent') {
       steps.push({
         id: 'offer_sent',
@@ -54,15 +54,74 @@ export const PassengerStatusTimeline = ({
         color: 'text-blue-600',
         clickable: true
       });
-    } else if (booking.status_driver === 'driver_accepted' || booking.ride_status === 'driver_accepted') {
+    } else if (booking.status_passenger === 'offer_accepted' || booking.ride_status === 'driver_accepted') {
       steps.push({
-        id: 'driver_accepted',
-        label: 'Driver Accepted',
+        id: 'offer_sent',
+        label: 'Offer Sent',
         sublabel: 'DRIVER ACTION',
         status: 'completed',
         icon: CheckCircle,
         color: 'text-green-600'
       });
+
+      steps.push({
+        id: 'accepted_by_passenger',
+        label: 'Accepted by Passenger',
+        sublabel: 'YOUR ACTION',
+        status: 'completed',
+        icon: CheckCircle,
+        color: 'text-green-600'
+      });
+
+      // Payment flow steps
+      if (booking.payment_confirmation_status === 'passenger_paid') {
+        steps.push({
+          id: 'payment_sent',
+          label: 'Payment Sent by Passenger',
+          sublabel: 'YOUR ACTION',
+          status: 'completed',
+          icon: CheckCircle,
+          color: 'text-green-600'
+        });
+
+        steps.push({
+          id: 'awaiting_driver_confirmation',
+          label: 'Awaiting Driver Confirmation',
+          sublabel: 'DRIVER ACTION',
+          status: 'current',
+          icon: Clock,
+          color: 'text-blue-600'
+        });
+      } else if (booking.payment_confirmation_status === 'all_set') {
+        steps.push({
+          id: 'payment_sent',
+          label: 'Payment Sent by Passenger',
+          sublabel: 'YOUR ACTION',
+          status: 'completed',
+          icon: CheckCircle,
+          color: 'text-green-600'
+        });
+
+        steps.push({
+          id: 'payment_confirmed',
+          label: 'Payment Confirmed - All Set',
+          sublabel: 'DRIVER ACTION',
+          status: 'completed',
+          icon: CheckCircle,
+          color: 'text-green-600'
+        });
+      } else {
+        // Waiting for passenger payment
+        steps.push({
+          id: 'awaiting_payment',
+          label: 'Awaiting Payment',
+          sublabel: 'YOUR ACTION',
+          status: 'current',
+          icon: Clock,
+          color: 'text-blue-600',
+          clickable: true
+        });
+      }
     }
 
     return steps;

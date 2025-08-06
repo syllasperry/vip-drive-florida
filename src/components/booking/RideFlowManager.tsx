@@ -54,7 +54,7 @@ export const RideFlowManager = ({
         if (userType === 'passenger') {
           if (ride_status === 'offer_sent') {
             setCurrentStep('offer_acceptance');
-          } else if (status_passenger === 'offer_accepted' || ride_status === 'driver_accepted') {
+          } else if (status_passenger === 'offer_accepted' && payment_confirmation_status !== 'passenger_paid' && payment_confirmation_status !== 'all_set') {
             setCurrentStep('payment_instructions');
           } else if (status_passenger === 'passenger_canceled') {
             setCurrentStep('passenger_cancellation');

@@ -126,32 +126,43 @@ export const NewRequestsCard = ({ booking, onAccept, onDecline, onSendOffer }: N
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-2 pt-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1 hover:bg-red-50 hover:border-red-300 hover:text-red-700"
-            onClick={() => onDecline?.(booking)}
-          >
-            Decline
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700"
-            onClick={() => onSendOffer?.(booking)}
-          >
-            Send Offer
-          </Button>
-          <Button
-            size="sm"
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-            onClick={() => onAccept?.(booking)}
-          >
-            Accept
-          </Button>
-        </div>
+        {/* Action Buttons - Only show if driver hasn't accepted yet */}
+        {!booking.status_driver || booking.status_driver === 'new_request' || booking.ride_status === 'pending_driver' ? (
+          <div className="flex gap-2 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 hover:bg-red-50 hover:border-red-300 hover:text-red-700"
+              onClick={() => onDecline?.(booking)}
+            >
+              Decline
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700"
+              onClick={() => onSendOffer?.(booking)}
+            >
+              Send Offer
+            </Button>
+            <Button
+              size="sm"
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+              onClick={() => onAccept?.(booking)}
+            >
+              Accept
+            </Button>
+          </div>
+        ) : (
+          <div className="text-center pt-2 px-2">
+            <Badge variant="secondary" className="bg-green-100 text-green-800">
+              ✓ Ride Accepted
+            </Badge>
+            <p className="text-xs text-muted-foreground mt-1">
+              Waiting for passenger payment confirmation
+            </p>
+          </div>
+        )}
 
         {/* Date and Time */}
         <div className="text-center text-xs text-gray-500 pt-1 border-t border-gray-100">

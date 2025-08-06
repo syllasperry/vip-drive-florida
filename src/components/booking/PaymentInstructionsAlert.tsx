@@ -24,12 +24,21 @@ export const PaymentInstructionsAlert = ({
 
   const handleConfirmPayment = async () => {
     try {
-      // Update using new status system
-      await updateBookingStatus(booking.id, 'passenger', 'payment_confirmed');
+      // Update booking with passenger payment confirmation
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          status_passenger: 'payment_confirmed',
+          payment_confirmation_status: 'passenger_paid',
+          ride_status: 'payment_sent_awaiting_driver_confirmation'
+        })
+        .eq('id', booking.id);
+
+      if (error) throw error;
 
       toast({
         title: "Payment Confirmed!",
-        description: "Driver has been notified. Waiting for driver confirmation.",
+        description: "Driver has been notified. Awaiting driver confirmation.",
       });
 
       onPaymentConfirmed();
