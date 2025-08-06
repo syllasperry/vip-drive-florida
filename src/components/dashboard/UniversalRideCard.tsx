@@ -230,50 +230,8 @@ export const UniversalRideCard = ({
               )}
             </div>
             
-            {/* New Mockup-Style Status Display for Passenger */}
-            {userType === 'passenger' && currentBooking.payment_confirmation_status !== 'all_set' ? (
-              <div className="space-y-3 mb-4">
-                {/* Passenger's Last Action - Top Status */}
-                <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">
-                      {currentBooking.payment_confirmation_status === 'passenger_paid' ? 'Payment Confirmed' :
-                       currentBooking.ride_status === 'passenger_approved' ? 'Offer Accepted' :
-                       currentBooking.passenger_status || 'Ride Requested'}
-                    </h3>
-                    <p className="text-xs text-gray-600 font-medium">YOUR ACTION</p>
-                  </div>
-                </div>
-
-                {/* Progress Line */}
-                <div className="flex justify-center">
-                  <div className="w-px h-4 bg-gradient-to-b from-green-500 to-blue-500"></div>
-                </div>
-
-                {/* Driver's Next Action - Bottom Status */}
-                <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <Clock className="w-6 h-6 text-blue-500" />
-                  <div className="flex-1">
-                     <h3 className="font-semibold text-gray-900">
-                       {currentBooking.ride_stage === 'driver_heading_to_pickup' ? 'Driver Heading to Pickup' :
-                        currentBooking.ride_stage === 'driver_arrived_at_pickup' ? 'Driver Arrived' :
-                        currentBooking.ride_stage === 'in_transit' ? 'In Transit' :
-                        currentBooking.ride_stage === 'completed' ? 'Ride Completed' :
-                        currentBooking.status_driver === 'driver_accepted' && currentBooking.final_price ? 'Driver Accepted & Sent Offer' :
-                        currentBooking.status_driver === 'driver_accepted' ? 'Driver Accepted' :
-                        currentBooking.final_price && currentBooking.payment_confirmation_status === 'price_awaiting_acceptance' ? 'Driver Accepted & Sent Offer' :
-                        currentBooking.driver_status || 'Waiting for Driver'}
-                     </h3>
-                    <p className="text-xs text-gray-600 font-medium">DRIVER ACTION</p>
-                  </div>
-                </div>
-              </div>
-            ) : currentBooking.payment_confirmation_status !== 'all_set' && shouldShowStatusButton(currentBooking) ? (
+            {/* Remove the duplicate status badges - they will be shown in the proper status section below */}
+            {currentBooking.payment_confirmation_status !== 'all_set' && shouldShowStatusButton(currentBooking) ? (
               // Original Status Button for drivers or fallback
               <RideStatusButton
                 userType={userType}
