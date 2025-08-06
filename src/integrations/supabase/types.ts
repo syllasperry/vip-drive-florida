@@ -76,6 +76,7 @@ export type Database = {
           flight_info: string | null
           id: string
           luggage_count: number
+          luggage_size: string | null
           passenger_count: number
           passenger_first_name: string | null
           passenger_id: string
@@ -120,6 +121,7 @@ export type Database = {
           flight_info?: string | null
           id?: string
           luggage_count?: number
+          luggage_size?: string | null
           passenger_count?: number
           passenger_first_name?: string | null
           passenger_id: string
@@ -164,6 +166,7 @@ export type Database = {
           flight_info?: string | null
           id?: string
           luggage_count?: number
+          luggage_size?: string | null
           passenger_count?: number
           passenger_first_name?: string | null
           passenger_id?: string

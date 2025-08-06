@@ -142,6 +142,7 @@ const BookingForm = () => {
         pickup_time: pickupDateTime.toISOString(),
         passenger_count: parseInt(formData.passengers),
         luggage_count: parseInt(formData.luggage),
+        luggage_size: formData.luggageSize, // Add luggage size
         flight_info: formData.flightInfo || '',
         vehicle_type: `${vehicleInfo.make} ${vehicleInfo.model}`,
         ride_status: 'pending_driver',
