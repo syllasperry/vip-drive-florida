@@ -123,6 +123,7 @@ export const BookingStatusPatterns = {
     status: 'offered',
     statusDriver: 'offer_sent',
     rideStatus: 'offer_sent',
+    paymentConfirmationStatus: 'price_awaiting_acceptance',
     userRole: 'driver',
     metadata: { offeredPrice: price }
   }),

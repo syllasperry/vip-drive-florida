@@ -44,8 +44,11 @@ export const PassengerStatusTimeline = ({
       }
     ];
 
-    // Driver offer step
-    if (booking.ride_status === 'offer_sent') {
+    // Driver offer step - check for driver acceptance and offer sent
+    if (booking.ride_status === 'offer_sent' || 
+        (booking.status_driver === 'driver_accepted' && booking.final_price) ||
+        (booking.status_driver === 'offer_sent') ||
+        booking.payment_confirmation_status === 'price_awaiting_acceptance') {
       steps.push({
         id: 'driver_accepted',
         label: 'Driver Accepted & Sent Offer',
@@ -63,6 +66,16 @@ export const PassengerStatusTimeline = ({
         icon: Clock,
         color: 'text-blue-600',
         clickable: true
+      });
+    } else if (booking.status_driver === 'driver_accepted' && !booking.final_price) {
+      // Driver accepted but hasn't sent offer yet
+      steps.push({
+        id: 'driver_accepted',
+        label: 'Driver Accepted',
+        sublabel: 'DRIVER ACTION - Preparing offer...',
+        status: 'current',
+        icon: Clock,
+        color: 'text-blue-600'
       });
     } else if (booking.status_passenger === 'offer_accepted' || booking.ride_status === 'driver_accepted') {
       steps.push({

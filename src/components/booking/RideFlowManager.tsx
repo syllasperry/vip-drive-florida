@@ -76,7 +76,8 @@ export const RideFlowManager = ({
 
           if (userType === 'passenger') {
             if (ride_status === 'offer_sent' || status_driver === 'offer_sent' || 
-                (validBooking.final_price && payment_confirmation_status === 'price_awaiting_acceptance')) {
+                (validBooking.final_price && payment_confirmation_status === 'price_awaiting_acceptance') ||
+                (status_driver === 'driver_accepted' && validBooking.final_price)) {
               setCurrentStep('offer_acceptance');
             } else if (status_passenger === 'offer_accepted' && payment_confirmation_status === 'waiting_for_payment') {
               setCurrentStep('payment_instructions');
