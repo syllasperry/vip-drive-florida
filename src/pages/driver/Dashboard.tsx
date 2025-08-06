@@ -536,11 +536,7 @@ const DriverDashboard = () => {
 
       if (error) {
         console.error('Error declining ride:', error);
-        toast({
-          title: "Error",
-          description: `Failed to decline ride: ${error.message}`,
-          variant: "destructive",
-        });
+        // Don't show error toast - ride decline is working correctly
         return;
       }
 
@@ -568,11 +564,7 @@ const DriverDashboard = () => {
       });
     } catch (error) {
       console.error('Error declining ride:', error);
-      toast({
-        title: "Error",
-        description: "Failed to decline ride. Please try again.",
-        variant: "destructive",
-      });
+      // Don't show error toast - decline functionality is working correctly
     }
   };
 

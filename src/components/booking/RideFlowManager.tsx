@@ -156,7 +156,7 @@ export const RideFlowManager = ({
       />
 
       <PassengerOfferReviewModal
-        isOpen={currentStep === 'offer_acceptance'}
+        isOpen={currentStep === 'offer_acceptance' || (booking?.ride_status === 'offer_sent' && userType === 'passenger')}
         onClose={handleClose}
         booking={booking}
         onAccept={handleOfferAccepted}

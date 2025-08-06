@@ -47,9 +47,18 @@ export const PassengerStatusTimeline = ({
     // Driver offer step
     if (booking.ride_status === 'offer_sent') {
       steps.push({
-        id: 'offer_sent',
-        label: 'Offer Sent - Awaiting Response',
+        id: 'driver_accepted',
+        label: 'Driver Accepted & Sent Offer',
         sublabel: `DRIVER ACTION - $${booking.estimated_price || booking.final_price || 0}`,
+        status: 'completed',
+        icon: CheckCircle,
+        color: 'text-green-600'
+      });
+      
+      steps.push({
+        id: 'awaiting_passenger_response',
+        label: 'Review Offer',
+        sublabel: 'YOUR ACTION - Accept or Decline',
         status: 'current',
         icon: Clock,
         color: 'text-blue-600',
@@ -130,7 +139,8 @@ export const PassengerStatusTimeline = ({
 
   const steps = getStatusSteps();
   const shouldShowTripDetails = booking.payment_confirmation_status === 'all_set' || 
-                                booking.status_passenger === 'offer_accepted';
+                                booking.status_passenger === 'offer_accepted' ||
+                                booking.ride_status === 'driver_accepted';
 
   return (
     <div className="w-full space-y-4">
