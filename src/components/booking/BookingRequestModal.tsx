@@ -79,14 +79,25 @@ export const BookingRequestModal = ({
     validateBooking();
   }, [booking?.id, isOpen, onClose]);
 
-  if (!validBooking) return null;
+  // Auto-expire booking when countdown reaches zero - ALWAYS call this hook
+  useEffect(() => {
+    if (!validBooking || timeLeft <= 0) return;
 
-  const passengerName = validBooking.passenger_name || 
-    (validBooking.passenger_first_name && validBooking.passenger_last_name 
-      ? `${validBooking.passenger_first_name} ${validBooking.passenger_last_name}`
-      : "Passenger");
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        const newTime = prev - 1;
+        if (newTime <= 0) {
+          handleExpireBooking(validBooking.id);
+          return 0;
+        }
+        return newTime;
+      });
+    }, 1000);
 
-  // Auto-expire booking when countdown reaches zero
+    return () => clearInterval(timer);
+  }, [validBooking, timeLeft]);
+
+  // Auto-expire booking helper function
   const handleExpireBooking = async (bookingId: string) => {
     try {
       await supabase
@@ -109,23 +120,13 @@ export const BookingRequestModal = ({
     }
   };
 
-  // Real-time countdown effect
-  useEffect(() => {
-    if (!validBooking || timeLeft <= 0) return;
+  // Early return AFTER all hooks have been called
+  if (!validBooking) return null;
 
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        const newTime = prev - 1;
-        if (newTime <= 0) {
-          handleExpireBooking(validBooking.id);
-          return 0;
-        }
-        return newTime;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [validBooking, timeLeft]);
+  const passengerName = validBooking.passenger_name || 
+    (validBooking.passenger_first_name && validBooking.passenger_last_name 
+      ? `${validBooking.passenger_first_name} ${validBooking.passenger_last_name}`
+      : "Passenger");
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
