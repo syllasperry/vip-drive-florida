@@ -207,13 +207,17 @@ export const PassengerStatusTimeline = ({
                       <Clock className="h-5 w-5 text-orange-600" />
                     )}
                   </div>
-                  <div className="flex-1">
-                    <div className="font-semibold text-green-800">
-                      {booking.ride_status === 'offer_sent' || booking.payment_confirmation_status === 'price_awaiting_acceptance' || booking.status_driver === 'driver_accepted' 
-                        ? 'Driver Accepted & Sent Offer' 
-                        : 'Waiting for response...'
-                      }
-                    </div>
+                   <div className="flex-1">
+                     <div className="font-semibold text-green-800">
+                       {(booking.ride_status === 'offer_sent' || 
+                         booking.payment_confirmation_status === 'price_awaiting_acceptance' || 
+                         booking.status_driver === 'driver_accepted' ||
+                         (booking.status_driver === 'offer_sent') ||
+                         (booking.final_price && booking.estimated_price)) 
+                         ? 'Driver Accepted & Sent Offer' 
+                         : 'Waiting for response...'
+                       }
+                     </div>
                     <div className="text-sm text-green-600 flex items-center gap-1">
                       <Clock className="h-3 w-3" />
                       {booking.updated_at ? format(new Date(booking.updated_at), "MMM d, h:mm a") : "Just now"}
