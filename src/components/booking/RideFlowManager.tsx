@@ -4,7 +4,10 @@ import { PaymentInstructionsAlert } from "./PaymentInstructionsAlert";
 import { PassengerCancellationAlert } from "./PassengerCancellationAlert";
 import { DriverPaymentConfirmationAlert } from "./DriverPaymentConfirmationAlert";
 import { AllSetConfirmationAlert } from "./AllSetConfirmationAlert";
-import { getStatusConfig } from "@/utils/statusManager";
+import { DriverRideRequestModal } from "../roadmap/DriverRideRequestModal";
+import { PassengerOfferReviewModal } from "../roadmap/PassengerOfferReviewModal";
+import { DriverPaymentConfirmationModal } from "../roadmap/DriverPaymentConfirmationModal";
+import { getRoadmapConfig, shouldShowModal, getModalType } from "@/utils/roadmapStatusManager";
 import { supabase } from "@/integrations/supabase/client";
 
 interface RideFlowManagerProps {
@@ -48,28 +51,49 @@ export const RideFlowManager = ({
           return;
         }
 
-        // Use validated booking data for status decisions
-        const { status_passenger, status_driver, ride_status, payment_confirmation_status } = validBooking;
+        // Use roadmap system to determine which modal to show
+        const config = getRoadmapConfig(validBooking);
+        const steps = userType === 'passenger' ? config.passengerSteps : config.driverSteps;
+        
+        // Find current step that needs modal interaction
+        const currentModalStep = steps.find(step => 
+          step.status === 'current' && step.modalType
+        );
 
-        if (userType === 'passenger') {
-          if (ride_status === 'offer_sent') {
-            setCurrentStep('offer_acceptance');
-          } else if (status_passenger === 'offer_accepted' && payment_confirmation_status !== 'passenger_paid' && payment_confirmation_status !== 'all_set') {
-            setCurrentStep('payment_instructions');
-          } else if (status_passenger === 'passenger_canceled') {
-            setCurrentStep('passenger_cancellation');
-          } else if (payment_confirmation_status === 'all_set') {
-            setCurrentStep('all_set_confirmation');
-          } else {
-            setCurrentStep(null);
-          }
-        } else if (userType === 'driver') {
-          if (payment_confirmation_status === 'passenger_paid') {
-            setCurrentStep('driver_payment_confirmation');
-          } else if (payment_confirmation_status === 'all_set') {
-            setCurrentStep('all_set_confirmation');
-          } else {
-            setCurrentStep(null);
+        if (currentModalStep) {
+          // Map roadmap modal types to existing step names
+          const modalTypeMapping: Record<string, string> = {
+            'ride_request': 'driver_ride_request',
+            'offer_review': 'offer_acceptance', 
+            'payment_instructions': 'payment_instructions',
+            'payment_confirmation': 'driver_payment_confirmation'
+          };
+          
+          setCurrentStep(modalTypeMapping[currentModalStep.modalType] || null);
+        } else {
+          // Fallback to legacy logic for edge cases
+          const { status_passenger, status_driver, ride_status, payment_confirmation_status } = validBooking;
+
+          if (userType === 'passenger') {
+            if (ride_status === 'offer_sent') {
+              setCurrentStep('offer_acceptance');
+            } else if (status_passenger === 'offer_accepted' && payment_confirmation_status === 'waiting_for_payment') {
+              setCurrentStep('payment_instructions');
+            } else if (payment_confirmation_status === 'all_set') {
+              setCurrentStep('all_set_confirmation');
+            } else {
+              setCurrentStep(null);
+            }
+          } else if (userType === 'driver') {
+            if (ride_status === 'pending_driver' && !status_driver) {
+              setCurrentStep('driver_ride_request');
+            } else if (payment_confirmation_status === 'passenger_paid') {
+              setCurrentStep('driver_payment_confirmation');
+            } else if (payment_confirmation_status === 'all_set') {
+              setCurrentStep('all_set_confirmation');
+            } else {
+              setCurrentStep(null);
+            }
           }
         }
       } catch (error) {
@@ -111,7 +135,26 @@ export const RideFlowManager = ({
 
   return (
     <>
-      <OfferAcceptanceModal
+      {/* Roadmap Modals */}
+      <DriverRideRequestModal
+        isOpen={currentStep === 'driver_ride_request'}
+        onClose={handleClose}
+        booking={booking}
+        onAccept={() => {
+          handleClose();
+          onFlowComplete();
+        }}
+        onDecline={() => {
+          handleClose();
+          onFlowComplete();
+        }}
+        onSendOffer={() => {
+          handleClose();
+          // Handle send offer logic
+        }}
+      />
+
+      <PassengerOfferReviewModal
         isOpen={currentStep === 'offer_acceptance'}
         onClose={handleClose}
         booking={booking}
@@ -119,6 +162,15 @@ export const RideFlowManager = ({
         onDecline={handleOfferDeclined}
       />
 
+      <DriverPaymentConfirmationModal
+        isOpen={currentStep === 'driver_payment_confirmation'}
+        onClose={handleClose}
+        booking={booking}
+        onPaymentConfirmed={handleDriverPaymentConfirmed}
+        onMessagePassenger={onMessagePassenger}
+      />
+
+      {/* Legacy Modals */}
       <PaymentInstructionsAlert
         isOpen={currentStep === 'payment_instructions'}
         onClose={handleClose}
@@ -129,14 +181,6 @@ export const RideFlowManager = ({
       <PassengerCancellationAlert
         isOpen={currentStep === 'passenger_cancellation'}
         onClose={handleClose}
-      />
-
-      <DriverPaymentConfirmationAlert
-        isOpen={currentStep === 'driver_payment_confirmation'}
-        onClose={handleClose}
-        booking={booking}
-        onPaymentConfirmed={handleDriverPaymentConfirmed}
-        onMessagePassenger={onMessagePassenger || (() => {})}
       />
 
       <AllSetConfirmationAlert

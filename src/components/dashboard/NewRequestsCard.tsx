@@ -127,7 +127,9 @@ export const NewRequestsCard = ({ booking, onAccept, onDecline, onSendOffer }: N
         </div>
 
         {/* Action Buttons - Only show if driver hasn't accepted yet */}
-        {!booking.status_driver || booking.status_driver === 'new_request' || booking.ride_status === 'pending_driver' ? (
+        {(!booking.status_driver || booking.status_driver === 'new_request') && 
+         booking.ride_status === 'pending_driver' && 
+         booking.payment_confirmation_status === 'waiting_for_offer' ? (
           <div className="flex gap-2 pt-2">
             <Button
               variant="outline"

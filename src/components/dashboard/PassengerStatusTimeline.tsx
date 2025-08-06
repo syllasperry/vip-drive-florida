@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Clock, CheckCircle, Phone, Car, DollarSign, MapPin } from "lucide-react";
 import { format } from "date-fns";
+import { RoadmapTimeline } from "@/components/roadmap/RoadmapTimeline";
 
 interface PassengerStatusTimelineProps {
   booking: any;
@@ -132,32 +133,41 @@ export const PassengerStatusTimeline = ({
                                 booking.ride_status !== 'offer_sent';
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="text-lg">Ride Details</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Status Timeline */}
-        <div className="space-y-3">
-          {steps.map((step, index) => (
-            <div key={step.id} className="flex items-center gap-3">
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                step.status === 'completed' ? 'bg-green-100' : 'bg-blue-100'
-              }`}>
-                <step.icon className={`h-4 w-4 ${step.color}`} />
+    <div className="w-full space-y-4">
+      {/* Roadmap Timeline */}
+      <RoadmapTimeline
+        booking={booking}
+        userType="passenger"
+        onStepClick={onStatusClick}
+      />
+
+      {/* Legacy Timeline for Reference (can be removed once roadmap is fully tested) */}
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle className="text-lg">Legacy Timeline</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Status Timeline */}
+          <div className="space-y-3">
+            {steps.map((step, index) => (
+              <div key={step.id} className="flex items-center gap-3">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                  step.status === 'completed' ? 'bg-green-100' : 'bg-blue-100'
+                }`}>
+                  <step.icon className={`h-4 w-4 ${step.color}`} />
+                </div>
+                <div 
+                  className={`flex-1 p-3 rounded-lg ${
+                    step.status === 'current' ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200'
+                  } ${step.clickable ? 'cursor-pointer hover:bg-blue-100' : ''}`}
+                  onClick={() => step.clickable && onStatusClick?.(step.id)}
+                >
+                  <div className="font-medium text-foreground">{step.label}</div>
+                  <div className="text-sm text-muted-foreground">{step.sublabel}</div>
+                </div>
               </div>
-              <div 
-                className={`flex-1 p-3 rounded-lg ${
-                  step.status === 'current' ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200'
-                } ${step.clickable ? 'cursor-pointer hover:bg-blue-100' : ''}`}
-                onClick={() => step.clickable && onStatusClick?.(step.id)}
-              >
-                <div className="font-medium text-foreground">{step.label}</div>
-                <div className="text-sm text-muted-foreground">{step.sublabel}</div>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
         {/* Driver Information */}
         {booking.drivers && (
@@ -237,7 +247,8 @@ export const PassengerStatusTimeline = ({
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
