@@ -147,7 +147,7 @@ export const DriverRideRequestModal = ({
               <div className="flex items-center gap-3 mb-3">
                 <Avatar className="h-12 w-12">
                   <AvatarImage 
-                    src={booking.passenger_photo || booking.passenger_photo_url} 
+                    src={booking.passengers?.profile_photo_url || booking.passenger_photo_url || booking.passenger_photo} 
                     alt={passengerName}
                   />
                   <AvatarFallback className="bg-primary/10 text-primary">
