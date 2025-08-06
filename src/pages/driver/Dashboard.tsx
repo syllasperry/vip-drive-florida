@@ -351,7 +351,7 @@ const DriverDashboard = () => {
         .from('bookings')
         .select(`
           *,
-          passengers (
+          passengers!passenger_id (
             id,
             full_name,
             phone,
@@ -361,7 +361,6 @@ const DriverDashboard = () => {
             interaction_preference
           )
         `)
-        .eq('driver_id', profile.id) // Only fetch bookings assigned to this driver
         .or(`driver_id.eq.${profile.id},driver_id.is.null`)
         .order('created_at', { ascending: false });
 
