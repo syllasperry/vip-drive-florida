@@ -223,11 +223,9 @@ const DriverDashboard = () => {
           // Refresh bookings when a relevant change occurs
           fetchDriverBookings(userProfile);
           
-          // Auto-show BookingRequestModal for new pending requests
+          // Legacy auto-show disabled - now handled by RideFlowManager
           if (payload.eventType === 'INSERT' && booking?.status === 'pending' && booking?.driver_id === userProfile.id) {
-            console.log('🚨 New booking request assigned - opening modal');
-            setSelectedBookingForRequest(booking);
-            setBookingRequestModalOpen(true);
+            console.log('🚨 New booking request assigned - handled by RideFlowManager');
           }
           
           // Show notification for new requests
@@ -261,35 +259,8 @@ const DriverDashboard = () => {
     console.log('userClosedAlert:', userClosedAlert);
     console.log('All driverRides:', driverRides);
     
-    // Auto-open booking request modal for new requests assigned to this driver
-    if (driverRides.length > 0 && !bookingRequestModalOpen && !userClosedAlert) {
-      const newRequests = driverRides.filter(booking => {
-        console.log('🔍 Checking booking for new request modal:', {
-          id: booking.id,
-          ride_status: booking.ride_status,
-          status: booking.status,
-          driver_id: booking.driver_id,
-          status_driver: booking.status_driver,
-          status_passenger: booking.status_passenger
-        });
-        
-        // Check for requests assigned to this driver that need response
-        return (
-          booking.ride_status === 'pending_driver' && 
-          booking.status === 'pending' &&
-          booking.driver_id === userProfile?.id // Only requests assigned to this driver
-        );
-      });
-
-      console.log('📊 Found new requests for modal:', newRequests.length, newRequests);
-
-      if (newRequests.length > 0 && !selectedBookingForRequest) {
-        const firstRequest = newRequests[0];
-        console.log('🚨 Opening booking request modal for:', firstRequest.id);
-        setSelectedBookingForRequest(firstRequest);
-        setBookingRequestModalOpen(true);
-      }
-    }
+    // Legacy auto-open logic disabled - now handled by RideFlowManager to prevent conflicts
+    console.log('Legacy auto-open modal logic disabled - using RideFlowManager instead');
 
     // Also check for other pending actions that need driver attention
     if (driverRides.length > 0 && !pendingRequestAlertOpen && !userClosedAlert) {
@@ -1229,102 +1200,7 @@ const DriverDashboard = () => {
         }}
       />
 
-      {/* Legacy Booking Request Modal */}
-      {bookingRequestModalOpen && selectedBookingForRequest && userProfile && (
-        <BookingRequestModal
-          isOpen={bookingRequestModalOpen}
-          onClose={() => {
-              setBookingRequestModalOpen(false);
-              setSelectedBookingForRequest(null);
-              setUserClosedAlert(true);
-          }}
-          booking={selectedBookingForRequest}
-          onAccept={async () => {
-            try {
-              // Accept the request and assign driver
-              const { error } = await supabase
-                .from('bookings')
-                .update({
-                  driver_id: userProfile.id,
-                  status_driver: 'driver_accepted',
-                  status_passenger: 'driver_accepted',
-                  ride_status: 'driver_accepted',
-                  payment_confirmation_status: 'waiting_for_payment'
-                })
-                .eq('id', selectedBookingForRequest.id);
-
-              if (error) throw error;
-
-              // Create status tracking entry
-              try {
-                await createBookingStatusEntries.driverRequestReceived(
-                  selectedBookingForRequest.id,
-                  {
-                    name: userProfile.full_name,
-                    photo: userProfile.profile_photo_url,
-                    vehicle: `${userProfile.car_make} ${userProfile.car_model}`,
-                    plate: userProfile.license_plate
-                  }
-                );
-              } catch (statusError) {
-                console.error('Error creating status entry:', statusError);
-              }
-
-              toast({
-                title: "Request Accepted!",
-                description: "You've accepted the ride request. Passenger will be notified.",
-              });
-
-              setBookingRequestModalOpen(false);
-              setSelectedBookingForRequest(null);
-              fetchDriverBookings(userProfile);
-            } catch (error) {
-              console.error('Error accepting request:', error);
-              toast({
-                title: "Error",
-                description: "Failed to accept request",
-                variant: "destructive",
-              });
-            }
-          }}
-          onReject={async () => {
-            try {
-              const { error } = await supabase
-                .from('bookings')
-                .update({
-                  status_driver: 'driver_rejected',
-                  ride_status: 'driver_rejected'
-                })
-                .eq('id', selectedBookingForRequest.id);
-
-              if (error) throw error;
-
-              toast({
-                title: "Request Declined",
-                description: "The passenger has been notified.",
-              });
-
-              setBookingRequestModalOpen(false);
-              setSelectedBookingForRequest(null);
-              fetchDriverBookings(userProfile);
-            } catch (error) {
-              console.error('Error rejecting request:', error);
-              toast({
-                title: "Error",
-                description: "Failed to reject request",
-                variant: "destructive",
-              });
-            }
-          }}
-          onSendOffer={() => {
-            // Close request modal and open price offer modal
-            setBookingRequestModalOpen(false);
-            setSelectedBookingForOffer(selectedBookingForRequest);
-            setPriceOfferModalOpen(true);
-            setSelectedBookingForRequest(null);
-          }}
-        />
-      )}
+{/* Legacy Booking Request Modal - DISABLED to prevent conflicts with new roadmap system */}
 
       {/* Price Offer Modal */}
       {priceOfferModalOpen && selectedBookingForOffer && userProfile && (
