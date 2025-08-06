@@ -18,26 +18,35 @@ export type Database = {
         Row: {
           booking_id: string
           changed_by: string | null
+          created_at: string | null
           id: number
           role: string | null
           status: string
           timestamp: string | null
+          updated_at: string | null
+          updated_by: string | null
         }
         Insert: {
           booking_id: string
           changed_by?: string | null
+          created_at?: string | null
           id?: number
           role?: string | null
           status: string
           timestamp?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
         }
         Update: {
           booking_id?: string
           changed_by?: string | null
+          created_at?: string | null
           id?: number
           role?: string | null
           status?: string
           timestamp?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
         }
         Relationships: [
           {

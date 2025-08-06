@@ -5,6 +5,7 @@ import { PassengerCancellationAlert } from "./PassengerCancellationAlert";
 import { DriverPaymentConfirmationAlert } from "./DriverPaymentConfirmationAlert";
 import { AllSetConfirmationAlert } from "./AllSetConfirmationAlert";
 import { getStatusConfig } from "@/utils/statusManager";
+import { supabase } from "@/integrations/supabase/client";
 
 interface RideFlowManagerProps {
   booking: any;
@@ -32,30 +33,52 @@ export const RideFlowManager = ({
 
     if (!booking) return;
 
-    // Use new status system
-    const { status_passenger, status_driver, ride_status, payment_confirmation_status } = booking;
+    // Validate booking exists in database first
+    const validateAndSetStep = async () => {
+      try {
+        const { data: validBooking, error } = await supabase
+          .from('bookings')
+          .select('*')
+          .eq('id', booking.id)
+          .single();
 
-    if (userType === 'passenger') {
-      if (status_passenger === 'offer_sent' || ride_status === 'offer_sent') {
-        setCurrentStep('offer_acceptance');
-      } else if (status_passenger === 'passenger_accepted' || status_passenger === 'driver_accepted') {
-        setCurrentStep('payment_instructions');
-      } else if (status_passenger === 'passenger_canceled') {
-        setCurrentStep('passenger_cancellation');
-      } else if (status_passenger === 'all_set' || payment_confirmation_status === 'all_set') {
-        setCurrentStep('all_set_confirmation');
-      } else {
+        if (error || !validBooking) {
+          console.log('Booking not found in database, closing flow');
+          setCurrentStep(null);
+          return;
+        }
+
+        // Use validated booking data for status decisions
+        const { status_passenger, status_driver, ride_status, payment_confirmation_status } = validBooking;
+
+        if (userType === 'passenger') {
+          if (ride_status === 'offer_sent') {
+            setCurrentStep('offer_acceptance');
+          } else if (status_passenger === 'offer_accepted' || ride_status === 'driver_accepted') {
+            setCurrentStep('payment_instructions');
+          } else if (status_passenger === 'passenger_canceled') {
+            setCurrentStep('passenger_cancellation');
+          } else if (payment_confirmation_status === 'all_set') {
+            setCurrentStep('all_set_confirmation');
+          } else {
+            setCurrentStep(null);
+          }
+        } else if (userType === 'driver') {
+          if (payment_confirmation_status === 'passenger_paid') {
+            setCurrentStep('driver_payment_confirmation');
+          } else if (payment_confirmation_status === 'all_set') {
+            setCurrentStep('all_set_confirmation');
+          } else {
+            setCurrentStep(null);
+          }
+        }
+      } catch (error) {
+        console.error('Error validating booking:', error);
         setCurrentStep(null);
       }
-    } else if (userType === 'driver') {
-      if (status_driver === 'payment_confirmed' || payment_confirmation_status === 'passenger_paid') {
-        setCurrentStep('driver_payment_confirmation');
-      } else if (status_driver === 'all_set' || payment_confirmation_status === 'all_set') {
-        setCurrentStep('all_set_confirmation');
-      } else {
-        setCurrentStep(null);
-      }
-    }
+    };
+
+    validateAndSetStep();
   }, [booking, userType, forceOpenStep]);
 
   const handleClose = () => {

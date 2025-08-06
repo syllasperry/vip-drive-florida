@@ -1,0 +1,184 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Clock, CheckCircle, Phone, Car, DollarSign, MapPin } from "lucide-react";
+import { format } from "date-fns";
+
+interface PassengerStatusTimelineProps {
+  booking: any;
+  onStatusClick?: (status: string) => void;
+  onCall?: () => void;
+}
+
+export const PassengerStatusTimeline = ({ 
+  booking, 
+  onStatusClick,
+  onCall 
+}: PassengerStatusTimelineProps) => {
+  if (!booking) return null;
+
+  const driverName = booking.drivers?.full_name || "Driver";
+  const vehicleInfo = `${booking.vehicle_type || "Vehicle"}`;
+  
+  // Status timeline based on current booking state
+  const getStatusSteps = () => {
+    const steps: Array<{
+      id: string;
+      label: string;
+      sublabel: string;
+      status: string;
+      icon: any;
+      color: string;
+      clickable?: boolean;
+    }> = [
+      {
+        id: 'ride_requested',
+        label: 'Ride Requested',
+        sublabel: 'YOUR ACTION',
+        status: 'completed',
+        icon: CheckCircle,
+        color: 'text-green-600'
+      }
+    ];
+
+    // Driver status step
+    if (booking.ride_status === 'offer_sent') {
+      steps.push({
+        id: 'offer_sent',
+        label: 'Offer Sent - Awaiting Response',
+        sublabel: `DRIVER ACTION - $${booking.estimated_price || booking.final_price || 0}`,
+        status: 'current',
+        icon: Clock,
+        color: 'text-blue-600',
+        clickable: true
+      });
+    } else if (booking.status_driver === 'driver_accepted' || booking.ride_status === 'driver_accepted') {
+      steps.push({
+        id: 'driver_accepted',
+        label: 'Driver Accepted',
+        sublabel: 'DRIVER ACTION',
+        status: 'completed',
+        icon: CheckCircle,
+        color: 'text-green-600'
+      });
+    }
+
+    return steps;
+  };
+
+  const steps = getStatusSteps();
+  const shouldShowTripDetails = booking.payment_confirmation_status !== 'waiting_for_offer' && 
+                                booking.ride_status !== 'offer_sent';
+
+  return (
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle className="text-lg">Ride Details</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Status Timeline */}
+        <div className="space-y-3">
+          {steps.map((step, index) => (
+            <div key={step.id} className="flex items-center gap-3">
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                step.status === 'completed' ? 'bg-green-100' : 'bg-blue-100'
+              }`}>
+                <step.icon className={`h-4 w-4 ${step.color}`} />
+              </div>
+              <div 
+                className={`flex-1 p-3 rounded-lg ${
+                  step.status === 'current' ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200'
+                } ${step.clickable ? 'cursor-pointer hover:bg-blue-100' : ''}`}
+                onClick={() => step.clickable && onStatusClick?.(step.id)}
+              >
+                <div className="font-medium text-foreground">{step.label}</div>
+                <div className="text-sm text-muted-foreground">{step.sublabel}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Driver Information */}
+        {booking.drivers && (
+          <div className="bg-primary/5 p-4 rounded-lg">
+            <div className="flex items-center gap-3 mb-3">
+              <Avatar className="h-12 w-12">
+                <AvatarImage 
+                  src={booking.drivers.profile_photo_url} 
+                  alt={driverName}
+                />
+                <AvatarFallback className="bg-primary/10 text-primary">
+                  {driverName.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <h3 className="font-semibold text-foreground">{driverName}</h3>
+                <div className="flex items-center gap-4">
+                  <Badge variant="outline" className="text-xs">★ 4.9</Badge>
+                  <span className="text-sm text-muted-foreground">ETA 5 min</span>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onCall}
+                className="flex items-center gap-2"
+              >
+                <Phone className="h-4 w-4" />
+                Call
+              </Button>
+            </div>
+
+            <div className="bg-white/50 p-3 rounded-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Vehicle</span>
+                <div className="text-right">
+                  <div className="font-medium">{vehicleInfo}</div>
+                  <div className="text-sm text-muted-foreground">ABC-123</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Trip Details - Only show when not waiting for offer */}
+        {shouldShowTripDetails && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+              <div className="text-sm">
+                <div className="font-medium">PICKUP</div>
+                <div className="text-muted-foreground">{booking.pickup_location}</div>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
+              <div className="text-sm">
+                <div className="font-medium">DROP-OFF</div>
+                <div className="text-muted-foreground">{booking.dropoff_location}</div>
+              </div>
+            </div>
+
+            <div className="bg-primary/10 p-3 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="text-sm">
+                  <div className="font-medium">PICKUP TRIP</div>
+                  <div className="text-muted-foreground">
+                    {booking.pickup_time ? format(new Date(booking.pickup_time), "HH:mm") : ""}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-muted-foreground">31cm</div>
+                  <div className="text-xl font-bold">${(booking.estimated_price || booking.final_price || 0).toFixed(2)}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};

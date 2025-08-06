@@ -19,6 +19,7 @@ import { BookingToggle } from "@/components/dashboard/BookingToggle";
 import { EnhancedBookingCard } from "@/components/booking/EnhancedBookingCard";
 import { UniversalRideCard } from "@/components/dashboard/UniversalRideCard";
 import { FloatingActionButton } from "@/components/dashboard/FloatingActionButton";
+import { PassengerStatusTimeline } from "@/components/dashboard/PassengerStatusTimeline";
 import { FareConfirmationAlert } from "@/components/FareConfirmationAlert";
 import { PaymentConfirmationModal } from "@/components/PaymentConfirmationModal";
 import { PaymentModal } from "@/components/payment/PaymentModal";

@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CheckCircle, X, Clock, MapPin, User, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { BookingStatusPatterns } from "@/utils/bookingStatusUpdater";
 
 interface OfferAcceptanceModalProps {
   isOpen: boolean;
@@ -67,15 +68,12 @@ export const OfferAcceptanceModal = ({
 
   const handleAccept = async () => {
     try {
-      const { error } = await supabase
-        .from('bookings')
-        .update({ 
-          ride_status: 'passenger_approved',
-          payment_confirmation_status: 'waiting_for_payment'
-        })
-        .eq('id', booking.id);
-
-      if (error) throw error;
+      await BookingStatusPatterns.passengerAcceptOffer(booking.id);
+      
+      toast({
+        title: "Offer Accepted",
+        description: "You have accepted the driver's offer. Please proceed to payment.",
+      });
 
       onAccept();
       onClose();
@@ -91,23 +89,15 @@ export const OfferAcceptanceModal = ({
 
   const handleDecline = async () => {
     try {
-      const { error } = await supabase
-        .from('bookings')
-        .update({ 
-          ride_status: 'offer_declined',
-          payment_confirmation_status: 'declined_by_passenger'
-        })
-        .eq('id', booking.id);
-
-      if (error) throw error;
-
+      await BookingStatusPatterns.passengerRejectOffer(booking.id);
+      
       toast({
         title: "Price Declined",
         description: "The driver has been notified. You can request a new ride.",
       });
 
       onDecline();
-      onClose(); // Close the modal and return to dashboard
+      onClose();
     } catch (error) {
       console.error('Error declining offer:', error);
       toast({

@@ -236,6 +236,12 @@ export const BookingRequestModal = ({
   const handleFareChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value;
 
+    // Allow empty input for clean deletion
+    if (value === '') {
+      setEditableFare('');
+      return;
+    }
+
     // Remove any non-numeric characters except decimal point
     value = value.replace(/[^0-9.]/g, '');
 
@@ -245,7 +251,7 @@ export const BookingRequestModal = ({
       value = value.replace(/\.(?=.*\.)/g, '');
     }
 
-    // Remove leading zeros unless it's "0." for decimal values
+    // Remove leading zeros unless it's "0." for decimal values or single "0"
     if (value.length > 1 && value.startsWith('0') && !value.startsWith('0.')) {
       value = value.replace(/^0+/, '');
     }

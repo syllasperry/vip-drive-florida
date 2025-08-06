@@ -41,6 +41,10 @@ export const updateBookingStatus = async ({
       userRole
     });
 
+    // Get current user ID for audit trail
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id;
+
     // Prepare update object with only defined values
     const updateData: any = {};
     if (status !== undefined) updateData.status = status;
@@ -63,11 +67,27 @@ export const updateBookingStatus = async ({
       throw updateError;
     }
 
+    // Create history entry with proper audit trail
+    const statusToRecord = status || rideStatus || 'status_update';
+    await supabase
+      .from('booking_status_history')
+      .insert({
+        booking_id: bookingId,
+        status: statusToRecord,
+        updated_by: userId,
+        role: userRole,
+        notes,
+        metadata: {
+          ...metadata,
+          status_passenger: statusPassenger,
+          status_driver: statusDriver,
+          ride_status: rideStatus,
+          payment_confirmation_status: paymentConfirmationStatus,
+          ride_stage: rideStage
+        }
+      });
+
     console.log('✅ Booking updated successfully:', updatedBooking);
-
-    // Note: The database trigger will automatically create the booking_status_history entry
-    // So we don't need to manually insert into that table
-
     return updatedBooking;
   } catch (error) {
     console.error('❌ Failed to update booking status:', error);
@@ -113,6 +133,15 @@ export const BookingStatusPatterns = {
     status: 'accepted',
     statusPassenger: 'offer_accepted',
     rideStatus: 'driver_accepted',
+    userRole: 'passenger'
+  }),
+
+  // Passenger rejects offer
+  passengerRejectOffer: (bookingId: string) => updateBookingStatus({
+    bookingId,
+    status: 'rejected',
+    statusPassenger: 'offer_rejected',
+    rideStatus: 'passenger_rejected',
     userRole: 'passenger'
   }),
 
