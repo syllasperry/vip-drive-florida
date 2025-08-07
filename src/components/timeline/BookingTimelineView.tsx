@@ -2,7 +2,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Clock, CheckCircle, AlertCircle, DollarSign } from "lucide-react";
 import { useBookingTimeline } from "@/hooks/useBookingTimeline";
 import { format } from "date-fns";
@@ -95,8 +94,13 @@ export const BookingTimelineView = ({ bookingId, className = "" }: BookingTimeli
                     </span>
                   </div>
                   <p className="text-sm font-medium text-foreground">
-                    {event.system_message}
+                    Status updated by {event.role || 'system'}
                   </p>
+                  {event.metadata && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {JSON.stringify(event.metadata)}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}

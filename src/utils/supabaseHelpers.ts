@@ -90,7 +90,7 @@ export const createRideStatus = async (statusData: {
   return data;
 };
 
-// Helper para gerenciar notificações
+// Helper para gerenciar notificações - usando messages table como alternativa
 export const createNotification = async (notificationData: {
   booking_id: string;
   recipient_passenger_id?: string;
@@ -98,11 +98,20 @@ export const createNotification = async (notificationData: {
   type: string;
   payload: Record<string, any>;
 }) => {
+  // Since notification_outbox doesn't exist, we'll create a message instead
+  const recipient_id = notificationData.recipient_passenger_id || notificationData.recipient_driver_id;
+  
+  if (!recipient_id) {
+    throw new Error('No recipient specified for notification');
+  }
+
   const { data, error } = await supabase
-    .from('notification_outbox')
+    .from('messages')
     .insert({
-      ...notificationData,
-      status: 'pending'
+      booking_id: notificationData.booking_id,
+      sender_id: recipient_id, // System message
+      sender_type: 'system',
+      message_text: `Notification: ${notificationData.type} - ${JSON.stringify(notificationData.payload)}`
     })
     .select()
     .single();

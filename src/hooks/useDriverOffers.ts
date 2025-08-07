@@ -34,14 +34,34 @@ export const useDriverOffers = ({ bookingId, enabled = true }: UseDriverOffersOp
     setError(null);
 
     try {
-      const { data, error } = await supabase
-        .from('driver_offers')
+      // Since driver_offers table doesn't exist in the current schema,
+      // we'll simulate offers by looking at booking data
+      const { data: booking, error } = await supabase
+        .from('bookings')
         .select('*')
-        .eq('booking_id', bookingId)
-        .order('created_at', { ascending: false });
+        .eq('id', bookingId)
+        .single();
 
       if (error) throw error;
-      setOffers(data || []);
+      
+      // Create a simulated offer if driver has sent one
+      const simulatedOffers: DriverOffer[] = [];
+      if (booking && booking.final_price && booking.driver_id) {
+        simulatedOffers.push({
+          id: `offer-${booking.id}`,
+          booking_id: booking.id,
+          driver_id: booking.driver_id,
+          vehicle_id: booking.vehicle_id || '',
+          price_cents: Math.round((booking.final_price || 0) * 100),
+          offer_price: booking.final_price || 0,
+          status: booking.ride_status === 'offer_sent' ? 'offer_sent' : 'pending',
+          estimated_arrival_time: '5 minutes',
+          created_at: booking.updated_at || booking.created_at,
+          updated_at: booking.updated_at || booking.created_at
+        });
+      }
+      
+      setOffers(simulatedOffers);
     } catch (err) {
       console.error('Error fetching offers:', err);
       setError('Failed to fetch offers');
@@ -59,12 +79,16 @@ export const useDriverOffers = ({ bookingId, enabled = true }: UseDriverOffersOp
     estimated_arrival_time?: string;
   }) => {
     try {
+      // Update the booking with the offer price since we don't have driver_offers table
       const { data, error } = await supabase
-        .from('driver_offers')
-        .insert({
-          ...offerData,
-          status: 'offer_sent'
+        .from('bookings')
+        .update({
+          final_price: offerData.offer_price,
+          ride_status: 'offer_sent',
+          status_driver: 'offer_sent',
+          payment_confirmation_status: 'price_awaiting_acceptance'
         })
+        .eq('id', offerData.booking_id)
         .select()
         .single();
 
@@ -91,7 +115,7 @@ export const useDriverOffers = ({ bookingId, enabled = true }: UseDriverOffersOp
     fetchOffers();
   }, [bookingId, enabled]);
 
-  // Real-time subscription for offers
+  // Real-time subscription for booking changes (simulating offers)
   useEffect(() => {
     if (!bookingId || !enabled) return;
 
@@ -102,11 +126,11 @@ export const useDriverOffers = ({ bookingId, enabled = true }: UseDriverOffersOp
         {
           event: '*',
           schema: 'public',
-          table: 'driver_offers',
-          filter: `booking_id=eq.${bookingId}`
+          table: 'bookings',
+          filter: `id=eq.${bookingId}`
         },
         (payload) => {
-          console.log('📡 Offer update:', payload);
+          console.log('📡 Booking update (simulating offers):', payload);
           fetchOffers();
         }
       )

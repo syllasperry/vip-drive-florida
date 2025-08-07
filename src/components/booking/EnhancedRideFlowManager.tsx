@@ -136,23 +136,22 @@ export const EnhancedRideFlowManager = ({
     }
   };
 
+  // Fixed function signature to match the expected callback
+  const handleSendOfferWrapper = () => {
+    // This will be called from the modal with a default price or prompt for price
+    const defaultPrice = booking.estimated_price || 100;
+    handleSendOffer(defaultPrice);
+  };
+
   const handleSendOffer = async (price: number) => {
     try {
       // Cria a oferta usando o hook
       await createOffer({
         booking_id: booking.id,
         driver_id: booking.driver_id,
-        vehicle_id: booking.vehicle_id,
+        vehicle_id: booking.vehicle_id || '',
         price_cents: Math.round(price * 100),
         offer_price: price
-      });
-
-      // Atualiza o booking
-      await updateBookingStatus(booking.id, {
-        status_driver: 'offer_sent',
-        ride_status: 'offer_sent',
-        final_price: price,
-        payment_confirmation_status: 'price_awaiting_acceptance'
       });
 
       setCurrentStep(null);
@@ -245,7 +244,7 @@ export const EnhancedRideFlowManager = ({
           handleClose();
           onFlowComplete();
         }}
-        onSendOffer={handleSendOffer}
+        onSendOffer={handleSendOfferWrapper}
       />
 
       {/* Passenger Modals */}

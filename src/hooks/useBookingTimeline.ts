@@ -5,11 +5,11 @@ import { supabase } from '@/integrations/supabase/client';
 interface TimelineEvent {
   id: string;
   booking_id: string;
-  passenger_id: string;
-  driver_id: string;
   status: string;
-  system_message: string;
   created_at: string;
+  updated_by: string | null;
+  role: string | null;
+  metadata: any;
 }
 
 interface UseBookingTimelineOptions {
@@ -29,14 +29,27 @@ export const useBookingTimeline = ({ bookingId, enabled = true }: UseBookingTime
     setError(null);
 
     try {
+      // Use booking_status_history table which exists in the Supabase schema
       const { data, error } = await supabase
-        .from('timeline_events')
+        .from('booking_status_history')
         .select('*')
         .eq('booking_id', bookingId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setTimelineEvents(data || []);
+      
+      // Map the data to our TimelineEvent interface
+      const mappedData: TimelineEvent[] = (data || []).map(item => ({
+        id: item.id.toString(),
+        booking_id: item.booking_id,
+        status: item.status,
+        created_at: item.created_at || new Date().toISOString(),
+        updated_by: item.updated_by,
+        role: item.role,
+        metadata: item.metadata
+      }));
+      
+      setTimelineEvents(mappedData);
     } catch (err) {
       console.error('Error fetching timeline:', err);
       setError('Failed to fetch timeline');
@@ -60,7 +73,7 @@ export const useBookingTimeline = ({ bookingId, enabled = true }: UseBookingTime
         {
           event: '*',
           schema: 'public',
-          table: 'timeline_events',
+          table: 'booking_status_history',
           filter: `booking_id=eq.${bookingId}`
         },
         (payload) => {
