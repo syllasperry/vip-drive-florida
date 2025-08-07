@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTimelineEvents } from "@/hooks/useTimelineEvents";
@@ -34,7 +35,7 @@ export const EnhancedRideFlowManager = ({
   const [currentStep, setCurrentStep] = useState<string | null>(null);
   const { toast } = useToast();
   
-  // Use os hooks implementados para timeline e ride status
+  // Use hooks implementados para timeline e ride status
   const { events: timelineEvents } = useTimelineEvents({ 
     bookingId: booking?.id, 
     enabled: !!booking?.id 
@@ -42,10 +43,10 @@ export const EnhancedRideFlowManager = ({
   
   const { summary: rideStatusSummary } = useRideStatusSummary(booking?.id);
 
-  // Check for driver offers from timeline events
+  // Check for driver offers from timeline events or booking status
   const hasDriverSentOffer = timelineEvents.some(event => 
-    event.status === 'offer_sent' && event.driver_id
-  );
+    event.status === 'offer_sent' && event.system_message?.includes('offer')
+  ) || booking.ride_status === 'offer_sent' || booking.status_driver === 'offer_sent';
 
   // Check for real-time notifications
   const handleNotificationReceived = (notification: any) => {
@@ -81,12 +82,12 @@ export const EnhancedRideFlowManager = ({
         });
 
         if (userType === 'passenger') {
-          // Check timeline events for offer_sent
+          // Check timeline events for offer_sent or booking status
           const offerSentEvent = timelineEvents.find(event => 
-            event.status === 'offer_sent' && event.system_message?.includes('price offer')
+            event.status === 'offer_sent' && event.system_message?.includes('offer')
           );
 
-          if (offerSentEvent && status_passenger !== 'offer_accepted' && payment_confirmation_status !== 'passenger_paid') {
+          if ((offerSentEvent || hasDriverSentOffer) && status_passenger !== 'offer_accepted' && payment_confirmation_status !== 'passenger_paid') {
             setCurrentStep('offer_acceptance');
           } else if (status_passenger === 'offer_accepted' && payment_confirmation_status === 'waiting_for_payment') {
             setCurrentStep('payment_instructions');
@@ -113,7 +114,7 @@ export const EnhancedRideFlowManager = ({
     };
 
     determineCurrentStep();
-  }, [booking, userType, forceOpenStep, timelineEvents, rideStatusSummary]);
+  }, [booking, userType, forceOpenStep, timelineEvents, rideStatusSummary, hasDriverSentOffer]);
 
   const handleDriverAcceptRide = async () => {
     try {
@@ -149,24 +150,42 @@ export const EnhancedRideFlowManager = ({
 
   const handleSendOffer = async (price: number) => {
     try {
-      // This will trigger the fn_on_offer_insert() function
+      // Update booking with offer details
       const { data, error } = await supabase
-        .from('driver_offers')
-        .insert({
-          booking_id: booking.id,
-          driver_id: booking.driver_id,
-          vehicle_id: booking.vehicle_id || '',
-          price_cents: Math.round(price * 100),
-          offer_price: price,
-          status: 'offer_sent',
-          estimated_arrival_time: '00:05:00'
+        .from('bookings')
+        .update({
+          final_price: price,
+          ride_status: 'offer_sent',
+          status_driver: 'offer_sent',
+          payment_confirmation_status: 'price_awaiting_acceptance'
         })
+        .eq('id', booking.id)
         .select()
         .single();
 
       if (error) throw error;
 
-      console.log('✅ Offer created, trigger should have fired:', data);
+      // Create status history entry
+      await supabase
+        .from('booking_status_history')
+        .insert({
+          booking_id: booking.id,
+          status: 'offer_sent',
+          updated_by: booking.driver_id,
+          role: 'driver',
+          metadata: { 
+            offer_price: price,
+            vehicle_id: booking.vehicle_id || '',
+            estimated_arrival_time: '5 minutes'
+          }
+        });
+
+      console.log('✅ Offer created, status updated:', data);
+
+      toast({
+        title: "Offer Sent!",
+        description: "Your price offer has been sent to the passenger.",
+      });
 
       setCurrentStep(null);
       onFlowComplete();

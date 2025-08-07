@@ -1,7 +1,6 @@
 
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 
 interface NotificationListenerProps {
   userId: string;
@@ -14,12 +13,11 @@ export const NotificationListener = ({
   userType,
   onNotificationReceived
 }: NotificationListenerProps) => {
-  const { toast } = useToast();
 
   useEffect(() => {
     if (!userId) return;
 
-    // Listen for notifications in notification_outbox
+    // Listen to booking_status_history changes for real-time notifications
     const channel = supabase
       .channel(`notifications-${userId}`)
       .on(
@@ -27,32 +25,32 @@ export const NotificationListener = ({
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'notification_outbox',
-          filter: userType === 'passenger' 
-            ? `recipient_passenger_id=eq.${userId}`
-            : `recipient_driver_id=eq.${userId}`
+          table: 'booking_status_history'
         },
         (payload) => {
-          console.log('📱 New notification received:', payload);
+          console.log('🔔 New status change detected:', payload);
           
-          const notification = payload.new;
-          
-          if (notification.type === 'offer_received') {
-            toast({
-              title: "New Offer Received!",
-              description: "A driver has sent you a price offer.",
-            });
+          // Simulate notification based on status change
+          if (payload.new) {
+            const notification = {
+              type: payload.new.status === 'offer_sent' ? 'offer_received' : 'status_update',
+              payload: payload.new,
+              booking_id: payload.new.booking_id
+            };
+            
+            onNotificationReceived(notification);
           }
-          
-          onNotificationReceived(notification);
         }
       )
       .subscribe();
 
+    console.log('👂 Notification listener started for user:', userId);
+
     return () => {
+      console.log('🔇 Notification listener stopped');
       supabase.removeChannel(channel);
     };
-  }, [userId, userType, onNotificationReceived, toast]);
+  }, [userId, onNotificationReceived]);
 
-  return null;
+  return null; // This is a logic-only component
 };

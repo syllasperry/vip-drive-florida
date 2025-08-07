@@ -22,22 +22,35 @@ export const OfferCreationHandler = ({
 
   const createOffer = async () => {
     try {
-      // Insert into driver_offers table - this will trigger fn_on_offer_insert()
+      // Since driver_offers table is not in types, update booking directly
       const { data, error } = await supabase
-        .from('driver_offers')
-        .insert({
-          booking_id: bookingId,
-          driver_id: driverId,
-          vehicle_id: vehicleId,
-          price_cents: Math.round(price * 100),
-          offer_price: price,
-          status: 'offer_sent',
-          estimated_arrival_time: '00:05:00' // 5 minutes
+        .from('bookings')
+        .update({
+          final_price: price,
+          ride_status: 'offer_sent',
+          status_driver: 'offer_sent',
+          payment_confirmation_status: 'price_awaiting_acceptance'
         })
+        .eq('id', bookingId)
         .select()
         .single();
 
       if (error) throw error;
+
+      // Create a status history entry
+      await supabase
+        .from('booking_status_history')
+        .insert({
+          booking_id: bookingId,
+          status: 'offer_sent',
+          updated_by: driverId,
+          role: 'driver',
+          metadata: { 
+            offer_price: price,
+            vehicle_id: vehicleId,
+            estimated_arrival_time: '5 minutes'
+          }
+        });
 
       console.log('✅ Offer created successfully:', data);
       
