@@ -104,7 +104,7 @@ export const BookingStatusPatterns = {
     bookingId,
     status: 'accepted',
     statusDriver: 'driver_accepted',
-    rideStatus: 'driver_accepted',
+    rideStatus: 'accepted_by_driver',
     userRole: 'driver'
   }),
 
@@ -113,7 +113,7 @@ export const BookingStatusPatterns = {
     bookingId,
     status: 'rejected',
     statusDriver: 'driver_rejected',
-    rideStatus: 'driver_rejected',
+    rideStatus: 'cancelled_by_driver',
     userRole: 'driver'
   }),
 
@@ -133,7 +133,7 @@ export const BookingStatusPatterns = {
     bookingId,
     status: 'accepted',
     statusPassenger: 'offer_accepted',
-    rideStatus: 'driver_accepted',
+    rideStatus: 'offer_accepted',
     userRole: 'passenger'
   }),
 
@@ -142,7 +142,7 @@ export const BookingStatusPatterns = {
     bookingId,
     status: 'rejected',
     statusPassenger: 'offer_rejected',
-    rideStatus: 'passenger_rejected',
+    rideStatus: 'offer_declined',
     userRole: 'passenger'
   }),
 
@@ -151,6 +151,7 @@ export const BookingStatusPatterns = {
     bookingId,
     statusPassenger: 'payment_confirmed',
     paymentConfirmationStatus: 'passenger_paid',
+    rideStatus: 'offer_accepted',
     userRole: 'passenger'
   }),
 
@@ -159,6 +160,7 @@ export const BookingStatusPatterns = {
     bookingId,
     statusDriver: 'driver_accepted',
     paymentConfirmationStatus: 'all_set',
+    rideStatus: 'all_set',
     userRole: 'driver'
   }),
 
@@ -167,7 +169,7 @@ export const BookingStatusPatterns = {
     bookingId,
     status: 'expired',
     statusDriver: 'expired',
-    rideStatus: 'expired',
+    rideStatus: 'cancelled_by_driver',
     userRole: 'driver',
     notes: 'Booking expired due to timeout'
   }),

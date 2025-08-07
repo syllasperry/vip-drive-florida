@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, CheckCircle, Phone, Car, DollarSign, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { RoadmapTimeline } from "@/components/roadmap/RoadmapTimeline";
+import { useRideStatusSync, RideStatus } from "@/hooks/useRideStatusSync";
 
 interface PassengerStatusTimelineProps {
   booking: any;
@@ -22,6 +23,13 @@ export const PassengerStatusTimeline = ({
 
   const driverName = booking.drivers?.full_name || "Driver";
   const vehicleInfo = `${booking.vehicle_type || "Vehicle"}`;
+  
+  // Use the synchronized ride status hook
+  const { rideStatus, statusMessage } = useRideStatusSync({
+    bookingId: booking.id,
+    userType: 'passenger',
+    enabled: true
+  });
   
   // Status timeline based on current booking state
   const getStatusSteps = () => {
@@ -170,63 +178,86 @@ export const PassengerStatusTimeline = ({
             <CardTitle className="text-lg">Status</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Current Status Display - Bottom section with YOUR STATUS and DRIVER STATUS */}
+            {/* Synchronized Status Display */}
             <div className="space-y-4">
               {/* YOUR STATUS */}
-              <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+              <div className={`border p-4 rounded-lg ${
+                statusMessage.status === 'completed' ? 'bg-green-50 border-green-200' :
+                statusMessage.status === 'active' ? 'bg-blue-50 border-blue-200' :
+                'bg-gray-50 border-gray-200'
+              }`}>
                 <div className="text-sm font-medium text-muted-foreground mb-2">YOUR STATUS</div>
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <CheckCircle className="h-5 w-5 text-blue-600" />
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    statusMessage.status === 'completed' ? 'bg-green-100' :
+                    statusMessage.status === 'active' ? 'bg-blue-100' :
+                    'bg-gray-100'
+                  }`}>
+                    {statusMessage.status === 'waiting' ? (
+                      <Clock className="h-5 w-5 text-gray-600" />
+                    ) : (
+                      <CheckCircle className={`h-5 w-5 ${
+                        statusMessage.status === 'completed' ? 'text-green-600' :
+                        statusMessage.status === 'active' ? 'text-blue-600' :
+                        'text-gray-600'
+                      }`} />
+                    )}
                   </div>
                   <div className="flex-1">
-                    <div className="font-semibold text-blue-800">
-                      {booking.status_passenger === 'offer_accepted' || booking.payment_confirmation_status === 'passenger_paid' || booking.payment_confirmation_status === 'all_set' 
-                        ? 'Booking Confirmed' 
-                        : (booking.ride_status === 'offer_sent' || 
-                           booking.payment_confirmation_status === 'price_awaiting_acceptance' ||
-                           booking.status_driver === 'driver_accepted' ||
-                           booking.status_driver === 'offer_sent' ||
-                           (booking.final_price && booking.estimated_price))
-                        ? 'Review Offer'
-                        : 'Booking Request Sent'
-                      }
+                    <div className={`font-semibold ${
+                      statusMessage.status === 'completed' ? 'text-green-800' :
+                      statusMessage.status === 'active' ? 'text-blue-800' :
+                      'text-gray-800'
+                    }`}>
+                      {statusMessage.primary}
                     </div>
-                    <div className="text-sm text-blue-600 flex items-center gap-1">
+                    <div className={`text-sm flex items-center gap-1 ${
+                      statusMessage.status === 'completed' ? 'text-green-600' :
+                      statusMessage.status === 'active' ? 'text-blue-600' :
+                      'text-gray-600'
+                    }`}>
                       <Clock className="h-3 w-3" />
-                      {booking.updated_at ? format(new Date(booking.updated_at), "MMM d, h:mm a") : "Aug 6, 6:54 PM"}
+                      {booking.updated_at ? format(new Date(booking.updated_at), "MMM d, h:mm a") : "Just now"}
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* DRIVER STATUS */}
-              <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
+              <div className={`border p-4 rounded-lg ${
+                rideStatus === RideStatus.OFFER_SENT || rideStatus === RideStatus.ACCEPTED_BY_DRIVER || rideStatus === RideStatus.ALL_SET
+                  ? 'bg-green-50 border-green-200'
+                  : 'bg-orange-50 border-orange-200'
+              }`}>
                 <div className="text-sm font-medium text-muted-foreground mb-2">DRIVER STATUS</div>
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                    {(booking.ride_status === 'offer_sent' || 
-                      booking.payment_confirmation_status === 'price_awaiting_acceptance' || 
-                      booking.status_driver === 'driver_accepted' ||
-                      booking.status_driver === 'offer_sent' ||
-                      (booking.final_price && booking.estimated_price)) ? (
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    rideStatus === RideStatus.OFFER_SENT || rideStatus === RideStatus.ACCEPTED_BY_DRIVER || rideStatus === RideStatus.ALL_SET
+                      ? 'bg-green-100'
+                      : 'bg-orange-100'
+                  }`}>
+                    {rideStatus === RideStatus.OFFER_SENT || rideStatus === RideStatus.ACCEPTED_BY_DRIVER || rideStatus === RideStatus.ALL_SET ? (
                       <CheckCircle className="h-5 w-5 text-green-600" />
                     ) : (
                       <Clock className="h-5 w-5 text-orange-600" />
                     )}
                   </div>
-                   <div className="flex-1">
-                     <div className="font-semibold text-green-800">
-                       {(booking.ride_status === 'offer_sent' || 
-                         booking.payment_confirmation_status === 'price_awaiting_acceptance' || 
-                         booking.status_driver === 'driver_accepted' ||
-                         booking.status_driver === 'offer_sent' ||
-                         (booking.final_price && booking.estimated_price)) 
-                         ? 'Driver Accepted & Sent Offer' 
-                         : 'Waiting for response...'
-                       }
-                     </div>
-                    <div className="text-sm text-green-600 flex items-center gap-1">
+                  <div className="flex-1">
+                    <div className={`font-semibold ${
+                      rideStatus === RideStatus.OFFER_SENT || rideStatus === RideStatus.ACCEPTED_BY_DRIVER || rideStatus === RideStatus.ALL_SET
+                        ? 'text-green-800'
+                        : 'text-orange-800'
+                    }`}>
+                      {rideStatus === RideStatus.OFFER_SENT ? 'Driver Accepted & Sent Offer' :
+                       rideStatus === RideStatus.ACCEPTED_BY_DRIVER ? 'Driver Accepted - Preparing Offer' :
+                       rideStatus === RideStatus.ALL_SET ? 'All Set - Ready to Go' :
+                       'Waiting for response...'}
+                    </div>
+                    <div className={`text-sm flex items-center gap-1 ${
+                      rideStatus === RideStatus.OFFER_SENT || rideStatus === RideStatus.ACCEPTED_BY_DRIVER || rideStatus === RideStatus.ALL_SET
+                        ? 'text-green-600'
+                        : 'text-orange-600'
+                    }`}>
                       <Clock className="h-3 w-3" />
                       {booking.updated_at ? format(new Date(booking.updated_at), "MMM d, h:mm a") : "Just now"}
                     </div>
