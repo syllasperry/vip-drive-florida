@@ -194,7 +194,7 @@ const BookingForm = () => {
 
       // Create initial status entries
       try {
-        await createBookingStatusEntries.passengerRequestSent(booking.id, {
+        await createBookingStatusEntries.passengerRequestCreated(booking.id, {
           name: passengerData?.full_name || 'Passenger',
           photo: passengerData?.profile_photo_url,
           pickup: pickup,
