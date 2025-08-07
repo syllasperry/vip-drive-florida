@@ -39,14 +39,14 @@ export const useRideStatus = ({ rideId, userType, enabled = true }: UseRideStatu
     fetchStatus();
   }, [rideId, enabled]);
 
-  // Real-time subscription for status updates
+  // Real-time subscription for status updates with enhanced coordination
   useEffect(() => {
     if (!rideId || !enabled) return;
 
-    console.log('📡 Setting up real-time subscription for ride status:', rideId);
+    console.log('📡 Setting up enhanced real-time subscription for ride status:', rideId);
 
     const channel = supabase
-      .channel(`ride-status-${rideId}`)
+      .channel(`ride-status-${rideId}-${userType}`)
       .on(
         'postgres_changes',
         {
@@ -56,8 +56,8 @@ export const useRideStatus = ({ rideId, userType, enabled = true }: UseRideStatu
           filter: `booking_id=eq.${rideId}`
         },
         (payload) => {
-          console.log('📡 Real-time ride status update:', payload);
-          fetchStatus(); // Refresh data when changes occur
+          console.log('📡 Real-time ride status update (history):', payload);
+          fetchStatus(); // Refresh data when status history changes
         }
       )
       .on(
@@ -81,7 +81,7 @@ export const useRideStatus = ({ rideId, userType, enabled = true }: UseRideStatu
       console.log('🔌 Cleaning up ride status subscription');
       supabase.removeChannel(channel);
     };
-  }, [rideId, enabled]);
+  }, [rideId, enabled, userType]);
 
   // Get statuses formatted for the current user type
   const getFormattedStatuses = (): { myStatus: RideStatusEntry | null; otherStatus: RideStatusEntry | null } => {
@@ -98,11 +98,28 @@ export const useRideStatus = ({ rideId, userType, enabled = true }: UseRideStatu
     return { myStatus, otherStatus };
   };
 
+  // Get current status for timeline display
+  const getCurrentTimelineStatus = (): string => {
+    if (!statusData) return 'pending';
+    
+    // Priority-based status mapping for timeline
+    if (statusData.current_status === 'all_set') return 'all_set';
+    if (statusData.current_status.includes('payment') || statusData.current_status === 'passenger_paid') return 'payment_confirmed';
+    if (statusData.current_status === 'offer_accepted') return 'offer_accepted';
+    if (statusData.current_status === 'offer_sent') return 'offer_sent';
+    
+    return 'pending';
+  };
+
   return {
-    statusData,
+    statusData: statusData ? {
+      ...statusData,
+      current_status: getCurrentTimelineStatus()
+    } : null,
     loading,
     error,
     refresh: fetchStatus,
+    currentTimelineStatus: getCurrentTimelineStatus(),
     ...getFormattedStatuses()
   };
 };

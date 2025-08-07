@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 import { getUnifiedStatus } from '@/utils/unifiedStatusManager';
+import { statusSynchronizer } from '@/utils/statusSynchronizer';
 
 export interface BookingState {
   id: string;
@@ -50,7 +51,7 @@ interface BookingStore {
   setDriverOffers: (bookingId: string, offers: DriverOffer[]) => void;
   addDriverOffer: (offer: DriverOffer) => void;
   
-  // Improved real-time subscriptions with proper coordination
+  // Enhanced real-time subscriptions with synchronization
   subscribeToBooking: (bookingId: string) => void;
   subscribeToDriverOffers: (bookingId: string) => void;
   unsubscribeFromBooking: (bookingId: string) => void;
@@ -66,7 +67,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
   bookings: {},
   driverOffers: {},
   
-  // Improved subscription manager
+  // Enhanced subscription manager with coordination
   subscriptionManager: {
     channels: new Map(),
     cleanup() {
@@ -76,6 +77,8 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
         supabase.removeChannel(channel);
       });
       this.channels.clear();
+      // Also cleanup status synchronizer
+      statusSynchronizer.cleanupAll();
     },
     subscribe(key: string, channel: any) {
       // Remove existing channel if it exists
@@ -160,8 +163,16 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
       return;
     }
     
-    console.log('🔔 Subscribing to booking updates:', bookingId);
+    console.log('🔔 Setting up coordinated subscription for booking:', bookingId);
     
+    // Use the status synchronizer for coordinated updates
+    const unsubscribe = statusSynchronizer.subscribeToBooking(bookingId, (payload) => {
+      if (payload.eventType === 'UPDATE' && payload.new) {
+        get().updateBooking(bookingId, payload.new as Partial<BookingState>);
+      }
+    });
+    
+    // Also set up traditional subscription as backup
     const channel = supabase
       .channel(channelKey)
       .on(
@@ -173,34 +184,17 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
           filter: `id=eq.${bookingId}`
         },
         (payload) => {
-          console.log('📡 Booking update received:', payload);
+          console.log('📡 Traditional booking update received:', payload);
           if (payload.new) {
             get().updateBooking(bookingId, payload.new as Partial<BookingState>);
           }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'booking_status_history',
-          filter: `booking_id=eq.${bookingId}`
-        },
-        (payload) => {
-          console.log('📡 Status history update received:', payload);
-          // Trigger a refresh of booking data when status history changes
-          setTimeout(() => {
-            // Small delay to ensure database consistency
-            get().subscribeToBooking(bookingId);
-          }, 100);
         }
       )
       .subscribe((status) => {
         console.log('📡 Booking subscription status:', status);
       });
     
-    manager.subscribe(channelKey, channel);
+    manager.subscribe(channelKey, { channel, unsubscribe });
   },
   
   subscribeToDriverOffers: (bookingId) => {
@@ -242,6 +236,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
     const manager = get().subscriptionManager;
     manager.unsubscribe(`booking-${bookingId}`);
     manager.unsubscribe(`offers-${bookingId}`);
+    statusSynchronizer.unsubscribeFromBooking(bookingId);
   },
 
   cleanupAllSubscriptions: () => {
