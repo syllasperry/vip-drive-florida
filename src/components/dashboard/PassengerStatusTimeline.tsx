@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, CheckCircle, Phone, Car, DollarSign, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { RoadmapTimeline } from "@/components/roadmap/RoadmapTimeline";
+import { VisualRoadmapTimeline } from "@/components/roadmap/VisualRoadmapTimeline";
 import { useRideStatusSync, RideStatus } from "@/hooks/useRideStatusSync";
 
 interface PassengerStatusTimelineProps {
@@ -165,11 +166,21 @@ export const PassengerStatusTimeline = ({
 
   return (
     <div className="w-full space-y-4">
-      {/* Roadmap Timeline */}
-      <RoadmapTimeline
-        booking={booking}
+      {/* Visual Roadmap Timeline */}
+      <VisualRoadmapTimeline
+        rideStatus={rideStatus || RideStatus.REQUESTED}
         userType="passenger"
-        onStepClick={onStatusClick}
+        timestamps={{
+          [RideStatus.REQUESTED]: booking.created_at,
+          [RideStatus.ACCEPTED_BY_DRIVER]: booking.updated_at,
+          [RideStatus.OFFER_SENT]: booking.updated_at,
+          [RideStatus.OFFER_ACCEPTED]: booking.passenger_payment_confirmed_at,
+          [RideStatus.ALL_SET]: booking.driver_payment_confirmed_at,
+        }}
+        userPhotoUrl={booking.passenger_photo_url}
+        otherUserPhotoUrl={booking.drivers?.profile_photo_url}
+        otherUserName={driverName}
+        onOpenModal={onStatusClick}
       />
 
         {/* Status Section - Shows current status based on booking state */}
