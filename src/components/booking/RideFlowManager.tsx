@@ -29,7 +29,7 @@ export const RideFlowManager = ({
 }: RideFlowManagerProps) => {
   const [currentStep, setCurrentStep] = useState<string | null>(null);
 
-  // Use offers hook for detecting driver offers
+  // Use offers hook for detecting driver offers - work with existing bookings too
   const { offers } = useDriverOffers({ 
     bookingId: booking?.id, 
     enabled: !!booking?.id 
@@ -50,28 +50,35 @@ export const RideFlowManager = ({
       final_price: booking.final_price,
       payment_confirmation_status: booking.payment_confirmation_status,
       userType,
-      hasOffers: offers.length > 0
+      hasOffers: offers.length > 0,
+      bookingId: booking.id
     });
 
     const { status_passenger, status_driver, ride_status, payment_confirmation_status } = booking;
 
     if (userType === 'passenger') {
-      // Check for driver offer
+      // Check for driver offer - work with existing bookings
       const hasDriverSentOffer = (
         offers.some(offer => offer.status === 'offer_sent') ||
         ride_status === 'offer_sent' || 
         status_driver === 'offer_sent' ||
-        payment_confirmation_status === 'price_awaiting_acceptance'
+        payment_confirmation_status === 'price_awaiting_acceptance' ||
+        // Also check if there's a final_price set by driver
+        (booking.final_price && booking.final_price !== booking.estimated_price)
       );
 
-      console.log('🔍 Passenger offer detection:', {
+      console.log('🔍 Passenger offer detection (existing bookings):', {
         hasDriverSentOffer,
         offers: offers.length,
         ride_status,
         status_driver,
-        payment_confirmation_status
+        payment_confirmation_status,
+        hasFinalPrice: !!booking.final_price,
+        finalPrice: booking.final_price,
+        estimatedPrice: booking.estimated_price
       });
 
+      // Show offer modal for existing bookings with offers
       if (hasDriverSentOffer && status_passenger !== 'offer_accepted' && payment_confirmation_status !== 'passenger_paid') {
         setCurrentStep('offer_acceptance');
       } else if (status_passenger === 'offer_accepted' && payment_confirmation_status === 'waiting_for_payment') {
@@ -82,7 +89,9 @@ export const RideFlowManager = ({
         setCurrentStep(null);
       }
     } else if (userType === 'driver') {
-      if (ride_status === 'pending_driver' || status_driver === 'new_request') {
+      // Driver logic - work with existing bookings
+      if ((ride_status === 'pending_driver' || status_driver === 'new_request') && 
+          payment_confirmation_status === 'waiting_for_offer') {
         setCurrentStep('driver_ride_request');
       } else if (payment_confirmation_status === 'passenger_paid') {
         setCurrentStep('driver_payment_confirmation');
@@ -105,6 +114,8 @@ export const RideFlowManager = ({
 
   const handleOfferAccepted = async () => {
     try {
+      console.log('🔄 Accepting offer for booking:', booking.id);
+      
       await updateBookingStatus(booking.id, {
         status_passenger: 'offer_accepted',
         payment_confirmation_status: 'waiting_for_payment'
@@ -117,9 +128,10 @@ export const RideFlowManager = ({
         status_label: 'Passenger Accepted Offer'
       });
 
+      console.log('✅ Offer accepted successfully');
       setCurrentStep('payment_instructions');
     } catch (error) {
-      console.error('Error accepting offer:', error);
+      console.error('❌ Error accepting offer:', error);
       setCurrentStep('payment_instructions');
     }
   };
@@ -130,6 +142,8 @@ export const RideFlowManager = ({
 
   const handlePaymentConfirmed = async () => {
     try {
+      console.log('🔄 Confirming payment for booking:', booking.id);
+      
       await updateBookingStatus(booking.id, {
         payment_confirmation_status: 'passenger_paid',
         passenger_payment_confirmed_at: new Date().toISOString()
@@ -142,10 +156,11 @@ export const RideFlowManager = ({
         status_label: 'Payment Confirmed by Passenger'
       });
 
+      console.log('✅ Payment confirmed successfully');
       setCurrentStep(null);
       onFlowComplete();
     } catch (error) {
-      console.error('Error confirming payment:', error);
+      console.error('❌ Error confirming payment:', error);
       setCurrentStep(null);
       onFlowComplete();
     }
@@ -153,6 +168,8 @@ export const RideFlowManager = ({
 
   const handleDriverPaymentConfirmed = async () => {
     try {
+      console.log('🔄 Driver confirming payment for booking:', booking.id);
+      
       await updateBookingStatus(booking.id, {
         payment_confirmation_status: 'all_set',
         driver_payment_confirmed_at: new Date().toISOString()
@@ -165,9 +182,10 @@ export const RideFlowManager = ({
         status_label: 'Payment Confirmed by Driver'
       });
 
+      console.log('✅ Driver payment confirmation successful');
       setCurrentStep('all_set_confirmation');
     } catch (error) {
-      console.error('Error confirming payment:', error);
+      console.error('❌ Error confirming payment:', error);
       setCurrentStep('all_set_confirmation');
     }
   };

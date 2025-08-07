@@ -1,19 +1,14 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 
 interface DriverOffer {
   id: string;
   booking_id: string;
   driver_id: string;
-  vehicle_id: string;
-  price_cents: number;
   offer_price: number;
-  status: string;
-  estimated_arrival_time: string;
+  status: 'offer_sent' | 'accepted' | 'declined';
   created_at: string;
-  updated_at: string;
 }
 
 interface UseDriverOffersOptions {
@@ -25,8 +20,8 @@ export const useDriverOffers = ({ bookingId, enabled = true }: UseDriverOffersOp
   const [offers, setOffers] = useState<DriverOffer[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
 
+  // Fetch offers - work with existing bookings by checking booking data
   const fetchOffers = async () => {
     if (!bookingId || !enabled) return;
 
@@ -34,67 +29,85 @@ export const useDriverOffers = ({ bookingId, enabled = true }: UseDriverOffersOp
     setError(null);
 
     try {
-      // Check booking for offer status
-      const { data: booking, error } = await supabase
+      // Instead of querying non-existent driver_offers table, 
+      // check if booking has offer-related data
+      const { data: booking, error: bookingError } = await supabase
         .from('bookings')
         .select('*')
         .eq('id', bookingId)
         .single();
 
-      if (error) throw error;
+      if (bookingError) throw bookingError;
+
+      console.log('📊 Checking booking for offers:', {
+        bookingId,
+        final_price: booking?.final_price,
+        estimated_price: booking?.estimated_price,
+        ride_status: booking?.ride_status,
+        status_driver: booking?.status_driver,
+        payment_confirmation_status: booking?.payment_confirmation_status
+      });
+
+      // Create synthetic offer if booking shows driver has sent offer
+      const syntheticOffers: DriverOffer[] = [];
       
-      // Create simulated offers based on booking data
-      const simulatedOffers: DriverOffer[] = [];
-      if (booking && booking.final_price && booking.driver_id && booking.ride_status === 'offer_sent') {
-        simulatedOffers.push({
-          id: `offer-${booking.id}`,
+      if (booking && (
+        booking.ride_status === 'offer_sent' ||
+        booking.status_driver === 'offer_sent' ||
+        booking.payment_confirmation_status === 'price_awaiting_acceptance' ||
+        (booking.final_price && booking.final_price !== booking.estimated_price)
+      )) {
+        syntheticOffers.push({
+          id: `synthetic_${booking.id}`,
           booking_id: booking.id,
           driver_id: booking.driver_id,
-          vehicle_id: booking.vehicle_id || '',
-          price_cents: Math.round((booking.final_price || 0) * 100),
-          offer_price: booking.final_price || 0,
-          status: 'offer_sent',
-          estimated_arrival_time: '5 minutes',
-          created_at: booking.updated_at || booking.created_at,
-          updated_at: booking.updated_at || booking.created_at
+          offer_price: booking.final_price || booking.estimated_price,
+          status: booking.status_passenger === 'offer_accepted' ? 'accepted' : 'offer_sent',
+          created_at: booking.updated_at || booking.created_at
         });
       }
-      
-      setOffers(simulatedOffers);
+
+      console.log('🎯 Generated synthetic offers:', syntheticOffers);
+      setOffers(syntheticOffers);
     } catch (err) {
-      console.error('Error fetching offers:', err);
+      console.error('❌ Error fetching offers:', err);
       setError('Failed to fetch offers');
+      setOffers([]);
     } finally {
       setLoading(false);
     }
   };
 
+  // Initial fetch
   useEffect(() => {
     fetchOffers();
   }, [bookingId, enabled]);
 
-  // Real-time subscription for booking changes
+  // Real-time subscription for booking updates that might indicate new offers
   useEffect(() => {
     if (!bookingId || !enabled) return;
 
+    console.log('📡 Setting up real-time subscription for booking:', bookingId);
+
     const channel = supabase
-      .channel(`offers-${bookingId}`)
+      .channel(`booking-offers-${bookingId}`)
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'UPDATE',
           schema: 'public',
           table: 'bookings',
           filter: `id=eq.${bookingId}`
         },
         (payload) => {
-          console.log('📡 Booking update for offers:', payload);
-          fetchOffers();
+          console.log('📡 Real-time booking update for offers:', payload);
+          fetchOffers(); // Refresh offers when booking changes
         }
       )
       .subscribe();
 
     return () => {
+      console.log('🔌 Cleaning up real-time subscription for:', bookingId);
       supabase.removeChannel(channel);
     };
   }, [bookingId, enabled]);

@@ -1,249 +1,273 @@
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Clock, CheckCircle, Phone, Car, DollarSign, MapPin } from "lucide-react";
-import { format } from "date-fns";
-import { RoadmapTimeline } from "@/components/roadmap/RoadmapTimeline";
-import { VisualRoadmapTimeline } from "@/components/roadmap/VisualRoadmapTimeline";
-import { useRideStatusSync, RideStatus } from "@/hooks/useRideStatusSync";
-import { useDriverOffers } from "@/hooks/useDriverOffers";
+import { Clock, CheckCircle, AlertCircle, User, Car } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+
+interface StatusEvent {
+  id: string;
+  status: string;
+  timestamp: string;
+  actor: 'passenger' | 'driver' | 'system';
+  message: string;
+  metadata?: any;
+}
 
 interface PassengerStatusTimelineProps {
   booking: any;
-  onStatusClick?: (status: string) => void;
-  onCall?: () => void;
 }
 
-export const PassengerStatusTimeline = ({ 
-  booking, 
-  onStatusClick,
-  onCall 
-}: PassengerStatusTimelineProps) => {
-  if (!booking) return null;
+export const PassengerStatusTimeline = ({ booking }: PassengerStatusTimelineProps) => {
+  const [statusHistory, setStatusHistory] = useState<StatusEvent[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const driverName = booking.drivers?.full_name || "Driver";
-  const vehicleInfo = `${booking.vehicle_type || "Vehicle"}`;
-  
-  // Use the synchronized ride status hook
-  const { rideStatus, statusMessage } = useRideStatusSync({
-    bookingId: booking.id,
-    userType: 'passenger',
-    enabled: true
-  });
+  useEffect(() => {
+    if (!booking?.id) return;
 
-  // Use driver offers hook to detect offers
-  const { offers } = useDriverOffers({ 
-    bookingId: booking.id, 
-    enabled: true 
-  });
+    const fetchStatusHistory = async () => {
+      try {
+        console.log('📊 Fetching status history for booking:', booking.id);
+        
+        // Get booking status history from existing table
+        const { data: history, error } = await supabase
+          .from('booking_status_history')
+          .select('*')
+          .eq('booking_id', booking.id)
+          .order('created_at', { ascending: true });
 
-  console.log('🔍 PassengerStatusTimeline Debug:', {
-    bookingId: booking.id,
-    rideStatus,
-    statusMessage,
-    offersCount: offers.length,
-    booking: {
-      ride_status: booking.ride_status,
-      status_driver: booking.status_driver,
-      final_price: booking.final_price,
-      payment_confirmation_status: booking.payment_confirmation_status
+        if (error) {
+          console.error('❌ Error fetching status history:', error);
+          // Create synthetic timeline from booking data if no history exists
+          const syntheticEvents = createSyntheticTimeline(booking);
+          setStatusHistory(syntheticEvents);
+          return;
+        }
+
+        // Convert history to timeline events
+        const timelineEvents: StatusEvent[] = (history || []).map((entry: any) => ({
+          id: entry.id.toString(),
+          status: entry.status,
+          timestamp: entry.created_at,
+          actor: entry.role || 'system',
+          message: getStatusMessage(entry.status, entry.role),
+          metadata: entry.metadata
+        }));
+
+        // Add synthetic events if history is empty but booking has status
+        if (timelineEvents.length === 0) {
+          const syntheticEvents = createSyntheticTimeline(booking);
+          setStatusHistory(syntheticEvents);
+        } else {
+          setStatusHistory(timelineEvents);
+        }
+
+        console.log('✅ Status timeline loaded:', timelineEvents);
+      } catch (error) {
+        console.error('❌ Error in fetchStatusHistory:', error);
+        const syntheticEvents = createSyntheticTimeline(booking);
+        setStatusHistory(syntheticEvents);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStatusHistory();
+
+    // Real-time subscription for status updates
+    const channel = supabase
+      .channel(`status-timeline-${booking.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'booking_status_history',
+          filter: `booking_id=eq.${booking.id}`
+        },
+        (payload) => {
+          console.log('📡 Real-time status update:', payload);
+          fetchStatusHistory();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [booking?.id]);
+
+  // Create synthetic timeline from booking data for existing bookings
+  const createSyntheticTimeline = (booking: any): StatusEvent[] => {
+    const events: StatusEvent[] = [];
+    
+    // Always add booking created event
+    events.push({
+      id: 'created',
+      status: 'passenger_requested',
+      timestamp: booking.created_at,
+      actor: 'passenger',
+      message: 'Ride request submitted'
+    });
+
+    // Add driver offer if there are signs of it
+    if (booking.ride_status === 'offer_sent' || 
+        booking.status_driver === 'offer_sent' || 
+        (booking.final_price && booking.final_price !== booking.estimated_price)) {
+      events.push({
+        id: 'offer_sent',
+        status: 'offer_sent',
+        timestamp: booking.updated_at || booking.created_at,
+        actor: 'driver',
+        message: `Driver sent price offer: $${booking.final_price || booking.estimated_price}`
+      });
     }
-  });
-  
-  // Enhanced offer detection
-  const hasDriverSentOffer = offers.some(offer => offer.status === 'offer_sent') ||
-    booking.ride_status === 'offer_sent' || 
-    booking.status_driver === 'offer_sent' ||
-    booking.payment_confirmation_status === 'price_awaiting_acceptance';
 
-  const shouldShowTripDetails = booking.payment_confirmation_status === 'all_set' || 
-                                booking.status_passenger === 'offer_accepted' ||
-                                booking.ride_status === 'driver_accepted';
+    // Add passenger acceptance if status shows it
+    if (booking.status_passenger === 'offer_accepted') {
+      events.push({
+        id: 'offer_accepted',
+        status: 'offer_accepted',
+        timestamp: booking.updated_at || booking.created_at,
+        actor: 'passenger',
+        message: 'Passenger accepted the offer'
+      });
+    }
 
-  // Get offer amount from booking or default
-  const offerAmount = booking.final_price || booking.estimated_price || 0;
+    // Add payment events
+    if (booking.payment_confirmation_status === 'passenger_paid') {
+      events.push({
+        id: 'payment_sent',
+        status: 'payment_sent',
+        timestamp: booking.passenger_payment_confirmed_at || booking.updated_at,
+        actor: 'passenger',
+        message: 'Payment confirmed by passenger'
+      });
+    }
 
-  return (
-    <div className="w-full space-y-4">
-      {/* Visual Roadmap Timeline */}
-      <VisualRoadmapTimeline
-        rideStatus={rideStatus || RideStatus.REQUESTED}
-        userType="passenger"
-        timestamps={{
-          [RideStatus.REQUESTED]: booking.created_at,
-          [RideStatus.ACCEPTED_BY_DRIVER]: booking.updated_at,
-          [RideStatus.OFFER_SENT]: booking.updated_at,
-          [RideStatus.OFFER_ACCEPTED]: booking.passenger_payment_confirmed_at,
-          [RideStatus.ALL_SET]: booking.driver_payment_confirmed_at,
-        }}
-        userPhotoUrl={booking.passenger_photo_url}
-        otherUserPhotoUrl={booking.drivers?.profile_photo_url}
-        otherUserName={driverName}
-        onOpenModal={onStatusClick}
-      />
+    if (booking.payment_confirmation_status === 'all_set') {
+      events.push({
+        id: 'all_set',
+        status: 'all_set',
+        timestamp: booking.driver_payment_confirmed_at || booking.updated_at,
+        actor: 'driver',
+        message: 'Payment confirmed by driver - All set!'
+      });
+    }
 
-      {/* Status Section - Shows current status */}
-      <Card className="w-full">
+    return events;
+  };
+
+  const getStatusMessage = (status: string, role?: string) => {
+    const messages: { [key: string]: string } = {
+      'passenger_requested': 'Ride request submitted',
+      'offer_sent': 'Driver sent price offer',
+      'offer_accepted': 'Passenger accepted offer',
+      'payment_sent': 'Payment confirmed by passenger',
+      'all_set': 'Payment confirmed by driver - All set!',
+      'ride_started': 'Ride has started',
+      'ride_completed': 'Ride completed successfully'
+    };
+    
+    return messages[status] || `Status updated: ${status}`;
+  };
+
+  const getStatusIcon = (status: string, actor: string) => {
+    switch (status) {
+      case 'passenger_requested':
+        return <User className="h-4 w-4 text-blue-500" />;
+      case 'offer_sent':
+        return <Car className="h-4 w-4 text-orange-500" />;
+      case 'offer_accepted':
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'payment_sent':
+      case 'all_set':
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      default:
+        return <Clock className="h-4 w-4 text-gray-500" />;
+    }
+  };
+
+  const getActorBadge = (actor: string) => {
+    const colors = {
+      passenger: 'bg-blue-100 text-blue-800',
+      driver: 'bg-green-100 text-green-800',
+      system: 'bg-gray-100 text-gray-800'
+    };
+    
+    return (
+      <Badge className={colors[actor as keyof typeof colors] || colors.system}>
+        {actor.charAt(0).toUpperCase() + actor.slice(1)}
+      </Badge>
+    );
+  };
+
+  if (loading) {
+    return (
+      <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Status</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Status Timeline
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Status Display */}
-          <div className="space-y-4">
-            {/* YOUR STATUS */}
-            <div className="space-y-3">
-              <div className="text-sm font-medium text-muted-foreground">YOUR STATUS</div>
-              <div className={`border p-4 rounded-lg bg-blue-50 border-blue-200`}>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-100">
-                    <CheckCircle className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-semibold text-blue-800">
-                      Booking Request Sent
-                    </div>
-                    <div className="text-sm flex items-center gap-1 text-blue-600">
-                      <Clock className="h-3 w-3" />
-                      {booking.created_at ? format(new Date(booking.created_at), "MMM d, h:mm a") : "Just now"}
-                    </div>
-                  </div>
-                  {/* Passenger Avatar */}
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage 
-                      src={booking.passenger_photo_url} 
-                      alt="You"
-                    />
-                    <AvatarFallback className="bg-blue-100 text-blue-600">
-                      P
-                    </AvatarFallback>
-                  </Avatar>
-                </div>
-              </div>
-            </div>
-
-            {/* DRIVER STATUS - Show offer if sent */}
-            {hasDriverSentOffer && (
-              <div className="space-y-3">
-                <div className="text-sm font-medium text-muted-foreground">DRIVER STATUS</div>
-                <div className="bg-orange-50 border border-orange-200 p-4 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-orange-100">
-                      <DollarSign className="h-5 w-5 text-orange-600" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-semibold text-orange-800">
-                        Price Offer Sent - Review Required
-                      </div>
-                      <div className="text-sm flex items-center gap-1 text-orange-600">
-                        <Clock className="h-3 w-3" />
-                        {booking.updated_at ? format(new Date(booking.updated_at), "MMM d, h:mm a") : "Just now"}
-                      </div>
-                      <div className="text-xs text-orange-500 mt-1">
-                        Driver has sent you a price offer
-                      </div>
-                    </div>
-                    {/* Driver Avatar */}
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage 
-                        src={booking.drivers?.profile_photo_url} 
-                        alt={driverName}
-                      />
-                      <AvatarFallback className="bg-orange-100 text-orange-600">
-                        {driverName.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    {/* Price Badge */}
-                    <div className="bg-gray-800 text-white px-4 py-2 rounded-full font-bold text-lg">
-                      ${offerAmount.toFixed(0)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Driver Information - Show when no offer sent yet */}
-          {booking.drivers && !hasDriverSentOffer && (
-            <div className="bg-primary/5 p-4 rounded-lg">
-              <div className="flex items-center gap-3 mb-3">
-                <Avatar className="h-12 w-12">
-                  <AvatarImage 
-                    src={booking.drivers.profile_photo_url} 
-                    alt={driverName}
-                  />
-                  <AvatarFallback className="bg-primary/10 text-primary">
-                    {driverName.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-foreground">{driverName}</h3>
-                  <div className="flex items-center gap-4">
-                    <Badge variant="outline" className="text-xs">★ 4.9</Badge>
-                    <span className="text-sm text-muted-foreground">ETA 5 min</span>
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onCall}
-                  className="flex items-center gap-2"
-                >
-                  <Phone className="h-4 w-4" />
-                  Call
-                </Button>
-              </div>
-
-              <div className="bg-white/50 p-3 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Vehicle</span>
-                  <div className="text-right">
-                    <div className="font-medium">{vehicleInfo}</div>
-                    <div className="text-sm text-muted-foreground">ABC-123</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Trip Details - Only show when appropriate */}
-          {shouldShowTripDetails && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                <div className="text-sm">
-                  <div className="font-medium">PICKUP</div>
-                  <div className="text-muted-foreground">{booking.pickup_location}</div>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
-                <div className="text-sm">
-                  <div className="font-medium">DROP-OFF</div>
-                  <div className="text-muted-foreground">{booking.dropoff_location}</div>
-                </div>
-              </div>
-
-              <div className="bg-primary/10 p-3 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm">
-                    <div className="font-medium">PICKUP TRIP</div>
-                    <div className="text-muted-foreground">
-                      {booking.pickup_time ? format(new Date(booking.pickup_time), "HH:mm") : ""}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xl font-bold">${offerAmount.toFixed(2)}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+        <CardContent>
+          <p className="text-muted-foreground">Loading timeline...</p>
         </CardContent>
       </Card>
-    </div>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Clock className="h-5 w-5" />
+          Status Timeline
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {statusHistory.map((event, index) => (
+            <div key={event.id} className="flex items-start gap-3">
+              <div className="flex-shrink-0 mt-1">
+                {getStatusIcon(event.status, event.actor)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  {getActorBadge(event.actor)}
+                  <span className="text-sm text-muted-foreground">
+                    {new Date(event.timestamp).toLocaleString()}
+                  </span>
+                </div>
+                <p className="text-sm font-medium text-foreground">
+                  {event.message}
+                </p>
+                {event.metadata && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    <details>
+                      <summary>Details</summary>
+                      <pre className="mt-1 p-2 bg-muted rounded text-xs">
+                        {JSON.stringify(event.metadata, null, 2)}
+                      </pre>
+                    </details>
+                  </div>
+                )}
+              </div>
+              {index < statusHistory.length - 1 && (
+                <div className="absolute left-4 top-8 w-px h-8 bg-border" 
+                     style={{ marginLeft: '0.5rem' }} />
+              )}
+            </div>
+          ))}
+          
+          {statusHistory.length === 0 && (
+            <p className="text-muted-foreground text-center py-4">
+              No status updates available
+            </p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 };
