@@ -183,7 +183,11 @@ export const PassengerStatusTimeline = ({
                     <div className="font-semibold text-blue-800">
                       {booking.status_passenger === 'offer_accepted' || booking.payment_confirmation_status === 'passenger_paid' || booking.payment_confirmation_status === 'all_set' 
                         ? 'Booking Confirmed' 
-                        : booking.ride_status === 'offer_sent' || booking.payment_confirmation_status === 'price_awaiting_acceptance'
+                        : (booking.ride_status === 'offer_sent' || 
+                           booking.payment_confirmation_status === 'price_awaiting_acceptance' ||
+                           booking.status_driver === 'driver_accepted' ||
+                           booking.status_driver === 'offer_sent' ||
+                           (booking.final_price && booking.estimated_price))
                         ? 'Review Offer'
                         : 'Booking Request Sent'
                       }
@@ -201,7 +205,11 @@ export const PassengerStatusTimeline = ({
                 <div className="text-sm font-medium text-muted-foreground mb-2">DRIVER STATUS</div>
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                    {booking.ride_status === 'offer_sent' || booking.payment_confirmation_status === 'price_awaiting_acceptance' || booking.status_driver === 'driver_accepted' ? (
+                    {(booking.ride_status === 'offer_sent' || 
+                      booking.payment_confirmation_status === 'price_awaiting_acceptance' || 
+                      booking.status_driver === 'driver_accepted' ||
+                      booking.status_driver === 'offer_sent' ||
+                      (booking.final_price && booking.estimated_price)) ? (
                       <CheckCircle className="h-5 w-5 text-green-600" />
                     ) : (
                       <Clock className="h-5 w-5 text-orange-600" />
@@ -212,7 +220,7 @@ export const PassengerStatusTimeline = ({
                        {(booking.ride_status === 'offer_sent' || 
                          booking.payment_confirmation_status === 'price_awaiting_acceptance' || 
                          booking.status_driver === 'driver_accepted' ||
-                         (booking.status_driver === 'offer_sent') ||
+                         booking.status_driver === 'offer_sent' ||
                          (booking.final_price && booking.estimated_price)) 
                          ? 'Driver Accepted & Sent Offer' 
                          : 'Waiting for response...'
