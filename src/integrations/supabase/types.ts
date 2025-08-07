@@ -221,6 +221,60 @@ export type Database = {
           },
         ]
       }
+      driver_offers: {
+        Row: {
+          booking_id: string | null
+          created_at: string | null
+          driver_id: string | null
+          estimated_arrival_time: unknown | null
+          id: string
+          offer_price: number | null
+          price_cents: number | null
+          status: Database["public"]["Enums"]["booking_status"] | null
+          updated_at: string | null
+          vehicle_id: string | null
+        }
+        Insert: {
+          booking_id?: string | null
+          created_at?: string | null
+          driver_id?: string | null
+          estimated_arrival_time?: unknown | null
+          id?: string
+          offer_price?: number | null
+          price_cents?: number | null
+          status?: Database["public"]["Enums"]["booking_status"] | null
+          updated_at?: string | null
+          vehicle_id?: string | null
+        }
+        Update: {
+          booking_id?: string | null
+          created_at?: string | null
+          driver_id?: string | null
+          estimated_arrival_time?: unknown | null
+          id?: string
+          offer_price?: number | null
+          price_cents?: number | null
+          status?: Database["public"]["Enums"]["booking_status"] | null
+          updated_at?: string | null
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_offers_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_offers_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drivers: {
         Row: {
           account_name: string | null
@@ -364,6 +418,53 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      notification_outbox: {
+        Row: {
+          booking_id: string | null
+          created_at: string | null
+          id: string
+          payload: Json | null
+          recipient_driver_id: string | null
+          recipient_id: string | null
+          recipient_passenger_id: string | null
+          sent_at: string | null
+          status: string | null
+          type: Database["public"]["Enums"]["notification_type"]
+        }
+        Insert: {
+          booking_id?: string | null
+          created_at?: string | null
+          id?: string
+          payload?: Json | null
+          recipient_driver_id?: string | null
+          recipient_id?: string | null
+          recipient_passenger_id?: string | null
+          sent_at?: string | null
+          status?: string | null
+          type: Database["public"]["Enums"]["notification_type"]
+        }
+        Update: {
+          booking_id?: string | null
+          created_at?: string | null
+          id?: string
+          payload?: Json | null
+          recipient_driver_id?: string | null
+          recipient_id?: string | null
+          recipient_passenger_id?: string | null
+          sent_at?: string | null
+          status?: string | null
+          type?: Database["public"]["Enums"]["notification_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notification_preferences: {
         Row: {
@@ -643,6 +744,41 @@ export type Database = {
           },
         ]
       }
+      ride_status_history: {
+        Row: {
+          booking_id: string | null
+          changed_by: string | null
+          created_at: string | null
+          id: string
+          new_status: Database["public"]["Enums"]["booking_status"]
+          previous_status: Database["public"]["Enums"]["booking_status"] | null
+        }
+        Insert: {
+          booking_id?: string | null
+          changed_by?: string | null
+          created_at?: string | null
+          id?: string
+          new_status: Database["public"]["Enums"]["booking_status"]
+          previous_status?: Database["public"]["Enums"]["booking_status"] | null
+        }
+        Update: {
+          booking_id?: string | null
+          changed_by?: string | null
+          created_at?: string | null
+          id?: string
+          new_status?: Database["public"]["Enums"]["booking_status"]
+          previous_status?: Database["public"]["Enums"]["booking_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scheduled_messages: {
         Row: {
           booking_id: string
@@ -675,6 +811,58 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      timeline_events: {
+        Row: {
+          booking_id: string
+          created_at: string
+          driver_id: string | null
+          id: number
+          passenger_id: string | null
+          status: Database["public"]["Enums"]["booking_status"]
+          system_message: string | null
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          driver_id?: string | null
+          id?: number
+          passenger_id?: string | null
+          status: Database["public"]["Enums"]["booking_status"]
+          system_message?: string | null
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          driver_id?: string | null
+          id?: number
+          passenger_id?: string | null
+          status?: Database["public"]["Enums"]["booking_status"]
+          system_message?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timeline_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timeline_events_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timeline_events_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "passengers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       users: {
         Row: {
@@ -777,6 +965,10 @@ export type Database = {
           driver_phone: string
         }[]
       }
+      get_complete_schema: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       get_ride_status_summary: {
         Args: { p_ride_id: string }
         Returns: {
@@ -803,7 +995,22 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      booking_status:
+        | "pending"
+        | "offer_sent"
+        | "offer_accepted"
+        | "offer_rejected"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
+      notification_type:
+        | "offer_received"
+        | "offer_accepted"
+        | "offer_rejected"
+        | "booking_updated"
+        | "driver_arrived"
+        | "ride_started"
+        | "ride_completed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -930,6 +1137,25 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      booking_status: [
+        "pending",
+        "offer_sent",
+        "offer_accepted",
+        "offer_rejected",
+        "in_progress",
+        "completed",
+        "cancelled",
+      ],
+      notification_type: [
+        "offer_received",
+        "offer_accepted",
+        "offer_rejected",
+        "booking_updated",
+        "driver_arrived",
+        "ride_started",
+        "ride_completed",
+      ],
+    },
   },
 } as const

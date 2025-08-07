@@ -8,8 +8,8 @@ import { AllSetConfirmationAlert } from "./AllSetConfirmationAlert";
 import { DriverRideRequestModal } from "../roadmap/DriverRideRequestModal";
 import { PassengerOfferReviewModal } from "../roadmap/PassengerOfferReviewModal";
 import { DriverPaymentConfirmationModal } from "../roadmap/DriverPaymentConfirmationModal";
-import { supabase } from "@/integrations/supabase/client";
-import { updateBookingStatus, createRideStatus } from "@/utils/supabaseHelpers";
+import { useBookingStore } from "@/stores/bookingStore";
+import { updateBookingStatus } from "@/utils/supabaseHelpers";
 
 interface RideFlowManagerProps {
   booking: any;
@@ -27,116 +27,116 @@ export const RideFlowManager = ({
   forceOpenStep 
 }: RideFlowManagerProps) => {
   const [currentStep, setCurrentStep] = useState<string | null>(null);
+  const { getBookingStatus, subscribeToBooking, hasActiveOffer } = useBookingStore();
+
+  useEffect(() => {
+    if (!booking?.id) return;
+
+    // Subscribe to real-time booking updates
+    subscribeToBooking(booking.id);
+  }, [booking?.id]);
 
   useEffect(() => {
     if (forceOpenStep) {
-      console.log('🎯 Forçando abertura do step:', forceOpenStep);
+      console.log('🎯 Force opening step:', forceOpenStep);
       setCurrentStep(forceOpenStep);
       return;
     }
 
     if (!booking) return;
 
-    console.log('🔄 RideFlowManager - Dados do booking:', {
-      id: booking.id,
-      ride_status: booking.ride_status,
-      status_driver: booking.status_driver,
-      status_passenger: booking.status_passenger,
-      final_price: booking.final_price,
-      estimated_price: booking.estimated_price,
-      payment_confirmation_status: booking.payment_confirmation_status,
-      userType
-    });
+    const unifiedStatus = getBookingStatus(booking.id);
+    console.log('🔄 RideFlowManager - Unified status:', unifiedStatus, 'UserType:', userType);
 
     if (userType === 'passenger') {
-      // Verifica se driver enviou oferta
-      const hasDriverOffer = (
-        booking.final_price && 
-        booking.final_price !== booking.estimated_price &&
-        booking.status_passenger !== 'offer_accepted'
-      );
-
-      console.log('👀 Passenger - Verificando ofertas:', {
-        hasDriverOffer,
-        final_price: booking.final_price,
-        estimated_price: booking.estimated_price,
-        status_passenger: booking.status_passenger
-      });
-
-      if (hasDriverOffer) {
-        console.log('💰 Mostrando modal de oferta para passageiro');
-        setCurrentStep('offer_acceptance');
-      } else if (booking.status_passenger === 'offer_accepted' && 
-                 booking.payment_confirmation_status === 'waiting_for_payment') {
-        console.log('💳 Mostrando instruções de pagamento');
-        setCurrentStep('payment_instructions');
-      } else if (booking.payment_confirmation_status === 'all_set') {
-        console.log('✅ Mostrando confirmação all_set');
-        setCurrentStep('all_set_confirmation');
-      } else {
-        setCurrentStep(null);
+      switch (unifiedStatus) {
+        case 'offer_sent':
+          console.log('💰 Showing offer acceptance modal');
+          setCurrentStep('offer_acceptance');
+          break;
+        case 'offer_accepted':
+          if (booking.payment_confirmation_status === 'waiting_for_payment') {
+            console.log('💳 Showing payment instructions');
+            setCurrentStep('payment_instructions');
+          }
+          break;
+        case 'all_set':
+          console.log('✅ Showing all set confirmation');
+          setCurrentStep('all_set_confirmation');
+          break;
+        default:
+          setCurrentStep(null);
       }
     } else if (userType === 'driver') {
-      if (booking.payment_confirmation_status === 'passenger_paid') {
-        console.log('💰 Driver - Passageiro pagou, mostrar confirmação');
-        setCurrentStep('driver_payment_confirmation');
-      } else if (booking.payment_confirmation_status === 'all_set') {
-        console.log('✅ Driver - All set confirmation');
-        setCurrentStep('all_set_confirmation');
-      } else {
-        setCurrentStep(null);
+      switch (unifiedStatus) {
+        case 'pending':
+          if (booking.status_driver === 'new_request') {
+            console.log('🚗 New ride request for driver');
+            setCurrentStep('driver_ride_request');
+          }
+          break;
+        case 'payment_confirmed':
+          console.log('💰 Driver - Passenger paid, show confirmation');
+          setCurrentStep('driver_payment_confirmation');
+          break;
+        case 'all_set':
+          console.log('✅ Driver - All set confirmation');
+          setCurrentStep('all_set_confirmation');
+          break;
+        default:
+          setCurrentStep(null);
       }
     }
-  }, [booking, userType, forceOpenStep]);
+  }, [booking, userType, forceOpenStep, getBookingStatus]);
 
   const handleOfferAccepted = async () => {
     try {
-      console.log('✅ Aceitando oferta para booking:', booking.id);
+      console.log('✅ Accepting offer for booking:', booking.id);
       
       await updateBookingStatus(booking.id, {
         status_passenger: 'offer_accepted',
         payment_confirmation_status: 'waiting_for_payment'
       });
 
-      console.log('✅ Oferta aceita com sucesso');
+      console.log('✅ Offer accepted successfully');
       setCurrentStep('payment_instructions');
-      onFlowComplete(); // Força refresh do componente pai
+      onFlowComplete();
     } catch (error) {
-      console.error('❌ Erro ao aceitar oferta:', error);
+      console.error('❌ Error accepting offer:', error);
     }
   };
 
   const handlePaymentConfirmed = async () => {
     try {
-      console.log('💳 Confirmando pagamento para booking:', booking.id);
+      console.log('💳 Confirming payment for booking:', booking.id);
       
       await updateBookingStatus(booking.id, {
         payment_confirmation_status: 'passenger_paid',
         passenger_payment_confirmed_at: new Date().toISOString()
       });
 
-      console.log('✅ Pagamento confirmado com sucesso');
+      console.log('✅ Payment confirmed successfully');
       setCurrentStep(null);
-      onFlowComplete(); // Força refresh do componente pai
+      onFlowComplete();
     } catch (error) {
-      console.error('❌ Erro ao confirmar pagamento:', error);
+      console.error('❌ Error confirming payment:', error);
     }
   };
 
   const handleDriverPaymentConfirmed = async () => {
     try {
-      console.log('💰 Driver confirmando pagamento para booking:', booking.id);
+      console.log('💰 Driver confirming payment for booking:', booking.id);
       
       await updateBookingStatus(booking.id, {
         payment_confirmation_status: 'all_set',
         driver_payment_confirmed_at: new Date().toISOString()
       });
 
-      console.log('✅ Driver confirmou pagamento');
+      console.log('✅ Driver confirmed payment');
       setCurrentStep('all_set_confirmation');
-      onFlowComplete(); // Força refresh do componente pai
+      onFlowComplete();
     } catch (error) {
-      console.error('❌ Erro na confirmação do driver:', error);
+      console.error('❌ Error in driver payment confirmation:', error);
     }
   };
 
