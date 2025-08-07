@@ -6,7 +6,7 @@ export interface StatusHistoryEntry {
   created_at: string;
   updated_by?: string;
   role?: string;
-  notes?: string;
+  // Removed notes field as it doesn't exist in the database schema
   metadata: {
     message?: string;
     previous_status?: string;

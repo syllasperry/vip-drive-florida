@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,24 +40,29 @@ export const RealTimeStatusTimeline = ({
         console.log('📈 Status history fetched:', data);
         
         // Transform the data to match our interface with proper type conversion
-        const transformedData: StatusHistoryEntry[] = (data || []).map(entry => ({
-          id: entry.id.toString(), // Convert number to string
-          booking_id: entry.booking_id,
-          status: entry.status,
-          created_at: entry.created_at,
-          updated_by: entry.updated_by,
-          role: entry.role,
-          notes: entry.notes,
-          metadata: {
-            message: entry.metadata?.message,
-            previous_status: entry.metadata?.previous_status,
-            status_passenger: entry.metadata?.status_passenger,
-            status_driver: entry.metadata?.status_driver,
-            ride_status: entry.metadata?.ride_status,
-            payment_confirmation_status: entry.metadata?.payment_confirmation_status,
-            ride_stage: entry.metadata?.ride_stage,
-          }
-        }));
+        const transformedData: StatusHistoryEntry[] = (data || []).map(entry => {
+          // Safely cast metadata as an object
+          const metadata = (entry.metadata as any) || {};
+          
+          return {
+            id: entry.id.toString(), // Convert number to string
+            booking_id: entry.booking_id,
+            status: entry.status,
+            created_at: entry.created_at,
+            updated_by: entry.updated_by,
+            role: entry.role,
+            // Remove notes field as it doesn't exist in the database schema
+            metadata: {
+              message: metadata?.message,
+              previous_status: metadata?.previous_status,
+              status_passenger: metadata?.status_passenger,
+              status_driver: metadata?.status_driver,
+              ride_status: metadata?.ride_status,
+              payment_confirmation_status: metadata?.payment_confirmation_status,
+              ride_stage: metadata?.ride_stage,
+            }
+          };
+        });
         
         setStatusHistory(transformedData);
       } catch (err) {
@@ -85,6 +89,9 @@ export const RealTimeStatusTimeline = ({
           console.log('📡 Status history real-time update:', payload);
           
           if (payload.eventType === 'INSERT' && payload.new) {
+            // Safely cast metadata for real-time updates
+            const metadata = (payload.new.metadata as any) || {};
+            
             const newEntry: StatusHistoryEntry = {
               id: payload.new.id.toString(),
               booking_id: payload.new.booking_id,
@@ -92,19 +99,21 @@ export const RealTimeStatusTimeline = ({
               created_at: payload.new.created_at,
               updated_by: payload.new.updated_by,
               role: payload.new.role,
-              notes: payload.new.notes,
               metadata: {
-                message: payload.new.metadata?.message,
-                previous_status: payload.new.metadata?.previous_status,
-                status_passenger: payload.new.metadata?.status_passenger,
-                status_driver: payload.new.metadata?.status_driver,
-                ride_status: payload.new.metadata?.ride_status,
-                payment_confirmation_status: payload.new.metadata?.payment_confirmation_status,
-                ride_stage: payload.new.metadata?.ride_stage,
+                message: metadata?.message,
+                previous_status: metadata?.previous_status,
+                status_passenger: metadata?.status_passenger,
+                status_driver: metadata?.status_driver,
+                ride_status: metadata?.ride_status,
+                payment_confirmation_status: metadata?.payment_confirmation_status,
+                ride_stage: metadata?.ride_stage,
               }
             };
             setStatusHistory(prev => [...prev, newEntry]);
           } else if (payload.eventType === 'UPDATE' && payload.new) {
+            // Safely cast metadata for real-time updates
+            const metadata = (payload.new.metadata as any) || {};
+            
             const updatedEntry: StatusHistoryEntry = {
               id: payload.new.id.toString(),
               booking_id: payload.new.booking_id,
@@ -112,15 +121,14 @@ export const RealTimeStatusTimeline = ({
               created_at: payload.new.created_at,
               updated_by: payload.new.updated_by,
               role: payload.new.role,
-              notes: payload.new.notes,
               metadata: {
-                message: payload.new.metadata?.message,
-                previous_status: payload.new.metadata?.previous_status,
-                status_passenger: payload.new.metadata?.status_passenger,
-                status_driver: payload.new.metadata?.status_driver,
-                ride_status: payload.new.metadata?.ride_status,
-                payment_confirmation_status: payload.new.metadata?.payment_confirmation_status,
-                ride_stage: payload.new.metadata?.ride_stage,
+                message: metadata?.message,
+                previous_status: metadata?.previous_status,
+                status_passenger: metadata?.status_passenger,
+                status_driver: metadata?.status_driver,
+                ride_status: metadata?.ride_status,
+                payment_confirmation_status: metadata?.payment_confirmation_status,
+                ride_stage: metadata?.ride_stage,
               }
             };
             setStatusHistory(prev => 
