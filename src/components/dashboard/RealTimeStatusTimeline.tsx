@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -51,7 +50,21 @@ export const RealTimeStatusTimeline = ({
         }
 
         console.log('📈 Status history fetched:', data);
-        setStatusHistory(data || []);
+        
+        // Transform the data to match our interface
+        const transformedData: StatusHistoryEntry[] = (data || []).map(entry => ({
+          id: entry.id.toString(), // Convert number to string
+          booking_id: entry.booking_id,
+          status: entry.status,
+          created_at: entry.created_at,
+          updated_by: entry.updated_by,
+          role: entry.role,
+          metadata: typeof entry.metadata === 'object' && entry.metadata !== null 
+            ? entry.metadata as { message?: string; previous_status?: string; }
+            : {}
+        }));
+        
+        setStatusHistory(transformedData);
       } catch (err) {
         console.error('❌ Error in fetchStatusHistory:', err);
       } finally {
@@ -76,11 +89,33 @@ export const RealTimeStatusTimeline = ({
           console.log('📡 Status history real-time update:', payload);
           
           if (payload.eventType === 'INSERT' && payload.new) {
-            setStatusHistory(prev => [...prev, payload.new as StatusHistoryEntry]);
+            const newEntry: StatusHistoryEntry = {
+              id: payload.new.id.toString(),
+              booking_id: payload.new.booking_id,
+              status: payload.new.status,
+              created_at: payload.new.created_at,
+              updated_by: payload.new.updated_by,
+              role: payload.new.role,
+              metadata: typeof payload.new.metadata === 'object' && payload.new.metadata !== null
+                ? payload.new.metadata as { message?: string; previous_status?: string; }
+                : {}
+            };
+            setStatusHistory(prev => [...prev, newEntry]);
           } else if (payload.eventType === 'UPDATE' && payload.new) {
+            const updatedEntry: StatusHistoryEntry = {
+              id: payload.new.id.toString(),
+              booking_id: payload.new.booking_id,
+              status: payload.new.status,
+              created_at: payload.new.created_at,
+              updated_by: payload.new.updated_by,
+              role: payload.new.role,
+              metadata: typeof payload.new.metadata === 'object' && payload.new.metadata !== null
+                ? payload.new.metadata as { message?: string; previous_status?: string; }
+                : {}
+            };
             setStatusHistory(prev => 
               prev.map(entry => 
-                entry.id === payload.new.id ? payload.new as StatusHistoryEntry : entry
+                entry.id === updatedEntry.id ? updatedEntry : entry
               )
             );
           }
