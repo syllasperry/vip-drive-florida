@@ -59,6 +59,8 @@ export const PassengerStatusTimeline = ({
                                 booking.status_passenger === 'offer_accepted' ||
                                 booking.ride_status === 'driver_accepted';
 
+  const offerAmount = booking.final_price || booking.estimated_price || 0;
+
   return (
     <div className="w-full space-y-4">
       {/* Visual Roadmap Timeline */}
@@ -87,117 +89,67 @@ export const PassengerStatusTimeline = ({
           {/* Synchronized Status Display */}
           <div className="space-y-4">
             {/* YOUR STATUS */}
-            <div className={`border p-4 rounded-lg ${
-              statusMessage.status === 'completed' ? 'bg-green-50 border-green-200' :
-              statusMessage.status === 'active' ? 'bg-blue-50 border-blue-200' :
-              'bg-gray-50 border-gray-200'
-            }`}>
-              <div className="text-sm font-medium text-muted-foreground mb-2">YOUR STATUS</div>
-              <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  statusMessage.status === 'completed' ? 'bg-green-100' :
-                  statusMessage.status === 'active' ? 'bg-blue-100' :
-                  'bg-gray-100'
-                }`}>
-                  {statusMessage.status === 'waiting' ? (
-                    <Clock className="h-5 w-5 text-gray-600" />
-                  ) : (
-                    <CheckCircle className={`h-5 w-5 ${
-                      statusMessage.status === 'completed' ? 'text-green-600' :
-                      statusMessage.status === 'active' ? 'text-blue-600' :
-                      'text-gray-600'
-                    }`} />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <div className={`font-semibold ${
-                    statusMessage.status === 'completed' ? 'text-green-800' :
-                    statusMessage.status === 'active' ? 'text-blue-800' :
-                    'text-gray-800'
-                  }`}>
-                    {statusMessage.primary}
+            <div className="space-y-3">
+              <div className="text-sm font-medium text-muted-foreground">YOUR STATUS</div>
+              <div className={`border p-4 rounded-lg bg-blue-50 border-blue-200`}>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-100">
+                    <CheckCircle className="h-5 w-5 text-blue-600" />
                   </div>
-                  <div className={`text-sm flex items-center gap-1 ${
-                    statusMessage.status === 'completed' ? 'text-green-600' :
-                    statusMessage.status === 'active' ? 'text-blue-600' :
-                    'text-gray-600'
-                  }`}>
-                    <Clock className="h-3 w-3" />
-                    {booking.updated_at ? format(new Date(booking.updated_at), "MMM d, h:mm a") : "Just now"}
+                  <div className="flex-1">
+                    <div className="font-semibold text-blue-800">
+                      Booking Request Sent
+                    </div>
+                    <div className="text-sm flex items-center gap-1 text-blue-600">
+                      <Clock className="h-3 w-3" />
+                      {booking.created_at ? format(new Date(booking.created_at), "MMM d, h:mm a") : "Just now"}
+                    </div>
                   </div>
+                  {/* Passenger Avatar */}
+                  <Avatar className="h-12 w-12">
+                    <AvatarImage 
+                      src={booking.passenger_photo_url} 
+                      alt="You"
+                    />
+                    <AvatarFallback className="bg-blue-100 text-blue-600">
+                      P
+                    </AvatarFallback>
+                  </Avatar>
                 </div>
               </div>
             </div>
 
-            {/* DRIVER STATUS - Show based on actual booking state */}
-            {hasDriverSentOffer ? (
-              // Show detailed offer sent status with driver photo and price
+            {/* DRIVER STATUS - Manual Implementation */}
+            {hasDriverSentOffer && (
               <div className="space-y-3">
                 <div className="text-sm font-medium text-muted-foreground">DRIVER STATUS</div>
                 <div className="bg-orange-50 border border-orange-200 p-4 rounded-lg">
                   <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-orange-100">
+                      <DollarSign className="h-5 w-5 text-orange-600" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-orange-800">
+                        Offer Sent - Awaiting Your Payment
+                      </div>
+                      <div className="text-sm flex items-center gap-1 text-orange-600">
+                        <Clock className="h-3 w-3" />
+                        {booking.updated_at ? format(new Date(booking.updated_at), "MMM d, h:mm a") : "Just now"}
+                      </div>
+                    </div>
+                    {/* Driver Avatar */}
                     <Avatar className="h-12 w-12">
                       <AvatarImage 
                         src={booking.drivers?.profile_photo_url} 
                         alt={driverName}
                       />
-                      <AvatarFallback className="bg-primary/10 text-primary">
+                      <AvatarFallback className="bg-orange-100 text-orange-600">
                         {driverName.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex-1">
-                      <div className="font-semibold text-orange-800 flex items-center gap-2">
-                        <DollarSign className="h-4 w-4" />
-                        Offer Sent - Awaiting Your Payment
-                      </div>
-                      <div className="text-sm text-orange-600 flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {booking.updated_at ? format(new Date(booking.updated_at), "MMM d, h:mm a") : "Just now"}
-                      </div>
-                    </div>
+                    {/* Price Badge */}
                     <div className="bg-gray-800 text-white px-4 py-2 rounded-full font-bold text-lg">
-                      ${(booking.final_price || booking.estimated_price || 0).toFixed(0)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              // Show simple status for other states
-              <div className={`border p-4 rounded-lg ${
-                rideStatus === RideStatus.ACCEPTED_BY_DRIVER || rideStatus === RideStatus.ALL_SET
-                  ? 'bg-green-50 border-green-200'
-                  : 'bg-orange-50 border-orange-200'
-              }`}>
-                <div className="text-sm font-medium text-muted-foreground mb-2">DRIVER STATUS</div>
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    rideStatus === RideStatus.ACCEPTED_BY_DRIVER || rideStatus === RideStatus.ALL_SET
-                      ? 'bg-green-100'
-                      : 'bg-orange-100'
-                  }`}>
-                    {rideStatus === RideStatus.ACCEPTED_BY_DRIVER || rideStatus === RideStatus.ALL_SET ? (
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                    ) : (
-                      <Clock className="h-5 w-5 text-orange-600" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div className={`font-semibold ${
-                      rideStatus === RideStatus.ACCEPTED_BY_DRIVER || rideStatus === RideStatus.ALL_SET
-                        ? 'text-green-800'
-                        : 'text-orange-800'
-                    }`}>
-                      {rideStatus === RideStatus.ACCEPTED_BY_DRIVER ? 'Driver Accepted - Preparing Offer' :
-                       rideStatus === RideStatus.ALL_SET ? 'All Set - Ready to Go' :
-                       'Waiting for response...'}
-                    </div>
-                    <div className={`text-sm flex items-center gap-1 ${
-                      rideStatus === RideStatus.ACCEPTED_BY_DRIVER || rideStatus === RideStatus.ALL_SET
-                        ? 'text-green-600'
-                        : 'text-orange-600'
-                    }`}>
-                      <Clock className="h-3 w-3" />
-                      {booking.updated_at ? format(new Date(booking.updated_at), "MMM d, h:mm a") : "Just now"}
+                      ${offerAmount.toFixed(0)}
                     </div>
                   </div>
                 </div>
