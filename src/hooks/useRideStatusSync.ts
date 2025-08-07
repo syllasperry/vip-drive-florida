@@ -42,14 +42,37 @@ export const useRideStatusSync = ({ bookingId, userType, enabled = true }: UseRi
     try {
       const { data, error } = await supabase
         .from('bookings')
-        .select('ride_status')
+        .select('ride_status, status_driver, final_price, estimated_price, payment_confirmation_status')
         .eq('id', bookingId)
         .maybeSingle();
 
       if (error) throw error;
       
-      if (data?.ride_status) {
-        setRideStatus(data.ride_status as RideStatusType);
+      if (data) {
+        // Map booking statuses to unified ride status
+        let mappedStatus: RideStatusType;
+        
+        if (data.ride_status === 'driver_accepted' && (data.final_price || data.estimated_price)) {
+          // Driver accepted and sent offer
+          mappedStatus = RideStatus.OFFER_SENT;
+        } else if (data.status_driver === 'offer_sent' || data.ride_status === 'offer_sent') {
+          mappedStatus = RideStatus.OFFER_SENT;
+        } else if (data.payment_confirmation_status === 'all_set') {
+          mappedStatus = RideStatus.ALL_SET;
+        } else if (data.ride_status === 'offer_accepted' || data.payment_confirmation_status === 'passenger_paid') {
+          mappedStatus = RideStatus.OFFER_ACCEPTED;
+        } else if (data.ride_status === 'driver_accepted' || data.status_driver === 'driver_accepted') {
+          mappedStatus = RideStatus.ACCEPTED_BY_DRIVER;
+        } else {
+          mappedStatus = (data.ride_status as RideStatusType) || RideStatus.REQUESTED;
+        }
+        
+        console.log('🔄 Fetched status:', { 
+          raw: data, 
+          mapped: mappedStatus, 
+          hasPrice: !!(data.final_price || data.estimated_price) 
+        });
+        setRideStatus(mappedStatus);
       }
     } catch (err) {
       console.error('Error fetching ride status:', err);
@@ -76,8 +99,28 @@ export const useRideStatusSync = ({ bookingId, userType, enabled = true }: UseRi
           filter: `id=eq.${bookingId}`
         },
         (payload) => {
-          console.log('🔄 Ride status updated:', payload.new.ride_status);
-          setRideStatus(payload.new.ride_status as RideStatusType);
+          console.log('🔄 Ride status updated:', payload.new);
+          
+          // Apply same mapping logic for real-time updates
+          let mappedStatus: RideStatusType;
+          const newData = payload.new;
+          
+          if (newData.ride_status === 'driver_accepted' && (newData.final_price || newData.estimated_price)) {
+            mappedStatus = RideStatus.OFFER_SENT;
+          } else if (newData.status_driver === 'offer_sent' || newData.ride_status === 'offer_sent') {
+            mappedStatus = RideStatus.OFFER_SENT;
+          } else if (newData.payment_confirmation_status === 'all_set') {
+            mappedStatus = RideStatus.ALL_SET;
+          } else if (newData.ride_status === 'offer_accepted' || newData.payment_confirmation_status === 'passenger_paid') {
+            mappedStatus = RideStatus.OFFER_ACCEPTED;
+          } else if (newData.ride_status === 'driver_accepted' || newData.status_driver === 'driver_accepted') {
+            mappedStatus = RideStatus.ACCEPTED_BY_DRIVER;
+          } else {
+            mappedStatus = (newData.ride_status as RideStatusType) || RideStatus.REQUESTED;
+          }
+          
+          console.log('🔄 Mapped real-time status:', mappedStatus);
+          setRideStatus(mappedStatus);
         }
       )
       .subscribe();
