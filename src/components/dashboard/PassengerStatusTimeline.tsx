@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +7,9 @@ import { Clock, CheckCircle, Phone, Car, DollarSign, MapPin } from "lucide-react
 import { format } from "date-fns";
 import { RoadmapTimeline } from "@/components/roadmap/RoadmapTimeline";
 import { VisualRoadmapTimeline } from "@/components/roadmap/VisualRoadmapTimeline";
+import { BookingTimelineView } from "@/components/timeline/BookingTimelineView";
 import { useRideStatusSync, RideStatus } from "@/hooks/useRideStatusSync";
+import { useDriverOffers } from "@/hooks/useDriverOffers";
 
 interface PassengerStatusTimelineProps {
   booking: any;
@@ -33,10 +34,18 @@ export const PassengerStatusTimeline = ({
     enabled: true
   });
 
-  console.log('🔍 PassengerStatusTimeline Debug:', {
+  // Use offers hook to get driver offers from Supabase
+  const { offers } = useDriverOffers({ 
+    bookingId: booking.id, 
+    enabled: true 
+  });
+
+  console.log('🔍 PassengerStatusTimeline Debug (Enhanced):', {
     bookingId: booking.id,
     rideStatus,
     statusMessage,
+    offersCount: offers.length,
+    latestOffer: offers[0],
     booking: {
       ride_status: booking.ride_status,
       status_driver: booking.status_driver,
@@ -46,8 +55,9 @@ export const PassengerStatusTimeline = ({
     }
   });
   
-  // Check if driver sent offer based on booking data
+  // Enhanced offer detection using both offers table and booking data
   const hasDriverSentOffer = (
+    offers.some(offer => offer.status === 'offer_sent') ||
     booking.ride_status === 'offer_sent' || 
     booking.status_driver === 'offer_sent' ||
     (booking.ride_status === 'driver_accepted' && (booking.final_price || booking.estimated_price)) ||
@@ -59,7 +69,9 @@ export const PassengerStatusTimeline = ({
                                 booking.status_passenger === 'offer_accepted' ||
                                 booking.ride_status === 'driver_accepted';
 
-  const offerAmount = booking.final_price || booking.estimated_price || 0;
+  // Get offer amount from offers table or booking
+  const latestOffer = offers.find(offer => offer.status === 'offer_sent');
+  const offerAmount = latestOffer?.offer_price || booking.final_price || booking.estimated_price || 0;
 
   return (
     <div className="w-full space-y-4">
@@ -70,7 +82,7 @@ export const PassengerStatusTimeline = ({
         timestamps={{
           [RideStatus.REQUESTED]: booking.created_at,
           [RideStatus.ACCEPTED_BY_DRIVER]: booking.updated_at,
-          [RideStatus.OFFER_SENT]: booking.updated_at,
+          [RideStatus.OFFER_SENT]: latestOffer?.created_at || booking.updated_at,
           [RideStatus.OFFER_ACCEPTED]: booking.passenger_payment_confirmed_at,
           [RideStatus.ALL_SET]: booking.driver_payment_confirmed_at,
         }}
@@ -78,6 +90,12 @@ export const PassengerStatusTimeline = ({
         otherUserPhotoUrl={booking.drivers?.profile_photo_url}
         otherUserName={driverName}
         onOpenModal={onStatusClick}
+      />
+
+      {/* Enhanced Timeline View using Supabase timeline_events */}
+      <BookingTimelineView 
+        bookingId={booking.id}
+        className="mb-4"
       />
 
       {/* Status Section - Shows current status based on booking state */}
@@ -119,7 +137,7 @@ export const PassengerStatusTimeline = ({
               </div>
             </div>
 
-            {/* DRIVER STATUS - Manual Implementation */}
+            {/* DRIVER STATUS - Enhanced with offers table data */}
             {hasDriverSentOffer && (
               <div className="space-y-3">
                 <div className="text-sm font-medium text-muted-foreground">DRIVER STATUS</div>
@@ -134,8 +152,16 @@ export const PassengerStatusTimeline = ({
                       </div>
                       <div className="text-sm flex items-center gap-1 text-orange-600">
                         <Clock className="h-3 w-3" />
-                        {booking.updated_at ? format(new Date(booking.updated_at), "MMM d, h:mm a") : "Just now"}
+                        {latestOffer?.created_at ? 
+                          format(new Date(latestOffer.created_at), "MMM d, h:mm a") :
+                          (booking.updated_at ? format(new Date(booking.updated_at), "MMM d, h:mm a") : "Just now")
+                        }
                       </div>
+                      {latestOffer && (
+                        <div className="text-xs text-orange-500 mt-1">
+                          Offer ID: {latestOffer.id.slice(0, 8)}...
+                        </div>
+                      )}
                     </div>
                     {/* Driver Avatar */}
                     <Avatar className="h-12 w-12">
@@ -147,9 +173,14 @@ export const PassengerStatusTimeline = ({
                         {driverName.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    {/* Price Badge */}
+                    {/* Price Badge - Enhanced */}
                     <div className="bg-gray-800 text-white px-4 py-2 rounded-full font-bold text-lg">
                       ${offerAmount.toFixed(0)}
+                      {latestOffer && (
+                        <div className="text-xs opacity-75">
+                          from offers
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -228,7 +259,7 @@ export const PassengerStatusTimeline = ({
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-xl font-bold">${(booking.estimated_price || booking.final_price || 0).toFixed(2)}</div>
+                    <div className="text-xl font-bold">${offerAmount.toFixed(2)}</div>
                   </div>
                 </div>
               </div>
