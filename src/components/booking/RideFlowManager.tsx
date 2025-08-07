@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { OfferAcceptanceModal } from "./OfferAcceptanceModal";
 import { PaymentInstructionsAlert } from "./PaymentInstructionsAlert";
@@ -51,6 +52,16 @@ export const RideFlowManager = ({
           return;
         }
 
+        console.log('🔄 RideFlowManager - Current booking data:', {
+          ride_status: validBooking.ride_status,
+          status_driver: validBooking.status_driver,
+          status_passenger: validBooking.status_passenger,
+          final_price: validBooking.final_price,
+          estimated_price: validBooking.estimated_price,
+          payment_confirmation_status: validBooking.payment_confirmation_status,
+          userType
+        });
+
         // Use roadmap system to determine which modal to show
         const config = getRoadmapConfig(validBooking);
         const steps = userType === 'passenger' ? config.passengerSteps : config.driverSteps;
@@ -71,13 +82,31 @@ export const RideFlowManager = ({
           
           setCurrentStep(modalTypeMapping[currentModalStep.modalType] || null);
         } else {
-          // Fallback to legacy logic for edge cases
+          // Enhanced logic for passenger offer detection
           const { status_passenger, status_driver, ride_status, payment_confirmation_status } = validBooking;
 
           if (userType === 'passenger') {
-            if (ride_status === 'offer_sent' || status_driver === 'offer_sent' || 
-                (validBooking.final_price && payment_confirmation_status === 'price_awaiting_acceptance') ||
-                (status_driver === 'driver_accepted' && validBooking.final_price)) {
+            // Check if driver has sent an offer - multiple conditions
+            const driverSentOffer = (
+              ride_status === 'offer_sent' || 
+              status_driver === 'offer_sent' ||
+              status_driver === 'driver_accepted' ||
+              (ride_status === 'driver_accepted' && (validBooking.final_price || validBooking.estimated_price)) ||
+              payment_confirmation_status === 'price_awaiting_acceptance'
+            );
+
+            console.log('🔄 Passenger offer detection:', {
+              driverSentOffer,
+              conditions: {
+                ride_status_offer_sent: ride_status === 'offer_sent',
+                status_driver_offer_sent: status_driver === 'offer_sent', 
+                status_driver_accepted: status_driver === 'driver_accepted',
+                driver_accepted_with_price: ride_status === 'driver_accepted' && (validBooking.final_price || validBooking.estimated_price),
+                price_awaiting_acceptance: payment_confirmation_status === 'price_awaiting_acceptance'
+              }
+            });
+
+            if (driverSentOffer && status_passenger !== 'offer_accepted' && payment_confirmation_status !== 'passenger_paid' && payment_confirmation_status !== 'all_set') {
               setCurrentStep('offer_acceptance');
             } else if (status_passenger === 'offer_accepted' && payment_confirmation_status === 'waiting_for_payment') {
               setCurrentStep('payment_instructions');
@@ -157,10 +186,7 @@ export const RideFlowManager = ({
       />
 
       <PassengerOfferReviewModal
-        isOpen={currentStep === 'offer_acceptance' || 
-                ((booking?.ride_status === 'offer_sent' || 
-                  (booking?.ride_status === 'driver_accepted' && (booking?.final_price || booking?.estimated_price))) 
-                 && userType === 'passenger')}
+        isOpen={currentStep === 'offer_acceptance'}
         onClose={handleClose}
         booking={booking}
         onAccept={handleOfferAccepted}
