@@ -9,7 +9,6 @@ import { DriverRideRequestModal } from "../roadmap/DriverRideRequestModal";
 import { PassengerOfferReviewModal } from "../roadmap/PassengerOfferReviewModal";
 import { DriverPaymentConfirmationModal } from "../roadmap/DriverPaymentConfirmationModal";
 import { supabase } from "@/integrations/supabase/client";
-import { useDriverOffers } from "@/hooks/useDriverOffers";
 import { updateBookingStatus, createRideStatus } from "@/utils/supabaseHelpers";
 
 interface RideFlowManagerProps {
@@ -29,164 +28,115 @@ export const RideFlowManager = ({
 }: RideFlowManagerProps) => {
   const [currentStep, setCurrentStep] = useState<string | null>(null);
 
-  // Use offers hook for detecting driver offers - work with existing bookings too
-  const { offers } = useDriverOffers({ 
-    bookingId: booking?.id, 
-    enabled: !!booking?.id 
-  });
-
   useEffect(() => {
     if (forceOpenStep) {
+      console.log('🎯 Forçando abertura do step:', forceOpenStep);
       setCurrentStep(forceOpenStep);
       return;
     }
 
     if (!booking) return;
 
-    console.log('🔄 RideFlowManager - Current booking data:', {
+    console.log('🔄 RideFlowManager - Dados do booking:', {
+      id: booking.id,
       ride_status: booking.ride_status,
       status_driver: booking.status_driver,
       status_passenger: booking.status_passenger,
       final_price: booking.final_price,
+      estimated_price: booking.estimated_price,
       payment_confirmation_status: booking.payment_confirmation_status,
-      userType,
-      hasOffers: offers.length > 0,
-      bookingId: booking.id
+      userType
     });
 
-    const { status_passenger, status_driver, ride_status, payment_confirmation_status } = booking;
-
     if (userType === 'passenger') {
-      // Check for driver offer - work with existing bookings
-      const hasDriverSentOffer = (
-        offers.some(offer => offer.status === 'offer_sent') ||
-        ride_status === 'offer_sent' || 
-        status_driver === 'offer_sent' ||
-        payment_confirmation_status === 'price_awaiting_acceptance' ||
-        // Also check if there's a final_price set by driver
-        (booking.final_price && booking.final_price !== booking.estimated_price)
+      // Verifica se driver enviou oferta
+      const hasDriverOffer = (
+        booking.final_price && 
+        booking.final_price !== booking.estimated_price &&
+        booking.status_passenger !== 'offer_accepted'
       );
 
-      console.log('🔍 Passenger offer detection (existing bookings):', {
-        hasDriverSentOffer,
-        offers: offers.length,
-        ride_status,
-        status_driver,
-        payment_confirmation_status,
-        hasFinalPrice: !!booking.final_price,
-        finalPrice: booking.final_price,
-        estimatedPrice: booking.estimated_price
+      console.log('👀 Passenger - Verificando ofertas:', {
+        hasDriverOffer,
+        final_price: booking.final_price,
+        estimated_price: booking.estimated_price,
+        status_passenger: booking.status_passenger
       });
 
-      // Show offer modal for existing bookings with offers
-      if (hasDriverSentOffer && status_passenger !== 'offer_accepted' && payment_confirmation_status !== 'passenger_paid') {
+      if (hasDriverOffer) {
+        console.log('💰 Mostrando modal de oferta para passageiro');
         setCurrentStep('offer_acceptance');
-      } else if (status_passenger === 'offer_accepted' && payment_confirmation_status === 'waiting_for_payment') {
+      } else if (booking.status_passenger === 'offer_accepted' && 
+                 booking.payment_confirmation_status === 'waiting_for_payment') {
+        console.log('💳 Mostrando instruções de pagamento');
         setCurrentStep('payment_instructions');
-      } else if (payment_confirmation_status === 'all_set') {
+      } else if (booking.payment_confirmation_status === 'all_set') {
+        console.log('✅ Mostrando confirmação all_set');
         setCurrentStep('all_set_confirmation');
       } else {
         setCurrentStep(null);
       }
     } else if (userType === 'driver') {
-      // Driver logic - work with existing bookings
-      if ((ride_status === 'pending_driver' || status_driver === 'new_request') && 
-          payment_confirmation_status === 'waiting_for_offer') {
-        setCurrentStep('driver_ride_request');
-      } else if (payment_confirmation_status === 'passenger_paid') {
+      if (booking.payment_confirmation_status === 'passenger_paid') {
+        console.log('💰 Driver - Passageiro pagou, mostrar confirmação');
         setCurrentStep('driver_payment_confirmation');
-      } else if (payment_confirmation_status === 'all_set') {
+      } else if (booking.payment_confirmation_status === 'all_set') {
+        console.log('✅ Driver - All set confirmation');
         setCurrentStep('all_set_confirmation');
       } else {
         setCurrentStep(null);
       }
     }
-  }, [booking, userType, forceOpenStep, offers]);
-
-  const handleClose = () => {
-    setCurrentStep(null);
-  };
-
-  const handleStepComplete = () => {
-    setCurrentStep(null);
-    onFlowComplete();
-  };
+  }, [booking, userType, forceOpenStep]);
 
   const handleOfferAccepted = async () => {
     try {
-      console.log('🔄 Accepting offer for booking:', booking.id);
+      console.log('✅ Aceitando oferta para booking:', booking.id);
       
       await updateBookingStatus(booking.id, {
         status_passenger: 'offer_accepted',
         payment_confirmation_status: 'waiting_for_payment'
       });
 
-      await createRideStatus({
-        ride_id: booking.id,
-        actor_role: 'passenger',
-        status_code: 'offer_accepted',
-        status_label: 'Passenger Accepted Offer'
-      });
-
-      console.log('✅ Offer accepted successfully');
+      console.log('✅ Oferta aceita com sucesso');
       setCurrentStep('payment_instructions');
+      onFlowComplete(); // Força refresh do componente pai
     } catch (error) {
-      console.error('❌ Error accepting offer:', error);
-      setCurrentStep('payment_instructions');
+      console.error('❌ Erro ao aceitar oferta:', error);
     }
-  };
-
-  const handleOfferDeclined = () => {
-    setCurrentStep('passenger_cancellation');
   };
 
   const handlePaymentConfirmed = async () => {
     try {
-      console.log('🔄 Confirming payment for booking:', booking.id);
+      console.log('💳 Confirmando pagamento para booking:', booking.id);
       
       await updateBookingStatus(booking.id, {
         payment_confirmation_status: 'passenger_paid',
         passenger_payment_confirmed_at: new Date().toISOString()
       });
 
-      await createRideStatus({
-        ride_id: booking.id,
-        actor_role: 'passenger',
-        status_code: 'payment_sent',
-        status_label: 'Payment Confirmed by Passenger'
-      });
-
-      console.log('✅ Payment confirmed successfully');
+      console.log('✅ Pagamento confirmado com sucesso');
       setCurrentStep(null);
-      onFlowComplete();
+      onFlowComplete(); // Força refresh do componente pai
     } catch (error) {
-      console.error('❌ Error confirming payment:', error);
-      setCurrentStep(null);
-      onFlowComplete();
+      console.error('❌ Erro ao confirmar pagamento:', error);
     }
   };
 
   const handleDriverPaymentConfirmed = async () => {
     try {
-      console.log('🔄 Driver confirming payment for booking:', booking.id);
+      console.log('💰 Driver confirmando pagamento para booking:', booking.id);
       
       await updateBookingStatus(booking.id, {
         payment_confirmation_status: 'all_set',
         driver_payment_confirmed_at: new Date().toISOString()
       });
 
-      await createRideStatus({
-        ride_id: booking.id,
-        actor_role: 'driver',
-        status_code: 'payment_confirmed',
-        status_label: 'Payment Confirmed by Driver'
-      });
-
-      console.log('✅ Driver payment confirmation successful');
+      console.log('✅ Driver confirmou pagamento');
       setCurrentStep('all_set_confirmation');
+      onFlowComplete(); // Força refresh do componente pai
     } catch (error) {
-      console.error('❌ Error confirming payment:', error);
-      setCurrentStep('all_set_confirmation');
+      console.error('❌ Erro na confirmação do driver:', error);
     }
   };
 
@@ -194,58 +144,37 @@ export const RideFlowManager = ({
 
   return (
     <>
-      {/* Driver Modals */}
-      <DriverRideRequestModal
-        isOpen={currentStep === 'driver_ride_request'}
-        onClose={handleClose}
-        booking={booking}
-        onAccept={() => {
-          handleClose();
-          onFlowComplete();
-        }}
-        onDecline={() => {
-          handleClose();
-          onFlowComplete();
-        }}
-        onSendOffer={() => {
-          handleClose();
-          onFlowComplete();
-        }}
-      />
-
-      {/* Passenger Modals */}
       <PassengerOfferReviewModal
         isOpen={currentStep === 'offer_acceptance'}
-        onClose={handleClose}
+        onClose={() => setCurrentStep(null)}
         booking={booking}
         onAccept={handleOfferAccepted}
-        onDecline={handleOfferDeclined}
+        onDecline={() => setCurrentStep('passenger_cancellation')}
+      />
+
+      <PaymentInstructionsAlert
+        isOpen={currentStep === 'payment_instructions'}
+        onClose={() => setCurrentStep(null)}
+        booking={booking}
+        onPaymentConfirmed={handlePaymentConfirmed}
       />
 
       <DriverPaymentConfirmationModal
         isOpen={currentStep === 'driver_payment_confirmation'}
-        onClose={handleClose}
+        onClose={() => setCurrentStep(null)}
         booking={booking}
         onPaymentConfirmed={handleDriverPaymentConfirmed}
         onMessagePassenger={onMessagePassenger}
       />
 
-      {/* Legacy Modals */}
-      <PaymentInstructionsAlert
-        isOpen={currentStep === 'payment_instructions'}
-        onClose={handleClose}
-        booking={booking}
-        onPaymentConfirmed={handlePaymentConfirmed}
-      />
-
       <PassengerCancellationAlert
         isOpen={currentStep === 'passenger_cancellation'}
-        onClose={handleClose}
+        onClose={() => setCurrentStep(null)}
       />
 
       <AllSetConfirmationAlert
         isOpen={currentStep === 'all_set_confirmation'}
-        onClose={handleClose}
+        onClose={() => setCurrentStep(null)}
         booking={booking}
       />
     </>
