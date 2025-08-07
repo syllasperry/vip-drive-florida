@@ -235,7 +235,8 @@ export const PassengerStatusTimeline = ({
               </div>
 
               {/* DRIVER STATUS - Show detailed status based on ride status */}
-              {rideStatus === RideStatus.OFFER_SENT ? (
+              {(rideStatus === RideStatus.OFFER_SENT || 
+                (rideStatus === RideStatus.ACCEPTED_BY_DRIVER && (booking.final_price || booking.estimated_price))) ? (
                 // Show detailed offer sent status with driver photo and price
                 <div className="space-y-3">
                   <div className="text-sm font-medium text-muted-foreground">DRIVER STATUS</div>
@@ -251,14 +252,14 @@ export const PassengerStatusTimeline = ({
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <div className="font-semibold text-orange-800">💲 Offer Sent - Awaiting Response</div>
+                        <div className="font-semibold text-orange-800">💲 Offer Sent - Awaiting Your Payment</div>
                         <div className="text-sm text-orange-600 flex items-center gap-1">
                           <Clock className="h-3 w-3" />
                           {booking.updated_at ? format(new Date(booking.updated_at), "MMM d, h:mm a") : "Just now"}
                         </div>
                       </div>
                       <div className="bg-gray-800 text-white px-4 py-2 rounded-full font-bold text-lg">
-                        ${(booking.estimated_price || booking.final_price || 0).toFixed(0)}
+                        ${(booking.final_price || booking.estimated_price || 0).toFixed(0)}
                       </div>
                     </div>
                   </div>
