@@ -1,21 +1,10 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, CheckCircle, User, Car, DollarSign, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-
-interface StatusHistoryEntry {
-  id: string;
-  booking_id: string;
-  status: string;
-  created_at: string;
-  updated_by?: string;
-  role?: string;
-  metadata: {
-    message?: string;
-    previous_status?: string;
-  };
-}
+import { StatusHistoryEntry } from "@/types/timeline";
 
 interface RealTimeStatusTimelineProps {
   booking: any;
@@ -51,7 +40,7 @@ export const RealTimeStatusTimeline = ({
 
         console.log('📈 Status history fetched:', data);
         
-        // Transform the data to match our interface
+        // Transform the data to match our interface with proper type conversion
         const transformedData: StatusHistoryEntry[] = (data || []).map(entry => ({
           id: entry.id.toString(), // Convert number to string
           booking_id: entry.booking_id,
@@ -59,9 +48,16 @@ export const RealTimeStatusTimeline = ({
           created_at: entry.created_at,
           updated_by: entry.updated_by,
           role: entry.role,
-          metadata: typeof entry.metadata === 'object' && entry.metadata !== null 
-            ? entry.metadata as { message?: string; previous_status?: string; }
-            : {}
+          notes: entry.notes,
+          metadata: {
+            message: entry.metadata?.message,
+            previous_status: entry.metadata?.previous_status,
+            status_passenger: entry.metadata?.status_passenger,
+            status_driver: entry.metadata?.status_driver,
+            ride_status: entry.metadata?.ride_status,
+            payment_confirmation_status: entry.metadata?.payment_confirmation_status,
+            ride_stage: entry.metadata?.ride_stage,
+          }
         }));
         
         setStatusHistory(transformedData);
@@ -96,9 +92,16 @@ export const RealTimeStatusTimeline = ({
               created_at: payload.new.created_at,
               updated_by: payload.new.updated_by,
               role: payload.new.role,
-              metadata: typeof payload.new.metadata === 'object' && payload.new.metadata !== null
-                ? payload.new.metadata as { message?: string; previous_status?: string; }
-                : {}
+              notes: payload.new.notes,
+              metadata: {
+                message: payload.new.metadata?.message,
+                previous_status: payload.new.metadata?.previous_status,
+                status_passenger: payload.new.metadata?.status_passenger,
+                status_driver: payload.new.metadata?.status_driver,
+                ride_status: payload.new.metadata?.ride_status,
+                payment_confirmation_status: payload.new.metadata?.payment_confirmation_status,
+                ride_stage: payload.new.metadata?.ride_stage,
+              }
             };
             setStatusHistory(prev => [...prev, newEntry]);
           } else if (payload.eventType === 'UPDATE' && payload.new) {
@@ -109,9 +112,16 @@ export const RealTimeStatusTimeline = ({
               created_at: payload.new.created_at,
               updated_by: payload.new.updated_by,
               role: payload.new.role,
-              metadata: typeof payload.new.metadata === 'object' && payload.new.metadata !== null
-                ? payload.new.metadata as { message?: string; previous_status?: string; }
-                : {}
+              notes: payload.new.notes,
+              metadata: {
+                message: payload.new.metadata?.message,
+                previous_status: payload.new.metadata?.previous_status,
+                status_passenger: payload.new.metadata?.status_passenger,
+                status_driver: payload.new.metadata?.status_driver,
+                ride_status: payload.new.metadata?.ride_status,
+                payment_confirmation_status: payload.new.metadata?.payment_confirmation_status,
+                ride_stage: payload.new.metadata?.ride_stage,
+              }
             };
             setStatusHistory(prev => 
               prev.map(entry => 

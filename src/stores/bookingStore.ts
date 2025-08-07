@@ -1,10 +1,11 @@
 
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
+import { getUnifiedStatus } from '@/utils/unifiedStatusManager';
 
 export interface BookingState {
   id: string;
-  unified_status: string;
+  unified_status?: string;
   status_passenger?: string;
   status_driver?: string;
   ride_status?: string;
@@ -42,12 +43,13 @@ interface BookingStore {
   setDriverOffers: (bookingId: string, offers: DriverOffer[]) => void;
   addDriverOffer: (offer: DriverOffer) => void;
   
-  // Real-time subscriptions
+  // Real-time subscriptions with improved coordination
   subscribeToBooking: (bookingId: string) => void;
   subscribeToDriverOffers: (bookingId: string) => void;
   unsubscribeFromBooking: (bookingId: string) => void;
+  cleanupAllSubscriptions: () => void;
   
-  // Getters
+  // Getters using unified status system
   getBookingStatus: (bookingId: string) => string;
   hasActiveOffer: (bookingId: string) => boolean;
   getLatestOffer: (bookingId: string) => DriverOffer | null;
@@ -73,7 +75,8 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
         ...state.bookings,
         [bookingId]: {
           ...state.bookings[bookingId],
-          ...updates
+          ...updates,
+          updated_at: new Date().toISOString() // Always update timestamp
         }
       }
     }));
@@ -102,7 +105,10 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
   
   subscribeToBooking: (bookingId) => {
     const state = get();
-    if (state.subscriptions[bookingId]) return; // Already subscribed
+    if (state.subscriptions[bookingId]) {
+      console.log('📡 Already subscribed to booking:', bookingId);
+      return; // Already subscribed
+    }
     
     console.log('🔔 Subscribing to booking:', bookingId);
     
@@ -123,7 +129,9 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('📡 Booking subscription status:', status);
+      });
     
     set((state) => ({
       subscriptions: {
@@ -136,7 +144,10 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
   subscribeToDriverOffers: (bookingId) => {
     const state = get();
     const offerChannelKey = `offers-${bookingId}`;
-    if (state.subscriptions[offerChannelKey]) return;
+    if (state.subscriptions[offerChannelKey]) {
+      console.log('📡 Already subscribed to offers:', bookingId);
+      return;
+    }
     
     console.log('🎯 Subscribing to driver offers:', bookingId);
     
@@ -157,7 +168,9 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('📡 Offer subscription status:', status);
+      });
     
     set((state) => ({
       subscriptions: {
@@ -169,13 +182,15 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
   
   unsubscribeFromBooking: (bookingId) => {
     const state = get();
-    const channel = state.subscriptions[bookingId];
+    const bookingChannel = state.subscriptions[bookingId];
     const offerChannel = state.subscriptions[`offers-${bookingId}`];
     
-    if (channel) {
-      supabase.removeChannel(channel);
+    if (bookingChannel) {
+      console.log('🔌 Unsubscribing from booking:', bookingId);
+      supabase.removeChannel(bookingChannel);
     }
     if (offerChannel) {
+      console.log('🔌 Unsubscribing from offers:', bookingId);
       supabase.removeChannel(offerChannel);
     }
     
@@ -186,29 +201,31 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
       return { subscriptions: newSubscriptions };
     });
   },
+
+  cleanupAllSubscriptions: () => {
+    const state = get();
+    console.log('🧹 Cleaning up all subscriptions');
+    
+    Object.values(state.subscriptions).forEach(channel => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    });
+    
+    set({ subscriptions: {} });
+  },
   
   getBookingStatus: (bookingId) => {
     const booking = get().bookings[bookingId];
     if (!booking) return 'pending';
     
-    // Use the unified status from database
-    if (booking.unified_status) {
-      return booking.unified_status;
-    }
-    
-    // Fallback logic for older bookings
-    if (booking.payment_confirmation_status === 'all_set') return 'all_set';
-    if (booking.payment_confirmation_status === 'passenger_paid') return 'payment_confirmed';
-    if (booking.status_passenger === 'offer_accepted') return 'offer_accepted';
-    if (booking.final_price && booking.final_price !== booking.estimated_price) return 'offer_sent';
-    if (booking.status_driver === 'driver_accepted') return 'driver_accepted';
-    
-    return 'pending';
+    // Use unified status system
+    return getUnifiedStatus(booking);
   },
   
   hasActiveOffer: (bookingId) => {
     const offers = get().driverOffers[bookingId] || [];
-    return offers.some(offer => offer.status === 'pending');
+    return offers.some(offer => offer.status === 'pending' || offer.status === 'offer_sent');
   },
   
   getLatestOffer: (bookingId) => {
