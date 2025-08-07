@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useBookingTimeline } from "@/hooks/useBookingTimeline";
-import { useDriverOffers } from "@/hooks/useDriverOffers";
-import { createRideStatus, updateBookingStatus, createNotification } from "@/utils/supabaseHelpers";
+import { useTimelineEvents } from "@/hooks/useTimelineEvents";
+import { useRideStatusSummary } from "@/hooks/useRideStatusSummary";
+import { updateBookingStatus, createRideStatus } from "@/utils/supabaseHelpers";
 import { useToast } from "@/hooks/use-toast";
 
 // Components
@@ -15,6 +14,7 @@ import { AllSetConfirmationAlert } from "./AllSetConfirmationAlert";
 import { DriverRideRequestModal } from "../roadmap/DriverRideRequestModal";
 import { PassengerOfferReviewModal } from "../roadmap/PassengerOfferReviewModal";
 import { DriverPaymentConfirmationModal } from "../roadmap/DriverPaymentConfirmationModal";
+import { NotificationListener } from "./NotificationListener";
 
 interface EnhancedRideFlowManagerProps {
   booking: any;
@@ -34,16 +34,27 @@ export const EnhancedRideFlowManager = ({
   const [currentStep, setCurrentStep] = useState<string | null>(null);
   const { toast } = useToast();
   
-  // Use os hooks implementados para timeline e offers
-  const { timelineEvents } = useBookingTimeline({ 
+  // Use os hooks implementados para timeline e ride status
+  const { events: timelineEvents } = useTimelineEvents({ 
     bookingId: booking?.id, 
     enabled: !!booking?.id 
   });
   
-  const { offers, createOffer } = useDriverOffers({ 
-    bookingId: booking?.id, 
-    enabled: !!booking?.id 
-  });
+  const { summary: rideStatusSummary } = useRideStatusSummary(booking?.id);
+
+  // Check for driver offers from timeline events
+  const hasDriverSentOffer = timelineEvents.some(event => 
+    event.status === 'offer_sent' && event.driver_id
+  );
+
+  // Check for real-time notifications
+  const handleNotificationReceived = (notification: any) => {
+    console.log('🔔 Notification received in RideFlowManager:', notification);
+    
+    if (notification.type === 'offer_received' && userType === 'passenger') {
+      setCurrentStep('offer_acceptance');
+    }
+  };
 
   useEffect(() => {
     if (forceOpenStep) {
@@ -53,8 +64,8 @@ export const EnhancedRideFlowManager = ({
 
     if (!booking) return;
 
-    // Lógica aprimorada usando os dados do Supabase
-    const determineCurrentStep = async () => {
+    // Enhanced logic using timeline events and ride status
+    const determineCurrentStep = () => {
       try {
         const { ride_status, payment_confirmation_status, status_passenger, status_driver } = booking;
 
@@ -64,18 +75,18 @@ export const EnhancedRideFlowManager = ({
           status_passenger,
           status_driver,
           userType,
-          hasOffers: offers.length > 0
+          hasDriverSentOffer,
+          timelineEventsCount: timelineEvents.length,
+          rideStatusSummaryCount: rideStatusSummary.length
         });
 
         if (userType === 'passenger') {
-          // Detecta se driver enviou oferta
-          const hasDriverOffer = offers.some(offer => offer.status === 'offer_sent') ||
-                               ride_status === 'offer_sent' ||
-                               status_driver === 'offer_sent' ||
-                               (status_driver === 'driver_accepted' && booking.final_price) ||
-                               payment_confirmation_status === 'price_awaiting_acceptance';
+          // Check timeline events for offer_sent
+          const offerSentEvent = timelineEvents.find(event => 
+            event.status === 'offer_sent' && event.system_message?.includes('price offer')
+          );
 
-          if (hasDriverOffer && status_passenger !== 'offer_accepted' && payment_confirmation_status !== 'passenger_paid') {
+          if (offerSentEvent && status_passenger !== 'offer_accepted' && payment_confirmation_status !== 'passenger_paid') {
             setCurrentStep('offer_acceptance');
           } else if (status_passenger === 'offer_accepted' && payment_confirmation_status === 'waiting_for_payment') {
             setCurrentStep('payment_instructions');
@@ -102,7 +113,7 @@ export const EnhancedRideFlowManager = ({
     };
 
     determineCurrentStep();
-  }, [booking, userType, forceOpenStep, offers]);
+  }, [booking, userType, forceOpenStep, timelineEvents, rideStatusSummary]);
 
   const handleDriverAcceptRide = async () => {
     try {
@@ -136,29 +147,42 @@ export const EnhancedRideFlowManager = ({
     }
   };
 
-  // Fixed function signature to match the expected callback
-  const handleSendOfferWrapper = () => {
-    // This will be called from the modal with a default price or prompt for price
-    const defaultPrice = booking.estimated_price || 100;
-    handleSendOffer(defaultPrice);
-  };
-
   const handleSendOffer = async (price: number) => {
     try {
-      // Cria a oferta usando o hook
-      await createOffer({
-        booking_id: booking.id,
-        driver_id: booking.driver_id,
-        vehicle_id: booking.vehicle_id || '',
-        price_cents: Math.round(price * 100),
-        offer_price: price
-      });
+      // This will trigger the fn_on_offer_insert() function
+      const { data, error } = await supabase
+        .from('driver_offers')
+        .insert({
+          booking_id: booking.id,
+          driver_id: booking.driver_id,
+          vehicle_id: booking.vehicle_id || '',
+          price_cents: Math.round(price * 100),
+          offer_price: price,
+          status: 'offer_sent',
+          estimated_arrival_time: '00:05:00'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      console.log('✅ Offer created, trigger should have fired:', data);
 
       setCurrentStep(null);
       onFlowComplete();
     } catch (error) {
       console.error('Error sending offer:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send offer. Please try again.",
+        variant: "destructive"
+      });
     }
+  };
+
+  const handleSendOfferWrapper = () => {
+    const defaultPrice = booking.estimated_price || 100;
+    handleSendOffer(defaultPrice);
   };
 
   const handleOfferAccepted = async () => {
@@ -230,10 +254,26 @@ export const EnhancedRideFlowManager = ({
     setCurrentStep(null);
   };
 
-  if (!currentStep || !booking) return null;
+  if (!currentStep || !booking) return (
+    <>
+      {/* Notification Listener - Always active */}
+      <NotificationListener
+        userId={userType === 'passenger' ? booking.passenger_id : booking.driver_id}
+        userType={userType}
+        onNotificationReceived={handleNotificationReceived}
+      />
+    </>
+  );
 
   return (
     <>
+      {/* Notification Listener - Always active */}
+      <NotificationListener
+        userId={userType === 'passenger' ? booking.passenger_id : booking.driver_id}
+        userType={userType}
+        onNotificationReceived={handleNotificationReceived}
+      />
+
       {/* Driver Modals */}
       <DriverRideRequestModal
         isOpen={currentStep === 'driver_ride_request'}
