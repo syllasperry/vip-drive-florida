@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getRideStatusSummary, WriteUnderlinedStatusData, RideStatusEntry } from '@/utils/rideStatusManager';
@@ -21,10 +22,12 @@ export const useRideStatus = ({ rideId, userType, enabled = true }: UseRideStatu
     setError(null);
 
     try {
+      console.log('🔍 Fetching ride status for:', rideId);
       const data = await getRideStatusSummary(rideId);
       setStatusData(data);
+      console.log('✅ Ride status fetched:', data);
     } catch (err) {
-      console.error('Error fetching ride status:', err);
+      console.error('❌ Error fetching ride status:', err);
       setError('Failed to fetch ride status');
     } finally {
       setLoading(false);
@@ -40,6 +43,8 @@ export const useRideStatus = ({ rideId, userType, enabled = true }: UseRideStatu
   useEffect(() => {
     if (!rideId || !enabled) return;
 
+    console.log('📡 Setting up real-time subscription for ride status:', rideId);
+
     const channel = supabase
       .channel(`ride-status-${rideId}`)
       .on(
@@ -47,17 +52,33 @@ export const useRideStatus = ({ rideId, userType, enabled = true }: UseRideStatu
         {
           event: '*',
           schema: 'public',
-          table: 'ride_status',
-          filter: `ride_id=eq.${rideId}`
+          table: 'booking_status_history',
+          filter: `booking_id=eq.${rideId}`
         },
         (payload) => {
           console.log('📡 Real-time ride status update:', payload);
           fetchStatus(); // Refresh data when changes occur
         }
       )
-      .subscribe();
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings',
+          filter: `id=eq.${rideId}`
+        },
+        (payload) => {
+          console.log('📡 Real-time booking update:', payload);
+          fetchStatus(); // Refresh data when booking changes
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 Subscription status:', status);
+      });
 
     return () => {
+      console.log('🔌 Cleaning up ride status subscription');
       supabase.removeChannel(channel);
     };
   }, [rideId, enabled]);

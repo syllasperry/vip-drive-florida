@@ -32,10 +32,17 @@ interface DriverOffer {
   expires_at?: string;
 }
 
+interface SubscriptionManager {
+  channels: Map<string, any>;
+  cleanup: () => void;
+  subscribe: (key: string, channel: any) => void;
+  unsubscribe: (key: string) => void;
+}
+
 interface BookingStore {
   bookings: Record<string, BookingState>;
   driverOffers: Record<string, DriverOffer[]>;
-  subscriptions: Record<string, any>;
+  subscriptionManager: SubscriptionManager;
   
   // Actions
   setBooking: (booking: BookingState) => void;
@@ -43,7 +50,7 @@ interface BookingStore {
   setDriverOffers: (bookingId: string, offers: DriverOffer[]) => void;
   addDriverOffer: (offer: DriverOffer) => void;
   
-  // Real-time subscriptions with improved coordination
+  // Improved real-time subscriptions with proper coordination
   subscribeToBooking: (bookingId: string) => void;
   subscribeToDriverOffers: (bookingId: string) => void;
   unsubscribeFromBooking: (bookingId: string) => void;
@@ -58,9 +65,39 @@ interface BookingStore {
 export const useBookingStore = create<BookingStore>((set, get) => ({
   bookings: {},
   driverOffers: {},
-  subscriptions: {},
+  
+  // Improved subscription manager
+  subscriptionManager: {
+    channels: new Map(),
+    cleanup() {
+      console.log('🧹 Cleaning up all subscription channels');
+      this.channels.forEach((channel, key) => {
+        console.log(`🔌 Removing channel: ${key}`);
+        supabase.removeChannel(channel);
+      });
+      this.channels.clear();
+    },
+    subscribe(key: string, channel: any) {
+      // Remove existing channel if it exists
+      if (this.channels.has(key)) {
+        console.log(`🔄 Replacing existing channel: ${key}`);
+        supabase.removeChannel(this.channels.get(key));
+      }
+      this.channels.set(key, channel);
+      console.log(`📡 Subscribed to channel: ${key}`);
+    },
+    unsubscribe(key: string) {
+      const channel = this.channels.get(key);
+      if (channel) {
+        console.log(`🔌 Unsubscribing from channel: ${key}`);
+        supabase.removeChannel(channel);
+        this.channels.delete(key);
+      }
+    }
+  },
   
   setBooking: (booking) => {
+    console.log('📝 Setting booking in store:', booking.id);
     set((state) => ({
       bookings: {
         ...state.bookings,
@@ -70,19 +107,29 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
   },
   
   updateBooking: (bookingId, updates) => {
-    set((state) => ({
-      bookings: {
-        ...state.bookings,
-        [bookingId]: {
-          ...state.bookings[bookingId],
-          ...updates,
-          updated_at: new Date().toISOString() // Always update timestamp
-        }
+    console.log('🔄 Updating booking in store:', bookingId, updates);
+    set((state) => {
+      const currentBooking = state.bookings[bookingId];
+      if (!currentBooking) {
+        console.warn('⚠️ Trying to update non-existent booking:', bookingId);
+        return state;
       }
-    }));
+      
+      return {
+        bookings: {
+          ...state.bookings,
+          [bookingId]: {
+            ...currentBooking,
+            ...updates,
+            updated_at: new Date().toISOString()
+          }
+        }
+      };
+    });
   },
   
   setDriverOffers: (bookingId, offers) => {
+    console.log('💰 Setting driver offers:', bookingId, offers.length);
     set((state) => ({
       driverOffers: {
         ...state.driverOffers,
@@ -92,6 +139,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
   },
   
   addDriverOffer: (offer) => {
+    console.log('➕ Adding driver offer:', offer);
     set((state) => ({
       driverOffers: {
         ...state.driverOffers,
@@ -104,16 +152,18 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
   },
   
   subscribeToBooking: (bookingId) => {
-    const state = get();
-    if (state.subscriptions[bookingId]) {
+    const manager = get().subscriptionManager;
+    const channelKey = `booking-${bookingId}`;
+    
+    if (manager.channels.has(channelKey)) {
       console.log('📡 Already subscribed to booking:', bookingId);
-      return; // Already subscribed
+      return;
     }
     
-    console.log('🔔 Subscribing to booking:', bookingId);
+    console.log('🔔 Subscribing to booking updates:', bookingId);
     
     const channel = supabase
-      .channel(`booking-${bookingId}`)
+      .channel(channelKey)
       .on(
         'postgres_changes',
         {
@@ -129,22 +179,35 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
           }
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'booking_status_history',
+          filter: `booking_id=eq.${bookingId}`
+        },
+        (payload) => {
+          console.log('📡 Status history update received:', payload);
+          // Trigger a refresh of booking data when status history changes
+          setTimeout(() => {
+            // Small delay to ensure database consistency
+            get().subscribeToBooking(bookingId);
+          }, 100);
+        }
+      )
       .subscribe((status) => {
         console.log('📡 Booking subscription status:', status);
       });
     
-    set((state) => ({
-      subscriptions: {
-        ...state.subscriptions,
-        [bookingId]: channel
-      }
-    }));
+    manager.subscribe(channelKey, channel);
   },
   
   subscribeToDriverOffers: (bookingId) => {
-    const state = get();
-    const offerChannelKey = `offers-${bookingId}`;
-    if (state.subscriptions[offerChannelKey]) {
+    const manager = get().subscriptionManager;
+    const channelKey = `offers-${bookingId}`;
+    
+    if (manager.channels.has(channelKey)) {
       console.log('📡 Already subscribed to offers:', bookingId);
       return;
     }
@@ -152,7 +215,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
     console.log('🎯 Subscribing to driver offers:', bookingId);
     
     const channel = supabase
-      .channel(`driver-offers-${bookingId}`)
+      .channel(channelKey)
       .on(
         'postgres_changes',
         {
@@ -172,54 +235,23 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
         console.log('📡 Offer subscription status:', status);
       });
     
-    set((state) => ({
-      subscriptions: {
-        ...state.subscriptions,
-        [offerChannelKey]: channel
-      }
-    }));
+    manager.subscribe(channelKey, channel);
   },
   
   unsubscribeFromBooking: (bookingId) => {
-    const state = get();
-    const bookingChannel = state.subscriptions[bookingId];
-    const offerChannel = state.subscriptions[`offers-${bookingId}`];
-    
-    if (bookingChannel) {
-      console.log('🔌 Unsubscribing from booking:', bookingId);
-      supabase.removeChannel(bookingChannel);
-    }
-    if (offerChannel) {
-      console.log('🔌 Unsubscribing from offers:', bookingId);
-      supabase.removeChannel(offerChannel);
-    }
-    
-    set((state) => {
-      const newSubscriptions = { ...state.subscriptions };
-      delete newSubscriptions[bookingId];
-      delete newSubscriptions[`offers-${bookingId}`];
-      return { subscriptions: newSubscriptions };
-    });
+    const manager = get().subscriptionManager;
+    manager.unsubscribe(`booking-${bookingId}`);
+    manager.unsubscribe(`offers-${bookingId}`);
   },
 
   cleanupAllSubscriptions: () => {
-    const state = get();
-    console.log('🧹 Cleaning up all subscriptions');
-    
-    Object.values(state.subscriptions).forEach(channel => {
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
-    });
-    
-    set({ subscriptions: {} });
+    get().subscriptionManager.cleanup();
   },
   
   getBookingStatus: (bookingId) => {
     const booking = get().bookings[bookingId];
     if (!booking) return 'pending';
     
-    // Use unified status system
     return getUnifiedStatus(booking);
   },
   

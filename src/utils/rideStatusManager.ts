@@ -1,202 +1,202 @@
-import { supabase } from "@/integrations/supabase/client";
 
-// Status mappings for different scenarios
-export const STATUS_LABELS = {
-  // Passenger actions
-  booking_request_sent: "Booking Request Sent - Awaiting Driver",
-  offer_accepted: "Offer Accepted - Payment Pending",
-  payment_pending: "Payment Pending - Confirm Payment",
-  payment_confirmed: "Payment Confirmed - Awaiting Driver",
-  
-  // Driver actions  
-  booking_request_received: "New Request Received - Your Action Required",
-  driver_offer_sent: "Offer Sent - Awaiting Passenger",
-  ride_all_set: "All Set - Ready to Go!"
-};
+import { supabase } from '@/integrations/supabase/client';
 
 export interface RideStatusEntry {
-  actor_role: 'driver' | 'passenger';
+  actor_role: string;
   status_code: string;
   status_label: string;
   status_timestamp: string;
-  metadata: Record<string, any>;
+  metadata?: Record<string, any>;
 }
 
 export interface WriteUnderlinedStatusData {
   ride_id: string;
+  current_status: string;
   statuses: RideStatusEntry[];
+  last_updated: string;
 }
 
 /**
- * Creates a new ride status entry
+ * Get ride status summary using existing booking_status_history table
+ * This replaces the missing get_ride_status_summary SQL function
  */
-export const createRideStatus = async (
+export const getRideStatusSummary = async (rideId: string): Promise<WriteUnderlinedStatusData> => {
+  try {
+    console.log('🔍 Getting ride status summary for:', rideId);
+    
+    // Get the current booking data
+    const { data: booking, error: bookingError } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('id', rideId)
+      .single();
+
+    if (bookingError) {
+      console.error('❌ Error fetching booking:', bookingError);
+      throw bookingError;
+    }
+
+    // Get status history from booking_status_history table
+    const { data: statusHistory, error: historyError } = await supabase
+      .from('booking_status_history')
+      .select('*')
+      .eq('booking_id', rideId)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (historyError) {
+      console.error('❌ Error fetching status history:', historyError);
+      throw historyError;
+    }
+
+    // Transform booking_status_history data to match expected format
+    const statuses: RideStatusEntry[] = (statusHistory || []).map(entry => ({
+      actor_role: entry.role || 'system',
+      status_code: entry.status,
+      status_label: formatStatusLabel(entry.status),
+      status_timestamp: entry.created_at || entry.updated_at || new Date().toISOString(),
+      metadata: entry.metadata || {}
+    }));
+
+    // Add current booking status if not in history
+    const currentStatus = booking.ride_status || booking.status || 'pending';
+    const hasCurrentStatus = statuses.some(s => s.status_code === currentStatus);
+    
+    if (!hasCurrentStatus) {
+      statuses.unshift({
+        actor_role: 'system',
+        status_code: currentStatus,
+        status_label: formatStatusLabel(currentStatus),
+        status_timestamp: booking.updated_at || booking.created_at,
+        metadata: {
+          status_passenger: booking.status_passenger,
+          status_driver: booking.status_driver,
+          ride_status: booking.ride_status,
+          payment_confirmation_status: booking.payment_confirmation_status
+        }
+      });
+    }
+
+    return {
+      ride_id: rideId,
+      current_status: currentStatus,
+      statuses: statuses,
+      last_updated: booking.updated_at || new Date().toISOString()
+    };
+
+  } catch (error) {
+    console.error('❌ Error in getRideStatusSummary:', error);
+    throw error;
+  }
+};
+
+/**
+ * Format status codes into human-readable labels
+ */
+const formatStatusLabel = (statusCode: string): string => {
+  const statusLabels: Record<string, string> = {
+    'pending': 'Ride Requested',
+    'pending_driver': 'Waiting for Driver',
+    'driver_accepted': 'Driver Accepted',
+    'accepted_by_driver': 'Driver Accepted',
+    'offer_sent': 'Offer Sent',
+    'offer_accepted': 'Offer Accepted',
+    'payment_confirmed': 'Payment Confirmed',
+    'passenger_paid': 'Payment Received',
+    'all_set': 'All Set - Ready to Go',
+    'driver_heading_to_pickup': 'Driver En Route',
+    'passenger_onboard': 'Ride Started',
+    'in_transit': 'In Transit',
+    'completed': 'Ride Completed',
+    'cancelled': 'Ride Cancelled',
+    'expired': 'Offer Expired'
+  };
+
+  return statusLabels[statusCode] || statusCode.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+};
+
+/**
+ * Create ride status entry in booking_status_history table
+ */
+export const createRideStatusEntry = async (
   rideId: string,
-  actorRole: 'driver' | 'passenger',
   statusCode: string,
-  statusLabel: string,
+  actorRole: 'driver' | 'passenger' | 'system' = 'system',
   metadata: Record<string, any> = {}
 ) => {
   try {
     const { data, error } = await supabase
-      .from('ride_status')
+      .from('booking_status_history')
       .insert({
-        ride_id: rideId,
-        actor_role: actorRole,
-        status_code: statusCode,
-        status_label: statusLabel,
-        metadata
+        booking_id: rideId,
+        status: statusCode,
+        role: actorRole,
+        updated_by: (await supabase.auth.getUser()).data.user?.id,
+        metadata: {
+          message: formatStatusLabel(statusCode),
+          ...metadata
+        }
       })
       .select()
       .single();
 
     if (error) {
-      console.error('Error creating ride status:', error);
+      console.error('❌ Error creating ride status entry:', error);
       throw error;
     }
 
-    console.log('✅ Ride status created:', data);
+    console.log('✅ Ride status entry created:', data);
     return data;
   } catch (error) {
-    console.error('Failed to create ride status:', error);
+    console.error('❌ Error in createRideStatusEntry:', error);
     throw error;
   }
 };
 
 /**
- * Gets the latest status for each actor (WriteUnderlinedStatus)
+ * Update booking status and create history entry
  */
-export const getRideStatusSummary = async (rideId: string): Promise<WriteUnderlinedStatusData> => {
+export const updateBookingWithStatus = async (
+  bookingId: string,
+  updates: Record<string, any>,
+  actorRole: 'driver' | 'passenger' | 'system' = 'system'
+) => {
   try {
-    const { data, error } = await supabase.rpc('get_ride_status_summary', {
-      p_ride_id: rideId
-    });
+    // Update booking
+    const { data: updatedBooking, error: updateError } = await supabase
+      .from('bookings')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', bookingId)
+      .select()
+      .single();
 
-    if (error) {
-      console.error('Error fetching ride status summary:', error);
-      throw error;
+    if (updateError) {
+      console.error('❌ Error updating booking:', updateError);
+      throw updateError;
     }
 
-    return {
-      ride_id: rideId,
-      statuses: (data || []).map(item => ({
-        ...item,
-        actor_role: item.actor_role as 'driver' | 'passenger',
-        metadata: (item.metadata as Record<string, any>) || {}
-      }))
-    };
-  } catch (error) {
-    console.error('Failed to fetch ride status summary:', error);
-    throw error;
-  }
-};
-
-/**
- * Gets the complete timeline for a ride
- */
-export const getRideTimeline = async (rideId: string): Promise<RideStatusEntry[]> => {
-  try {
-    const { data, error } = await supabase.rpc('get_ride_timeline', {
-      p_ride_id: rideId
-    });
-
-    if (error) {
-      console.error('Error fetching ride timeline:', error);
-      throw error;
+    // Create status history entry if status changed
+    if (updates.status || updates.ride_status) {
+      await createRideStatusEntry(
+        bookingId,
+        updates.status || updates.ride_status,
+        actorRole,
+        {
+          previous_status: updates.previous_status,
+          status_passenger: updates.status_passenger,
+          status_driver: updates.status_driver,
+          payment_confirmation_status: updates.payment_confirmation_status
+        }
+      );
     }
 
-    return (data || []).map(item => ({
-      ...item,
-      actor_role: item.actor_role as 'driver' | 'passenger',
-      metadata: (item.metadata as Record<string, any>) || {}
-    }));
+    console.log('✅ Booking updated with status tracking:', updatedBooking);
+    return updatedBooking;
   } catch (error) {
-    console.error('Failed to fetch ride timeline:', error);
+    console.error('❌ Error in updateBookingWithStatus:', error);
     throw error;
   }
-};
-
-/**
- * Helper to create status entries for common booking events
- */
-export const createBookingStatusEntries = {
-  // When passenger sends initial request
-  passengerRequestSent: (rideId: string, passengerData: any) =>
-    createRideStatus(
-      rideId,
-      'passenger',
-      'booking_request_sent',
-      STATUS_LABELS.booking_request_sent,
-      {
-        passenger_name: passengerData.name,
-        passenger_photo: passengerData.photo,
-        pickup: passengerData.pickup,
-        dropoff: passengerData.dropoff
-      }
-    ),
-
-  // When driver receives request
-  driverRequestReceived: (rideId: string, driverData: any) =>
-    createRideStatus(
-      rideId,
-      'driver',
-      'booking_request_received',
-      STATUS_LABELS.booking_request_received,
-      {
-        driver_name: driverData.name,
-        driver_photo: driverData.photo,
-        vehicle: driverData.vehicle,
-        plate: driverData.plate
-      }
-    ),
-
-  // When driver sends offer
-  driverOfferSent: (rideId: string, driverData: any, price: number) =>
-    createRideStatus(
-      rideId,
-      'driver',
-      'driver_offer_sent',
-      STATUS_LABELS.driver_offer_sent,
-      {
-        driver_name: driverData.name,
-        driver_photo: driverData.photo,
-        vehicle: driverData.vehicle,
-        plate: driverData.plate,
-        price_offer: price,
-        currency: 'USD'
-      }
-    ),
-
-  // When passenger accepts offer
-  passengerAcceptedOffer: (rideId: string) =>
-    createRideStatus(
-      rideId,
-      'passenger',
-      'offer_accepted',
-      STATUS_LABELS.offer_accepted,
-      {}
-    ),
-
-  // When payment is confirmed
-  paymentConfirmed: (rideId: string, paymentData: any) =>
-    createRideStatus(
-      rideId,
-      'passenger',
-      'payment_confirmed',
-      STATUS_LABELS.payment_confirmed,
-      {
-        payment_method: paymentData.method,
-        amount: paymentData.amount
-      }
-    ),
-
-  // When everything is ready
-  allSetReady: (rideId: string, actorRole: 'driver' | 'passenger') =>
-    createRideStatus(
-      rideId,
-      actorRole,
-      'ride_all_set',
-      STATUS_LABELS.ride_all_set,
-      {}
-    )
 };
