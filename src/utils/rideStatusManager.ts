@@ -49,13 +49,13 @@ export const getRideStatusSummary = async (rideId: string): Promise<WriteUnderli
       throw historyError;
     }
 
-    // Transform booking_status_history data to match expected format
+    // Transform booking_status_history data to match expected format with proper type casting
     const statuses: RideStatusEntry[] = (statusHistory || []).map(entry => ({
       actor_role: entry.role || 'system',
       status_code: entry.status,
       status_label: formatStatusLabel(entry.status),
       status_timestamp: entry.created_at || entry.updated_at || new Date().toISOString(),
-      metadata: entry.metadata || {}
+      metadata: (entry.metadata as Record<string, any>) || {}
     }));
 
     // Add current booking status if not in history
@@ -198,5 +198,60 @@ export const updateBookingWithStatus = async (
   } catch (error) {
     console.error('❌ Error in updateBookingWithStatus:', error);
     throw error;
+  }
+};
+
+/**
+ * Create booking status entries - This was the missing export
+ */
+export const createBookingStatusEntries = {
+  driverOfferSent: async (bookingId: string, driverInfo: any, price: number) => {
+    return await createRideStatusEntry(
+      bookingId,
+      'offer_sent',
+      'driver',
+      {
+        driver_name: driverInfo.name,
+        driver_photo: driverInfo.photo,
+        vehicle: driverInfo.vehicle,
+        plate: driverInfo.plate,
+        offer_price: price
+      }
+    );
+  },
+
+  passengerRequestCreated: async (bookingId: string, passengerInfo: any) => {
+    return await createRideStatusEntry(
+      bookingId,
+      'pending',
+      'passenger',
+      {
+        passenger_name: passengerInfo.name,
+        pickup_location: passengerInfo.pickup,
+        dropoff_location: passengerInfo.dropoff
+      }
+    );
+  },
+
+  offerAccepted: async (bookingId: string) => {
+    return await createRideStatusEntry(
+      bookingId,
+      'offer_accepted',
+      'passenger',
+      {
+        action: 'accepted_offer'
+      }
+    );
+  },
+
+  paymentConfirmed: async (bookingId: string) => {
+    return await createRideStatusEntry(
+      bookingId,
+      'payment_confirmed',
+      'passenger',
+      {
+        action: 'payment_confirmed'
+      }
+    );
   }
 };
