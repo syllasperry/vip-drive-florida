@@ -8,10 +8,8 @@ import { Clock, CheckCircle, Phone, Car, DollarSign, MapPin } from "lucide-react
 import { format } from "date-fns";
 import { RoadmapTimeline } from "@/components/roadmap/RoadmapTimeline";
 import { VisualRoadmapTimeline } from "@/components/roadmap/VisualRoadmapTimeline";
-import { TimelineEventsView } from "@/components/timeline/TimelineEventsView";
 import { useRideStatusSync, RideStatus } from "@/hooks/useRideStatusSync";
-import { useTimelineEvents } from "@/hooks/useTimelineEvents";
-import { useRideStatusSummary } from "@/hooks/useRideStatusSummary";
+import { useDriverOffers } from "@/hooks/useDriverOffers";
 
 interface PassengerStatusTimelineProps {
   booking: any;
@@ -36,39 +34,29 @@ export const PassengerStatusTimeline = ({
     enabled: true
   });
 
-  // Use timeline events and ride status summary from Supabase
-  const { events: timelineEvents } = useTimelineEvents({ 
+  // Use driver offers hook to detect offers
+  const { offers } = useDriverOffers({ 
     bookingId: booking.id, 
     enabled: true 
   });
 
-  const { summary: rideStatusSummary } = useRideStatusSummary(booking.id);
-
-  console.log('🔍 PassengerStatusTimeline Debug (Full Supabase Integration):', {
+  console.log('🔍 PassengerStatusTimeline Debug:', {
     bookingId: booking.id,
     rideStatus,
     statusMessage,
-    timelineEventsCount: timelineEvents.length,
-    rideStatusSummaryCount: rideStatusSummary.length,
-    latestTimelineEvent: timelineEvents[timelineEvents.length - 1],
+    offersCount: offers.length,
     booking: {
       ride_status: booking.ride_status,
       status_driver: booking.status_driver,
       final_price: booking.final_price,
-      estimated_price: booking.estimated_price,
       payment_confirmation_status: booking.payment_confirmation_status
     }
   });
   
-  // Enhanced offer detection using timeline_events
-  const offerSentEvent = timelineEvents.find(event => 
-    event.status === 'offer_sent' && event.system_message?.includes('price offer')
-  );
-
-  const hasDriverSentOffer = offerSentEvent || 
+  // Enhanced offer detection
+  const hasDriverSentOffer = offers.some(offer => offer.status === 'offer_sent') ||
     booking.ride_status === 'offer_sent' || 
     booking.status_driver === 'offer_sent' ||
-    (booking.final_price && booking.status_driver === 'driver_accepted') ||
     booking.payment_confirmation_status === 'price_awaiting_acceptance';
 
   const shouldShowTripDetails = booking.payment_confirmation_status === 'all_set' || 
@@ -87,7 +75,7 @@ export const PassengerStatusTimeline = ({
         timestamps={{
           [RideStatus.REQUESTED]: booking.created_at,
           [RideStatus.ACCEPTED_BY_DRIVER]: booking.updated_at,
-          [RideStatus.OFFER_SENT]: offerSentEvent?.created_at || booking.updated_at,
+          [RideStatus.OFFER_SENT]: booking.updated_at,
           [RideStatus.OFFER_ACCEPTED]: booking.passenger_payment_confirmed_at,
           [RideStatus.ALL_SET]: booking.driver_payment_confirmed_at,
         }}
@@ -97,19 +85,13 @@ export const PassengerStatusTimeline = ({
         onOpenModal={onStatusClick}
       />
 
-      {/* Enhanced Timeline View using timeline_events table */}
-      <TimelineEventsView 
-        bookingId={booking.id}
-        className="mb-4"
-      />
-
-      {/* Status Section - Shows current status based on timeline events */}
+      {/* Status Section - Shows current status */}
       <Card className="w-full">
         <CardHeader>
           <CardTitle className="text-lg">Status</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Enhanced Status Display using timeline events */}
+          {/* Status Display */}
           <div className="space-y-4">
             {/* YOUR STATUS */}
             <div className="space-y-3">
@@ -142,7 +124,7 @@ export const PassengerStatusTimeline = ({
               </div>
             </div>
 
-            {/* DRIVER STATUS - Enhanced with timeline events */}
+            {/* DRIVER STATUS - Show offer if sent */}
             {hasDriverSentOffer && (
               <div className="space-y-3">
                 <div className="text-sm font-medium text-muted-foreground">DRIVER STATUS</div>
@@ -153,20 +135,15 @@ export const PassengerStatusTimeline = ({
                     </div>
                     <div className="flex-1">
                       <div className="font-semibold text-orange-800">
-                        Offer Sent - Awaiting Your Payment
+                        Price Offer Sent - Review Required
                       </div>
                       <div className="text-sm flex items-center gap-1 text-orange-600">
                         <Clock className="h-3 w-3" />
-                        {offerSentEvent?.created_at ? 
-                          format(new Date(offerSentEvent.created_at), "MMM d, h:mm a") :
-                          (booking.updated_at ? format(new Date(booking.updated_at), "MMM d, h:mm a") : "Just now")
-                        }
+                        {booking.updated_at ? format(new Date(booking.updated_at), "MMM d, h:mm a") : "Just now"}
                       </div>
-                      {offerSentEvent?.system_message && (
-                        <div className="text-xs text-orange-500 mt-1">
-                          {offerSentEvent.system_message}
-                        </div>
-                      )}
+                      <div className="text-xs text-orange-500 mt-1">
+                        Driver has sent you a price offer
+                      </div>
                     </div>
                     {/* Driver Avatar */}
                     <Avatar className="h-12 w-12">
@@ -181,11 +158,6 @@ export const PassengerStatusTimeline = ({
                     {/* Price Badge */}
                     <div className="bg-gray-800 text-white px-4 py-2 rounded-full font-bold text-lg">
                       ${offerAmount.toFixed(0)}
-                      {offerSentEvent && (
-                        <div className="text-xs opacity-75">
-                          from timeline
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -236,7 +208,7 @@ export const PassengerStatusTimeline = ({
             </div>
           )}
 
-          {/* Trip Details - Only show when not waiting for offer */}
+          {/* Trip Details - Only show when appropriate */}
           {shouldShowTripDetails && (
             <div className="space-y-3">
               <div className="flex items-center gap-3">

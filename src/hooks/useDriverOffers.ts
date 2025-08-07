@@ -34,8 +34,7 @@ export const useDriverOffers = ({ bookingId, enabled = true }: UseDriverOffersOp
     setError(null);
 
     try {
-      // Since driver_offers table doesn't exist in the current schema,
-      // we'll simulate offers by looking at booking data
+      // Check booking for offer status
       const { data: booking, error } = await supabase
         .from('bookings')
         .select('*')
@@ -44,9 +43,9 @@ export const useDriverOffers = ({ bookingId, enabled = true }: UseDriverOffersOp
 
       if (error) throw error;
       
-      // Create a simulated offer if driver has sent one
+      // Create simulated offers based on booking data
       const simulatedOffers: DriverOffer[] = [];
-      if (booking && booking.final_price && booking.driver_id) {
+      if (booking && booking.final_price && booking.driver_id && booking.ride_status === 'offer_sent') {
         simulatedOffers.push({
           id: `offer-${booking.id}`,
           booking_id: booking.id,
@@ -54,7 +53,7 @@ export const useDriverOffers = ({ bookingId, enabled = true }: UseDriverOffersOp
           vehicle_id: booking.vehicle_id || '',
           price_cents: Math.round((booking.final_price || 0) * 100),
           offer_price: booking.final_price || 0,
-          status: booking.ride_status === 'offer_sent' ? 'offer_sent' : 'pending',
+          status: 'offer_sent',
           estimated_arrival_time: '5 minutes',
           created_at: booking.updated_at || booking.created_at,
           updated_at: booking.updated_at || booking.created_at
@@ -70,52 +69,11 @@ export const useDriverOffers = ({ bookingId, enabled = true }: UseDriverOffersOp
     }
   };
 
-  const createOffer = async (offerData: {
-    booking_id: string;
-    driver_id: string;
-    vehicle_id: string;
-    price_cents: number;
-    offer_price: number;
-    estimated_arrival_time?: string;
-  }) => {
-    try {
-      // Update the booking with the offer price since we don't have driver_offers table
-      const { data, error } = await supabase
-        .from('bookings')
-        .update({
-          final_price: offerData.offer_price,
-          ride_status: 'offer_sent',
-          status_driver: 'offer_sent',
-          payment_confirmation_status: 'price_awaiting_acceptance'
-        })
-        .eq('id', offerData.booking_id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      toast({
-        title: "Offer Sent!",
-        description: "Your price offer has been sent to the passenger.",
-      });
-
-      return data;
-    } catch (error) {
-      console.error('Error creating offer:', error);
-      toast({
-        title: "Error",
-        description: "Failed to send offer. Please try again.",
-        variant: "destructive"
-      });
-      throw error;
-    }
-  };
-
   useEffect(() => {
     fetchOffers();
   }, [bookingId, enabled]);
 
-  // Real-time subscription for booking changes (simulating offers)
+  // Real-time subscription for booking changes
   useEffect(() => {
     if (!bookingId || !enabled) return;
 
@@ -130,7 +88,7 @@ export const useDriverOffers = ({ bookingId, enabled = true }: UseDriverOffersOp
           filter: `id=eq.${bookingId}`
         },
         (payload) => {
-          console.log('📡 Booking update (simulating offers):', payload);
+          console.log('📡 Booking update for offers:', payload);
           fetchOffers();
         }
       )
@@ -145,7 +103,6 @@ export const useDriverOffers = ({ bookingId, enabled = true }: UseDriverOffersOp
     offers,
     loading,
     error,
-    createOffer,
     refresh: fetchOffers
   };
 };
