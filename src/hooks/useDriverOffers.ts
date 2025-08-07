@@ -8,7 +8,7 @@ interface DriverOffer {
   booking_id: string;
   driver_id: string;
   offer_price: number;
-  status: 'pending' | 'accepted' | 'declined' | 'expired';
+  status: 'pending' | 'offer_accepted' | 'offer_rejected' | 'offer_sent' | 'in_progress' | 'completed' | 'cancelled';
   created_at: string;
   expires_at?: string;
   updated_at: string;
@@ -98,7 +98,7 @@ export const useDriverOffers = ({ bookingId, enabled = true }: UseDriverOffersOp
   const acceptOffer = async (offerId: string) => {
     const { error } = await supabase
       .from('driver_offers')
-      .update({ status: 'accepted' })
+      .update({ status: 'offer_accepted' })
       .eq('id', offerId);
 
     if (error) throw error;
@@ -109,7 +109,7 @@ export const useDriverOffers = ({ bookingId, enabled = true }: UseDriverOffersOp
   const declineOffer = async (offerId: string) => {
     const { error } = await supabase
       .from('driver_offers')
-      .update({ status: 'declined' })
+      .update({ status: 'offer_rejected' })
       .eq('id', offerId);
 
     if (error) throw error;
