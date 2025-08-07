@@ -1,5 +1,5 @@
 
-import { RealTimeStatusTimeline } from "./RealTimeStatusTimeline";
+import { StatusTimeline } from "@/components/timeline/StatusTimeline";
 
 interface PassengerStatusTimelineProps {
   booking: any;
@@ -10,10 +10,16 @@ export const PassengerStatusTimeline = ({
   booking, 
   onReopenModal 
 }: PassengerStatusTimelineProps) => {
+  if (!booking?.id) {
+    return null;
+  }
+
   return (
-    <RealTimeStatusTimeline 
-      booking={booking} 
-      onReopenModal={onReopenModal}
+    <StatusTimeline
+      bookingId={booking.id}
+      userType="passenger"
+      userPhotoUrl={booking.passengers?.profile_photo_url}
+      otherUserPhotoUrl={booking.drivers?.profile_photo_url}
     />
   );
 };

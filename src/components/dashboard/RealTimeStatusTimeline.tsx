@@ -41,13 +41,11 @@ export const RealTimeStatusTimeline = ({
 
         console.log('📈 Status history fetched:', data);
         
-        // Transform the data to match our interface with proper type conversion
         const transformedData: StatusHistoryEntry[] = (data || []).map(entry => {
-          // Safely cast metadata as an object
           const metadata = (entry.metadata as any) || {};
           
           return {
-            id: entry.id.toString(), // Convert number to string
+            id: entry.id.toString(),
             booking_id: entry.booking_id,
             status: entry.status,
             created_at: entry.created_at,
@@ -75,7 +73,6 @@ export const RealTimeStatusTimeline = ({
 
     fetchStatusHistory();
 
-    // Real-time subscription to status history changes
     const channel = supabase
       .channel(`status-history-${booking.id}`)
       .on(
@@ -88,7 +85,7 @@ export const RealTimeStatusTimeline = ({
         },
         (payload) => {
           console.log('📡 Status history real-time update:', payload);
-          fetchStatusHistory(); // Refresh the entire history
+          fetchStatusHistory();
         }
       )
       .subscribe();
@@ -140,17 +137,11 @@ export const RealTimeStatusTimeline = ({
 
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Ride Timeline
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">Loading timeline...</p>
-        </CardContent>
-      </Card>
+      <div className="space-y-3">
+        <div className="h-20 bg-gray-200 rounded-xl animate-pulse" />
+        <div className="h-20 bg-gray-200 rounded-xl animate-pulse" />
+        <div className="h-20 bg-gray-200 rounded-xl animate-pulse" />
+      </div>
     );
   }
 
@@ -159,54 +150,13 @@ export const RealTimeStatusTimeline = ({
 
   return (
     <div className="space-y-6">
-      {/* New Visual Timeline */}
+      {/* Main Visual Timeline */}
       <StatusTimeline
         bookingId={booking.id}
         userType={userType}
         userPhotoUrl={booking.passengers?.profile_photo_url || booking.drivers?.profile_photo_url}
         otherUserPhotoUrl={userType === 'passenger' ? booking.drivers?.profile_photo_url : booking.passengers?.profile_photo_url}
       />
-      
-      {/* Detailed History (Optional - can be collapsed) */}
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <Clock className="h-4 w-4" />
-            Detailed History
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {statusHistory.map((event, index) => (
-              <div key={event.id} className="relative flex items-start gap-3 text-sm">
-                <div className="flex-shrink-0 mt-1">
-                  {getStatusIcon(event.status)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    {getActorBadge(event.role)}
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(event.created_at).toLocaleString('pt-BR')}
-                    </span>
-                  </div>
-                  <div 
-                    className="text-xs font-medium text-foreground cursor-pointer hover:text-primary transition-colors"
-                    onClick={() => handleStatusClick(event.status)}
-                  >
-                    {event.metadata?.message || `Status: ${event.status}`}
-                  </div>
-                </div>
-              </div>
-            ))}
-            
-            {statusHistory.length === 0 && (
-              <p className="text-muted-foreground text-center py-4 text-xs">
-                No detailed history available yet
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };

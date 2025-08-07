@@ -27,7 +27,7 @@ interface StatusBlock {
 const passengerStatusConfig = {
   'pending': { 
     label: 'Booking Request Sent', 
-    bg: 'bg-blue-400', 
+    bg: 'bg-sky-400', 
     text: 'text-white',
     order: 1 
   },
@@ -39,13 +39,13 @@ const passengerStatusConfig = {
   },
   'offer_accepted': { 
     label: 'Offer Accepted', 
-    bg: 'bg-green-400', 
+    bg: 'bg-emerald-500', 
     text: 'text-white',
     order: 3 
   },
   'payment_confirmed': { 
     label: 'Payment Confirmed', 
-    bg: 'bg-blue-500', 
+    bg: 'bg-sky-500', 
     text: 'text-white',
     order: 4 
   },
@@ -60,31 +60,31 @@ const passengerStatusConfig = {
 const driverStatusConfig = {
   'pending': { 
     label: 'Booking Request Received', 
-    bg: 'bg-blue-500', 
+    bg: 'bg-sky-500', 
     text: 'text-white',
     order: 1 
   },
   'offer_sent': { 
     label: 'Offer Sent - Awaiting Passenger Response', 
-    bg: 'bg-red-400', 
+    bg: 'bg-orange-500', 
     text: 'text-white',
     order: 2 
   },
   'offer_accepted': { 
     label: 'Offer Accepted', 
-    bg: 'bg-yellow-400', 
+    bg: 'bg-amber-400', 
     text: 'text-black',
     order: 3 
   },
   'payment_confirmed': { 
     label: 'Payment Confirmed', 
-    bg: 'bg-green-400', 
+    bg: 'bg-emerald-400', 
     text: 'text-white',
     order: 4 
   },
   'all_set': { 
     label: 'All Set', 
-    bg: 'bg-green-600', 
+    bg: 'bg-emerald-600', 
     text: 'text-white',
     order: 5 
   }
@@ -109,7 +109,7 @@ export const StatusTimeline = ({
     return (
       <div className="space-y-3">
         {[1, 2, 3].map(i => (
-          <div key={i} className="h-16 bg-gray-200 rounded-lg animate-pulse" />
+          <div key={i} className="h-20 bg-gray-200 rounded-xl animate-pulse" />
         ))}
       </div>
     );
@@ -141,9 +141,9 @@ export const StatusTimeline = ({
   return (
     <div className={`space-y-3 ${className}`}>
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-medium text-gray-900">Status Status</h3>
+        <h3 className="text-lg font-medium text-gray-900">Ride Status</h3>
         {statusBlocks.length > 0 && statusBlocks[statusBlocks.length - 1].amount && (
-          <span className="text-lg font-semibold text-green-600">
+          <span className="text-lg font-semibold text-emerald-600">
             {statusBlocks[statusBlocks.length - 1].amount}
           </span>
         )}
@@ -152,28 +152,26 @@ export const StatusTimeline = ({
       {statusBlocks.map((block) => (
         <Card 
           key={block.id}
-          className={`${block.backgroundColor} border-none shadow-sm`}
+          className={`${block.backgroundColor} border-none shadow-sm rounded-xl`}
         >
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <div className="flex justify-between items-start mb-2">
-                  <h4 className={`font-medium ${block.textColor}`}>
+                  <h4 className={`font-semibold text-sm ${block.textColor}`}>
                     {block.label}
                   </h4>
                   {block.timestamp && (
-                    <span className={`text-sm ${block.textColor} opacity-90`}>
-                      {block.timestamp}
-                    </span>
-                  )}
-                </div>
-                
-                <div className="flex justify-between items-end">
-                  <div className="flex-1" />
-                  {block.amount && (
-                    <span className={`text-sm font-medium ${block.textColor} opacity-90`}>
-                      {block.amount}
-                    </span>
+                    <div className="text-right">
+                      <div className={`text-sm ${block.textColor} opacity-90`}>
+                        {block.timestamp}
+                      </div>
+                      {block.amount && (
+                        <div className={`text-sm font-medium ${block.textColor} opacity-90`}>
+                          {block.amount}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -181,7 +179,7 @@ export const StatusTimeline = ({
               <div className="ml-4">
                 <Avatar className="h-12 w-12 border-2 border-white/20">
                   <AvatarImage src={photoUrl} />
-                  <AvatarFallback className="bg-white/20 text-white">
+                  <AvatarFallback className="bg-white/20 text-white text-sm font-semibold">
                     {userType === 'passenger' ? 'P' : 'D'}
                   </AvatarFallback>
                 </Avatar>
