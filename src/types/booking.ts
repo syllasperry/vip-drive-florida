@@ -14,6 +14,7 @@ export interface Booking {
   driver_id?: string;
   status?: string;
   ride_status?: string;
+  payment_confirmation_status?: string;
   passengers?: {
     id: string;
     full_name: string;

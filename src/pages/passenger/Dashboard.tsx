@@ -2,11 +2,11 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MapPin, Clock, Users, DollarSign, MessageCircle, Phone, ArrowLeft } from 'lucide-react';
+import { MapPin, Clock, Users, DollarSign, MessageCircle, Phone, ArrowLeft, Car, CreditCard, Settings } from 'lucide-react';
 import { MessagingInterface } from "@/components/MessagingInterface";
 import { format } from 'date-fns';
 import { Booking } from "@/types/booking";
@@ -19,6 +19,7 @@ const PassengerDashboard = () => {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [showMessaging, setShowMessaging] = useState(false);
   const [passengerInfo, setPassengerInfo] = useState(null);
+  const [activeTab, setActiveTab] = useState("bookings");
 
   useEffect(() => {
     checkAuth();
@@ -133,20 +134,20 @@ const PassengerDashboard = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'booking_requested': return 'bg-yellow-100 text-yellow-800';
-      case 'payment_pending': return 'bg-blue-100 text-blue-800';
-      case 'all_set': return 'bg-green-100 text-green-800';
-      case 'completed': return 'bg-gray-100 text-gray-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'booking_requested': return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'payment_pending': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'all_set': return 'bg-green-100 text-green-800 border-green-200';
+      case 'completed': return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case 'booking_requested': return 'Request Submitted';
-      case 'payment_pending': return 'Payment Required';
-      case 'all_set': return 'All Set - Ready!';
+      case 'booking_requested': return 'Pending';
+      case 'payment_pending': return 'Pending';
+      case 'all_set': return 'Confirmed';
       case 'completed': return 'Completed';
       case 'cancelled': return 'Cancelled';
       default: return status;
@@ -178,16 +179,21 @@ const PassengerDashboard = () => {
     });
   };
 
+  const handleCall = () => {
+    // Call dispatcher instead of driver
+    window.open('tel:+1234567890', '_blank');
+  };
+
   const formatDateTime = (dateString: string) => {
     return format(new Date(dateString), 'MMM dd, yyyy - HH:mm');
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading your bookings...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading your bookings...</p>
         </div>
       </div>
     );
@@ -195,16 +201,18 @@ const PassengerDashboard = () => {
 
   if (showMessaging && selectedBooking) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-6">
-          <Button
-            variant="ghost"
-            onClick={() => setShowMessaging(false)}
-            className="mb-4"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
-          </Button>
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-md mx-auto">
+          <div className="bg-white border-b border-gray-200 px-6 py-4">
+            <Button
+              variant="ghost"
+              onClick={() => setShowMessaging(false)}
+              className="p-0 h-auto text-gray-600"
+            >
+              <ArrowLeft className="h-5 w-5 mr-2" />
+              Back to Bookings
+            </Button>
+          </div>
           <MessagingInterface
             bookingId={selectedBooking.id}
             userType="passenger"
@@ -219,166 +227,227 @@ const PassengerDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div className="max-w-md mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">My Bookings</h1>
-              <p className="text-muted-foreground">Track and manage your ride requests</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Button onClick={() => navigate('/passenger/price-estimate')}>
-                New Booking
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => supabase.auth.signOut().then(() => navigate('/home'))}
-              >
-                Sign Out
-              </Button>
-            </div>
+            <h1 className="text-xl font-semibold text-gray-900">My Bookings</h1>
+            <Button 
+              onClick={() => navigate('/passenger/price-estimate')}
+              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-medium"
+            >
+              New Booking
+            </Button>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-6">
+      {/* Main Content */}
+      <div className="max-w-md mx-auto px-6 py-6 pb-24">
         {bookings.length === 0 ? (
           <div className="text-center py-12">
-            <h3 className="text-lg font-medium mb-2">No bookings yet</h3>
-            <p className="text-muted-foreground mb-6">Ready to book your first luxury ride?</p>
-            <Button onClick={() => navigate('/passenger/price-estimate')}>
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Car className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings yet</h3>
+            <p className="text-gray-500 mb-6">Ready to book your first luxury ride?</p>
+            <Button 
+              onClick={() => navigate('/passenger/price-estimate')}
+              className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-medium"
+            >
               Book Your First Ride
             </Button>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {bookings.map((booking) => (
-              <Card key={booking.id} className="w-full">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">
-                      Booking #{booking.id.slice(-8).toUpperCase()}
-                    </CardTitle>
-                    <Badge className={getStatusColor(booking.simple_status)}>
-                      {getStatusLabel(booking.simple_status)}
-                    </Badge>
+              <Card key={booking.id} className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-medium text-gray-900">Booking ID</span>
+                      <Badge className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(booking.simple_status)}`}>
+                        {getStatusLabel(booking.simple_status)}
+                      </Badge>
+                    </div>
+                    <Clock className="w-4 h-4 text-gray-400" />
                   </div>
-                </CardHeader>
 
-                <CardContent className="space-y-4">
-                  {/* Status Message */}
-                  <div className="bg-muted/50 p-4 rounded-lg">
-                    <p className="text-sm">{getStatusMessage(booking)}</p>
+                  {/* Booking ID */}
+                  <div className="text-lg font-semibold text-gray-900 mb-4">
+                    #{booking.id.slice(-8).toUpperCase()}
+                  </div>
+
+                  {/* Locations */}
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-start space-x-3">
+                      <div className="w-3 h-3 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <div>
+                        <p className="text-sm text-gray-500">Pickup</p>
+                        <p className="text-sm font-medium text-gray-900">{booking.pickup_location}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                      <div className="w-3 h-3 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <div>
+                        <p className="text-sm text-gray-500">Drop-off</p>
+                        <p className="text-sm font-medium text-gray-900">{booking.dropoff_location}</p>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Trip Details */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <div className="flex items-start space-x-2">
-                        <MapPin className="h-4 w-4 text-green-600 mt-1 flex-shrink-0" />
-                        <div>
-                          <p className="text-sm font-medium">Pickup</p>
-                          <p className="text-sm text-muted-foreground">{booking.pickup_location}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start space-x-2">
-                        <MapPin className="h-4 w-4 text-red-600 mt-1 flex-shrink-0" />
-                        <div>
-                          <p className="text-sm font-medium">Drop-off</p>
-                          <p className="text-sm text-muted-foreground">{booking.dropoff_location}</p>
-                        </div>
-                      </div>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="flex items-center space-x-2">
+                      <Clock className="w-4 h-4 text-gray-400" />
+                      <span className="text-xs text-gray-600">
+                        {formatDateTime(booking.pickup_time)}
+                      </span>
                     </div>
+                    <div className="flex items-center space-x-2">
+                      <Users className="w-4 h-4 text-gray-400" />
+                      <span className="text-xs text-gray-600">
+                        {booking.passenger_count} passengers
+                      </span>
+                    </div>
+                    {booking.vehicle_type && (
+                      <div className="flex items-center space-x-2 col-span-2">
+                        <Car className="w-4 h-4 text-gray-400" />
+                        <span className="text-xs text-gray-600">{booking.vehicle_type}</span>
+                      </div>
+                    )}
+                  </div>
 
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <Clock className="h-4 w-4 text-blue-600" />
-                        <div>
-                          <p className="text-sm font-medium">Date & Time</p>
-                          <p className="text-sm text-muted-foreground">
-                            {formatDateTime(booking.pickup_time)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Users className="h-4 w-4 text-purple-600" />
-                        <span className="text-sm">{booking.passenger_count} passenger(s)</span>
-                      </div>
-                    </div>
+                  {/* Price */}
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-2xl font-bold text-red-600">
+                      ${booking.final_negotiated_price || booking.estimated_price || 0}
+                    </span>
                   </div>
 
                   {/* Driver Information (only shown when all_set) */}
                   {booking.simple_status === 'all_set' && booking.driver_profiles && (
-                    <div className="border-t pt-4">
-                      <h4 className="font-medium mb-2">Your Driver</h4>
-                      <div className="flex items-center space-x-4">
-                        <Avatar>
+                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                      <p className="text-sm font-medium text-gray-900 mb-2">Your Driver</p>
+                      <div className="flex items-center space-x-3">
+                        <Avatar className="h-10 w-10">
                           <AvatarImage src={booking.driver_profiles.profile_photo_url} />
-                          <AvatarFallback>{booking.driver_profiles.full_name.charAt(0)}</AvatarFallback>
+                          <AvatarFallback className="bg-gray-200 text-gray-600">
+                            {booking.driver_profiles.full_name.charAt(0)}
+                          </AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
-                          <p className="font-medium">{booking.driver_profiles.full_name}</p>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="font-medium text-gray-900">{booking.driver_profiles.full_name}</p>
+                          <p className="text-sm text-gray-500">
                             {booking.driver_profiles.car_make} {booking.driver_profiles.car_model} 
                             ({booking.driver_profiles.car_color})
                           </p>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-gray-500">
                             License: {booking.driver_profiles.license_plate}
                           </p>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => window.open(`tel:${booking.driver_profiles?.phone}`, '_blank')}
-                        >
-                          <Phone className="h-4 w-4 mr-1" />
-                          Call Driver
-                        </Button>
                       </div>
                     </div>
                   )}
 
-                  {/* Price and Actions */}
-                  <div className="flex items-center justify-between border-t pt-4">
-                    <div className="flex items-center space-x-2">
-                      <DollarSign className="h-4 w-4 text-green-600" />
-                      <span className="font-medium">
-                        {booking.simple_status === 'booking_requested' 
-                          ? `Est. $${booking.estimated_price || 0}`
-                          : `$${booking.final_negotiated_price || booking.estimated_price || 0}`
-                        }
-                      </span>
-                    </div>
-                    
-                    <div className="flex space-x-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => {
-                          setSelectedBooking(booking);
-                          setShowMessaging(true);
-                        }}
-                      >
-                        <MessageCircle className="h-4 w-4 mr-1" />
-                        Message
-                      </Button>
-
-                      {booking.simple_status === 'payment_pending' && (
-                        <Button 
-                          size="sm"
-                          onClick={() => handlePayment(booking)}
-                        >
-                          Complete Payment
-                        </Button>
-                      )}
-                    </div>
+                  {/* Action Buttons */}
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedBooking(booking);
+                        setShowMessaging(true);
+                      }}
+                      className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
+                    >
+                      <MessageCircle className="w-4 h-4 mr-2" />
+                      Message
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCall}
+                      className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
+                    >
+                      <Phone className="w-4 h-4 mr-2" />
+                      Call
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+                      onClick={() => {
+                        // Navigate to view details page or show modal
+                        toast({
+                          title: "View Details",
+                          description: "Detailed view coming soon",
+                        });
+                      }}
+                    >
+                      View Details
+                    </Button>
                   </div>
+
+                  {/* Payment Button for pending payments */}
+                  {booking.simple_status === 'payment_pending' && (
+                    <Button 
+                      className="w-full mt-3 bg-red-500 hover:bg-red-600 text-white"
+                      onClick={() => handlePayment(booking)}
+                    >
+                      Complete Payment
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             ))}
           </div>
         )}
+      </div>
+
+      {/* Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
+        <div className="max-w-md mx-auto">
+          <div className="grid grid-cols-4 py-2">
+            <button
+              onClick={() => setActiveTab("bookings")}
+              className={`flex flex-col items-center py-2 px-1 ${
+                activeTab === "bookings" ? "text-red-600" : "text-gray-400"
+              }`}
+            >
+              <Car className="w-5 h-5 mb-1" />
+              <span className="text-xs">Bookings</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("messages")}
+              className={`flex flex-col items-center py-2 px-1 ${
+                activeTab === "messages" ? "text-red-600" : "text-gray-400"
+              }`}
+            >
+              <MessageCircle className="w-5 h-5 mb-1" />
+              <span className="text-xs">Messages</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("payments")}
+              className={`flex flex-col items-center py-2 px-1 ${
+                activeTab === "payments" ? "text-red-600" : "text-gray-400"
+              }`}
+            >
+              <CreditCard className="w-5 h-5 mb-1" />
+              <span className="text-xs">Payments</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("settings")}
+              className={`flex flex-col items-center py-2 px-1 ${
+                activeTab === "settings" ? "text-red-600" : "text-gray-400"
+              }`}
+            >
+              <Settings className="w-5 h-5 mb-1" />
+              <span className="text-xs">Settings</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
