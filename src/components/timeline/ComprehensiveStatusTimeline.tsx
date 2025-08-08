@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -108,7 +107,9 @@ export const ComprehensiveStatusTimeline = ({
     currentStatus: statusData?.current_status,
     statusHistory: statusData?.statuses,
     finalPrice,
-    bookingId
+    bookingId,
+    passengerData,
+    driverData
   });
 
   if (!statusData?.statuses || statusData.statuses.length === 0) {
@@ -120,8 +121,29 @@ export const ComprehensiveStatusTimeline = ({
     );
   }
 
-  // Create timeline items from actual status history
-  const timelineItems: TimelineItem[] = statusData.statuses.map((statusEntry, index) => {
+  // Remove duplicates by status code and keep the most recent entry for each unique status
+  const uniqueStatuses = statusData.statuses.reduce((acc, statusEntry) => {
+    const existingIndex = acc.findIndex(item => item.status_code === statusEntry.status_code);
+    
+    if (existingIndex >= 0) {
+      // Compare timestamps and keep the more recent one
+      const existingTimestamp = new Date(acc[existingIndex].status_timestamp);
+      const currentTimestamp = new Date(statusEntry.status_timestamp);
+      
+      if (currentTimestamp > existingTimestamp) {
+        acc[existingIndex] = statusEntry; // Replace with more recent entry
+      }
+    } else {
+      acc.push(statusEntry); // Add new unique status
+    }
+    
+    return acc;
+  }, [] as typeof statusData.statuses);
+
+  console.log('🔍 Unique Statuses After Deduplication:', uniqueStatuses);
+
+  // Create timeline items from unique status history
+  const timelineItems: TimelineItem[] = uniqueStatuses.map((statusEntry, index) => {
     const statusKey = statusEntry.status_code;
     const config = statusConfig[statusKey as keyof typeof statusConfig];
     
@@ -138,7 +160,7 @@ export const ComprehensiveStatusTimeline = ({
       : new Date();
     
     const timelineItem: TimelineItem = {
-      id: `${statusKey}-${index}`,
+      id: `${statusKey}-${actualTimestamp.getTime()}`, // Use timestamp to ensure uniqueness
       label: userType === 'passenger' 
         ? config.passenger_label 
         : config.driver_label,
@@ -160,6 +182,14 @@ export const ComprehensiveStatusTimeline = ({
       timelineItem.price = `$${finalPrice}`;
     }
 
+    console.log('📊 Created Timeline Item:', {
+      status: statusKey,
+      actor: actorRole,
+      actorData,
+      photo_url: actorData?.photo_url,
+      name: actorData?.name
+    });
+
     return timelineItem;
   }).filter(Boolean) as TimelineItem[];
 
@@ -169,10 +199,12 @@ export const ComprehensiveStatusTimeline = ({
   });
 
   console.log('📊 Final Timeline Items (Most Recent First):', timelineItems.map(item => ({
+    id: item.id,
     status: item.statusKey,
     timestamp: item.actualTimestamp.toISOString(),
     label: item.label,
-    actor: item.actor.role
+    actor: item.actor.role,
+    photo_url: item.actor.photo_url
   })));
 
   return (
@@ -219,7 +251,7 @@ export const ComprehensiveStatusTimeline = ({
               
               <div className="ml-4">
                 <Avatar className="h-12 w-12 border-2 border-white/20">
-                  <AvatarImage src={item.actor.photo_url} />
+                  <AvatarImage src={item.actor.photo_url} alt={item.actor.name} />
                   <AvatarFallback className="bg-white/20 text-white text-sm font-semibold">
                     {item.actor.role.charAt(0)}
                   </AvatarFallback>

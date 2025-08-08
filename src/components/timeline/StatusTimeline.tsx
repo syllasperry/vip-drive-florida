@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -25,6 +24,8 @@ interface StatusBlock {
   actorName: string;
   actorRole: string;
   actorPhotoUrl?: string;
+  actualTimestamp: Date;
+  statusKey: string;
 }
 
 const passengerStatusConfig = {
@@ -132,31 +133,78 @@ export const StatusTimeline = ({
   const currentStatus = statusData?.current_status || 'pending';
   const currentStatusIndex = statusOrder.indexOf(currentStatus);
 
-  const statusBlocks: StatusBlock[] = statusOrder.map((statusKey, index) => {
+  console.log('🔍 StatusTimeline Debug:', {
+    currentStatus,
+    statusHistory: statusData?.statuses,
+    userType,
+    userPhotoUrl,
+    otherUserPhotoUrl
+  });
+
+  // Remove duplicates and create status blocks only for completed/current statuses
+  const uniqueStatuses = statusData?.statuses ? 
+    statusData.statuses.reduce((acc, statusEntry) => {
+      const existingIndex = acc.findIndex(item => item.status_code === statusEntry.status_code);
+      
+      if (existingIndex >= 0) {
+        // Keep the more recent entry
+        const existingTimestamp = new Date(acc[existingIndex].status_timestamp);
+        const currentTimestamp = new Date(statusEntry.status_timestamp);
+        
+        if (currentTimestamp > existingTimestamp) {
+          acc[existingIndex] = statusEntry;
+        }
+      } else {
+        acc.push(statusEntry);
+      }
+      
+      return acc;
+    }, [] as typeof statusData.statuses) : [];
+
+  const statusBlocks: StatusBlock[] = uniqueStatuses.map((statusEntry) => {
+    const statusKey = statusEntry.status_code;
     const config = statusConfig[statusKey as keyof typeof statusConfig];
-    const isCompleted = index <= currentStatusIndex;
-    const statusEntry = statusData?.statuses?.find(s => s.status_code === statusKey);
     
-    // Determine actor details
+    if (!config) {
+      return null;
+    }
+    
     const isUserActor = config.actor === userType;
     const actorPhotoUrl = isUserActor ? userPhotoUrl : otherUserPhotoUrl;
     const actorRole = config.actor === 'passenger' ? 'Passenger' : 'Driver';
     const actorName = isUserActor ? 'You' : actorRole;
     
+    const actualTimestamp = statusEntry.status_timestamp 
+      ? new Date(statusEntry.status_timestamp)
+      : new Date();
+    
     return {
-      id: statusKey,
+      id: `${statusKey}-${actualTimestamp.getTime()}`,
       label: config.label,
-      timestamp: statusEntry?.status_timestamp ? format(new Date(statusEntry.status_timestamp), 'h:mm a') : '',
+      timestamp: format(actualTimestamp, 'h:mm a'),
       amount: statusEntry?.metadata?.offer_price ? `$${statusEntry.metadata.offer_price}` : '',
       backgroundColor: config.bg,
       textColor: config.text,
       order: config.order,
-      isCompleted,
+      isCompleted: true,
       actorName,
       actorRole,
-      actorPhotoUrl
+      actorPhotoUrl,
+      actualTimestamp,
+      statusKey
     };
-  }).filter(block => block.isCompleted).reverse(); // Most recent first
+  }).filter(Boolean) as StatusBlock[];
+
+  // Sort by actual timestamp - most recent first
+  statusBlocks.sort((a, b) => b.actualTimestamp.getTime() - a.actualTimestamp.getTime());
+
+  console.log('📊 StatusTimeline Final Blocks:', statusBlocks.map(block => ({
+    id: block.id,
+    status: block.statusKey,
+    timestamp: block.actualTimestamp.toISOString(),
+    actor: block.actorRole,
+    photo_url: block.actorPhotoUrl
+  })));
 
   return (
     <div className={`space-y-3 ${className}`}>
@@ -171,7 +219,7 @@ export const StatusTimeline = ({
       
       {statusBlocks.map((block, index) => (
         <Card 
-          key={`${block.id}-${index}`}
+          key={block.id}
           className={`${block.backgroundColor} border-none shadow-sm rounded-xl`}
         >
           <CardContent className="p-4">
@@ -203,7 +251,7 @@ export const StatusTimeline = ({
               
               <div className="ml-4">
                 <Avatar className="h-12 w-12 border-2 border-white/20">
-                  <AvatarImage src={block.actorPhotoUrl} />
+                  <AvatarImage src={block.actorPhotoUrl} alt={block.actorName} />
                   <AvatarFallback className="bg-white/20 text-white text-sm font-semibold">
                     {block.actorRole.charAt(0)}
                   </AvatarFallback>
