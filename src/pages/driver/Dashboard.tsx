@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -17,7 +16,25 @@ import { BookingRequestModal } from "@/components/booking/BookingRequestModal";
 import { DriverHistorySection } from "@/components/dashboard/DriverHistorySection";
 import { MessagingInterface } from "@/components/MessagingInterface";
 
-// Updated interface to match actual Supabase data structure
+// Raw Supabase booking type
+interface SupabaseBooking {
+  id: string;
+  status: string;
+  created_at: string;
+  pickup_location: string;
+  dropoff_location: string;
+  final_price: number | null;
+  estimated_price: number | null;
+  driver_id: string;
+  passenger_id: string;
+  passengers?: {
+    full_name: string;
+    phone: string;
+    profile_photo_url: string | null;
+  } | null;
+}
+
+// Application booking type
 interface BookingData {
   id: string;
   status: string;
@@ -26,20 +43,19 @@ interface BookingData {
   dropoff_location: string;
   final_price: number | null;
   estimated_price: number | null;
+  date: string;
+  time: string;
   passengers: {
     full_name: string;
     phone: string;
     profile_photo_url: string | null;
   } | null;
-  // Add other fields that might be present
-  [key: string]: any;
 }
 
 // Simple user profile type
 interface UserProfile {
   full_name: string;
   profile_photo_url: string | null;
-  [key: string]: any;
 }
 
 const DriverDashboard = () => {
@@ -56,6 +72,22 @@ const DriverDashboard = () => {
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
   const { toast } = useToast();
 
+  // Transform Supabase booking to app booking
+  const transformBooking = (booking: SupabaseBooking): BookingData => {
+    return {
+      id: booking.id,
+      status: booking.status,
+      created_at: booking.created_at,
+      pickup_location: booking.pickup_location,
+      dropoff_location: booking.dropoff_location,
+      final_price: booking.final_price,
+      estimated_price: booking.estimated_price,
+      date: booking.created_at ? booking.created_at.split('T')[0] : '',
+      time: booking.created_at ? booking.created_at.split('T')[1]?.split('.')[0] : '',
+      passengers: booking.passengers
+    };
+  };
+
   // Simplified realtime setup
   useEffect(() => {
     if (!user?.id) return;
@@ -70,14 +102,16 @@ const DriverDashboard = () => {
           table: 'bookings',
         },
         (payload) => {
-          const booking = payload.new as BookingData;
+          const rawBooking = payload.new as SupabaseBooking;
           
-          if (booking?.driver_id === user.id) {
+          if (rawBooking?.driver_id === user.id) {
             console.log('📡 Realtime booking update:', {
               event: payload.eventType,
-              bookingId: booking?.id,
-              status: booking?.status
+              bookingId: rawBooking?.id,
+              status: rawBooking?.status
             });
+            
+            const booking = transformBooking(rawBooking);
             
             // Update bookings state
             setBookings(prev => {
@@ -170,14 +204,8 @@ const DriverDashboard = () => {
 
       if (error) throw error;
 
-      // Transform the data to ensure compatibility
-      const transformedData = (data || []).map(booking => ({
-        ...booking,
-        // Add date and time fields for compatibility
-        date: booking.created_at ? booking.created_at.split('T')[0] : '',
-        time: booking.created_at ? booking.created_at.split('T')[1]?.split('.')[0] : ''
-      }));
-
+      // Transform the data using our helper function
+      const transformedData = (data || []).map(transformBooking);
       setBookings(transformedData);
     } catch (error) {
       console.error('Error loading bookings:', error);
@@ -211,14 +239,8 @@ const DriverDashboard = () => {
 
       if (error) throw error;
 
-      // Transform the data to ensure compatibility
-      const transformedData = (data || []).map(booking => ({
-        ...booking,
-        // Add date and time fields for compatibility
-        date: booking.created_at ? booking.created_at.split('T')[0] : '',
-        time: booking.created_at ? booking.created_at.split('T')[1]?.split('.')[0] : ''
-      }));
-
+      // Transform the data using our helper function
+      const transformedData = (data || []).map(transformBooking);
       setCompletedBookings(transformedData);
     } catch (error) {
       console.error('Error loading completed bookings:', error);
