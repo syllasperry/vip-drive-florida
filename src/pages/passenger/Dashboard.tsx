@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -104,7 +103,15 @@ const PassengerDashboard = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setBookings(data || []);
+
+      // Map the data to include simple_status based on existing status
+      const mappedBookings = (data || []).map(booking => ({
+        ...booking,
+        simple_status: mapToSimpleStatus(booking.status, booking.ride_status, booking.payment_confirmation_status),
+        final_negotiated_price: booking.estimated_price
+      })) as Booking[];
+
+      setBookings(mappedBookings);
     } catch (error) {
       console.error('Error loading bookings:', error);
       toast({
@@ -115,6 +122,14 @@ const PassengerDashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const mapToSimpleStatus = (status?: string, rideStatus?: string, paymentStatus?: string): Booking['simple_status'] => {
+    if (status === 'completed' || rideStatus === 'completed') return 'completed';
+    if (status === 'cancelled') return 'cancelled';
+    if (paymentStatus === 'all_set' || rideStatus === 'all_set') return 'all_set';
+    if (rideStatus === 'offer_sent' || status === 'offer_sent') return 'payment_pending';
+    return 'booking_requested';
   };
 
   const getStatusColor = (status: string) => {
@@ -194,10 +209,6 @@ const PassengerDashboard = () => {
           <MessagingInterface
             bookingId={selectedBooking.id}
             userType="passenger"
-            otherParty={{
-              name: "Customer Service",
-              avatar: undefined
-            }}
           />
         </div>
       </div>

@@ -6,95 +6,104 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Download, TrendingUp, DollarSign, Users, Calendar } from "lucide-react";
-import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths } from "date-fns";
+import { Download, DollarSign, TrendingUp, Users } from "lucide-react";
+import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
+
+interface FinancialSummary {
+  totalEarnings: number;
+  totalRides: number;
+  dispatcherCommission: number;
+  driverPayouts: number;
+  averageRideValue: number;
+}
+
+interface BookingData {
+  id: string;
+  estimated_price: number;
+  created_at: string;
+  pickup_location: string;
+  dropoff_location: string;
+  passengers?: {
+    full_name: string;
+  };
+}
 
 export const FinancialReports = () => {
   const { toast } = useToast();
-  const [reportPeriod, setReportPeriod] = useState('current_month');
-  const [reportData, setReportData] = useState({
+  const [reportPeriod, setReportPeriod] = useState('this_month');
+  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState<FinancialSummary>({
+    totalEarnings: 0,
     totalRides: 0,
-    totalRevenue: 0,
-    totalCommission: 0,
-    totalDriverPayouts: 0,
-    totalStripeFees: 0,
-    recentBookings: []
+    dispatcherCommission: 0,
+    driverPayouts: 0,
+    averageRideValue: 0
   });
-  const [loading, setLoading] = useState(false);
+  const [recentBookings, setRecentBookings] = useState<BookingData[]>([]);
 
   useEffect(() => {
-    loadReportData();
+    loadFinancialData();
   }, [reportPeriod]);
 
   const getDateRange = () => {
     const now = new Date();
     switch (reportPeriod) {
-      case 'current_month':
+      case 'last_7_days':
+        return { start: subDays(now, 7), end: now };
+      case 'last_30_days':
+        return { start: subDays(now, 30), end: now };
+      case 'this_month':
         return { start: startOfMonth(now), end: endOfMonth(now) };
-      case 'last_month':
-        const lastMonth = subMonths(now, 1);
-        return { start: startOfMonth(lastMonth), end: endOfMonth(lastMonth) };
-      case 'current_year':
-        return { start: startOfYear(now), end: endOfYear(now) };
       default:
         return { start: startOfMonth(now), end: endOfMonth(now) };
     }
   };
 
-  const loadReportData = async () => {
+  const loadFinancialData = async () => {
     setLoading(true);
     try {
       const { start, end } = getDateRange();
       
-      // Load completed bookings for the period
       const { data: bookings, error } = await supabase
         .from('bookings')
         .select(`
-          *,
-          passengers (full_name, email),
-          driver_profiles (full_name)
+          id,
+          estimated_price,
+          created_at,
+          pickup_location,
+          dropoff_location,
+          passengers (
+            full_name
+          )
         `)
-        .eq('simple_status', 'completed')
         .gte('created_at', start.toISOString())
         .lte('created_at', end.toISOString())
+        .not('estimated_price', 'is', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      // Calculate totals
-      let totalRevenue = 0;
-      let totalCommission = 0;
-      let totalDriverPayouts = 0;
-      let totalStripeFees = 0;
+      const bookingData = bookings || [];
+      const totalEarnings = bookingData.reduce((sum, booking) => sum + (booking.estimated_price || 0), 0);
+      const totalRides = bookingData.length;
+      const dispatcherCommission = totalEarnings * 0.20; // 20% commission
+      const driverPayouts = totalEarnings - dispatcherCommission - (totalEarnings * 0.029); // Minus Stripe fees
+      const averageRideValue = totalRides > 0 ? totalEarnings / totalRides : 0;
 
-      bookings.forEach((booking: any) => {
-        const price = booking.final_negotiated_price || booking.estimated_price || 0;
-        const commissionRate = booking.commission_rate || 20;
-        const stripeFeeRate = booking.stripe_fee_rate || 2.9;
-        
-        totalRevenue += price;
-        
-        if (booking.payment_method === 'stripe' || booking.payment_method === 'apple_pay' || booking.payment_method === 'google_pay') {
-          totalStripeFees += price * (stripeFeeRate / 100);
-        }
-        
-        totalCommission += price * (commissionRate / 100);
-        totalDriverPayouts += price - (price * (commissionRate / 100)) - (price * (stripeFeeRate / 100));
+      setSummary({
+        totalEarnings,
+        totalRides,
+        dispatcherCommission,
+        driverPayouts,
+        averageRideValue
       });
 
-      setReportData({
-        totalRides: bookings.length,
-        totalRevenue,
-        totalCommission,
-        totalDriverPayouts,
-        totalStripeFees,
-        recentBookings: bookings.slice(0, 10) // Show last 10 bookings
-      });
+      setRecentBookings(bookingData.slice(0, 10) as BookingData[]);
     } catch (error) {
-      console.error('Error loading report data:', error);
+      console.error('Error loading financial data:', error);
       toast({
         title: "Error",
-        description: "Failed to load report data",
+        description: "Failed to load financial reports",
         variant: "destructive",
       });
     } finally {
@@ -103,66 +112,24 @@ export const FinancialReports = () => {
   };
 
   const exportReport = () => {
-    // Generate CSV content
     const csvContent = [
-      ['VIP Service Financial Report'],
-      ['Period', getPeriodLabel()],
-      ['Generated', format(new Date(), 'yyyy-MM-dd HH:mm:ss')],
-      [''],
-      ['Summary'],
-      ['Total Rides', reportData.totalRides],
-      ['Total Revenue', `$${reportData.totalRevenue.toFixed(2)}`],
-      ['Total Commission', `$${reportData.totalCommission.toFixed(2)}`],
-      ['Total Driver Payouts', `$${reportData.totalDriverPayouts.toFixed(2)}`],
-      ['Total Stripe Fees', `$${reportData.totalStripeFees.toFixed(2)}`],
-      [''],
-      ['Recent Bookings'],
-      ['Date', 'Passenger', 'Driver', 'Route', 'Price', 'Commission', 'Status']
-    ];
-
-    reportData.recentBookings.forEach((booking: any) => {
-      csvContent.push([
+      ['Date', 'Booking ID', 'Passenger', 'Route', 'Amount'].join(','),
+      ...recentBookings.map(booking => [
         format(new Date(booking.created_at), 'yyyy-MM-dd'),
+        booking.id.slice(-8),
         booking.passengers?.full_name || 'Unknown',
-        booking.driver_profiles?.full_name || 'Not assigned',
         `${booking.pickup_location} → ${booking.dropoff_location}`,
-        `$${(booking.final_negotiated_price || booking.estimated_price || 0).toFixed(2)}`,
-        `$${((booking.final_negotiated_price || booking.estimated_price || 0) * ((booking.commission_rate || 20) / 100)).toFixed(2)}`,
-        booking.simple_status
-      ]);
-    });
+        `$${booking.estimated_price}`
+      ].join(','))
+    ].join('\n');
 
-    // Convert to CSV string
-    const csvString = csvContent.map(row => row.join(',')).join('\n');
-    
-    // Download file
-    const blob = new Blob([csvString], { type: 'text/csv' });
+    const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.setAttribute('hidden', '');
-    a.setAttribute('href', url);
-    a.setAttribute('download', `vip-financial-report-${getPeriodLabel()}.csv`);
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    
-    toast({
-      title: "Success",
-      description: "Report exported successfully",
-    });
-  };
-
-  const getPeriodLabel = () => {
-    switch (reportPeriod) {
-      case 'current_month':
-        return format(new Date(), 'MMMM yyyy');
-      case 'last_month':
-        return format(subMonths(new Date(), 1), 'MMMM yyyy');
-      case 'current_year':
-        return format(new Date(), 'yyyy');
-      default:
-        return 'Current Month';
-    }
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `financial-report-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    link.click();
+    window.URL.revokeObjectURL(url);
   };
 
   return (
@@ -170,129 +137,114 @@ export const FinancialReports = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Financial Reports</h2>
-          <p className="text-muted-foreground">Track earnings, commissions, and financial performance</p>
+          <p className="text-muted-foreground">Track earnings and performance metrics</p>
         </div>
-        
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-4">
           <Select value={reportPeriod} onValueChange={setReportPeriod}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Select period" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="current_month">Current Month</SelectItem>
-              <SelectItem value="last_month">Last Month</SelectItem>
-              <SelectItem value="current_year">Current Year</SelectItem>
+              <SelectItem value="last_7_days">Last 7 days</SelectItem>
+              <SelectItem value="last_30_days">Last 30 days</SelectItem>
+              <SelectItem value="this_month">This month</SelectItem>
             </SelectContent>
           </Select>
-          
-          <Button onClick={exportReport} disabled={loading}>
+          <Button onClick={exportReport} disabled={recentBookings.length === 0}>
             <Download className="h-4 w-4 mr-2" />
-            Export
+            Export CSV
           </Button>
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Users className="h-8 w-8 text-blue-600" />
-              <div>
-                <p className="text-2xl font-bold">{reportData.totalRides}</p>
-                <p className="text-sm text-muted-foreground">Total Rides</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {loading ? (
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading financial data...</p>
+        </div>
+      ) : (
+        <>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">${summary.totalEarnings.toFixed(2)}</div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <DollarSign className="h-8 w-8 text-green-600" />
-              <div>
-                <p className="text-2xl font-bold">${reportData.totalRevenue.toFixed(2)}</p>
-                <p className="text-sm text-muted-foreground">Total Revenue</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Rides</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{summary.totalRides}</div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <TrendingUp className="h-8 w-8 text-purple-600" />
-              <div>
-                <p className="text-2xl font-bold">${reportData.totalCommission.toFixed(2)}</p>
-                <p className="text-sm text-muted-foreground">My Commission</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Commission (20%)</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">${summary.dispatcherCommission.toFixed(2)}</div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Calendar className="h-8 w-8 text-orange-600" />
-              <div>
-                <p className="text-2xl font-bold">${reportData.totalDriverPayouts.toFixed(2)}</p>
-                <p className="text-sm text-muted-foreground">Driver Payouts</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Avg. Ride Value</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">${summary.averageRideValue.toFixed(2)}</div>
+              </CardContent>
+            </Card>
+          </div>
 
-      {/* Recent Bookings */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Completed Rides</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-8">Loading report data...</div>
-          ) : reportData.recentBookings.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No completed rides for this period
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {reportData.recentBookings.map((booking: any) => (
-                <div key={booking.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-4">
-                      <div>
-                        <p className="font-medium">{booking.passengers?.full_name || 'Unknown'}</p>
+          {/* Recent Bookings */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Bookings</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {recentBookings.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No bookings found for the selected period
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {recentBookings.map((booking) => (
+                    <div key={booking.id} className="flex items-center justify-between py-3 border-b last:border-0">
+                      <div className="flex-1">
+                        <p className="font-medium">
+                          {booking.passengers?.full_name || 'Unknown Passenger'}
+                        </p>
                         <p className="text-sm text-muted-foreground">
-                          {format(new Date(booking.created_at), 'MMM dd, yyyy')}
+                          {booking.pickup_location} → {booking.dropoff_location}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(booking.created_at), 'MMM dd, yyyy - HH:mm')}
                         </p>
                       </div>
-                      <div className="text-sm">
-                        <p>{booking.pickup_location}</p>
-                        <p className="text-muted-foreground">→ {booking.dropoff_location}</p>
+                      <div className="text-right">
+                        <Badge variant="secondary">
+                          ${booking.estimated_price.toFixed(2)}
+                        </Badge>
                       </div>
                     </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-4">
-                    <div className="text-right">
-                      <p className="font-medium">
-                        ${(booking.final_negotiated_price || booking.estimated_price || 0).toFixed(2)}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Commission: ${((booking.final_negotiated_price || booking.estimated_price || 0) * ((booking.commission_rate || 20) / 100)).toFixed(2)}
-                      </p>
-                    </div>
-                    <Badge variant="secondary">
-                      {booking.simple_status}
-                    </Badge>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 };
