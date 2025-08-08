@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,11 +15,8 @@ import ChooseVehicle from "./pages/passenger/ChooseVehicle";
 import BookingForm from "./pages/passenger/BookingForm";
 import Confirmation from "./pages/passenger/Confirmation";
 import PassengerDashboard from "./pages/passenger/Dashboard";
-import DriverLogin from "./pages/driver/Login";
-import DriverRegister from "./pages/driver/Register";
-import DriverDashboard from "./pages/driver/Dashboard";
 import PassengerRideProgress from "./pages/passenger/RideProgress";
-import { RideProgressScreen } from "./pages/driver/RideProgressScreen";
+import DispatcherDashboard from "./pages/dispatcher/Dashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,11 +38,8 @@ const App = () => (
           <Route path="/passenger/booking-form" element={<BookingForm />} />
           <Route path="/passenger/confirmation" element={<Confirmation />} />
           <Route path="/passenger/dashboard" element={<PassengerDashboard />} />
-          <Route path="/driver/login" element={<DriverLogin />} />
-          <Route path="/driver/register" element={<DriverRegister />} />
-          <Route path="/driver/dashboard" element={<DriverDashboard />} />
-          <Route path="/driver/ride-progress" element={<RideProgressScreen />} />
           <Route path="/passenger/ride-progress" element={<PassengerRideProgress />} />
+          <Route path="/dispatcher/dashboard" element={<DispatcherDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

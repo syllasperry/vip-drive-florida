@@ -1,137 +1,96 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Plane, Car, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
 
 const HomeScreen = () => {
   const navigate = useNavigate();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [userProfile, setUserProfile] = useState<any>(null);
-  
+
   useEffect(() => {
-    // Check authentication status
-    const checkAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setIsAuthenticated(!!session);
-        
-        if (session?.user) {
-          // Fetch user profile from passengers table
-          const { data: passenger } = await supabase
-            .from('passengers')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          
-          setUserProfile(passenger);
-        }
-      } catch (error) {
-        console.error('Auth check error:', error);
-        setIsAuthenticated(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAuth();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setIsAuthenticated(!!session);
-      if (!session) {
-        setUserProfile(null);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    checkAuthAndRedirect();
   }, []);
-  
-  const handleDashboardClick = () => {
-    if (isAuthenticated) {
-      navigate("/passenger/dashboard");
-    } else {
-      // If not logged in, redirect to login
-      navigate("/passenger/login");
+
+  const checkAuthAndRedirect = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user?.email) {
+        // Check if user is dispatcher
+        if (user.email === 'syllasperry@gmail.com') {
+          navigate('/dispatcher/dashboard');
+          return;
+        }
+        
+        // Otherwise, redirect to passenger dashboard
+        navigate('/passenger/dashboard');
+      }
+    } catch (error) {
+      console.error('Error checking auth:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center p-6">
-      <div className="w-full max-w-md space-y-8 animate-fade-in">
-        {/* Enhanced Dashboard shortcut button */}
-        <div className="flex justify-end">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleDashboardClick}
-            className="text-muted-foreground hover:text-foreground text-lg"
-          >
-            {isAuthenticated ? (
-              <>
-                <Avatar className="w-8 h-8 mr-3 ring-2 ring-green-500/30">
-                  <AvatarImage 
-                    src={userProfile?.profile_photo_url || undefined} 
-                    alt="User Profile" 
-                  />
-                  <AvatarFallback className="bg-green-100 text-green-700">
-                    {userProfile?.full_name ? userProfile.full_name.charAt(0).toUpperCase() : <User className="h-4 w-4" />}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-green-500 font-medium">Online</span>
-                <span className="ml-2">— Go to Dashboard</span>
-              </>
-            ) : (
-              <>
-                <User className="h-5 w-5 mr-2" />
-                <span className="text-muted-foreground">Offline</span>
-                <span className="ml-2">— Go to Dashboard</span>
-              </>
-            )}
-          </Button>
-        </div>
-        
-        <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold text-foreground">Welcome to VIP</h1>
-          <p className="text-lg text-muted-foreground">
-            Choose your experience
-          </p>
-        </div>
-
-        <div className="space-y-6">
-          <Button
-            variant="passenger"
-            size="xl"
-            onClick={() => navigate("/passenger/price-estimate")}
-            className="w-full space-y-2 h-auto py-8 flex flex-col"
-          >
-            <Plane className="h-12 w-12" />
-            <div className="space-y-1">
-              <div className="text-xl font-bold">I'm a Passenger</div>
-              <div className="text-sm opacity-90">Book your premium ride</div>
-            </div>
-          </Button>
-
-          <Button
-            variant="driver"
-            size="xl"
-            onClick={() => navigate("/driver/login")}
-            className="w-full space-y-2 h-auto py-8 flex flex-col"
-          >
-            <Car className="h-12 w-12" />
-            <div className="space-y-1">
-              <div className="text-xl font-bold">I'm a Driver</div>
-              <div className="text-sm opacity-90">Access your dashboard</div>
-            </div>
-          </Button>
-        </div>
-
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center">
         <div className="text-center">
-          <p className="text-sm text-muted-foreground">
-            Premium chauffeur service in South Florida
-          </p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted">
+      <div className="container mx-auto px-4 py-16">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="mb-12">
+            <img 
+              src="/lovable-uploads/vip-logo.jpg" 
+              alt="VIP Service" 
+              className="h-24 mx-auto mb-8 rounded-lg shadow-lg"
+            />
+            <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-6 tracking-tight">
+              VIP Chauffeur Service
+            </h1>
+            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
+              Experience luxury transportation with our premium chauffeur service. 
+              Professional, reliable, and comfortable rides for all your needs.
+            </p>
+          </div>
+
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+              <Button 
+                variant="luxury" 
+                size="lg" 
+                className="h-16 text-lg font-medium shadow-lg hover:shadow-xl transition-all duration-300"
+                onClick={() => navigate('/passenger/price-estimate')}
+              >
+                Book Your Ride
+                <span className="block text-sm font-normal opacity-90">Get started now</span>
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="lg" 
+                className="h-16 text-lg font-medium border-2 hover:bg-muted transition-all duration-300"
+                onClick={() => navigate('/passenger/login')}
+              >
+                Passenger Login
+                <span className="block text-sm font-normal opacity-70">Access your account</span>
+              </Button>
+            </div>
+
+            <div className="pt-8 border-t border-border/50">
+              <p className="text-sm text-muted-foreground">
+                Need assistance? Contact our customer service team
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

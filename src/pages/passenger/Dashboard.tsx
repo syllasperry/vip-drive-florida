@@ -1,943 +1,373 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MessagesInbox } from "@/components/messaging/MessagesInbox";
-import { ConversationScreen } from "@/components/messaging/ConversationScreen";
-import { EnhancedSettingsModal } from "@/components/EnhancedSettingsModal";
-import { PaymentsTab } from "@/components/PaymentsTab";
-import { ProfileEditModal } from "@/components/ProfileEditModal";
-import PassengerPreferencesModal from "@/components/PassengerPreferencesModal";
-import OrganizedBookingsList from "@/components/dashboard/OrganizedBookingsList";
-import CelebrationModal from "@/components/CelebrationModal";
-import { ReviewModal } from "@/components/ReviewModal";
-import { BookingSummaryModal } from "@/components/BookingSummaryModal";
-import StatusTracker, { BookingStatus } from "@/components/StatusTracker";
-import { BottomNavigation } from "@/components/dashboard/BottomNavigation";
-import { ProfileHeader } from "@/components/dashboard/ProfileHeader";
-import { UpcomingRideCard } from "@/components/dashboard/UpcomingRideCard";
-import { BookingToggle } from "@/components/dashboard/BookingToggle";
-import { EnhancedBookingCard } from "@/components/booking/EnhancedBookingCard";
-import { UniversalRideCard } from "@/components/dashboard/UniversalRideCard";
-import { FloatingActionButton } from "@/components/dashboard/FloatingActionButton";
-import { PassengerStatusTimeline } from "@/components/dashboard/PassengerStatusTimeline";
-import { FareConfirmationAlert } from "@/components/FareConfirmationAlert";
-import { PaymentConfirmationModal } from "@/components/PaymentConfirmationModal";
-import { PaymentModal } from "@/components/payment/PaymentModal";
-
-import { RideFlowManager } from "@/components/booking/RideFlowManager";
-import { CancelBookingButton } from "@/components/dashboard/CancelBookingButton";
-
-import { NotificationManager } from "@/components/NotificationManager";
-import { ChatNotificationBadge } from "@/components/ChatNotificationBadge";
-
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useRealtimeBookings } from "@/hooks/useRealtimeBookings";
-import { User, LogOut, Clock, MessageCircle, CreditCard, Settings, Car, CalendarDays, History, Plus } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MapPin, Clock, Users, DollarSign, MessageCircle, Phone, ArrowLeft } from 'lucide-react';
+import { MessagingInterface } from "@/components/MessagingInterface";
+import { format } from 'date-fns';
 
-const Dashboard = () => {
+interface Booking {
+  id: string;
+  pickup_location: string;
+  dropoff_location: string;
+  pickup_time: string;
+  passenger_count: number;
+  vehicle_type?: string;
+  simple_status: 'booking_requested' | 'payment_pending' | 'all_set' | 'completed' | 'cancelled';
+  estimated_price?: number;
+  final_negotiated_price?: number;
+  created_at: string;
+  driver_profiles?: {
+    full_name: string;
+    phone: string;
+    profile_photo_url?: string;
+    car_make: string;
+    car_model: string;
+    car_color: string;
+    license_plate: string;
+  };
+}
+
+const PassengerDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [passenger, setPassenger] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState("bookings");
-  const [bookingView, setBookingView] = useState<"upcoming" | "new-rides" | "past">("upcoming");
-  const [messagingOpen, setMessagingOpen] = useState(false);
-  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
-  const [profileEditOpen, setProfileEditOpen] = useState(false);
-  const [reviewModalOpen, setReviewModalOpen] = useState(false);
-  const [selectedBookingForReview, setSelectedBookingForReview] = useState<string | null>(null);
-  const [summaryModalOpen, setSummaryModalOpen] = useState(false);
-  const [selectedBookingForSummary, setSelectedBookingForSummary] = useState<any>(null);
-  const [selectedBooking, setSelectedBooking] = useState<any>(null);
-  const [selectedOtherUser, setSelectedOtherUser] = useState<any>(null);
-  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [selectedBookingForPayment, setSelectedBookingForPayment] = useState<any>(null);
-  const [pendingActionsCount, setPendingActionsCount] = useState(0);
-
-  // Keep existing state variables
-  const [showConversation, setShowConversation] = useState(false);
-  const [showWelcomeCelebration, setShowWelcomeCelebration] = useState(false);
-  const [showRideConfirmation, setShowRideConfirmation] = useState(false);
-  const [pendingFareBooking, setPendingFareBooking] = useState<any>(null);
-  const [preferencesModalOpen, setPreferencesModalOpen] = useState(false);
-  const [bookings, setBookings] = useState<any[]>([]);
-  const [forceAlertStep, setForceAlertStep] = useState<string | null>(null);
-  const [forceAlertBooking, setForceAlertBooking] = useState<any>(null);
-
-  // Real-time updates for bookings
-  const handleBookingUpdate = (updatedBooking: any) => {
-    console.log('📡 Real-time booking update received (passenger):', updatedBooking);
-    fetchBookings();
-    
-    // Show toast for important status changes
-    if (updatedBooking.status_passenger === 'offer_sent' || updatedBooking.ride_status === 'offer_sent' ||
-        (updatedBooking.status_driver === 'offer_sent') || 
-        (updatedBooking.final_price && updatedBooking.payment_confirmation_status === 'price_awaiting_acceptance')) {
-      toast({
-        title: "🎯 New Offer Received!",
-        description: "Driver has sent you a price offer. Please review.",
-      });
-    } else if (updatedBooking.status_driver === 'driver_accepted') {
-      toast({
-        title: "✅ Driver Accepted!",
-        description: "Your driver has accepted the request and is ready.",
-      });
-    } else if (updatedBooking.payment_confirmation_status === 'all_set') {
-      toast({
-        title: "🚀 All Set!",
-        description: "Everything is confirmed. Your ride is ready!",
-      });
-    } else if (updatedBooking.ride_stage === 'driver_heading_to_pickup') {
-      toast({
-        title: "🚗 Driver En Route!",
-        description: "Your driver is heading to the pickup location.",
-      });
-    } else if (updatedBooking.ride_stage === 'driver_arrived_at_pickup') {
-      toast({
-        title: "📍 Driver Arrived!",
-        description: "Your driver has arrived at the pickup location.",
-      });
-    }
-  };
-
-  useRealtimeBookings({
-    userId: passenger?.id || '',
-    userType: 'passenger',
-    onBookingUpdate: handleBookingUpdate
-  });
-
-  const reopenAlert = (booking: any) => {
-    const { ride_status, payment_confirmation_status, status_driver, final_price } = booking;
-    
-    // Check for offer sent by driver
-    if ((ride_status === 'offer_sent' || status_driver === 'offer_sent') && 
-        payment_confirmation_status === 'price_awaiting_acceptance') {
-      setForceAlertStep('offer_acceptance');
-    } else if (ride_status === 'driver_accepted' && final_price && 
-               payment_confirmation_status === 'price_awaiting_acceptance') {
-      // Alternative check for when driver accepts and sends offer
-      setForceAlertStep('offer_acceptance');
-    } else if (ride_status === 'passenger_approved' && payment_confirmation_status === 'waiting_for_payment') {
-      setForceAlertStep('payment_instructions');
-    } else if (ride_status === 'offer_declined') {
-      setForceAlertStep('passenger_cancellation');
-    } else if (ride_status === 'all_set' && payment_confirmation_status === 'all_set') {
-      setForceAlertStep('all_set_confirmation');
-    }
-    
-    setForceAlertBooking(booking);
-  };
-
-  // Group bookings into 4 sections
-  const cancelled = bookings.filter(booking => {
-    // Cancelled: rides that were cancelled by passenger (moved to Past tab)
-    return ['cancelled_by_passenger', 'offer_declined'].includes(booking.ride_status) || 
-           booking.status === 'cancelled_by_passenger';
-  });
-
-  const groupedBookings = {
-    upcoming: bookings.filter(booking => {
-      // Upcoming: rides that are NOT "All Set" and not completed/cancelled
-      return booking.payment_confirmation_status !== 'all_set' && 
-             booking.ride_stage !== 'completed' && 
-             !['completed', 'cancelled', 'declined', 'offer_declined', 'cancelled_by_passenger'].includes(booking.ride_status) &&
-             booking.status !== 'cancelled_by_passenger';
-    }),
-    cancelled,
-    newRides: bookings.filter(booking => {
-      // New Rides: rides that are "All Set" but not completed
-      return booking.payment_confirmation_status === 'all_set' && 
-             booking.ride_stage !== 'completed' && 
-             !['completed', 'cancelled', 'declined', 'offer_declined', 'cancelled_by_passenger'].includes(booking.ride_status);
-    }),
-    pastRides: [
-      ...bookings.filter(booking => booking.ride_stage === 'completed'),
-      ...cancelled // Include cancelled bookings in Past tab
-    ]
-  };
-
-  const handleAcceptFare = async (bookingId: string) => {
-    try {
-      const { error } = await supabase
-        .from('bookings')
-        .update({ 
-          status: 'payment_confirmed',
-          payment_status: 'pending_payment'
-        })
-        .eq('id', bookingId);
-
-      if (error) {
-        console.error('Error accepting fare:', error);
-        toast({
-          title: "Error",
-          description: "Failed to accept fare",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Send confirmation message
-      await supabase
-        .from('messages')
-        .insert({
-          booking_id: bookingId,
-          sender_id: passenger?.id,
-          sender_type: 'passenger',
-          message_text: `I've accepted the fare of $${pendingFareBooking?.final_price?.toFixed(2)}. Proceeding with payment.`
-        });
-
-      setPendingFareBooking(null);
-      fetchBookings();
-
-      toast({
-        title: "Fare Accepted!",
-        description: "Please proceed with payment.",
-      });
-
-      // Open payment modal
-      setSelectedBookingForPayment(pendingFareBooking);
-      setPaymentModalOpen(true);
-    } catch (error) {
-      console.error('Error accepting fare:', error);
-    }
-  };
-
-  const handleDeclineFare = async (bookingId: string) => {
-    try {
-      const { error } = await supabase
-        .from('bookings')
-        .update({ 
-          status: 'rejected_by_passenger'
-        })
-        .eq('id', bookingId);
-
-      if (error) {
-        console.error('Error declining fare:', error);
-        toast({
-          title: "Error",
-          description: "Failed to decline fare",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setPendingFareBooking(null);
-      fetchBookings();
-
-      toast({
-        title: "Fare Declined",
-        description: "The driver has been notified.",
-      });
-    } catch (error) {
-      console.error('Error declining fare:', error);
-    }
-  };
-
-  const handleCancelBooking = async (bookingId: string) => {
-    try {
-      const { error } = await supabase
-        .from('bookings')
-        .update({ status: 'cancelled' })
-        .eq('id', bookingId);
-
-      if (error) throw error;
-
-      fetchBookings();
-      toast({
-        title: "Booking Cancelled",
-        description: "Your booking has been cancelled successfully.",
-      });
-    } catch (error) {
-      console.error('Error cancelling booking:', error);
-      toast({
-        title: "Error",
-        description: "Failed to cancel booking",
-        variant: "destructive",
-      });
-    }
-  };
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [showMessaging, setShowMessaging] = useState(false);
+  const [passengerInfo, setPassengerInfo] = useState(null);
 
   useEffect(() => {
-    const checkAuthAndLoadData = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
+    checkAuth();
+  }, []);
 
-        if (!session) {
-          navigate("/passenger/login");
-          return;
-        }
-
-        setIsAuthenticated(true);
-
-        const { data: passengerData, error } = await supabase
-          .from("passengers")
-          .select("*")
-          .eq("id", session.user.id)
-          .single();
-
-        if (error) {
-          console.error("Error fetching user profile:", error);
-          toast({
-            title: "Error",
-            description: "Failed to load user profile",
-            variant: "destructive",
-          });
-        } else {
-          setPassenger(passengerData);
-        }
-      } catch (error) {
-        console.error("Auth check error:", error);
-        navigate("/passenger/login");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAuthAndLoadData();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!session) {
-        navigate("/passenger/login");
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate, toast]);
-
-  const handleNewBooking = () => {
-    navigate("/passenger/price-estimate");
-  };
-
-  const handleLogout = async () => {
+  const checkAuth = async () => {
     try {
-      Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-          localStorage.removeItem(key);
-        }
-      });
+      const { data: { user } } = await supabase.auth.getUser();
       
-      Object.keys(sessionStorage || {}).forEach((key) => {
-        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-          sessionStorage.removeItem(key);
-        }
-      });
+      if (!user) {
+        navigate('/passenger/login');
+        return;
+      }
 
-      await supabase.auth.signOut({ scope: 'global' });
-      window.location.href = "/passenger/login";
+      // Check if user is dispatcher - redirect them
+      if (user.email === 'syllasperry@gmail.com') {
+        navigate('/dispatcher/dashboard');
+        return;
+      }
+
+      loadBookings(user.id);
+      loadPassengerInfo(user.id);
     } catch (error) {
-      console.error("Logout error:", error);
-      window.location.href = "/passenger/login";
+      console.error('Auth error:', error);
+      navigate('/passenger/login');
     }
   };
 
-  // Handle tab navigation
-  const handleTabChange = (tab: string) => {
-    if (tab === 'rideProgress') {
-      navigate('/passenger/ride-progress');
-      return;
-    }
-    
-    setActiveTab(tab);
-    
-    switch (tab) {
-      case 'bookings':
-        // Already on bookings page - just update active tab
-        break;
-      case 'messages':
-        // Messages tab will be handled by the tab content
-        break;
-      case 'payments':
-        // Payments tab will be handled by the tab content
-        break;
-      case 'settings':
-        setSettingsModalOpen(true);
-        break;
-    }
-  };
-
-  // Fetch real bookings from Supabase
-  const fetchBookings = async () => {
-    if (!passenger?.id) return;
-
+  const loadPassengerInfo = async (userId: string) => {
     try {
-      const { data: bookingsData, error } = await supabase
+      const { data, error } = await supabase
+        .from('passengers')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) throw error;
+      setPassengerInfo(data);
+    } catch (error) {
+      console.error('Error loading passenger info:', error);
+    }
+  };
+
+  const loadBookings = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
         .from('bookings')
         .select(`
           *,
-          drivers:driver_id (
-            id,
+          driver_profiles (
             full_name,
             phone,
-            email,
             profile_photo_url,
-            preferred_payment_method,
-            payment_instructions
-          ),
-          vehicles:vehicle_id (
-            id,
-            type,
-            description,
-            image_url
+            car_make,
+            car_model,
+            car_color,
+            license_plate
           )
         `)
-        .eq('passenger_id', passenger.id)
-        .order('updated_at', { ascending: false });
+        .eq('passenger_id', userId)
+        .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching bookings:', error);
-        return;
-      }
-
-      setBookings(bookingsData || []);
-      
-      
-      // Check for pending fare confirmation (legacy support)
-      const pendingBooking = bookingsData?.find(booking => booking.status === 'price_proposed');
-      setPendingFareBooking(pendingBooking || null);
+      if (error) throw error;
+      setBookings(data || []);
     } catch (error) {
-      console.error('Error fetching bookings:', error);
+      console.error('Error loading bookings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load your bookings",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSelectChat = (booking: any, otherUser: any) => {
-    setSelectedBooking(booking);
-    setSelectedOtherUser(otherUser);
-    setShowConversation(true);
-  };
-
-  const handleBackToInbox = () => {
-    setShowConversation(false);
-    setSelectedBooking(null);
-    setSelectedOtherUser(null);
-  };
-
-  useEffect(() => {
-    fetchBookings();
-
-    // Set up real-time subscription for booking status updates
-    if (passenger?.id) {
-      const channel = supabase
-        .channel('passenger-booking-updates')
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'bookings',
-            filter: `passenger_id=eq.${passenger.id}`
-          },
-          (payload) => {
-            console.log('Booking update received:', payload);
-            
-            // Check if this is a driver offering a price
-            if ((payload.new?.ride_status === 'offer_sent' || payload.new?.status_driver === 'offer_sent') && 
-                payload.new?.payment_confirmation_status === 'price_awaiting_acceptance' &&
-                payload.new?.final_price) {
-              console.log('Driver sent price offer, showing modal');
-              
-              // Show toast notification
-              toast({
-                title: "New Price Offer!",
-                description: `Your driver has offered $${payload.new.final_price} for the ride.`,
-                duration: 5000,
-              });
-            } else if (payload.new?.final_price && payload.new?.payment_confirmation_status === 'price_awaiting_acceptance') {
-              // Alternative check for offer scenarios
-              console.log('Driver offer detected (alternative check)', payload.new);
-              toast({
-                title: "New Price Offer!",
-                description: `Your driver has offered $${payload.new.final_price} for the ride.`,
-                duration: 5000,
-              });
-            }
-            
-            fetchBookings(); // Refresh bookings when changes occur
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'booking_requested': return 'bg-yellow-100 text-yellow-800';
+      case 'payment_pending': return 'bg-blue-100 text-blue-800';
+      case 'all_set': return 'bg-green-100 text-green-800';
+      case 'completed': return 'bg-gray-100 text-gray-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
-  }, [passenger, toast]);
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'booking_requested': return 'Request Submitted';
+      case 'payment_pending': return 'Payment Required';
+      case 'all_set': return 'All Set - Ready!';
+      case 'completed': return 'Completed';
+      case 'cancelled': return 'Cancelled';
+      default: return status;
+    }
+  };
+
+  const getStatusMessage = (booking: Booking) => {
+    switch (booking.simple_status) {
+      case 'booking_requested':
+        return 'We\'ve received your booking request and are working on confirming your ride. You\'ll be notified once we have a driver and final price.';
+      case 'payment_pending':
+        return `Your ride is confirmed! The final price is $${booking.final_negotiated_price}. Please complete your payment to finalize the booking.`;
+      case 'all_set':
+        return 'Payment confirmed! Your ride is all set. Your driver will contact you before pickup.';
+      case 'completed':
+        return 'Your ride has been completed. Thank you for choosing our service!';
+      case 'cancelled':
+        return 'This booking has been cancelled. Please contact us if you have any questions.';
+      default:
+        return 'Status update in progress...';
+    }
+  };
+
+  const handlePayment = (booking: Booking) => {
+    // For now, simulate payment - in production this would integrate with Stripe
+    toast({
+      title: "Payment Instructions",
+      description: "You will receive payment instructions via email shortly.",
+    });
+  };
+
+  const formatDateTime = (dateString: string) => {
+    return format(new Date(dateString), 'MMM dd, yyyy - HH:mm');
+  };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading your bookings...</p>
         </div>
       </div>
     );
   }
 
-  if (!isAuthenticated) {
-    return null;
+  if (showMessaging && selectedBooking) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-6">
+          <Button
+            variant="ghost"
+            onClick={() => setShowMessaging(false)}
+            className="mb-4"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
+          </Button>
+          <MessagingInterface
+            bookingId={selectedBooking.id}
+            userType="passenger"
+            otherParty={{
+              name: "Customer Service",
+              avatar: undefined
+            }}
+          />
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-background">
-      {passenger?.id && (
-        <NotificationManager 
-          userId={passenger.id}
-          userType="passenger"
-        />
-      )}
-      
-
-      {/* Main Container - Clean Mobile Layout inspired by Airbnb */}
-      <div className="max-w-sm mx-auto min-h-screen flex flex-col">
-        
-        {/* Header Section */}
-        <div className="p-4 bg-background">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-bold text-foreground">
-              {activeTab === 'bookings' && 'Bookings'}
-              {activeTab === 'messages' && 'Messages'}
-              {activeTab === 'payments' && 'Payments'}
-              {activeTab === 'settings' && 'Settings'}
-            </h1>
-            <div className="flex items-center gap-3">
-              <Button
-                onClick={() => setProfileEditOpen(true)}
-                variant="ghost"
-                size="sm"
-                className="p-1 hover:bg-muted/50 rounded-full"
+      <div className="border-b bg-card">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">My Bookings</h1>
+              <p className="text-muted-foreground">Track and manage your ride requests</p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <Button onClick={() => navigate('/passenger/price-estimate')}>
+                New Booking
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => supabase.auth.signOut().then(() => navigate('/home'))}
               >
-                <Avatar className="h-8 w-8">
-                  <AvatarImage 
-                    src={passenger?.profile_photo_url} 
-                    alt={passenger?.full_name || "Profile"} 
-                  />
-                  <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                    {passenger?.full_name ? passenger.full_name.charAt(0).toUpperCase() : "U"}
-                  </AvatarFallback>
-                </Avatar>
+                Sign Out
               </Button>
             </div>
           </div>
-
-          {/* Tab Navigation - Only for Bookings */}
-          {activeTab === "bookings" && (
-            <div className="flex bg-muted/30 p-1 rounded-lg mb-4">
-              <Button
-                variant={bookingView === "upcoming" ? "default" : "ghost"}
-                size="sm"
-                className="flex-1 text-xs font-medium h-9 rounded-md"
-                onClick={() => setBookingView("upcoming")}
-              >
-                Upcoming
-              </Button>
-              <Button
-                variant={bookingView === "new-rides" ? "default" : "ghost"}
-                size="sm"
-                className="flex-1 text-xs font-medium h-9 rounded-md"
-                onClick={() => setBookingView("new-rides")}
-              >
-                New Rides
-              </Button>
-              <Button
-                variant={bookingView === "past" ? "default" : "ghost"}
-                size="sm"
-                className="flex-1 text-xs font-medium h-9 rounded-md"
-                onClick={() => setBookingView("past")}
-              >
-                Past
-              </Button>
-            </div>
-          )}
         </div>
-
-         {/* Fare Confirmation Alert - Always at Top when present */}
-        {pendingFareBooking && activeTab === "bookings" && (
-          <div className="px-4 mb-4">
-            <FareConfirmationAlert
-              isVisible={true}
-              fareAmount={pendingFareBooking.final_price || 0}
-              onAccept={() => handleAcceptFare(pendingFareBooking.id)}
-              onDecline={() => handleDeclineFare(pendingFareBooking.id)}
-              onClose={() => setPendingFareBooking(null)}
-              expiresAt={pendingFareBooking.payment_expires_at ? 
-                new Date(pendingFareBooking.payment_expires_at) : 
-                new Date(Date.now() + 15 * 60 * 1000)
-              }
-            />
-          </div>
-        )}
-
-        {/* All Set Banner moved inside individual booking cards */}
-
-        {/* Main Content */}
-        <div className="flex-1 overflow-auto">
-          {activeTab === "bookings" && (
-            <div className="p-4 space-y-4">
-              {bookingView === "upcoming" && (groupedBookings.upcoming.length > 0 || groupedBookings.cancelled.length > 0) && (
-                <div className="space-y-6">
-                  {/* Active Upcoming Rides */}
-                  {groupedBookings.upcoming.length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-semibold text-foreground mb-3">Upcoming</h3>
-                      <div className="space-y-3">
-                          {groupedBookings.upcoming.map((booking) => (
-                            <div key={booking.id} className="relative">
-                                <UniversalRideCard
-                                  booking={booking}
-                                  userType="passenger"
-                                  onMessage={() => {
-                                    setSelectedBooking(booking);
-                                    setMessagingOpen(true);
-                                  }}
-                                  onViewSummary={() => {
-                                    setSelectedBookingForSummary(booking);
-                                    setSummaryModalOpen(true);
-                                  }}
-                                  onStatusUpdate={fetchBookings}
-                                />
-                            </div>
-                          ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Cancelled Rides Section */}
-                  {groupedBookings.cancelled.length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-semibold text-muted-foreground mb-3">❌ Cancelled Rides</h3>
-                      <div className="space-y-3">
-                         {groupedBookings.cancelled.map((booking) => (
-                           <div key={booking.id} className="opacity-60">
-                             <EnhancedBookingCard 
-                               booking={booking} 
-                               userType="passenger"
-                               onMessage={() => {
-                                 setSelectedBooking(booking);
-                                 setMessagingOpen(true);
-                               }}
-                                onViewSummary={() => {
-                                  setSelectedBookingForSummary(booking);
-                                  setSummaryModalOpen(true);
-                                }}
-                                onReopenAlert={() => reopenAlert(booking)}
-                             />
-                           </div>
-                         ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {bookingView === "new-rides" && groupedBookings.newRides.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground mb-3">New Rides</h3>
-                  <div className="space-y-3">
-                    {groupedBookings.newRides.map((booking) => (
-                      <UniversalRideCard
-                        key={booking.id}
-                        booking={booking}
-                        userType="passenger"
-                        onMessage={() => {
-                          setSelectedBooking(booking);
-                          setMessagingOpen(true);
-                        }}
-                        onViewSummary={() => {
-                          setSelectedBookingForSummary(booking);
-                          setSummaryModalOpen(true);
-                        }}
-                        onStatusUpdate={fetchBookings}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {bookingView === "past" && groupedBookings.pastRides.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground mb-3">Past Rides</h3>
-                  <div className="space-y-3">
-                      {groupedBookings.pastRides.map((booking) => (
-                        booking.ride_stage === 'completed' ? (
-                          <UniversalRideCard
-                            key={booking.id}
-                            booking={booking}
-                            userType="passenger"
-                            onMessage={() => {
-                              setSelectedBooking(booking);
-                              setMessagingOpen(true);
-                            }}
-                            onViewSummary={() => {
-                              setSelectedBookingForSummary(booking);
-                              setSummaryModalOpen(true);
-                            }}
-                            onStatusUpdate={fetchBookings}
-                          />
-                        ) : (
-                          <EnhancedBookingCard 
-                            key={booking.id} 
-                            booking={booking} 
-                            userType="passenger"
-                            onMessage={() => {
-                              setSelectedBooking(booking);
-                              setMessagingOpen(true);
-                            }}
-                            onViewSummary={() => {
-                              setSelectedBookingForSummary(booking);
-                              setSummaryModalOpen(true);
-                            }}
-                            onMakePayment={() => {
-                              setSelectedBookingForPayment(booking);
-                              setPaymentModalOpen(true);
-                            }}
-                          />
-                        )
-                      ))}
-                  </div>
-                </div>
-              )}
-
-              {((bookingView === "upcoming" && groupedBookings.upcoming.length === 0 && groupedBookings.cancelled.length === 0) || 
-                (bookingView === "new-rides" && groupedBookings.newRides.length === 0) ||
-                (bookingView === "past" && groupedBookings.pastRides.length === 0)) && (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                    <span className="text-2xl">🚗</span>
-                  </div>
-                  <h3 className="font-medium text-foreground mb-2">
-                    {bookingView === "upcoming" ? "No upcoming rides" : 
-                     bookingView === "new-rides" ? "No confirmed rides" : "No past rides"}
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-6">
-                    {bookingView === "upcoming" ? "Book your first ride to get started" : 
-                     bookingView === "new-rides" ? "Confirmed rides will appear here" : "Your completed rides will appear here"}
-                  </p>
-                  {bookingView === "upcoming" && (
-                    <Button 
-                      onClick={handleNewBooking}
-                      className="bg-primary hover:bg-primary/90 text-white"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Book Now
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-
-          {activeTab === "messages" && !showConversation && (
-            <MessagesInbox
-              userType="passenger"
-              userId={passenger?.id || ""}
-              onSelectChat={handleSelectChat}
-            />
-          )}
-
-          {activeTab === "messages" && showConversation && selectedBooking && (
-            <div className="fixed inset-0 z-50 bg-background">
-              <ConversationScreen
-                userType="passenger"
-                booking={selectedBooking}
-                otherUser={selectedOtherUser}
-                currentUserId={passenger?.id || ""}
-                currentUserName={passenger?.full_name || ""}
-                currentUserAvatar={passenger?.profile_photo_url}
-                onBack={handleBackToInbox}
-              />
-            </div>
-          )}
-
-          {activeTab === "payments" && (
-            <div className="p-4">
-              <PaymentsTab
-                userId={passenger?.id || ""}
-                userType="passenger"
-                onViewSummary={(booking) => {
-                  setSelectedBookingForSummary(booking);
-                  setSummaryModalOpen(true);
-                }}
-              />
-            </div>
-          )}
-
-          {activeTab === "settings" && (
-            <div className="p-4">
-              <div className="text-center py-8">
-                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">⚙️</span>
-                </div>
-                <h3 className="font-medium text-foreground mb-2">Settings</h3>
-                <p className="text-sm text-muted-foreground mb-6">
-                  Manage your account preferences and settings
-                </p>
-                <Button 
-                  onClick={() => setSettingsModalOpen(true)}
-                  className="bg-primary hover:bg-primary/90 text-white"
-                >
-                  Open Settings
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* New Booking Button - Only show on bookings tab */}
-        {activeTab === "bookings" && (
-          <div className="p-4 pb-24">
-            <Button 
-              onClick={handleNewBooking}
-              className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-medium rounded-xl shadow-lg transition-all duration-200 hover:shadow-xl"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              New Booking
-            </Button>
-          </div>
-        )}
-
-        {/* Bottom Navigation - Hide when conversation is active */}
-        {!(activeTab === "messages" && showConversation) && (
-          <BottomNavigation
-            activeTab={activeTab}
-            onTabChange={handleTabChange}
-            userType="passenger"
-            hasActiveRide={groupedBookings.upcoming.length > 0}
-          />
-        )}
       </div>
 
-      {/* Ride Flow Manager - Handles the complete offer/payment/confirmation flow */}
-      <RideFlowManager
-        booking={forceAlertBooking || bookings.find(b => 
-          ['offer_sent', 'passenger_approved', 'awaiting_driver_confirmation', 'all_set'].includes(b.ride_status) ||
-          ['waiting_for_payment', 'passenger_paid', 'all_set'].includes(b.payment_confirmation_status) ||
-          (b.ride_status === 'offer_sent' && b.payment_confirmation_status === 'price_awaiting_acceptance')
+      <div className="container mx-auto px-4 py-6">
+        {bookings.length === 0 ? (
+          <div className="text-center py-12">
+            <h3 className="text-lg font-medium mb-2">No bookings yet</h3>
+            <p className="text-muted-foreground mb-6">Ready to book your first luxury ride?</p>
+            <Button onClick={() => navigate('/passenger/price-estimate')}>
+              Book Your First Ride
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {bookings.map((booking) => (
+              <Card key={booking.id} className="w-full">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">
+                      Booking #{booking.id.slice(-8).toUpperCase()}
+                    </CardTitle>
+                    <Badge className={getStatusColor(booking.simple_status)}>
+                      {getStatusLabel(booking.simple_status)}
+                    </Badge>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-4">
+                  {/* Status Message */}
+                  <div className="bg-muted/50 p-4 rounded-lg">
+                    <p className="text-sm">{getStatusMessage(booking)}</p>
+                  </div>
+
+                  {/* Trip Details */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div className="flex items-start space-x-2">
+                        <MapPin className="h-4 w-4 text-green-600 mt-1 flex-shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium">Pickup</p>
+                          <p className="text-sm text-muted-foreground">{booking.pickup_location}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start space-x-2">
+                        <MapPin className="h-4 w-4 text-red-600 mt-1 flex-shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium">Drop-off</p>
+                          <p className="text-sm text-muted-foreground">{booking.dropoff_location}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Clock className="h-4 w-4 text-blue-600" />
+                        <div>
+                          <p className="text-sm font-medium">Date & Time</p>
+                          <p className="text-sm text-muted-foreground">
+                            {formatDateTime(booking.pickup_time)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Users className="h-4 w-4 text-purple-600" />
+                        <span className="text-sm">{booking.passenger_count} passenger(s)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Driver Information (only shown when all_set) */}
+                  {booking.simple_status === 'all_set' && booking.driver_profiles && (
+                    <div className="border-t pt-4">
+                      <h4 className="font-medium mb-2">Your Driver</h4>
+                      <div className="flex items-center space-x-4">
+                        <Avatar>
+                          <AvatarImage src={booking.driver_profiles.profile_photo_url} />
+                          <AvatarFallback>{booking.driver_profiles.full_name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <p className="font-medium">{booking.driver_profiles.full_name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {booking.driver_profiles.car_make} {booking.driver_profiles.car_model} 
+                            ({booking.driver_profiles.car_color})
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            License: {booking.driver_profiles.license_plate}
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(`tel:${booking.driver_profiles?.phone}`, '_blank')}
+                        >
+                          <Phone className="h-4 w-4 mr-1" />
+                          Call Driver
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Price and Actions */}
+                  <div className="flex items-center justify-between border-t pt-4">
+                    <div className="flex items-center space-x-2">
+                      <DollarSign className="h-4 w-4 text-green-600" />
+                      <span className="font-medium">
+                        {booking.simple_status === 'booking_requested' 
+                          ? `Est. $${booking.estimated_price || 0}`
+                          : `$${booking.final_negotiated_price || booking.estimated_price || 0}`
+                        }
+                      </span>
+                    </div>
+                    
+                    <div className="flex space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          setSelectedBooking(booking);
+                          setShowMessaging(true);
+                        }}
+                      >
+                        <MessageCircle className="h-4 w-4 mr-1" />
+                        Message
+                      </Button>
+
+                      {booking.simple_status === 'payment_pending' && (
+                        <Button 
+                          size="sm"
+                          onClick={() => handlePayment(booking)}
+                        >
+                          Complete Payment
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         )}
-        userType="passenger"
-        onFlowComplete={() => {
-          setForceAlertStep(null);
-          setForceAlertBooking(null);
-          fetchBookings();
-        }}
-        forceOpenStep={forceAlertStep}
-      />
-
-      {/* Modals */}
-      
-      <EnhancedSettingsModal
-        isOpen={settingsModalOpen}
-        onClose={() => setSettingsModalOpen(false)}
-        userId={passenger?.id}
-        userType="passenger"
-      />
-      
-      <ProfileEditModal 
-        isOpen={profileEditOpen}
-        onClose={() => setProfileEditOpen(false)}
-        userProfile={passenger}
-        onPhotoUpload={async () => {}} // Add photo upload handler if needed
-      />
-
-      <ReviewModal 
-        isOpen={reviewModalOpen}
-        onClose={() => setReviewModalOpen(false)}
-        bookingId={selectedBookingForReview}
-      />
-
-      <BookingSummaryModal 
-        isOpen={summaryModalOpen}
-        onClose={() => setSummaryModalOpen(false)}
-        booking={selectedBookingForSummary || {}}
-      />
-
-      <CelebrationModal 
-        isOpen={showWelcomeCelebration}
-        onClose={() => setShowWelcomeCelebration(false)}
-      />
-
-      <CelebrationModal 
-        isOpen={showRideConfirmation}
-        onClose={() => setShowRideConfirmation(false)}
-      />
-
-
-      {selectedBookingForPayment && (
-        <PaymentModal
-          isOpen={paymentModalOpen}
-          onClose={() => setPaymentModalOpen(false)}
-          booking={selectedBookingForPayment}
-          onPaymentConfirmed={() => {
-            setPaymentModalOpen(false);
-            fetchBookings();
-          }}
-        />
-      )}
-
-      {/* Payment Confirmation Modal */}
-      {selectedBookingForPayment && (
-        <PaymentConfirmationModal
-          isOpen={false} // Disable this for now, using PaymentModal instead
-          onClose={() => {
-            setPaymentModalOpen(false);
-            setSelectedBookingForPayment(null);
-          }}
-          bookingData={selectedBookingForPayment}
-          userType="passenger"
-          onConfirmPayment={() => {}}
-          paymentStatus={selectedBookingForPayment.payment_status || 'pending'}
-        />
-      )}
-
-      {/* Passenger Preferences Modal */}
-      <PassengerPreferencesModal
-        isOpen={preferencesModalOpen}
-        onClose={() => setPreferencesModalOpen(false)}
-        userProfile={passenger}
-        onUpdate={() => {
-          // Refresh user profile to reflect changes
-          if (passenger?.id) {
-            supabase
-              .from('passengers')
-              .select('*')
-              .eq('id', passenger.id)
-              .single()
-              .then(({ data }) => {
-                if (data) {
-                  setPassenger(data);
-                }
-              });
-          }
-        }}
-      />
-
-
-      {/* Messaging Modal - Opens from booking cards */}
-      {messagingOpen && selectedBooking && (
-        <div className="fixed inset-0 z-50 bg-background">
-          <ConversationScreen
-            userType="passenger"
-            booking={selectedBooking}
-            otherUser={selectedBooking.drivers}
-            currentUserId={passenger?.id || ""}
-            currentUserName={passenger?.full_name || ""}
-            currentUserAvatar={passenger?.profile_photo_url}
-            onBack={() => {
-              setMessagingOpen(false);
-              setSelectedBooking(null);
-            }}
-          />
-        </div>
-      )}
+      </div>
     </div>
   );
 };
 
-export default Dashboard;
+export default PassengerDashboard;
