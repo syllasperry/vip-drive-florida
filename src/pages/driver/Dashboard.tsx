@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -15,77 +16,44 @@ import { EnhancedSettingsModal } from "@/components/EnhancedSettingsModal";
 import { BookingRequestModal } from "@/components/booking/BookingRequestModal";
 import { DriverHistorySection } from "@/components/dashboard/DriverHistorySection";
 import { MessagingInterface } from "@/components/MessagingInterface";
-import { SimpleBooking, SimpleUserProfile } from '@/types/dashboard';
+import { SimpleBooking } from '@/types/dashboard';
 import { transformSupabaseBooking } from '@/utils/bookingTransformer';
+import { useRealtimeBookings } from '@/hooks/useRealtimeBookings';
+import { useDriverProfile } from '@/hooks/useDriverProfile';
+import { useDriverBookings } from '@/hooks/useDriverBookings';
 
 const DriverDashboard = () => {
   const [user, setUser] = useState<any>(null);
-  const [userProfile, setUserProfile] = useState<SimpleUserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [selectedBookingForMessage, setSelectedBookingForMessage] = useState<SimpleBooking | null>(null);
-  const [completedBookings, setCompletedBookings] = useState<SimpleBooking[]>([]);
-  const [bookings, setBookings] = useState<SimpleBooking[]>([]);
-  const [bookingsLoading, setBookingsLoading] = useState(false);
-  const [bookingsError, setBookingsError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('rides');
-  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
   const { toast } = useToast();
 
-  // Simplified realtime setup with explicit typing
-  useEffect(() => {
-    if (!user?.id) return;
+  // Use custom hooks for data management
+  const { userProfile } = useDriverProfile(user?.id);
+  const { 
+    bookings, 
+    completedBookings, 
+    loading: bookingsLoading, 
+    error: bookingsError, 
+    refreshBookings,
+    updateBooking
+  } = useDriverBookings(user?.id);
 
-    const channel = supabase
-      .channel('bookings_updates')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'bookings',
-        },
-        (payload) => {
-          // Explicit type casting to avoid deep inference
-          const rawBooking = payload.new as Record<string, any>;
-          
-          if (rawBooking?.driver_id === user.id) {
-            console.log('📡 Realtime booking update:', {
-              event: payload.eventType,
-              bookingId: rawBooking?.id,
-              status: rawBooking?.status
-            });
-            
-            try {
-              const booking = transformSupabaseBooking(rawBooking);
-              
-              // Update bookings state with explicit type
-              setBookings((prevBookings: SimpleBooking[]) => {
-                const index = prevBookings.findIndex(b => b.id === booking.id);
-                if (index >= 0) {
-                  const updated = [...prevBookings];
-                  updated[index] = booking;
-                  return updated;
-                } else {
-                  return [booking, ...prevBookings];
-                }
-              });
-            } catch (error) {
-              console.error('Error transforming booking:', error);
-            }
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log('📡 Realtime connection status:', status);
-        setIsRealtimeConnected(status === 'SUBSCRIBED');
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-      setIsRealtimeConnected(false);
-    };
-  }, [user?.id]);
+  // Realtime subscription
+  const { isConnected: isRealtimeConnected } = useRealtimeBookings({
+    userId: user?.id || '',
+    userType: 'driver',
+    onBookingUpdate: (rawBooking) => {
+      try {
+        const booking = transformSupabaseBooking(rawBooking);
+        updateBooking(booking);
+      } catch (error) {
+        console.error('Error transforming realtime booking:', error);
+      }
+    }
+  });
 
   useEffect(() => {
     const getSession = async () => {
@@ -95,9 +63,6 @@ const DriverDashboard = () => {
         
         if (session?.user) {
           setUser(session.user);
-          await loadUserProfile(session.user.id);
-          await loadBookings(session.user.id);
-          await loadCompletedBookings(session.user.id);
         } else {
           window.location.href = '/driver/login';
         }
@@ -115,105 +80,6 @@ const DriverDashboard = () => {
 
     getSession();
   }, [toast]);
-
-  const loadUserProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('drivers')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-
-      if (data) {
-        const profile: SimpleUserProfile = {
-          full_name: data.full_name || '',
-          profile_photo_url: data.profile_photo_url
-        };
-        setUserProfile(profile);
-      }
-    } catch (error) {
-      console.error('Error loading user profile:', error);
-    }
-  };
-
-  const loadBookings = async (driverId: string) => {
-    try {
-      setBookingsLoading(true);
-      const { data, error } = await supabase
-        .from('bookings')
-        .select(`
-          *,
-          passengers (
-            full_name,
-            phone,
-            profile_photo_url
-          )
-        `)
-        .eq('driver_id', driverId)
-        .not('status', 'in', '(completed,cancelled,declined)')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      // Transform the data with explicit typing
-      const rawBookings = data || [];
-      const transformedData: SimpleBooking[] = rawBookings.map((booking: any) => 
-        transformSupabaseBooking(booking)
-      );
-      
-      setBookings(transformedData);
-    } catch (error) {
-      console.error('Error loading bookings:', error);
-      setBookingsError('Failed to load bookings');
-      toast({
-        title: "Error",
-        description: "Failed to load bookings",
-        variant: "destructive"
-      });
-    } finally {
-      setBookingsLoading(false);
-    }
-  };
-
-  const loadCompletedBookings = async (driverId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('bookings')
-        .select(`
-          *,
-          passengers (
-            full_name,
-            phone,
-            profile_photo_url
-          )
-        `)
-        .eq('driver_id', driverId)
-        .in('status', ['completed', 'cancelled', 'declined'])
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (error) throw error;
-
-      // Transform the data with explicit typing
-      const rawBookings = data || [];
-      const transformedData: SimpleBooking[] = rawBookings.map((booking: any) => 
-        transformSupabaseBooking(booking)
-      );
-      
-      setCompletedBookings(transformedData);
-    } catch (error) {
-      console.error('Error loading completed bookings:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load ride history",
-        variant: "destructive"
-      });
-    }
-  };
 
   const handleMessage = (booking: SimpleBooking) => {
     setSelectedBookingForMessage(booking);
@@ -315,12 +181,7 @@ const DriverDashboard = () => {
               userType="driver"
               onMessage={handleMessage}
               onViewSummary={handleViewSummary}
-              onCancelSuccess={() => {
-                if (user?.id) {
-                  loadBookings(user.id);
-                  loadCompletedBookings(user.id);
-                }
-              }}
+              onCancelSuccess={refreshBookings}
             />
           </TabsContent>
 
