@@ -14,6 +14,7 @@ interface OrganizedBookingsListProps {
   currentDriverId?: string;
   currentDriverName?: string;
   currentDriverAvatar?: string;
+  onCall?: (booking?: any) => void;
 }
 
 export const OrganizedBookingsList = ({
@@ -25,7 +26,8 @@ export const OrganizedBookingsList = ({
   onReopenModal,
   currentDriverId,
   currentDriverName,
-  currentDriverAvatar
+  currentDriverAvatar,
+  onCall
 }: OrganizedBookingsListProps) => {
   
   const getPendingBookings = () => {
@@ -76,7 +78,6 @@ export const OrganizedBookingsList = ({
                 key={booking.id}
                 booking={booking}
                 onMessage={onMessage}
-                onReopenAlert={() => onReopenModal?.(booking.ride_status)}
               />
             ))}
           </div>
@@ -94,7 +95,7 @@ export const OrganizedBookingsList = ({
                 booking={booking}
                 onMessage={onMessage}
                 onViewSummary={onViewSummary}
-                onReopenAlert={() => onReopenModal?.(booking.ride_status)}
+                onCall={onCall}
                 currentDriverId={currentDriverId}
                 currentDriverName={currentDriverName}
                 currentDriverAvatar={currentDriverAvatar}
@@ -115,7 +116,7 @@ export const OrganizedBookingsList = ({
                 booking={booking}
                 onMessage={onMessage}
                 onViewSummary={onViewSummary}
-                onReopenAlert={() => onReopenModal?.(booking.ride_status)}
+                onCall={onCall}
                 currentDriverId={currentDriverId}
                 currentDriverName={currentDriverName}
                 currentDriverAvatar={currentDriverAvatar}
