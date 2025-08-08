@@ -1,169 +1,141 @@
+
+import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Clock, MapPin, User, Car, MessageCircle, Navigation } from "lucide-react";
-import PassengerPreferencesCard from "@/components/PassengerPreferencesCard";
+import { MapPin, Clock, Users, Car, DollarSign } from 'lucide-react';
+import { StatusTimeline } from '@/components/timeline/StatusTimeline';
+import { format } from 'date-fns';
 
 interface UpcomingRideCardProps {
-  ride: any;
-  userType: "passenger" | "driver";
-  onMessage?: () => void;
-  onNavigate?: (navApp: string) => void;
+  booking: any;
+  userType: 'passenger' | 'driver';
+  onClick?: () => void;
+  className?: string;
 }
 
-export const UpcomingRideCard = ({ ride, userType, onMessage, onNavigate }: UpcomingRideCardProps) => {
-  if (!ride) return null;
+export const UpcomingRideCard = ({ 
+  booking, 
+  userType, 
+  onClick,
+  className = "" 
+}: UpcomingRideCardProps) => {
+  if (!booking) return null;
+
+  const otherUser = userType === 'passenger' ? booking.drivers : booking.passengers;
+  const currentUser = userType === 'passenger' ? booking.passengers : booking.drivers;
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "confirmed": return "bg-success/10 text-success border-success/20";
-      case "pending": return "bg-warning/10 text-warning border-warning/20";
-      case "payment_confirmed": return "bg-success/10 text-success border-success/20";
-      default: return "bg-muted/10 text-muted-foreground border-border";
+      case 'all_set': return 'bg-emerald-500 text-white';
+      case 'payment_confirmed': return 'bg-blue-500 text-white';
+      case 'offer_accepted': return 'bg-green-500 text-white';
+      default: return 'bg-gray-500 text-white';
     }
   };
 
   return (
-    <Card className="bg-gradient-to-br from-primary/5 to-primary-glow/5 border-primary/20 shadow-[var(--shadow-luxury)] mb-6">
-      <CardContent className="p-6">
+    <Card 
+      className={`w-full border-l-4 border-l-emerald-500 cursor-pointer hover:shadow-lg transition-shadow duration-200 ${className}`}
+      onClick={onClick}
+    >
+      <CardContent className="p-4">
+        {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-full">
-              <Clock className="h-5 w-5 text-primary" />
-            </div>
+          <div className="flex items-center space-x-3">
+            <Avatar className="h-12 w-12 border-2 border-emerald-200">
+              <AvatarImage src={otherUser?.profile_photo_url} />
+              <AvatarFallback className="bg-emerald-100 text-emerald-700">
+                {otherUser?.full_name?.charAt(0) || (userType === 'passenger' ? 'D' : 'P')}
+              </AvatarFallback>
+            </Avatar>
             <div>
-              <p className="text-sm font-medium text-foreground">Next Ride</p>
-              <p className="text-xs text-muted-foreground">
-                {ride.date} at {ride.time}
+              <h3 className="font-bold text-lg text-gray-900">
+                {otherUser?.full_name || 'User'}
+              </h3>
+              <p className="text-sm text-gray-600">
+                {userType === 'passenger' ? 'Your Driver' : 'Your Passenger'}
               </p>
             </div>
           </div>
-          <Badge className={getStatusColor(ride.status)}>
-            {ride.status === "confirmed" ? "Confirmed" : ride.status}
-          </Badge>
+          
+          <div className="text-right">
+            <Badge className={getStatusColor(booking.ride_status || booking.status)}>
+              CONFIRMED
+            </Badge>
+            {(booking.final_price || booking.estimated_price) && (
+              <p className="text-lg font-bold text-emerald-600 mt-1">
+                ${booking.final_price || booking.estimated_price}
+              </p>
+            )}
+          </div>
         </div>
 
+        {/* Trip Details */}
         <div className="space-y-3 mb-4">
-          <div className="flex items-start gap-3">
-            <MapPin className="h-4 w-4 text-primary mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-foreground">{ride.from}</p>
-              <div className="flex items-center gap-2 mt-1">
-                <div className="h-px bg-border flex-1"></div>
-                <Car className="h-3 w-3 text-muted-foreground" />
-                <div className="h-px bg-border flex-1"></div>
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">{ride.to}</p>
+          <div className="flex items-start space-x-3">
+            <MapPin className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-gray-700">PICKUP</p>
+              <p className="text-sm text-gray-900 break-words">
+                {booking.pickup_location || 'Pickup location'}
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-start space-x-3">
+            <MapPin className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-gray-700">DROP-OFF</p>
+              <p className="text-sm text-gray-900 break-words">
+                {booking.dropoff_location || 'Drop-off location'}
+              </p>
             </div>
           </div>
 
-          {userType === "passenger" && ride.driver && (
-            <div className="flex items-center gap-3">
-              <User className="h-4 w-4 text-primary" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-foreground">Driver: {ride.driver}</p>
-                <p className="text-xs text-muted-foreground">{ride.vehicle}</p>
-              </div>
+          <div className="grid grid-cols-3 gap-3 pt-2 text-sm">
+            <div className="flex items-center space-x-2">
+              <Clock className="h-4 w-4 text-blue-600" />
+              <span className="font-medium">
+                {booking.pickup_datetime 
+                  ? format(new Date(booking.pickup_datetime), 'h:mm a')
+                  : 'Time TBD'
+                }
+              </span>
             </div>
-          )}
-
-          {userType === "driver" && ride.passenger && (
-            <div className="flex items-center gap-3">
-              <User className="h-4 w-4 text-primary" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-foreground">Passenger: {ride.passenger}</p>
-                <p className="text-xs text-muted-foreground">{ride.payment}</p>
-              </div>
+            
+            <div className="flex items-center space-x-2">
+              <Users className="h-4 w-4 text-purple-600" />
+              <span className="font-medium">{booking.passenger_count || 1} pax</span>
             </div>
-          )}
-
-          {/* Enhanced Passenger Information for Drivers */}
-          {userType === "driver" && ride.passengers && (
-            <div className="bg-gradient-to-r from-primary/5 to-primary-glow/5 border border-primary/20 rounded-lg p-4 mt-3">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-12 w-12">
-                  <AvatarImage 
-                    src={ride.passengers?.profile_photo_url} 
-                    alt={ride.passengers?.full_name}
-                  />
-                  <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                    {ride.passengers?.full_name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'P'}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <p className="font-semibold text-foreground">
-                    {ride.passengers?.full_name || 'Passenger'}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {ride.passengers?.phone || 'No phone provided'}
-                  </p>
-                  <p className="text-xs text-primary font-medium">
-                    {ride.payment}
-                  </p>
-                </div>
-              </div>
-              {!ride.passengers?.full_name && (
-                <div className="mt-2 text-xs text-amber-600 bg-amber-50 rounded p-2">
-                  ⚠️ Passenger information not available - please verify identity before pickup
-                </div>
-              )}
+            
+            <div className="flex items-center space-x-2">
+              <Car className="h-4 w-4 text-green-600" />
+              <span className="font-medium text-xs">
+                {booking.vehicle_type || 'Vehicle'}
+              </span>
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-2">
-          <Button
-            onClick={onMessage}
-            variant="outline"
-            size="sm"
-            className="flex-1 flex items-center gap-2"
-          >
-            <MessageCircle className="h-4 w-4" />
-            Message
-          </Button>
+        {/* Status Timeline */}
+        <StatusTimeline
+          bookingId={booking.id}
+          userType={userType}
+          userPhotoUrl={currentUser?.profile_photo_url}
+          otherUserPhotoUrl={otherUser?.profile_photo_url}
+          className="w-full"
+        />
 
-          {userType === "driver" && (
-            <div className="flex gap-1">
-              <Button
-                onClick={() => onNavigate?.('google')}
-                variant="outline"
-                size="sm"
-                className="flex-1 flex items-center gap-2"
-                title="Navigate with Google Maps"
-              >
-                <Navigation className="h-4 w-4" />
-                Google
-              </Button>
-              <Button
-                onClick={() => onNavigate?.('apple')}
-                variant="outline"
-                size="sm"
-                className="flex-1 flex items-center gap-2"
-                title="Navigate with Apple Maps"
-              >
-                <Navigation className="h-4 w-4" />
-                Apple
-              </Button>
-              <Button
-                onClick={() => onNavigate?.('waze')}
-                variant="outline"
-                size="sm"
-                className="flex-1 flex items-center gap-2"
-                title="Navigate with Waze"
-              >
-                <Navigation className="h-4 w-4" />
-                Waze
-              </Button>
-            </div>
-          )}
+        {/* Time until pickup */}
+        <div className="mt-4 pt-3 border-t text-center">
+          <p className="text-sm text-gray-600">
+            Scheduled for {booking.pickup_datetime 
+              ? format(new Date(booking.pickup_datetime), 'EEEE, MMM d \'at\' h:mm a')
+              : 'Date and time TBD'
+            }
+          </p>
         </div>
-
-        {/* Passenger Preferences for drivers */}
-        {userType === "driver" && ride.passengers && (
-          <PassengerPreferencesCard preferences={ride.passengers} />
-        )}
       </CardContent>
     </Card>
   );
