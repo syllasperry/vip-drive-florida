@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Clock, MapPin, Users, Car, Phone, MessageCircle, DollarSign, Calendar } from 'lucide-react';
 import { ComprehensiveStatusTimeline } from '@/components/timeline/ComprehensiveStatusTimeline';
 import { format, parseISO } from 'date-fns';
+import { useToast } from "@/hooks/use-toast";
 
 interface UniversalRideCardProps {
   booking: any;
@@ -28,6 +29,7 @@ export const UniversalRideCard = ({
   onStatusUpdate
 }: UniversalRideCardProps) => {
   const [showDetails, setShowDetails] = useState(false);
+  const { toast } = useToast();
 
   if (!booking) return null;
 
@@ -51,6 +53,28 @@ export const UniversalRideCard = ({
       case 'payment_confirmed': return 'bg-emerald-100 text-emerald-800';
       case 'all_set': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // Handle phone call action
+  const handleCallDriver = () => {
+    if (userType === 'passenger' && otherUser?.phone) {
+      window.location.href = `tel:${otherUser.phone}`;
+    } else {
+      toast({
+        title: "Phone Number Not Available",
+        description: "Driver's phone number is not available.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Handle message action
+  const handleMessageDriver = () => {
+    if (onMessage) {
+      onMessage();
+    } else if (onAction) {
+      onAction('message');
     }
   };
 
@@ -161,7 +185,7 @@ export const UniversalRideCard = ({
             variant="outline" 
             size="sm" 
             className="flex-1"
-            onClick={() => onAction?.('message')}
+            onClick={handleMessageDriver}
           >
             <MessageCircle className="h-4 w-4 mr-2" />
             Message
@@ -170,7 +194,7 @@ export const UniversalRideCard = ({
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => onAction?.('call')}
+            onClick={handleCallDriver}
           >
             <Phone className="h-4 w-4" />
           </Button>
