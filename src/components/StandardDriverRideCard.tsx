@@ -18,6 +18,7 @@ interface StandardDriverRideCardProps {
   booking: any;
   onMessage?: (booking?: any) => void;
   onViewSummary?: (booking?: any) => void;
+  onCall?: (booking?: any) => void;
   onCancelSuccess?: () => void;
   showPaymentReceivedButton?: boolean;
   onConfirmPaymentReceived?: () => void;
@@ -33,6 +34,7 @@ export const StandardDriverRideCard = ({
   booking, 
   onMessage,
   onViewSummary,
+  onCall,
   onCancelSuccess,
   showPaymentReceivedButton,
   onConfirmPaymentReceived,
@@ -53,6 +55,10 @@ export const StandardDriverRideCard = ({
     if (phone) {
       const cleanPhone = phone.replace(/[^\d]/g, '');
       window.location.href = `tel:+1${cleanPhone}`;
+    }
+    // Also call the onCall prop if provided
+    if (onCall) {
+      onCall(booking);
     }
   };
 

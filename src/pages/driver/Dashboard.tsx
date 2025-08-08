@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -200,9 +199,6 @@ export default function DriverDashboard() {
                 currentDriverId={driver?.id}
                 currentDriverName={driver?.full_name}
                 currentDriverAvatar={driver?.profile_photo_url}
-                onMessage={handleMessage}
-                onCall={handleCall}
-                onViewSummary={handleViewSummary}
               />
             </div>
           </TabsContent>
