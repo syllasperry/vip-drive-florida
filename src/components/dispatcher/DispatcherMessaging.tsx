@@ -20,57 +20,28 @@ export const DispatcherMessaging = () => {
 
   useEffect(() => {
     loadConversations();
-    
-    // Subscribe to new messages
-    const channel = supabase
-      .channel('dispatcher-messages')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'dispatcher_messages'
-      }, () => {
-        loadConversations();
-        if (selectedConversation) {
-          loadMessages(selectedConversation.booking_id);
-        }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [selectedConversation]);
+  }, []);
 
   const loadConversations = async () => {
     try {
+      // For now, load bookings as conversation starters
       const { data, error } = await supabase
-        .from('dispatcher_messages')
+        .from('bookings')
         .select(`
-          booking_id,
-          bookings (
+          id,
+          pickup_location,
+          dropoff_location,
+          created_at,
+          passengers (
             id,
-            pickup_location,
-            dropoff_location,
-            passengers (
-              full_name,
-              profile_photo_url
-            )
-          ),
-          created_at
+            full_name,
+            profile_photo_url
+          )
         `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-
-      // Group by booking_id and get latest message for each conversation
-      const grouped = data.reduce((acc, msg) => {
-        if (!acc[msg.booking_id] || new Date(msg.created_at) > new Date(acc[msg.booking_id].created_at)) {
-          acc[msg.booking_id] = msg;
-        }
-        return acc;
-      }, {});
-
-      setConversations(Object.values(grouped));
+      setConversations(data || []);
     } catch (error) {
       console.error('Error loading conversations:', error);
       toast({
@@ -85,8 +56,9 @@ export const DispatcherMessaging = () => {
 
   const loadMessages = async (bookingId: string) => {
     try {
+      // For now, use the existing messages table
       const { data, error } = await supabase
-        .from('dispatcher_messages')
+        .from('messages')
         .select('*')
         .eq('booking_id', bookingId)
         .order('created_at', { ascending: true });
@@ -103,18 +75,12 @@ export const DispatcherMessaging = () => {
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      const { data: dispatcher } = await supabase
-        .from('dispatchers')
-        .select('id')
-        .eq('email', user.email)
-        .single();
-
+      
       const { error } = await supabase
-        .from('dispatcher_messages')
+        .from('messages')
         .insert({
-          booking_id: selectedConversation.booking_id,
-          dispatcher_id: dispatcher.id,
-          passenger_id: selectedConversation.bookings.passengers.id,
+          booking_id: selectedConversation.id,
+          sender_id: user.id,
           sender_type: 'dispatcher',
           message_text: newMessage
         });
@@ -122,7 +88,7 @@ export const DispatcherMessaging = () => {
       if (error) throw error;
 
       setNewMessage('');
-      loadMessages(selectedConversation.booking_id);
+      loadMessages(selectedConversation.id);
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -161,30 +127,30 @@ export const DispatcherMessaging = () => {
                 <div className="space-y-1">
                   {conversations.map((conversation: any) => (
                     <div
-                      key={conversation.booking_id}
+                      key={conversation.id}
                       className={`p-4 cursor-pointer hover:bg-muted ${
-                        selectedConversation?.booking_id === conversation.booking_id 
+                        selectedConversation?.id === conversation.id 
                           ? 'bg-muted' 
                           : ''
                       }`}
                       onClick={() => {
                         setSelectedConversation(conversation);
-                        loadMessages(conversation.booking_id);
+                        loadMessages(conversation.id);
                       }}
                     >
                       <div className="flex items-center space-x-3">
                         <Avatar className="h-10 w-10">
-                          <AvatarImage src={conversation.bookings.passengers?.profile_photo_url} />
+                          <AvatarImage src={conversation.passengers?.profile_photo_url} />
                           <AvatarFallback>
-                            {conversation.bookings.passengers?.full_name?.charAt(0) || 'P'}
+                            {conversation.passengers?.full_name?.charAt(0) || 'P'}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">
-                            {conversation.bookings.passengers?.full_name || 'Unknown'}
+                            {conversation.passengers?.full_name || 'Unknown'}
                           </p>
                           <p className="text-xs text-muted-foreground truncate">
-                            {conversation.bookings.pickup_location}
+                            {conversation.pickup_location}
                           </p>
                         </div>
                       </div>
@@ -201,7 +167,7 @@ export const DispatcherMessaging = () => {
           <CardHeader>
             {selectedConversation ? (
               <CardTitle>
-                Chat with {selectedConversation.bookings.passengers?.full_name || 'Passenger'}
+                Chat with {selectedConversation.passengers?.full_name || 'Passenger'}
               </CardTitle>
             ) : (
               <CardTitle>Select a conversation</CardTitle>

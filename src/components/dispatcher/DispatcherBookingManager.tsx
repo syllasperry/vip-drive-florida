@@ -18,18 +18,17 @@ interface BookingManagerProps {
 export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [finalPrice, setFinalPrice] = useState(booking.final_negotiated_price || booking.estimated_price || '');
+  const [finalPrice, setFinalPrice] = useState(booking.estimated_price || '');
   const [notes, setNotes] = useState(booking.dispatcher_notes || '');
-  const [selectedDriver, setSelectedDriver] = useState(booking.assigned_driver_id || '');
+  const [selectedDriver, setSelectedDriver] = useState(booking.driver_id || '');
   const [drivers, setDrivers] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
 
   const loadDrivers = async () => {
     try {
       const { data, error } = await supabase
-        .from('driver_profiles')
-        .select('*')
-        .eq('status', 'approved');
+        .from('drivers')
+        .select('*');
       
       if (error) throw error;
       setDrivers(data || []);
@@ -41,28 +40,18 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
   const handleUpdateBooking = async () => {
     setLoading(true);
     try {
+      const updateData: any = {
+        estimated_price: parseFloat(finalPrice),
+        driver_id: selectedDriver || null,
+        status: selectedDriver && finalPrice ? 'offer_sent' : 'pending'
+      };
+
       const { error } = await supabase
         .from('bookings')
-        .update({
-          final_negotiated_price: parseFloat(finalPrice),
-          dispatcher_notes: notes,
-          assigned_driver_id: selectedDriver || null,
-          simple_status: selectedDriver ? 'payment_pending' : 'booking_requested'
-        })
+        .update(updateData)
         .eq('id', booking.id);
 
       if (error) throw error;
-
-      // Send email notification to passenger
-      if (selectedDriver && finalPrice) {
-        await supabase.functions.invoke('send-booking-notifications', {
-          body: {
-            bookingId: booking.id,
-            status: 'payment_pending',
-            triggerType: 'status_change'
-          }
-        });
-      }
 
       toast({
         title: "Success",

@@ -26,7 +26,7 @@ export const DriverManagement = () => {
     car_year: '',
     car_color: '',
     license_plate: '',
-    entity_type: 'pessoa_fisica'
+    car_type: 'sedan'
   });
 
   useEffect(() => {
@@ -36,7 +36,7 @@ export const DriverManagement = () => {
   const loadDrivers = async () => {
     try {
       const { data, error } = await supabase
-        .from('driver_profiles')
+        .from('drivers')
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -57,7 +57,7 @@ export const DriverManagement = () => {
   const handleAddDriver = async () => {
     try {
       const { error } = await supabase
-        .from('driver_profiles')
+        .from('drivers')
         .insert([newDriver]);
 
       if (error) throw error;
@@ -76,7 +76,7 @@ export const DriverManagement = () => {
         car_year: '',
         car_color: '',
         license_plate: '',
-        entity_type: 'pessoa_fisica'
+        car_type: 'sedan'
       });
       setIsAddDialogOpen(false);
       loadDrivers();
@@ -85,31 +85,6 @@ export const DriverManagement = () => {
       toast({
         title: "Error",
         description: "Failed to add driver",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const updateDriverStatus = async (driverId: string, status: string) => {
-    try {
-      const { error } = await supabase
-        .from('driver_profiles')
-        .update({ status })
-        .eq('id', driverId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: `Driver status updated to ${status}`,
-      });
-
-      loadDrivers();
-    } catch (error) {
-      console.error('Error updating driver status:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update driver status",
         variant: "destructive",
       });
     }
@@ -221,14 +196,15 @@ export const DriverManagement = () => {
               </div>
               
               <div>
-                <Label htmlFor="entity_type">Entity Type</Label>
-                <Select value={newDriver.entity_type} onValueChange={(value) => setNewDriver({...newDriver, entity_type: value})}>
+                <Label htmlFor="car_type">Car Type</Label>
+                <Select value={newDriver.car_type} onValueChange={(value) => setNewDriver({...newDriver, car_type: value})}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="pessoa_fisica">Pessoa Física</SelectItem>
-                    <SelectItem value="pessoa_juridica">Pessoa Jurídica</SelectItem>
+                    <SelectItem value="sedan">Sedan</SelectItem>
+                    <SelectItem value="suv">SUV</SelectItem>
+                    <SelectItem value="van">Van</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -279,37 +255,9 @@ export const DriverManagement = () => {
                   </div>
                   
                   <div className="flex items-center space-x-2">
-                    <Badge className={getStatusColor(driver.status)}>
-                      {driver.status.toUpperCase()}
+                    <Badge className="bg-green-100 text-green-800">
+                      ACTIVE
                     </Badge>
-                    
-                    {driver.status === 'pending' && (
-                      <Button 
-                        size="sm" 
-                        onClick={() => updateDriverStatus(driver.id, 'approved')}
-                      >
-                        Approve
-                      </Button>
-                    )}
-                    
-                    {driver.status === 'approved' && (
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => updateDriverStatus(driver.id, 'suspended')}
-                      >
-                        Suspend
-                      </Button>
-                    )}
-                    
-                    {driver.status === 'suspended' && (
-                      <Button 
-                        size="sm" 
-                        onClick={() => updateDriverStatus(driver.id, 'approved')}
-                      >
-                        Reactivate
-                      </Button>
-                    )}
                   </div>
                 </div>
               </CardContent>
