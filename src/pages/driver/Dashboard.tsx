@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -15,78 +16,22 @@ import { EnhancedSettingsModal } from "@/components/EnhancedSettingsModal";
 import { BookingRequestModal } from "@/components/booking/BookingRequestModal";
 import { DriverHistorySection } from "@/components/dashboard/DriverHistorySection";
 import { MessagingInterface } from "@/components/MessagingInterface";
-
-// Raw Supabase booking type
-interface SupabaseBooking {
-  id: string;
-  status: string;
-  created_at: string;
-  pickup_location: string;
-  dropoff_location: string;
-  final_price: number | null;
-  estimated_price: number | null;
-  driver_id: string;
-  passenger_id: string;
-  passengers?: {
-    full_name: string;
-    phone: string;
-    profile_photo_url: string | null;
-  } | null;
-}
-
-// Application booking type
-interface BookingData {
-  id: string;
-  status: string;
-  created_at: string;
-  pickup_location: string;
-  dropoff_location: string;
-  final_price: number | null;
-  estimated_price: number | null;
-  date: string;
-  time: string;
-  passengers: {
-    full_name: string;
-    phone: string;
-    profile_photo_url: string | null;
-  } | null;
-}
-
-// Simple user profile type
-interface UserProfile {
-  full_name: string;
-  profile_photo_url: string | null;
-}
+import { SimpleBooking, SimpleUserProfile } from '@/types/dashboard';
+import { transformSupabaseBooking } from '@/utils/bookingTransformer';
 
 const DriverDashboard = () => {
   const [user, setUser] = useState<any>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userProfile, setUserProfile] = useState<SimpleUserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
-  const [selectedBookingForMessage, setSelectedBookingForMessage] = useState<BookingData | null>(null);
-  const [completedBookings, setCompletedBookings] = useState<BookingData[]>([]);
-  const [bookings, setBookings] = useState<BookingData[]>([]);
+  const [selectedBookingForMessage, setSelectedBookingForMessage] = useState<SimpleBooking | null>(null);
+  const [completedBookings, setCompletedBookings] = useState<SimpleBooking[]>([]);
+  const [bookings, setBookings] = useState<SimpleBooking[]>([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [bookingsError, setBookingsError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('rides');
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
   const { toast } = useToast();
-
-  // Transform Supabase booking to app booking
-  const transformBooking = (booking: SupabaseBooking): BookingData => {
-    return {
-      id: booking.id,
-      status: booking.status,
-      created_at: booking.created_at,
-      pickup_location: booking.pickup_location,
-      dropoff_location: booking.dropoff_location,
-      final_price: booking.final_price,
-      estimated_price: booking.estimated_price,
-      date: booking.created_at ? booking.created_at.split('T')[0] : '',
-      time: booking.created_at ? booking.created_at.split('T')[1]?.split('.')[0] : '',
-      passengers: booking.passengers
-    };
-  };
 
   // Simplified realtime setup
   useEffect(() => {
@@ -102,7 +47,7 @@ const DriverDashboard = () => {
           table: 'bookings',
         },
         (payload) => {
-          const rawBooking = payload.new as SupabaseBooking;
+          const rawBooking = payload.new as any;
           
           if (rawBooking?.driver_id === user.id) {
             console.log('📡 Realtime booking update:', {
@@ -111,7 +56,7 @@ const DriverDashboard = () => {
               status: rawBooking?.status
             });
             
-            const booking = transformBooking(rawBooking);
+            const booking = transformSupabaseBooking(rawBooking);
             
             // Update bookings state
             setBookings(prev => {
@@ -179,7 +124,12 @@ const DriverDashboard = () => {
         throw error;
       }
 
-      setUserProfile(data);
+      if (data) {
+        setUserProfile({
+          full_name: data.full_name || '',
+          profile_photo_url: data.profile_photo_url
+        });
+      }
     } catch (error) {
       console.error('Error loading user profile:', error);
     }
@@ -204,8 +154,8 @@ const DriverDashboard = () => {
 
       if (error) throw error;
 
-      // Transform the data using our helper function
-      const transformedData = (data || []).map(transformBooking);
+      // Transform the data using our utility function
+      const transformedData: SimpleBooking[] = (data || []).map(transformSupabaseBooking);
       setBookings(transformedData);
     } catch (error) {
       console.error('Error loading bookings:', error);
@@ -239,8 +189,8 @@ const DriverDashboard = () => {
 
       if (error) throw error;
 
-      // Transform the data using our helper function
-      const transformedData = (data || []).map(transformBooking);
+      // Transform the data using our utility function
+      const transformedData: SimpleBooking[] = (data || []).map(transformSupabaseBooking);
       setCompletedBookings(transformedData);
     } catch (error) {
       console.error('Error loading completed bookings:', error);
@@ -252,11 +202,11 @@ const DriverDashboard = () => {
     }
   };
 
-  const handleMessage = (booking: BookingData) => {
+  const handleMessage = (booking: SimpleBooking) => {
     setSelectedBookingForMessage(booking);
   };
 
-  const handleCall = (booking: BookingData) => {
+  const handleCall = (booking: SimpleBooking) => {
     const passengerPhone = booking.passengers?.phone;
     if (passengerPhone) {
       const cleanPhone = passengerPhone.replace(/[^\d]/g, '');
@@ -270,7 +220,7 @@ const DriverDashboard = () => {
     }
   };
 
-  const handleViewSummary = (booking: BookingData) => {
+  const handleViewSummary = (booking: SimpleBooking) => {
     console.log("View summary for booking:", booking);
     // Implement view summary functionality
   };
