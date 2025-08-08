@@ -17,38 +17,46 @@ import { BookingRequestModal } from "@/components/booking/BookingRequestModal";
 import { DriverHistorySection } from "@/components/dashboard/DriverHistorySection";
 import { MessagingInterface } from "@/components/MessagingInterface";
 
-// Simplified booking interface to avoid circular references
-interface SimpleBooking {
+// Updated interface to match actual Supabase data structure
+interface BookingData {
   id: string;
   status: string;
-  date: string;
-  time: string;
+  created_at: string;
   pickup_location: string;
   dropoff_location: string;
-  final_price: number;
-  estimated_price: number;
+  final_price: number | null;
+  estimated_price: number | null;
   passengers: {
     full_name: string;
     phone: string;
-    profile_photo_url: string;
+    profile_photo_url: string | null;
   } | null;
+  // Add other fields that might be present
+  [key: string]: any;
+}
+
+// Simple user profile type
+interface UserProfile {
+  full_name: string;
+  profile_photo_url: string | null;
+  [key: string]: any;
 }
 
 const DriverDashboard = () => {
   const [user, setUser] = useState<any>(null);
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
-  const [selectedBookingForMessage, setSelectedBookingForMessage] = useState<SimpleBooking | null>(null);
-  const [completedBookings, setCompletedBookings] = useState<SimpleBooking[]>([]);
-  const [bookings, setBookings] = useState<SimpleBooking[]>([]);
+  const [selectedBookingForMessage, setSelectedBookingForMessage] = useState<BookingData | null>(null);
+  const [completedBookings, setCompletedBookings] = useState<BookingData[]>([]);
+  const [bookings, setBookings] = useState<BookingData[]>([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [bookingsError, setBookingsError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('rides');
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
   const { toast } = useToast();
 
-  // Simplified realtime setup without complex hook
+  // Simplified realtime setup
   useEffect(() => {
     if (!user?.id) return;
 
@@ -62,7 +70,7 @@ const DriverDashboard = () => {
           table: 'bookings',
         },
         (payload) => {
-          const booking = payload.new as any;
+          const booking = payload.new as BookingData;
           
           if (booking?.driver_id === user.id) {
             console.log('📡 Realtime booking update:', {
@@ -162,7 +170,15 @@ const DriverDashboard = () => {
 
       if (error) throw error;
 
-      setBookings(data || []);
+      // Transform the data to ensure compatibility
+      const transformedData = (data || []).map(booking => ({
+        ...booking,
+        // Add date and time fields for compatibility
+        date: booking.created_at ? booking.created_at.split('T')[0] : '',
+        time: booking.created_at ? booking.created_at.split('T')[1]?.split('.')[0] : ''
+      }));
+
+      setBookings(transformedData);
     } catch (error) {
       console.error('Error loading bookings:', error);
       setBookingsError('Failed to load bookings');
@@ -195,7 +211,15 @@ const DriverDashboard = () => {
 
       if (error) throw error;
 
-      setCompletedBookings(data || []);
+      // Transform the data to ensure compatibility
+      const transformedData = (data || []).map(booking => ({
+        ...booking,
+        // Add date and time fields for compatibility
+        date: booking.created_at ? booking.created_at.split('T')[0] : '',
+        time: booking.created_at ? booking.created_at.split('T')[1]?.split('.')[0] : ''
+      }));
+
+      setCompletedBookings(transformedData);
     } catch (error) {
       console.error('Error loading completed bookings:', error);
       toast({
@@ -206,11 +230,11 @@ const DriverDashboard = () => {
     }
   };
 
-  const handleMessage = (booking: SimpleBooking) => {
+  const handleMessage = (booking: BookingData) => {
     setSelectedBookingForMessage(booking);
   };
 
-  const handleCall = (booking: SimpleBooking) => {
+  const handleCall = (booking: BookingData) => {
     const passengerPhone = booking.passengers?.phone;
     if (passengerPhone) {
       const cleanPhone = passengerPhone.replace(/[^\d]/g, '');
@@ -224,7 +248,7 @@ const DriverDashboard = () => {
     }
   };
 
-  const handleViewSummary = (booking: SimpleBooking) => {
+  const handleViewSummary = (booking: BookingData) => {
     console.log("View summary for booking:", booking);
     // Implement view summary functionality
   };
