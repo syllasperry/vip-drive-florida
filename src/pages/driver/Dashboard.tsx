@@ -13,7 +13,6 @@ import { FloatingActionButton } from '@/components/dashboard/FloatingActionButto
 import { BottomNavigation } from '@/components/dashboard/BottomNavigation';
 import { ProfileHeader } from '@/components/dashboard/ProfileHeader';
 import { EarningsSection } from '@/components/dashboard/EarningsSection';
-import { OrganizedBookingsList } from '@/components/dashboard/OrganizedBookingsList';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Car, DollarSign, Clock, MapPin, Phone, MessageCircle, Calendar, Users, CheckCircle, AlertCircle, XCircle, Search, Filter, Settings } from 'lucide-react';
@@ -28,6 +27,7 @@ const Dashboard = () => {
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [isPassengerDetailsOpen, setIsPassengerDetailsOpen] = useState(false);
   const [selectedPassenger, setSelectedPassenger] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState('dashboard');
   const { toast } = useToast();
 
   const loadDriverProfile = async () => {
@@ -108,6 +108,18 @@ const Dashboard = () => {
     setSelectedBooking(null);
   }, []);
 
+  const handleCall = useCallback((booking: any) => {
+    if (booking.passengers?.phone) {
+      window.location.href = `tel:${booking.passengers.phone}`;
+    } else {
+      toast({
+        title: "Phone Number Not Available",
+        description: "Passenger's phone number is not available.",
+        variant: "destructive"
+      });
+    }
+  }, [toast]);
+
   const filteredBookings = bookings.filter(booking => {
     const matchesSearch = !searchTerm || 
       booking.passengers?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -144,7 +156,6 @@ const Dashboard = () => {
         <ProfileHeader 
           userProfile={driverProfile} 
           userType="driver"
-          onEditProfile={() => {}} 
         />
 
         {/* Search and Filter */}
@@ -185,7 +196,7 @@ const Dashboard = () => {
         </div>
 
         {/* Earnings Overview */}
-        <EarningsSection bookings={bookings} />
+        <EarningsSection />
 
         {/* Bookings Tabs */}
         <Tabs defaultValue="active" className="px-4">
@@ -210,6 +221,7 @@ const Dashboard = () => {
                   userType="driver"
                   onMessage={() => handleOpenChat(booking)}
                   onViewDetails={() => handleViewPassengerDetails(booking)}
+                  onCall={() => handleCall(booking)}
                 />
               ))
             ) : (
@@ -230,6 +242,7 @@ const Dashboard = () => {
                   userType="driver"
                   onMessage={() => handleOpenChat(booking)}
                   onViewDetails={() => handleViewPassengerDetails(booking)}
+                  onCall={() => handleCall(booking)}
                 />
               ))
             ) : (
@@ -250,6 +263,7 @@ const Dashboard = () => {
                   userType="driver"
                   onMessage={() => handleOpenChat(booking)}
                   onViewDetails={() => handleViewPassengerDetails(booking)}
+                  onCall={() => handleCall(booking)}
                 />
               ))
             ) : (
@@ -263,10 +277,14 @@ const Dashboard = () => {
         </Tabs>
 
         {/* Floating Action Button */}
-        <FloatingActionButton userType="driver" />
+        <FloatingActionButton />
 
         {/* Bottom Navigation */}
-        <BottomNavigation userType="driver" />
+        <BottomNavigation 
+          userType="driver"
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
 
         {/* Messaging Interface */}
         {selectedBooking && (

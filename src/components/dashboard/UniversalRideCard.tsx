@@ -18,6 +18,7 @@ interface UniversalRideCardProps {
   onViewSummary?: () => void;
   onStatusUpdate?: () => void;
   onViewDetails?: () => void;
+  onCall?: () => void;
 }
 
 export const UniversalRideCard = ({ 
@@ -28,7 +29,8 @@ export const UniversalRideCard = ({
   onMessage,
   onViewSummary,
   onStatusUpdate,
-  onViewDetails
+  onViewDetails,
+  onCall
 }: UniversalRideCardProps) => {
   const [showDetails, setShowDetails] = useState(false);
   const { toast } = useToast();
@@ -60,7 +62,9 @@ export const UniversalRideCard = ({
 
   // Handle phone call action
   const handleCall = () => {
-    if (otherUser?.phone) {
+    if (onCall) {
+      onCall();
+    } else if (otherUser?.phone) {
       window.location.href = `tel:${otherUser.phone}`;
     } else {
       toast({
