@@ -17,14 +17,30 @@ export const ReopenModalButton = ({
   onReopenModal, 
   className = "" 
 }: ReopenModalButtonProps) => {
-  if (!booking) return null;
+  if (!booking) {
+    console.log('❌ ReopenModalButton: No booking provided');
+    return null;
+  }
 
   // Determine what modal should be available to reopen
   const unifiedStatus = getUnifiedStatus(booking);
   const requiredModal = getRequiredModal(unifiedStatus, userType);
 
+  console.log('🔍 ReopenModalButton Debug:', {
+    unifiedStatus,
+    requiredModal,
+    userType,
+    booking_id: booking.id,
+    booking_status: booking.status,
+    status_passenger: booking.status_passenger,
+    status_driver: booking.status_driver
+  });
+
   // Only show button if there's a modal that can be reopened
-  if (!requiredModal) return null;
+  if (!requiredModal) {
+    console.log('❌ ReopenModalButton: No modal to reopen for status:', unifiedStatus);
+    return null;
+  }
 
   const getModalLabel = (modalType: string): string => {
     switch (modalType) {
@@ -53,9 +69,9 @@ export const ReopenModalButton = ({
       onClick={handleClick}
       variant="outline"
       size="sm"
-      className={`${className} border-primary/30 hover:bg-primary/10 text-primary font-medium`}
+      className={`${className} border-primary/30 hover:bg-primary/10 text-primary font-medium flex items-center gap-2`}
     >
-      <Eye className="h-4 w-4 mr-2" />
+      <Eye className="h-4 w-4" />
       {getModalLabel(requiredModal)}
     </Button>
   );

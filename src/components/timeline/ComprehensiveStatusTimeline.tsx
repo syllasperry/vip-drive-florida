@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -110,7 +109,8 @@ export const ComprehensiveStatusTimeline = ({
     finalPrice,
     bookingId,
     passengerData,
-    driverData
+    driverData,
+    userType
   });
 
   if (!statusData?.statuses || statusData.statuses.length === 0) {
@@ -144,7 +144,7 @@ export const ComprehensiveStatusTimeline = ({
   console.log('🔍 Unique Statuses After Deduplication:', uniqueStatuses);
 
   // Create timeline items from unique status history
-  const timelineItems: TimelineItem[] = uniqueStatuses.map((statusEntry, index) => {
+  const timelineItems: TimelineItem[] = uniqueStatuses.map((statusEntry) => {
     const statusKey = statusEntry.status_code;
     const config = statusConfig[statusKey as keyof typeof statusConfig];
     
@@ -154,8 +154,13 @@ export const ComprehensiveStatusTimeline = ({
     }
     
     const actorRole = config.actor;
-    // Fix: Show the correct actor's photo based on who performed the action
+    
+    // CRITICAL FIX: Show the photo of whoever PERFORMED the action, regardless of current user
+    // If passenger sent request -> show passenger photo
+    // If driver sent offer -> show driver photo
     const actorData = actorRole === 'passenger' ? passengerData : driverData;
+    const actorPhotoUrl = actorRole === 'passenger' ? passengerData?.photo_url : driverData?.photo_url;
+    const actorName = actorData?.name || (actorRole === 'passenger' ? 'Passenger' : 'Driver');
     
     const actualTimestamp = statusEntry.status_timestamp 
       ? new Date(statusEntry.status_timestamp)
@@ -170,9 +175,9 @@ export const ComprehensiveStatusTimeline = ({
       backgroundColor: config.bg,
       textColor: config.text,
       actor: {
-        name: actorData?.name || (actorRole === 'passenger' ? 'Passenger' : 'Driver'),
+        name: actorName,
         role: actorRole === 'passenger' ? 'Passenger' : 'Driver' as 'Driver' | 'Passenger',
-        photo_url: actorData?.photo_url
+        photo_url: actorPhotoUrl
       },
       isCompleted: true,
       actualTimestamp,
@@ -188,8 +193,9 @@ export const ComprehensiveStatusTimeline = ({
       status: statusKey,
       actor: actorRole,
       actorData,
-      photo_url: actorData?.photo_url,
-      name: actorData?.name
+      photo_url: actorPhotoUrl,
+      name: actorName,
+      userType
     });
 
     return timelineItem;
@@ -211,15 +217,6 @@ export const ComprehensiveStatusTimeline = ({
 
   return (
     <div className={`space-y-3 ${className}`}>
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-medium text-gray-900">Ride Status</h3>
-        {finalPrice && (
-          <span className="text-lg font-semibold text-emerald-600">
-            ${finalPrice}
-          </span>
-        )}
-      </div>
-      
       {/* Timeline Stack - Most Recent at Top */}
       {timelineItems.map((item, index) => (
         <Card 

@@ -1,5 +1,5 @@
 
-import { StatusTimeline } from "@/components/timeline/StatusTimeline";
+import { ComprehensiveStatusTimeline } from "@/components/timeline/ComprehensiveStatusTimeline";
 import { ReopenModalButton } from "./ReopenModalButton";
 
 interface PassengerStatusTimelineProps {
@@ -17,23 +17,31 @@ export const PassengerStatusTimeline = ({
 
   return (
     <div className="space-y-4">
-      {/* Reopen Modal Button */}
-      {onReopenModal && (
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-medium text-gray-900">Ride Status</h3>
+      {/* Header with Reopen Modal Button */}
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-medium text-gray-900">Ride Status</h3>
+        {onReopenModal && (
           <ReopenModalButton
             booking={booking}
             userType="passenger"
             onReopenModal={onReopenModal}
+            className="ml-2"
           />
-        </div>
-      )}
+        )}
+      </div>
       
-      <StatusTimeline
+      <ComprehensiveStatusTimeline
         bookingId={booking.id}
         userType="passenger"
-        userPhotoUrl={booking.passengers?.profile_photo_url}
-        otherUserPhotoUrl={booking.drivers?.profile_photo_url}
+        passengerData={{
+          name: booking.passengers?.full_name || 'Passenger',
+          photo_url: booking.passengers?.profile_photo_url
+        }}
+        driverData={{
+          name: booking.drivers?.full_name || 'Driver',
+          photo_url: booking.drivers?.profile_photo_url
+        }}
+        finalPrice={booking.final_price?.toString()}
       />
     </div>
   );
