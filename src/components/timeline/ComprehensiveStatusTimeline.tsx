@@ -34,7 +34,7 @@ interface TimelineItem {
   };
   isCompleted: boolean;
   statusOrder: number;
-  actualTimestamp?: Date; // For proper chronological sorting
+  actualTimestamp?: Date;
 }
 
 const statusConfig = {
@@ -116,62 +116,67 @@ export const ComprehensiveStatusTimeline = ({
     finalPrice
   });
 
-  // Create timeline items for all completed statuses
-  const timelineItems: TimelineItem[] = statusOrder
-    .map((statusKey, index) => {
-      const config = statusConfig[statusKey as keyof typeof statusConfig];
-      const isCompleted = index <= currentStatusIndex;
-      
-      if (!isCompleted) return null;
+  // Create timeline items for all statuses that have been reached/completed
+  // This ensures we show the full progression, not just the current status
+  const timelineItems: TimelineItem[] = [];
+  
+  // Add all completed statuses up to and including the current status
+  for (let i = 0; i <= currentStatusIndex; i++) {
+    const statusKey = statusOrder[i];
+    const config = statusConfig[statusKey as keyof typeof statusConfig];
+    
+    if (!config) continue;
+    
+    const statusEntry = statusData?.statuses?.find(s => s.status_code === statusKey);
+    const actorRole = config.actor;
+    const actorData = actorRole === 'passenger' ? passengerData : driverData;
+    
+    // Parse timestamp for proper chronological sorting
+    const actualTimestamp = statusEntry?.status_timestamp 
+      ? new Date(statusEntry.status_timestamp)
+      : new Date(Date.now() - (currentStatusIndex - i) * 60000); // Fallback with incremental timestamps
+    
+    const timelineItem: TimelineItem = {
+      id: statusKey,
+      label: userType === 'passenger' 
+        ? config.passenger_label 
+        : config.driver_label,
+      timestamp: format(actualTimestamp, 'h:mm a'),
+      backgroundColor: config.bg,
+      textColor: config.text,
+      actor: {
+        name: actorData?.name || (actorRole === 'passenger' ? 'Passenger' : 'Driver'),
+        role: actorRole === 'passenger' ? 'Passenger' : 'Driver' as 'Driver' | 'Passenger',
+        photo_url: actorData?.photo_url
+      },
+      isCompleted: true,
+      statusOrder: config.order,
+      actualTimestamp
+    };
 
-      const statusEntry = statusData?.statuses?.find(s => s.status_code === statusKey);
-      const actorRole = config.actor;
-      const actorData = actorRole === 'passenger' ? passengerData : driverData;
-      
-      // Parse timestamp for proper chronological sorting
-      const actualTimestamp = statusEntry?.status_timestamp 
-        ? new Date(statusEntry.status_timestamp)
-        : new Date(); // Fallback to current time if no timestamp
-      
-      const timelineItem: TimelineItem = {
-        id: statusKey,
-        label: userType === 'passenger' 
-          ? config.passenger_label 
-          : config.driver_label,
-        timestamp: statusEntry?.status_timestamp 
-          ? format(actualTimestamp, 'h:mm a')
-          : '',
-        backgroundColor: config.bg,
-        textColor: config.text,
-        actor: {
-          name: actorData?.name || (actorRole === 'passenger' ? 'Passenger' : 'Driver'),
-          role: actorRole === 'passenger' ? 'Passenger' : 'Driver' as 'Driver' | 'Passenger',
-          photo_url: actorData?.photo_url
-        },
-        isCompleted: true,
-        statusOrder: config.order,
-        actualTimestamp
-      };
+    // Add price for relevant statuses
+    if ((statusKey === 'offer_sent' || statusKey === 'offer_accepted') && finalPrice) {
+      timelineItem.price = `$${finalPrice}`;
+    }
 
-      // Add price for relevant statuses
-      if ((statusKey === 'offer_sent' || statusKey === 'offer_accepted') && finalPrice) {
-        timelineItem.price = `$${finalPrice}`;
-      }
+    timelineItems.push(timelineItem);
+  }
 
-      return timelineItem;
-    })
-    .filter((item): item is TimelineItem => item !== null)
-    // Sort by actual timestamp in descending order (most recent first)
-    // If timestamps are not available, fall back to status order descending
-    .sort((a, b) => {
-      if (a.actualTimestamp && b.actualTimestamp) {
-        return b.actualTimestamp.getTime() - a.actualTimestamp.getTime();
-      }
-      // Fallback to status order (higher order = more recent)
+  // Sort by status order in DESCENDING order (most recent/highest order first)
+  // This ensures "All Set" (order 5) appears at top, "Booking Request Sent" (order 1) at bottom
+  timelineItems.sort((a, b) => {
+    // Primary sort: by status order descending (higher order = more recent = show first)
+    if (a.statusOrder !== b.statusOrder) {
       return b.statusOrder - a.statusOrder;
-    });
+    }
+    // Secondary sort: by timestamp descending if same status order
+    if (a.actualTimestamp && b.actualTimestamp) {
+      return b.actualTimestamp.getTime() - a.actualTimestamp.getTime();
+    }
+    return 0;
+  });
 
-  console.log('📊 Final Timeline Items:', timelineItems.map(item => ({
+  console.log('📊 Final Timeline Items (Ordered):', timelineItems.map(item => ({
     status: item.id,
     order: item.statusOrder,
     timestamp: item.actualTimestamp,
