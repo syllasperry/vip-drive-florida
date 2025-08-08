@@ -18,14 +18,20 @@ import { DriverHistorySection } from "@/components/dashboard/DriverHistorySectio
 import { MessagingInterface } from "@/components/MessagingInterface";
 import { useRealtimeBookings } from "@/hooks/useRealtimeBookings";
 
+interface BookingData {
+  id: string;
+  // Add other booking properties as needed
+  [key: string]: any;
+}
+
 const DriverDashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [selectedBookingForMessage, setSelectedBookingForMessage] = useState<any>(null);
-  const [completedBookings, setCompletedBookings] = useState<any[]>([]);
-  const [bookings, setBookings] = useState<any[]>([]);
+  const [completedBookings, setCompletedBookings] = useState<BookingData[]>([]);
+  const [bookings, setBookings] = useState<BookingData[]>([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [bookingsError, setBookingsError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('rides');
@@ -35,7 +41,7 @@ const DriverDashboard = () => {
   const { isConnected } = useRealtimeBookings({
     userId: user?.id || '',
     userType: 'driver',
-    onBookingUpdate: (booking) => {
+    onBookingUpdate: (booking: BookingData) => {
       // Handle booking updates here
       setBookings(prev => {
         const index = prev.findIndex(b => b.id === booking.id);
@@ -108,11 +114,6 @@ const DriverDashboard = () => {
             full_name,
             phone,
             profile_photo_url
-          ),
-          passenger:passengers (
-            full_name,
-            phone,
-            profile_photo_url
           )
         `)
         .eq('driver_id', driverId)
@@ -145,11 +146,6 @@ const DriverDashboard = () => {
             full_name,
             phone,
             profile_photo_url
-          ),
-          passenger:passengers (
-            full_name,
-            phone,
-            profile_photo_url
           )
         `)
         .eq('driver_id', driverId)
@@ -175,7 +171,7 @@ const DriverDashboard = () => {
   };
 
   const handleCall = (booking: any) => {
-    const passengerPhone = booking.passengers?.phone || booking.passenger?.phone;
+    const passengerPhone = booking.passengers?.phone;
     if (passengerPhone) {
       const cleanPhone = passengerPhone.replace(/[^\d]/g, '');
       window.location.href = `tel:+1${cleanPhone}`;
@@ -297,6 +293,8 @@ const DriverDashboard = () => {
               currentDriverId={user?.id || ''}
               currentDriverName={userProfile?.full_name || user?.email || 'Driver'}
               currentDriverAvatar={userProfile?.profile_photo_url}
+              onMessage={handleMessage}
+              onCall={handleCall}
             />
           </TabsContent>
         </Tabs>
@@ -328,8 +326,8 @@ const DriverDashboard = () => {
           currentUserId={user?.id || ''}
           currentUserName={userProfile?.full_name || user?.email || 'Driver'}
           currentUserAvatar={userProfile?.profile_photo_url}
-          otherUserName={selectedBookingForMessage.passengers?.full_name || selectedBookingForMessage.passenger?.full_name}
-          otherUserAvatar={selectedBookingForMessage.passengers?.profile_photo_url || selectedBookingForMessage.passenger?.profile_photo_url}
+          otherUserName={selectedBookingForMessage.passengers?.full_name}
+          otherUserAvatar={selectedBookingForMessage.passengers?.profile_photo_url}
         />
       )}
     </div>
