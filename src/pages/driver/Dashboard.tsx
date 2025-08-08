@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -33,7 +32,7 @@ const DriverDashboard = () => {
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
   const { toast } = useToast();
 
-  // Simplified realtime setup
+  // Simplified realtime setup with explicit typing
   useEffect(() => {
     if (!user?.id) return;
 
@@ -47,7 +46,8 @@ const DriverDashboard = () => {
           table: 'bookings',
         },
         (payload) => {
-          const rawBooking = payload.new as any;
+          // Explicit type casting to avoid deep inference
+          const rawBooking = payload.new as Record<string, any>;
           
           if (rawBooking?.driver_id === user.id) {
             console.log('📡 Realtime booking update:', {
@@ -56,19 +56,23 @@ const DriverDashboard = () => {
               status: rawBooking?.status
             });
             
-            const booking = transformSupabaseBooking(rawBooking);
-            
-            // Update bookings state
-            setBookings(prev => {
-              const index = prev.findIndex(b => b.id === booking.id);
-              if (index >= 0) {
-                const updated = [...prev];
-                updated[index] = booking;
-                return updated;
-              } else {
-                return [booking, ...prev];
-              }
-            });
+            try {
+              const booking = transformSupabaseBooking(rawBooking);
+              
+              // Update bookings state with explicit type
+              setBookings((prevBookings: SimpleBooking[]) => {
+                const index = prevBookings.findIndex(b => b.id === booking.id);
+                if (index >= 0) {
+                  const updated = [...prevBookings];
+                  updated[index] = booking;
+                  return updated;
+                } else {
+                  return [booking, ...prevBookings];
+                }
+              });
+            } catch (error) {
+              console.error('Error transforming booking:', error);
+            }
           }
         }
       )
@@ -125,10 +129,11 @@ const DriverDashboard = () => {
       }
 
       if (data) {
-        setUserProfile({
+        const profile: SimpleUserProfile = {
           full_name: data.full_name || '',
           profile_photo_url: data.profile_photo_url
-        });
+        };
+        setUserProfile(profile);
       }
     } catch (error) {
       console.error('Error loading user profile:', error);
@@ -154,8 +159,12 @@ const DriverDashboard = () => {
 
       if (error) throw error;
 
-      // Transform the data using our utility function
-      const transformedData: SimpleBooking[] = (data || []).map(transformSupabaseBooking);
+      // Transform the data with explicit typing
+      const rawBookings = data || [];
+      const transformedData: SimpleBooking[] = rawBookings.map((booking: any) => 
+        transformSupabaseBooking(booking)
+      );
+      
       setBookings(transformedData);
     } catch (error) {
       console.error('Error loading bookings:', error);
@@ -189,8 +198,12 @@ const DriverDashboard = () => {
 
       if (error) throw error;
 
-      // Transform the data using our utility function
-      const transformedData: SimpleBooking[] = (data || []).map(transformSupabaseBooking);
+      // Transform the data with explicit typing
+      const rawBookings = data || [];
+      const transformedData: SimpleBooking[] = rawBookings.map((booking: any) => 
+        transformSupabaseBooking(booking)
+      );
+      
       setCompletedBookings(transformedData);
     } catch (error) {
       console.error('Error loading completed bookings:', error);
