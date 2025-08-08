@@ -35,36 +35,43 @@ export const ReopenModalButton = ({
     status_passenger: booking.status_passenger,
     status_driver: booking.status_driver,
     payment_confirmation_status: booking.payment_confirmation_status,
-    ride_status: booking.ride_status
+    ride_status: booking.ride_status,
+    final_price: booking.final_price,
+    estimated_price: booking.estimated_price
   });
 
-  // Show button for key statuses that should allow reopening
+  // Always show button if there's a callback - let the user decide when to reopen
   const shouldShowButton = () => {
+    console.log('🔍 Checking if should show button for status:', unifiedStatus, 'userType:', userType);
+    
+    // Always show for key interactive statuses
     if (userType === 'passenger') {
-      // Show for passengers when they have offers to review or payment to confirm
-      return unifiedStatus === 'offer_sent' || 
-             unifiedStatus === 'offer_accepted' ||
-             unifiedStatus === 'all_set';
+      const shouldShow = ['pending', 'offer_sent', 'offer_accepted', 'payment_confirmed', 'all_set'].includes(unifiedStatus);
+      console.log('🔍 Passenger should show button:', shouldShow, 'for status:', unifiedStatus);
+      return shouldShow;
     } else {
-      // Show for drivers when they have requests or payments to confirm
-      return unifiedStatus === 'pending' || 
-             unifiedStatus === 'payment_confirmed' ||
-             unifiedStatus === 'all_set';
+      const shouldShow = ['pending', 'driver_accepted', 'offer_sent', 'payment_confirmed', 'all_set'].includes(unifiedStatus);
+      console.log('🔍 Driver should show button:', shouldShow, 'for status:', unifiedStatus);
+      return shouldShow;
     }
   };
 
   if (!shouldShowButton()) {
-    console.log('❌ ReopenModalButton: Should not show button for status:', unifiedStatus);
+    console.log('❌ ReopenModalButton: Should not show button for status:', unifiedStatus, 'userType:', userType);
     return null;
   }
 
   const getModalLabel = (status: string): string => {
     if (userType === 'passenger') {
       switch (status) {
+        case 'pending':
+          return 'View Request';
         case 'offer_sent':
           return 'Review Offer';
         case 'offer_accepted':
           return 'Payment Info';
+        case 'payment_confirmed':
+          return 'Payment Status';
         case 'all_set':
           return 'View Details';
         default:
@@ -74,6 +81,10 @@ export const ReopenModalButton = ({
       switch (status) {
         case 'pending':
           return 'Ride Request';
+        case 'driver_accepted':
+          return 'Send Offer';
+        case 'offer_sent':
+          return 'Offer Status';
         case 'payment_confirmed':
           return 'Confirm Payment';
         case 'all_set':
@@ -87,10 +98,14 @@ export const ReopenModalButton = ({
   const getModalTypeForStatus = (status: string): string => {
     if (userType === 'passenger') {
       switch (status) {
+        case 'pending':
+          return 'booking_request';
         case 'offer_sent':
           return 'offer_acceptance';
         case 'offer_accepted':
           return 'payment_instructions';
+        case 'payment_confirmed':
+          return 'payment_status';
         case 'all_set':
           return 'all_set_confirmation';
         default:
@@ -100,6 +115,10 @@ export const ReopenModalButton = ({
       switch (status) {
         case 'pending':
           return 'driver_ride_request';
+        case 'driver_accepted':
+          return 'price_offer';
+        case 'offer_sent':
+          return 'offer_status';
         case 'payment_confirmed':
           return 'driver_payment_confirmation';
         case 'all_set':

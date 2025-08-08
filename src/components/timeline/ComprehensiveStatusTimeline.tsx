@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -104,11 +103,11 @@ export const ComprehensiveStatusTimeline = ({
     );
   }
 
-  console.log('🔍 Timeline Debug - Raw Data:', {
+  console.log('🔍 ComprehensiveStatusTimeline Debug - Raw Data:', {
+    bookingId,
     currentStatus: statusData?.current_status,
     statusHistory: statusData?.statuses,
     finalPrice,
-    bookingId,
     passengerData,
     driverData,
     userType
@@ -156,20 +155,18 @@ export const ComprehensiveStatusTimeline = ({
     
     const actorRole = config.actor;
     
-    // CRITICAL FIX: Always show the actual person who performed the action
-    // For passenger dashboard: if passenger made action -> show passenger photo, if driver made action -> show driver photo
-    let actorData;
-    let actorPhotoUrl;
-    let actorName;
+    // CRITICAL FIX: Always show the correct person who performed the action
+    let actorPhotoUrl: string | undefined;
+    let actorName: string;
     
     if (actorRole === 'passenger') {
-      actorData = passengerData;
       actorPhotoUrl = passengerData?.photo_url;
       actorName = passengerData?.name || 'Passenger';
+      console.log('🔍 Using passenger data:', { name: actorName, photo_url: actorPhotoUrl });
     } else {
-      actorData = driverData;
       actorPhotoUrl = driverData?.photo_url;
       actorName = driverData?.name || 'Driver';
+      console.log('🔍 Using driver data:', { name: actorName, photo_url: actorPhotoUrl });
     }
     
     const actualTimestamp = statusEntry.status_timestamp 
@@ -202,7 +199,6 @@ export const ComprehensiveStatusTimeline = ({
     console.log('📊 Created Timeline Item:', {
       status: statusKey,
       actor: actorRole,
-      actorData,
       photo_url: actorPhotoUrl,
       name: actorName,
       userType,
@@ -223,7 +219,8 @@ export const ComprehensiveStatusTimeline = ({
     timestamp: item.actualTimestamp.toISOString(),
     label: item.label,
     actor: item.actor.role,
-    photo_url: item.actor.photo_url
+    photo_url: item.actor.photo_url,
+    name: item.actor.name
   })));
 
   return (
