@@ -36,12 +36,12 @@ const PassengerDashboard = () => {
           schema: 'public',
           table: 'bookings'
         },
-        (payload) => {
+        async (payload) => {
           console.log('📡 Real-time booking update for passenger:', payload);
           // Refresh bookings when changes occur
-          const { data: { user } } = supabase.auth.getUser();
-          if (user?.user) {
-            loadBookings(user.user.id);
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            loadBookings(user.id);
           }
         }
       )
@@ -111,7 +111,6 @@ const PassengerDashboard = () => {
 
       if (error) throw error;
 
-      // Map the data to match our Booking interface
       const mappedBookings: Booking[] = (data || []).map(booking => ({
         id: booking.id,
         pickup_location: booking.pickup_location,
@@ -160,10 +159,8 @@ const PassengerDashboard = () => {
     if (status === 'completed' || rideStatus === 'completed') return 'completed';
     if (status === 'cancelled') return 'cancelled';
     
-    // Check for All Set status
     if (paymentStatus === 'all_set' || rideStatus === 'all_set') return 'all_set';
     
-    // Check for Offer Price Sent status - agora com trigger SQL funcionando
     if (status === 'offer_sent' || rideStatus === 'offer_sent' || paymentStatus === 'waiting_for_payment') {
       return 'payment_pending';
     }
@@ -194,14 +191,11 @@ const PassengerDashboard = () => {
   };
 
   const handlePayment = (booking: Booking) => {
-    // Placeholder for Stripe payment integration
     toast({
       title: "Payment Processing",
       description: `Processing payment of $${booking.final_price || booking.estimated_price}`,
     });
     
-    // TODO: Integrate with Stripe checkout here
-    // For now, simulate payment completion
     setTimeout(() => {
       toast({
         title: "Payment Successful",
@@ -211,7 +205,6 @@ const PassengerDashboard = () => {
   };
 
   const handleCall = () => {
-    // Call dispatcher instead of driver
     window.open('tel:+1234567890', '_blank');
   };
 

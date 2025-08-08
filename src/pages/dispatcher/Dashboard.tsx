@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,7 +50,6 @@ const DispatcherDashboard = () => {
         },
         (payload) => {
           console.log('📡 Real-time booking update:', payload);
-          // Refresh bookings when changes occur
           loadBookings();
         }
       )
@@ -92,7 +90,6 @@ const DispatcherDashboard = () => {
 
       if (error) throw error;
 
-      // Map the data to match our Booking interface
       const mappedBookings: Booking[] = (data || []).map(booking => ({
         id: booking.id,
         pickup_location: booking.pickup_location,
@@ -111,7 +108,7 @@ const DispatcherDashboard = () => {
         ride_status: booking.ride_status,
         payment_confirmation_status: booking.payment_confirmation_status,
         passengers: booking.passengers ? {
-          id: booking.passengers.id || booking.passenger_id,
+          id: booking.passenger_id,
           full_name: booking.passengers.full_name,
           phone: booking.passengers.phone,
           profile_photo_url: booking.passengers.profile_photo_url,
@@ -152,10 +149,8 @@ const DispatcherDashboard = () => {
     if (status === 'completed' || rideStatus === 'completed') return 'completed';
     if (status === 'cancelled') return 'cancelled';
     
-    // Check for All Set status
     if (paymentStatus === 'all_set' || rideStatus === 'all_set') return 'all_set';
     
-    // Check for Offer Price Sent status - agora com trigger SQL funcionando
     if (status === 'offer_sent' || rideStatus === 'offer_sent' || paymentStatus === 'waiting_for_payment') {
       return 'payment_pending';
     }
