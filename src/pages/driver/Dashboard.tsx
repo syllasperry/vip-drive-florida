@@ -25,14 +25,30 @@ const DriverDashboard = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [selectedBookingForMessage, setSelectedBookingForMessage] = useState<any>(null);
   const [completedBookings, setCompletedBookings] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [bookingsError, setBookingsError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('rides');
   const { toast } = useToast();
 
-  const { 
-    bookings, 
-    loading: bookingsLoading, 
-    error: bookingsError 
-  } = useRealtimeBookings(user?.id || '', 'driver');
+  // Set up realtime bookings subscription
+  const { isConnected } = useRealtimeBookings({
+    userId: user?.id || '',
+    userType: 'driver',
+    onBookingUpdate: (booking) => {
+      // Handle booking updates here
+      setBookings(prev => {
+        const index = prev.findIndex(b => b.id === booking.id);
+        if (index >= 0) {
+          const updated = [...prev];
+          updated[index] = booking;
+          return updated;
+        } else {
+          return [booking, ...prev];
+        }
+      });
+    }
+  });
 
   useEffect(() => {
     const getSession = async () => {
@@ -43,6 +59,7 @@ const DriverDashboard = () => {
         if (session?.user) {
           setUser(session.user);
           await loadUserProfile(session.user.id);
+          await loadBookings(session.user.id);
           await loadCompletedBookings(session.user.id);
         } else {
           window.location.href = '/driver/login';
@@ -77,6 +94,44 @@ const DriverDashboard = () => {
       setUserProfile(data);
     } catch (error) {
       console.error('Error loading user profile:', error);
+    }
+  };
+
+  const loadBookings = async (driverId: string) => {
+    try {
+      setBookingsLoading(true);
+      const { data, error } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          passengers (
+            full_name,
+            phone,
+            profile_photo_url
+          ),
+          passenger:passengers (
+            full_name,
+            phone,
+            profile_photo_url
+          )
+        `)
+        .eq('driver_id', driverId)
+        .not('status', 'in', '(completed,cancelled,declined)')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setBookings(data || []);
+    } catch (error) {
+      console.error('Error loading bookings:', error);
+      setBookingsError('Failed to load bookings');
+      toast({
+        title: "Error",
+        description: "Failed to load bookings",
+        variant: "destructive"
+      });
+    } finally {
+      setBookingsLoading(false);
     }
   };
 
@@ -217,6 +272,7 @@ const DriverDashboard = () => {
               onViewSummary={handleViewSummary}
               onCancelSuccess={() => {
                 if (user?.id) {
+                  loadBookings(user.id);
                   loadCompletedBookings(user.id);
                 }
               }}
@@ -224,7 +280,7 @@ const DriverDashboard = () => {
           </TabsContent>
 
           <TabsContent value="earnings">
-            <EarningsSection />
+            <EarningsSection driverId={user?.id} />
           </TabsContent>
 
           <TabsContent value="messages">
