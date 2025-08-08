@@ -74,7 +74,6 @@ export const OrganizedBookingsList = ({
               <NewRequestsCard
                 key={booking.id}
                 booking={booking}
-                userType={userType}
                 onMessage={onMessage}
                 onViewSummary={onViewSummary}
                 onReopenAlert={() => onReopenModal?.(booking.ride_status)}

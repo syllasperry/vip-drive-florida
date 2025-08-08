@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -176,7 +175,6 @@ export const DriverRideHistoryCard = ({
         isOpen={showSummary}
         onClose={() => setShowSummary(false)}
         booking={booking}
-        userType="driver"
       />
     </>
   );

@@ -451,7 +451,6 @@ export const StandardDriverRideCard = ({
         isOpen={showSummary}
         onClose={() => setShowSummary(false)}
         booking={booking}
-        userType="driver"
       />
     </>
   );

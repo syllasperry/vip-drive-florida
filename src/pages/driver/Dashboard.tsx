@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,7 +37,7 @@ export default function DriverDashboard() {
     bookings: realtimeBookings, 
     loading: realtimeLoading,
     error: realtimeError 
-  } = useRealtimeBookings('driver');
+  } = useRealtimeBookings({ userType: 'driver' });
 
   useEffect(() => {
     fetchDriverData();
@@ -106,11 +107,13 @@ export default function DriverDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 to-primary-glow/5">
-      <NotificationManager userType="driver" />
+      <NotificationManager 
+        userId={driver?.id || ''}
+        userType="driver" 
+      />
       
       <div className="container mx-auto px-4 py-6 max-w-md">
         <ProfileHeader
-          user={driver}
           userType="driver"
           title="Driver Dashboard"
         />
@@ -151,7 +154,6 @@ export default function DriverDashboard() {
           <TabsContent value="messages" className="space-y-6">
             <MessagesTab 
               userType="driver" 
-              bookings={bookings}
               currentUserId={driver?.id}
               currentUserName={driver?.full_name}
               currentUserAvatar={driver?.profile_photo_url}
@@ -159,8 +161,8 @@ export default function DriverDashboard() {
           </TabsContent>
 
           <TabsContent value="payments" className="space-y-6">
-            <EarningsSection bookings={bookings} />
-            <PaymentsTab bookings={bookings} userType="driver" />
+            <EarningsSection />
+            <PaymentsTab userType="driver" />
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-6">
@@ -179,7 +181,7 @@ export default function DriverDashboard() {
           userType="driver"
         />
 
-        <FloatingActionButton userType="driver" />
+        <FloatingActionButton />
       </div>
 
       <RideStatusModal
