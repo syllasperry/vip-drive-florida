@@ -128,14 +128,14 @@ export const ComprehensiveStatusTimeline = ({
         textColor: config.text,
         actor: {
           name: actorData?.name || (actorRole === 'passenger' ? 'Passenger' : 'Driver'),
-          role: actorRole === 'passenger' ? 'Passenger' : 'Driver',
+          role: actorRole === 'passenger' ? 'Passenger' : 'Driver' as 'Driver' | 'Passenger',
           photo_url: actorData?.photo_url
         },
         isCompleted: true
       };
     })
     .filter((item): item is TimelineItem => item !== null)
-    .reverse(); // Most recent first
+    .reverse(); // Most recent first - creates vertical stack with newest at top
 
   return (
     <div className={`space-y-3 ${className}`}>
@@ -148,6 +148,7 @@ export const ComprehensiveStatusTimeline = ({
         )}
       </div>
       
+      {/* Vertical stack of all completed statuses */}
       {timelineItems.map((item, index) => (
         <Card 
           key={`${item.id}-${index}`}
