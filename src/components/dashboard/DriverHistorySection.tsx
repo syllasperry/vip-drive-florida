@@ -3,8 +3,9 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Clock, Phone, MessageCircle, User } from "lucide-react";
+import { MapPin, Clock, Phone, MessageCircle, User, Eye } from "lucide-react";
 import { MessagingInterface } from "@/components/MessagingInterface";
+import { RideDetailsModal } from "@/components/timeline/RideDetailsModal";
 
 interface DriverHistorySectionProps {
   bookings: any[];
@@ -20,6 +21,7 @@ export const DriverHistorySection = ({
   currentDriverAvatar 
 }: DriverHistorySectionProps) => {
   const [selectedBookingForMessage, setSelectedBookingForMessage] = useState<any>(null);
+  const [selectedBookingForDetails, setSelectedBookingForDetails] = useState<any>(null);
 
   const handleMessage = (booking: any) => {
     setSelectedBookingForMessage(booking);
@@ -31,6 +33,10 @@ export const DriverHistorySection = ({
       const cleanPhone = passengerPhone.replace(/[^\d]/g, '');
       window.location.href = `tel:+1${cleanPhone}`;
     }
+  };
+
+  const handleViewDetails = (booking: any) => {
+    setSelectedBookingForDetails(booking);
   };
 
   const getStatusBadgeVariant = (status: string) => {
@@ -179,6 +185,16 @@ export const DriverHistorySection = ({
                       Call
                     </Button>
                   )}
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleViewDetails(booking)}
+                    className="flex-1 flex items-center gap-2"
+                  >
+                    <Eye className="h-4 w-4" />
+                    View Details
+                  </Button>
                 </div>
               </div>
             );
@@ -198,6 +214,15 @@ export const DriverHistorySection = ({
           currentUserAvatar={currentDriverAvatar}
           otherUserName={selectedBookingForMessage.passengers?.full_name || selectedBookingForMessage.passenger?.full_name}
           otherUserAvatar={selectedBookingForMessage.passengers?.profile_photo_url || selectedBookingForMessage.passenger?.profile_photo_url}
+        />
+      )}
+
+      {/* Ride Details Modal */}
+      {selectedBookingForDetails && (
+        <RideDetailsModal
+          isOpen={!!selectedBookingForDetails}
+          onClose={() => setSelectedBookingForDetails(null)}
+          booking={selectedBookingForDetails}
         />
       )}
     </>

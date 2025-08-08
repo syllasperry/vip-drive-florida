@@ -10,7 +10,7 @@ import { Car, Settings, MessageCircle, Calendar, History, Bell } from "lucide-re
 import { ProfileHeader } from "@/components/dashboard/ProfileHeader";
 import { EarningsSection } from "@/components/dashboard/EarningsSection";
 import { BottomNavigation } from "@/components/dashboard/BottomNavigation";
-import { OrganizedBookingsList } from "@/components/dashboard/OrganizedBookingsList";
+import OrganizedBookingsList from "@/components/dashboard/OrganizedBookingsList";
 import { MessagesTab } from "@/components/dashboard/MessagesTab";
 import { EnhancedSettingsModal } from "@/components/EnhancedSettingsModal";
 import { BookingRequestModal } from "@/components/booking/BookingRequestModal";
@@ -25,6 +25,7 @@ const DriverDashboard = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [selectedBookingForMessage, setSelectedBookingForMessage] = useState<any>(null);
   const [completedBookings, setCompletedBookings] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState('rides');
   const { toast } = useToast();
 
   const { 
@@ -137,14 +138,14 @@ const DriverDashboard = () => {
     // Implement view summary functionality
   };
 
-  const handlePhotoUpload = (file: File) => {
+  const handlePhotoUpload = async (file: File) => {
     console.log("Photo upload:", file);
     // Implement photo upload functionality
   };
 
-  const handleProfileUpdate = (updates: any) => {
-    console.log("Profile update:", updates);
-    setUserProfile(prev => ({ ...prev, ...updates }));
+  const handleProfileUpdate = () => {
+    console.log("Profile update");
+    // Implement profile update functionality
   };
 
   const handleSelectChat = (chatId: string) => {
@@ -188,7 +189,7 @@ const DriverDashboard = () => {
         />
 
         {/* Main Content */}
-        <Tabs defaultValue="rides" className="mt-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
           <TabsList className="grid w-full grid-cols-4 mb-6">
             <TabsTrigger value="rides" className="flex items-center gap-2">
               <Car className="h-4 w-4" />
@@ -223,7 +224,7 @@ const DriverDashboard = () => {
           </TabsContent>
 
           <TabsContent value="earnings">
-            <EarningsSection userType="driver" />
+            <EarningsSection />
           </TabsContent>
 
           <TabsContent value="messages">
@@ -246,7 +247,11 @@ const DriverDashboard = () => {
       </div>
 
       {/* Bottom Navigation */}
-      <BottomNavigation userType="driver" />
+      <BottomNavigation 
+        userType="driver" 
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
 
       {/* Settings Modal */}
       {showSettings && (
