@@ -26,7 +26,6 @@ import { DriverHistorySection } from '@/components/dashboard/DriverHistorySectio
 export default function DriverDashboard() {
   const [activeTab, setActiveTab] = useState('bookings');
   const [driver, setDriver] = useState<any>(null);
-  const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
@@ -34,21 +33,26 @@ export default function DriverDashboard() {
 
   // Use realtime bookings hook
   const { 
-    bookings: realtimeBookings, 
+    bookings, 
     loading: realtimeLoading,
     error: realtimeError 
-  } = useRealtimeBookings({ userType: 'driver' });
+  } = useRealtimeBookings({ 
+    userId: driver?.id || '', 
+    userType: 'driver',
+    onBookingUpdate: (booking) => {
+      console.log('Booking updated:', booking);
+    }
+  });
 
   useEffect(() => {
     fetchDriverData();
   }, []);
 
   useEffect(() => {
-    if (realtimeBookings) {
-      setBookings(realtimeBookings);
+    if (driver?.id && bookings) {
       setLoading(realtimeLoading);
     }
-  }, [realtimeBookings, realtimeLoading]);
+  }, [bookings, realtimeLoading, driver?.id]);
 
   const fetchDriverData = async () => {
     try {
@@ -115,7 +119,6 @@ export default function DriverDashboard() {
       <div className="container mx-auto px-4 py-6 max-w-md">
         <ProfileHeader
           userType="driver"
-          title="Driver Dashboard"
         />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -154,15 +157,12 @@ export default function DriverDashboard() {
           <TabsContent value="messages" className="space-y-6">
             <MessagesTab 
               userType="driver" 
-              currentUserId={driver?.id}
-              currentUserName={driver?.full_name}
-              currentUserAvatar={driver?.profile_photo_url}
             />
           </TabsContent>
 
           <TabsContent value="payments" className="space-y-6">
-            <EarningsSection />
-            <PaymentsTab userType="driver" />
+            <EarningsSection driverId={driver?.id} />
+            <PaymentsTab userType="driver" userId={driver?.id} />
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-6">
@@ -181,7 +181,7 @@ export default function DriverDashboard() {
           userType="driver"
         />
 
-        <FloatingActionButton />
+        <FloatingActionButton onClick={() => console.log('FAB clicked')} />
       </div>
 
       <RideStatusModal

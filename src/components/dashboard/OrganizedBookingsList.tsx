@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { StandardDriverRideCard } from '@/components/StandardDriverRideCard';
 import { NewRequestsCard } from '@/components/dashboard/NewRequestsCard';
@@ -75,7 +76,6 @@ export const OrganizedBookingsList = ({
                 key={booking.id}
                 booking={booking}
                 onMessage={onMessage}
-                onViewSummary={onViewSummary}
                 onReopenAlert={() => onReopenModal?.(booking.ride_status)}
               />
             ))}
