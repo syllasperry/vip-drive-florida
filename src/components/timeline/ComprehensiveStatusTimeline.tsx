@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -153,6 +154,7 @@ export const ComprehensiveStatusTimeline = ({
     }
     
     const actorRole = config.actor;
+    // Fix: Show the correct actor's photo based on who performed the action
     const actorData = actorRole === 'passenger' ? passengerData : driverData;
     
     const actualTimestamp = statusEntry.status_timestamp 
@@ -160,7 +162,7 @@ export const ComprehensiveStatusTimeline = ({
       : new Date();
     
     const timelineItem: TimelineItem = {
-      id: `${statusKey}-${actualTimestamp.getTime()}`, // Use timestamp to ensure uniqueness
+      id: `${statusKey}-${actualTimestamp.getTime()}`,
       label: userType === 'passenger' 
         ? config.passenger_label 
         : config.driver_label,

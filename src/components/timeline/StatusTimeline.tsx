@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -169,6 +170,7 @@ export const StatusTimeline = ({
       return null;
     }
     
+    // Fix: Show the correct photo based on who performed the action
     const isUserActor = config.actor === userType;
     const actorPhotoUrl = isUserActor ? userPhotoUrl : otherUserPhotoUrl;
     const actorRole = config.actor === 'passenger' ? 'Passenger' : 'Driver';

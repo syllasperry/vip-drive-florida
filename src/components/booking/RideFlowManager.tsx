@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { OfferAcceptanceModal } from "./OfferAcceptanceModal";
 import { PaymentInstructionsAlert } from "./PaymentInstructionsAlert";
@@ -18,6 +17,7 @@ interface RideFlowManagerProps {
   onFlowComplete: () => void;
   onMessagePassenger?: () => void;
   forceOpenStep?: string | null;
+  manualModalTrigger?: string | null;
 }
 
 export const RideFlowManager = ({ 
@@ -25,7 +25,8 @@ export const RideFlowManager = ({
   userType, 
   onFlowComplete,
   onMessagePassenger,
-  forceOpenStep 
+  forceOpenStep,
+  manualModalTrigger
 }: RideFlowManagerProps) => {
   const [currentStep, setCurrentStep] = useState<string | null>(null);
   const { subscribeToBooking } = useBookingStore();
@@ -38,6 +39,13 @@ export const RideFlowManager = ({
   }, [booking?.id]);
 
   useEffect(() => {
+    // Handle manual modal trigger
+    if (manualModalTrigger) {
+      console.log('🎯 Manual modal trigger:', manualModalTrigger);
+      setCurrentStep(manualModalTrigger);
+      return;
+    }
+
     if (forceOpenStep) {
       console.log('🎯 Force opening step:', forceOpenStep);
       setCurrentStep(forceOpenStep);
@@ -53,7 +61,7 @@ export const RideFlowManager = ({
     console.log('🔄 RideFlowManager - Unified status:', unifiedStatus, 'Required modal:', requiredModal, 'UserType:', userType);
 
     setCurrentStep(requiredModal);
-  }, [booking, userType, forceOpenStep]);
+  }, [booking, userType, forceOpenStep, manualModalTrigger]);
 
   const handleOfferAccepted = async () => {
     try {
