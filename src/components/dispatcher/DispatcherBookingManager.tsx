@@ -17,7 +17,7 @@ interface BookingManagerProps {
 export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [finalPrice, setFinalPrice] = useState(booking.estimated_price || '');
+  const [finalPrice, setFinalPrice] = useState(booking.estimated_price || booking.final_price || '');
   const [selectedDriver, setSelectedDriver] = useState(booking.driver_id || '');
   const [drivers, setDrivers] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -28,10 +28,18 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
         .from('drivers')
         .select('*');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading drivers:', error);
+        throw error;
+      }
       setDrivers(data || []);
     } catch (error) {
       console.error('Error loading drivers:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load drivers",
+        variant: "destructive",
+      });
     }
   };
 
@@ -45,25 +53,48 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
       return;
     }
 
+    // Validate price
+    const priceValue = parseFloat(finalPrice);
+    if (isNaN(priceValue) || priceValue <= 0) {
+      toast({
+        title: "Invalid Price",
+        description: "Please enter a valid price greater than 0",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      const updateData: any = {
-        estimated_price: parseFloat(finalPrice),
-        final_price: parseFloat(finalPrice),
+      console.log('Updating booking with data:', {
+        booking_id: booking.id,
         driver_id: selectedDriver,
-        simple_status: 'payment_pending',
+        final_price: priceValue,
+        estimated_price: priceValue
+      });
+
+      const updateData = {
+        estimated_price: priceValue,
+        final_price: priceValue,
+        driver_id: selectedDriver,
         status: 'offer_sent',
         ride_status: 'offer_sent',
         payment_confirmation_status: 'waiting_for_payment',
         updated_at: new Date().toISOString()
       };
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('bookings')
         .update(updateData)
-        .eq('id', booking.id);
+        .eq('id', booking.id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error details:', error);
+        throw error;
+      }
+
+      console.log('Booking updated successfully:', data);
 
       toast({
         title: "Success",
@@ -76,7 +107,7 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
       console.error('Error updating booking:', error);
       toast({
         title: "Error",
-        description: "Failed to send offer",
+        description: `Failed to send offer: ${error.message || 'Unknown error'}`,
         variant: "destructive",
       });
     } finally {
@@ -109,6 +140,7 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
               id="finalPrice"
               type="number"
               step="0.01"
+              min="0"
               value={finalPrice}
               onChange={(e) => setFinalPrice(e.target.value)}
               placeholder="Enter final price"
