@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,24 +56,31 @@ export const UniversalRideCard = ({
   };
 
   // Handle phone call action
-  const handleCallDriver = () => {
-    if (userType === 'passenger' && otherUser?.phone) {
+  const handleCall = () => {
+    if (otherUser?.phone) {
       window.location.href = `tel:${otherUser.phone}`;
     } else {
       toast({
         title: "Phone Number Not Available",
-        description: "Driver's phone number is not available.",
+        description: `${userType === 'passenger' ? 'Driver' : 'Passenger'}'s phone number is not available.`,
         variant: "destructive"
       });
     }
   };
 
   // Handle message action
-  const handleMessageDriver = () => {
+  const handleMessage = () => {
     if (onMessage) {
       onMessage();
     } else if (onAction) {
       onAction('message');
+    }
+  };
+
+  // Handle view details action
+  const handleViewDetails = () => {
+    if (onAction) {
+      onAction('view_details');
     }
   };
 
@@ -184,28 +190,30 @@ export const UniversalRideCard = ({
           <Button 
             variant="outline" 
             size="sm" 
+            onClick={handleCall}
             className="flex-1"
-            onClick={handleMessageDriver}
           >
-            <MessageCircle className="h-4 w-4 mr-2" />
-            Message
+            <Phone className="h-4 w-4 mr-2" />
+            Call
           </Button>
           
           <Button 
             variant="outline" 
             size="sm"
-            onClick={handleCallDriver}
+            onClick={handleMessage}
+            className="flex-1"
           >
-            <Phone className="h-4 w-4" />
+            <MessageCircle className="h-4 w-4 mr-2" />
+            Message
           </Button>
           
           <Button
-            variant="default"
+            variant="outline"
             size="sm"
+            onClick={handleViewDetails}
             className="flex-1"
-            onClick={() => setShowDetails(!showDetails)}
           >
-            {showDetails ? 'Hide Details' : 'View Details'}
+            View Details
           </Button>
         </div>
 
