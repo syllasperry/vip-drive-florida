@@ -25,13 +25,18 @@ import { useRealtimeBookings } from '@/hooks/useRealtimeBookings';
 const PassengerDashboard = () => {
   const [activeTab, setActiveTab] = useState('bookings');
   const [passenger, setPassenger] = useState<any>(null);
-  const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const { toast } = useToast();
 
-  // Use realtime bookings hook
+  console.log('🎯 PassengerDashboard: Component rendering', { 
+    passengerId: passenger?.id, 
+    loading,
+    activeTab 
+  });
+
+  // Use realtime bookings hook only when passenger data is available
   const { 
     bookings: realtimeBookings, 
     loading: realtimeLoading,
@@ -40,25 +45,28 @@ const PassengerDashboard = () => {
     userId: passenger?.id || '', 
     userType: 'passenger',
     onBookingUpdate: (booking) => {
-      console.log('Booking updated:', booking);
+      console.log('📱 Passenger booking updated:', booking);
     }
   });
 
   useEffect(() => {
+    console.log('🔄 PassengerDashboard: Fetching passenger data...');
     fetchPassengerData();
   }, []);
 
-  useEffect(() => {
-    if (realtimeBookings) {
-      setBookings(realtimeBookings);
-      setLoading(realtimeLoading);
-    }
-  }, [realtimeBookings, realtimeLoading]);
-
   const fetchPassengerData = async () => {
     try {
+      setLoading(true);
+      console.log('🔍 Fetching user from Supabase auth...');
+      
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        console.log('❌ No authenticated user found');
+        setLoading(false);
+        return;
+      }
+
+      console.log('👤 User found:', user.id);
 
       const { data: passengerData, error: passengerError } = await supabase
         .from('passengers')
@@ -67,36 +75,47 @@ const PassengerDashboard = () => {
         .single();
 
       if (passengerError) {
-        console.error('Error fetching passenger:', passengerError);
+        console.error('❌ Error fetching passenger:', passengerError);
+        // Create a basic passenger object if not found
+        setPassenger({
+          id: user.id,
+          full_name: user.email?.split('@')[0] || 'Passenger',
+          email: user.email,
+          profile_photo_url: null
+        });
+        setLoading(false);
         return;
       }
 
+      console.log('✅ Passenger data loaded:', passengerData);
       setPassenger(passengerData);
     } catch (error) {
-      console.error('Error in fetchPassengerData:', error);
+      console.error('💥 Error in fetchPassengerData:', error);
       toast({
         title: "Error",
         description: "Failed to load passenger data",
         variant: "destructive"
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleStatusUpdate = () => {
-    // Refresh bookings when status is updated
+    console.log('🔄 Handling status update...');
     fetchPassengerData();
   };
 
   const handleReopenModal = (status: string) => {
-    console.log('Reopening modal for status:', status);
+    console.log('🔄 Reopening modal for status:', status);
   };
 
   const handleMessage = (booking?: any) => {
-    console.log('Opening message for booking:', booking?.id);
+    console.log('💬 Opening message for booking:', booking?.id);
   };
 
   const handleViewSummary = (booking?: any) => {
-    console.log('Opening summary for booking:', booking?.id);
+    console.log('📄 Opening summary for booking:', booking?.id);
   };
 
   const handlePhotoUpload = async (file: File) => {
@@ -135,10 +154,16 @@ const PassengerDashboard = () => {
   };
 
   const handleSelectChat = (booking: any, otherUser: any) => {
-    console.log('Selected chat for booking:', booking?.id, 'with user:', otherUser);
+    console.log('💬 Selected chat for booking:', booking?.id, 'with user:', otherUser);
   };
 
+  const handleFloatingActionClick = () => {
+    console.log('➕ FAB clicked - could open booking form');
+  };
+
+  // Show loading state
   if (loading) {
+    console.log('⏳ Showing loading state...');
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary/5 to-primary-glow/5 flex items-center justify-center">
         <div className="text-center">
@@ -148,6 +173,17 @@ const PassengerDashboard = () => {
       </div>
     );
   }
+
+  // Show error state if realtime error
+  if (realtimeError) {
+    console.error('📡 Realtime error:', realtimeError);
+  }
+
+  console.log('✅ PassengerDashboard: Rendering main content', {
+    passengerLoaded: !!passenger,
+    bookingsCount: realtimeBookings?.length || 0,
+    realtimeLoading
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 to-primary-glow/5">
@@ -175,7 +211,7 @@ const PassengerDashboard = () => {
 
           <TabsContent value="bookings" className="space-y-6">
             <OrganizedBookingsList
-              bookings={bookings}
+              bookings={realtimeBookings || []}
               userType="passenger"
               onMessage={handleMessage}
               onViewSummary={handleViewSummary}
@@ -215,7 +251,7 @@ const PassengerDashboard = () => {
           userType="passenger"
         />
 
-        <FloatingActionButton onClick={() => console.log('FAB clicked')} />
+        <FloatingActionButton onClick={handleFloatingActionClick} />
       </div>
 
       <RideStatusModal

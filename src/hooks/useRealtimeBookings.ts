@@ -22,27 +22,40 @@ export const useRealtimeBookings = ({ userId, userType, onBookingUpdate }: UseRe
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    if (!userId) {
+    // Don't fetch if userId is not available
+    if (!userId || userId === '') {
+      console.log('⚠️ useRealtimeBookings: userId not available, skipping fetch');
       setLoading(false);
+      setBookings([]);
       return;
     }
+
+    console.log('🚀 useRealtimeBookings: Starting fetch for', { userId, userType });
 
     // Fetch initial bookings
     const fetchBookings = async () => {
       try {
-        const { data, error } = await supabase
+        setLoading(true);
+        setError(null);
+        
+        const { data, error: fetchError } = await supabase
           .from('bookings')
           .select('*')
           .eq(userType === 'passenger' ? 'passenger_id' : 'driver_id', userId)
           .order('created_at', { ascending: false });
 
-        if (error) throw error;
+        if (fetchError) {
+          console.error('❌ Error fetching bookings:', fetchError);
+          throw fetchError;
+        }
         
+        console.log('✅ Bookings fetched successfully:', data?.length || 0, 'items');
         setBookings(data || []);
         setError(null);
       } catch (err) {
-        console.error('Error fetching bookings:', err);
+        console.error('💥 Error in fetchBookings:', err);
         setError('Failed to fetch bookings');
+        setBookings([]);
       } finally {
         setLoading(false);
       }
@@ -52,7 +65,7 @@ export const useRealtimeBookings = ({ userId, userType, onBookingUpdate }: UseRe
 
     // Create realtime subscription for bookings
     const channel = supabase
-      .channel('bookings_updates')
+      .channel(`bookings_updates_${userId}`)
       .on(
         'postgres_changes',
         {
@@ -101,6 +114,7 @@ export const useRealtimeBookings = ({ userId, userType, onBookingUpdate }: UseRe
       });
 
     return () => {
+      console.log('🔌 Cleaning up realtime subscription');
       supabase.removeChannel(channel);
       setIsConnected(false);
     };

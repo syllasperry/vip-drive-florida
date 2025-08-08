@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,13 @@ export default function DriverDashboard() {
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const { toast } = useToast();
 
-  // Use realtime bookings hook
+  console.log('🚗 DriverDashboard: Component rendering', { 
+    driverId: driver?.id, 
+    loading,
+    activeTab 
+  });
+
+  // Use realtime bookings hook only when driver data is available
   const { 
     bookings, 
     loading: realtimeLoading,
@@ -39,24 +46,28 @@ export default function DriverDashboard() {
     userId: driver?.id || '', 
     userType: 'driver',
     onBookingUpdate: (booking) => {
-      console.log('Booking updated:', booking);
+      console.log('🚗 Driver booking updated:', booking);
     }
   });
 
   useEffect(() => {
+    console.log('🔄 DriverDashboard: Fetching driver data...');
     fetchDriverData();
   }, []);
 
-  useEffect(() => {
-    if (driver?.id && bookings) {
-      setLoading(realtimeLoading);
-    }
-  }, [bookings, realtimeLoading, driver?.id]);
-
   const fetchDriverData = async () => {
     try {
+      setLoading(true);
+      console.log('🔍 Fetching user from Supabase auth...');
+      
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        console.log('❌ No authenticated user found');
+        setLoading(false);
+        return;
+      }
+
+      console.log('👤 User found:', user.id);
 
       const { data: driverData, error: driverError } = await supabase
         .from('drivers')
@@ -65,36 +76,47 @@ export default function DriverDashboard() {
         .single();
 
       if (driverError) {
-        console.error('Error fetching driver:', driverError);
+        console.error('❌ Error fetching driver:', driverError);
+        // Create a basic driver object if not found
+        setDriver({
+          id: user.id,
+          full_name: user.email?.split('@')[0] || 'Driver',
+          email: user.email,
+          profile_photo_url: null
+        });
+        setLoading(false);
         return;
       }
 
+      console.log('✅ Driver data loaded:', driverData);
       setDriver(driverData);
     } catch (error) {
-      console.error('Error in fetchDriverData:', error);
+      console.error('💥 Error in fetchDriverData:', error);
       toast({
         title: "Error",
         description: "Failed to load driver data",
         variant: "destructive"
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleStatusUpdate = () => {
-    // Refresh bookings when status is updated
+    console.log('🔄 Handling status update...');
     fetchDriverData();
   };
 
   const handleReopenModal = (status: string) => {
-    console.log('Reopening modal for status:', status);
+    console.log('🔄 Reopening modal for status:', status);
   };
 
   const handleMessage = (booking?: any) => {
-    console.log('Opening message for booking:', booking?.id);
+    console.log('💬 Opening message for booking:', booking?.id);
   };
 
   const handleViewSummary = (booking?: any) => {
-    console.log('Opening summary for booking:', booking?.id);
+    console.log('📄 Opening summary for booking:', booking?.id);
   };
 
   const handleCall = (booking?: any) => {
@@ -139,10 +161,16 @@ export default function DriverDashboard() {
   };
 
   const handleSelectChat = (booking: any, otherUser: any) => {
-    console.log('Selected chat for booking:', booking?.id, 'with user:', otherUser);
+    console.log('💬 Selected chat for booking:', booking?.id, 'with user:', otherUser);
   };
 
+  const handleFloatingActionClick = () => {
+    console.log('➕ FAB clicked - could open driver actions');
+  };
+
+  // Show loading state
   if (loading) {
+    console.log('⏳ Showing loading state...');
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary/5 to-primary-glow/5 flex items-center justify-center">
         <div className="text-center">
@@ -152,6 +180,17 @@ export default function DriverDashboard() {
       </div>
     );
   }
+
+  // Show error state if realtime error
+  if (realtimeError) {
+    console.error('📡 Realtime error:', realtimeError);
+  }
+
+  console.log('✅ DriverDashboard: Rendering main content', {
+    driverLoaded: !!driver,
+    bookingsCount: bookings?.length || 0,
+    realtimeLoading
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 to-primary-glow/5">
@@ -179,7 +218,7 @@ export default function DriverDashboard() {
 
           <TabsContent value="bookings" className="space-y-6">
             <OrganizedBookingsList
-              bookings={bookings}
+              bookings={bookings || []}
               userType="driver"
               onMessage={handleMessage}
               onViewSummary={handleViewSummary}
@@ -195,7 +234,7 @@ export default function DriverDashboard() {
             <div className="mt-8">
               <h3 className="text-lg font-semibold mb-4">Ride History</h3>
               <DriverHistorySection
-                bookings={bookings}
+                bookings={bookings || []}
                 currentDriverId={driver?.id}
                 currentDriverName={driver?.full_name}
                 currentDriverAvatar={driver?.profile_photo_url}
@@ -232,7 +271,7 @@ export default function DriverDashboard() {
           userType="driver"
         />
 
-        <FloatingActionButton onClick={() => console.log('FAB clicked')} />
+        <FloatingActionButton onClick={handleFloatingActionClick} />
       </div>
 
       <RideStatusModal
