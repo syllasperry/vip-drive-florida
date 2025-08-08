@@ -33,7 +33,8 @@ interface TimelineItem {
     photo_url?: string;
   };
   isCompleted: boolean;
-  statusOrder: number; // Add order property for proper sorting
+  statusOrder: number;
+  actualTimestamp?: Date; // For proper chronological sorting
 }
 
 const statusConfig = {
@@ -56,8 +57,8 @@ const statusConfig = {
   'offer_accepted': {
     passenger_label: 'Offer Accepted',
     driver_label: 'Offer Accepted',
-    bg: 'bg-amber-400',
-    text: 'text-black',
+    bg: 'bg-green-500',
+    text: 'text-white',
     actor: 'passenger',
     order: 3
   },
@@ -108,6 +109,13 @@ export const ComprehensiveStatusTimeline = ({
   const currentStatus = statusData?.current_status || 'pending';
   const currentStatusIndex = statusOrder.indexOf(currentStatus);
 
+  console.log('🔍 Timeline Debug:', {
+    currentStatus,
+    currentStatusIndex,
+    statusData: statusData?.statuses,
+    finalPrice
+  });
+
   // Create timeline items for all completed statuses
   const timelineItems: TimelineItem[] = statusOrder
     .map((statusKey, index) => {
@@ -120,14 +128,18 @@ export const ComprehensiveStatusTimeline = ({
       const actorRole = config.actor;
       const actorData = actorRole === 'passenger' ? passengerData : driverData;
       
-      // Create the timeline item object that matches the TimelineItem interface exactly
+      // Parse timestamp for proper chronological sorting
+      const actualTimestamp = statusEntry?.status_timestamp 
+        ? new Date(statusEntry.status_timestamp)
+        : new Date(); // Fallback to current time if no timestamp
+      
       const timelineItem: TimelineItem = {
         id: statusKey,
         label: userType === 'passenger' 
           ? config.passenger_label 
           : config.driver_label,
         timestamp: statusEntry?.status_timestamp 
-          ? format(new Date(statusEntry.status_timestamp), 'h:mm a')
+          ? format(actualTimestamp, 'h:mm a')
           : '',
         backgroundColor: config.bg,
         textColor: config.text,
@@ -137,10 +149,11 @@ export const ComprehensiveStatusTimeline = ({
           photo_url: actorData?.photo_url
         },
         isCompleted: true,
-        statusOrder: config.order
+        statusOrder: config.order,
+        actualTimestamp
       };
 
-      // Only add price if it should be shown for this status
+      // Add price for relevant statuses
       if ((statusKey === 'offer_sent' || statusKey === 'offer_accepted') && finalPrice) {
         timelineItem.price = `$${finalPrice}`;
       }
@@ -148,8 +161,22 @@ export const ComprehensiveStatusTimeline = ({
       return timelineItem;
     })
     .filter((item): item is TimelineItem => item !== null)
-    // Sort by statusOrder in descending order (most recent first)
-    .sort((a, b) => b.statusOrder - a.statusOrder);
+    // Sort by actual timestamp in descending order (most recent first)
+    // If timestamps are not available, fall back to status order descending
+    .sort((a, b) => {
+      if (a.actualTimestamp && b.actualTimestamp) {
+        return b.actualTimestamp.getTime() - a.actualTimestamp.getTime();
+      }
+      // Fallback to status order (higher order = more recent)
+      return b.statusOrder - a.statusOrder;
+    });
+
+  console.log('📊 Final Timeline Items:', timelineItems.map(item => ({
+    status: item.id,
+    order: item.statusOrder,
+    timestamp: item.actualTimestamp,
+    label: item.label
+  })));
 
   return (
     <div className={`space-y-3 ${className}`}>
@@ -162,7 +189,7 @@ export const ComprehensiveStatusTimeline = ({
         )}
       </div>
       
-      {/* Vertical stack of all completed statuses - most recent at top */}
+      {/* Vertical timeline stack - most recent at top, oldest at bottom */}
       {timelineItems.map((item, index) => (
         <Card 
           key={`${item.id}-${index}`}
