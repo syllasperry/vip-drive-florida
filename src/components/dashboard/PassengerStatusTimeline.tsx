@@ -15,6 +15,13 @@ export const PassengerStatusTimeline = ({
     return null;
   }
 
+  console.log('🔍 PassengerStatusTimeline Debug:', {
+    booking_id: booking.id,
+    onReopenModal: !!onReopenModal,
+    booking_status: booking.status,
+    payment_status: booking.payment_confirmation_status
+  });
+
   return (
     <div className="space-y-4">
       {/* Header with Reopen Modal Button */}

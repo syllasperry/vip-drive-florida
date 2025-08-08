@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -155,12 +156,21 @@ export const ComprehensiveStatusTimeline = ({
     
     const actorRole = config.actor;
     
-    // CRITICAL FIX: Show the photo of whoever PERFORMED the action, regardless of current user
-    // If passenger sent request -> show passenger photo
-    // If driver sent offer -> show driver photo
-    const actorData = actorRole === 'passenger' ? passengerData : driverData;
-    const actorPhotoUrl = actorRole === 'passenger' ? passengerData?.photo_url : driverData?.photo_url;
-    const actorName = actorData?.name || (actorRole === 'passenger' ? 'Passenger' : 'Driver');
+    // CRITICAL FIX: Always show the actual person who performed the action
+    // For passenger dashboard: if passenger made action -> show passenger photo, if driver made action -> show driver photo
+    let actorData;
+    let actorPhotoUrl;
+    let actorName;
+    
+    if (actorRole === 'passenger') {
+      actorData = passengerData;
+      actorPhotoUrl = passengerData?.photo_url;
+      actorName = passengerData?.name || 'Passenger';
+    } else {
+      actorData = driverData;
+      actorPhotoUrl = driverData?.photo_url;
+      actorName = driverData?.name || 'Driver';
+    }
     
     const actualTimestamp = statusEntry.status_timestamp 
       ? new Date(statusEntry.status_timestamp)
@@ -195,7 +205,8 @@ export const ComprehensiveStatusTimeline = ({
       actorData,
       photo_url: actorPhotoUrl,
       name: actorName,
-      userType
+      userType,
+      finalItem: timelineItem
     });
 
     return timelineItem;
