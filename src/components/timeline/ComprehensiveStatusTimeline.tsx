@@ -24,7 +24,7 @@ interface TimelineItem {
   id: string;
   label: string;
   timestamp: string;
-  price?: string; // Made optional to match the actual usage
+  price?: string; // Optional property
   backgroundColor: string;
   textColor: string;
   actor: {
@@ -113,7 +113,8 @@ export const ComprehensiveStatusTimeline = ({
       const actorRole = config.actor;
       const actorData = actorRole === 'passenger' ? passengerData : driverData;
       
-      return {
+      // Create the timeline item object that matches the TimelineItem interface exactly
+      const timelineItem: TimelineItem = {
         id: statusKey,
         label: userType === 'passenger' 
           ? config.passenger_label 
@@ -121,9 +122,6 @@ export const ComprehensiveStatusTimeline = ({
         timestamp: statusEntry?.status_timestamp 
           ? format(new Date(statusEntry.status_timestamp), 'h:mm a')
           : '',
-        price: (statusKey === 'offer_sent' || statusKey === 'offer_accepted') && finalPrice 
-          ? `$${finalPrice}` 
-          : undefined,
         backgroundColor: config.bg,
         textColor: config.text,
         actor: {
@@ -133,8 +131,15 @@ export const ComprehensiveStatusTimeline = ({
         },
         isCompleted: true
       };
+
+      // Only add price if it should be shown for this status
+      if ((statusKey === 'offer_sent' || statusKey === 'offer_accepted') && finalPrice) {
+        timelineItem.price = `$${finalPrice}`;
+      }
+
+      return timelineItem;
     })
-    .filter((item): item is TimelineItem => item !== null) // Fixed type predicate
+    .filter((item): item is TimelineItem => item !== null)
     .reverse(); // Most recent first - creates vertical stack with newest at top
 
   return (
