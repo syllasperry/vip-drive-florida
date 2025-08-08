@@ -56,6 +56,14 @@ export const NewRequestsCard = ({
     }
   };
 
+  // Check if ride is still in pending state for driver to respond
+  const isPendingDriverResponse = () => {
+    const currentStatus = booking.ride_status || booking.status || 'pending';
+    return currentStatus === 'pending' && 
+           !booking.final_price && 
+           !booking.drivers?.id; // No driver assigned yet
+  };
+
   // Prepare participant data for timeline
   const passengerData = {
     name: passenger?.full_name || 'Passenger',
@@ -191,8 +199,8 @@ export const NewRequestsCard = ({
           </div>
         )}
 
-        {/* Action buttons or ride info */}
-        {booking.ride_status === 'pending' || booking.status === 'pending' ? (
+        {/* Action buttons - Only show when driver needs to respond to pending request */}
+        {isPendingDriverResponse() ? (
           <div className="flex space-x-2 pt-3 border-t">
             <Button 
               variant="outline" 

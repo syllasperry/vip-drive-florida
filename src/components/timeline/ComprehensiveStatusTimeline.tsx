@@ -24,7 +24,7 @@ interface TimelineItem {
   id: string;
   label: string;
   timestamp: string;
-  price?: string; // Optional property
+  price?: string;
   backgroundColor: string;
   textColor: string;
   actor: {
@@ -33,6 +33,7 @@ interface TimelineItem {
     photo_url?: string;
   };
   isCompleted: boolean;
+  statusOrder: number; // Add order property for proper sorting
 }
 
 const statusConfig = {
@@ -41,35 +42,40 @@ const statusConfig = {
     driver_label: 'Booking Request Received',
     bg: 'bg-sky-400',
     text: 'text-white',
-    actor: 'passenger'
+    actor: 'passenger',
+    order: 1
   },
   'offer_sent': {
     passenger_label: 'Offer Received - Awaiting Acceptance',
     driver_label: 'Offer Sent - Awaiting Passenger Response',
     bg: 'bg-orange-400',
     text: 'text-white',
-    actor: 'driver'
+    actor: 'driver',
+    order: 2
   },
   'offer_accepted': {
     passenger_label: 'Offer Accepted',
     driver_label: 'Offer Accepted',
     bg: 'bg-amber-400',
     text: 'text-black',
-    actor: 'passenger'
+    actor: 'passenger',
+    order: 3
   },
   'payment_confirmed': {
     passenger_label: 'Payment Confirmed',
     driver_label: 'Payment Confirmed',
     bg: 'bg-sky-500',
     text: 'text-white',
-    actor: 'passenger'
+    actor: 'passenger',
+    order: 4
   },
   'all_set': {
     passenger_label: 'All Set',
     driver_label: 'All Set',
     bg: 'bg-purple-500',
     text: 'text-white',
-    actor: 'driver'
+    actor: 'driver',
+    order: 5
   }
 };
 
@@ -102,6 +108,7 @@ export const ComprehensiveStatusTimeline = ({
   const currentStatus = statusData?.current_status || 'pending';
   const currentStatusIndex = statusOrder.indexOf(currentStatus);
 
+  // Create timeline items for all completed statuses
   const timelineItems: TimelineItem[] = statusOrder
     .map((statusKey, index) => {
       const config = statusConfig[statusKey as keyof typeof statusConfig];
@@ -129,7 +136,8 @@ export const ComprehensiveStatusTimeline = ({
           role: actorRole === 'passenger' ? 'Passenger' : 'Driver' as 'Driver' | 'Passenger',
           photo_url: actorData?.photo_url
         },
-        isCompleted: true
+        isCompleted: true,
+        statusOrder: config.order
       };
 
       // Only add price if it should be shown for this status
@@ -140,7 +148,8 @@ export const ComprehensiveStatusTimeline = ({
       return timelineItem;
     })
     .filter((item): item is TimelineItem => item !== null)
-    .reverse(); // Most recent first - creates vertical stack with newest at top
+    // Sort by statusOrder in descending order (most recent first)
+    .sort((a, b) => b.statusOrder - a.statusOrder);
 
   return (
     <div className={`space-y-3 ${className}`}>
@@ -153,7 +162,7 @@ export const ComprehensiveStatusTimeline = ({
         )}
       </div>
       
-      {/* Vertical stack of all completed statuses */}
+      {/* Vertical stack of all completed statuses - most recent at top */}
       {timelineItems.map((item, index) => (
         <Card 
           key={`${item.id}-${index}`}
