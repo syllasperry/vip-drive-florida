@@ -23,7 +23,34 @@ const PassengerDashboard = () => {
 
   useEffect(() => {
     checkAuth();
+    setupRealtimeSubscription();
   }, []);
+
+  const setupRealtimeSubscription = () => {
+    const channel = supabase
+      .channel('passenger-bookings')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings'
+        },
+        (payload) => {
+          console.log('📡 Real-time booking update for passenger:', payload);
+          // Refresh bookings when changes occur
+          const { data: { user } } = supabase.auth.getUser();
+          if (user?.user) {
+            loadBookings(user.user.id);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
 
   const checkAuth = async () => {
     try {
@@ -94,12 +121,14 @@ const PassengerDashboard = () => {
         vehicle_type: booking.vehicle_type,
         simple_status: mapToSimpleStatus(booking.status, booking.ride_status, booking.payment_confirmation_status),
         estimated_price: booking.estimated_price,
-        final_negotiated_price: booking.estimated_price,
+        final_negotiated_price: booking.final_price,
+        final_price: booking.final_price,
         created_at: booking.created_at,
         passenger_id: booking.passenger_id,
         driver_id: booking.driver_id,
         status: booking.status,
         ride_status: booking.ride_status,
+        payment_confirmation_status: booking.payment_confirmation_status,
         driver_profiles: booking.drivers ? {
           full_name: booking.drivers.full_name,
           phone: booking.drivers.phone,
@@ -111,6 +140,7 @@ const PassengerDashboard = () => {
         } : undefined
       }));
 
+      console.log('📊 Passenger loaded bookings:', mappedBookings);
       setBookings(mappedBookings);
     } catch (error) {
       console.error('Error loading bookings:', error);
@@ -133,7 +163,7 @@ const PassengerDashboard = () => {
     // Check for All Set status
     if (paymentStatus === 'all_set' || rideStatus === 'all_set') return 'all_set';
     
-    // Check for Offer Price Sent status - this is the key fix
+    // Check for Offer Price Sent status - agora com trigger SQL funcionando
     if (status === 'offer_sent' || rideStatus === 'offer_sent' || paymentStatus === 'waiting_for_payment') {
       return 'payment_pending';
     }
@@ -328,7 +358,7 @@ const PassengerDashboard = () => {
                     </span>
                   </div>
 
-                  {/* Driver Information (only name and photo for payment_pending, full info for all_set) */}
+                  {/* Driver Information - show different info based on status */}
                   {booking.simple_status === 'payment_pending' && booking.driver_profiles && (
                     <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                       <p className="text-sm font-medium text-gray-900 mb-2">Your Assigned Driver</p>

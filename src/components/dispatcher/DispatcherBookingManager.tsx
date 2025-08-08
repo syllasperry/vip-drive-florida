@@ -73,13 +73,12 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
         estimated_price: priceValue
       });
 
+      // O trigger SQL agora vai automaticamente definir o status como 'offer_sent'
+      // quando final_price e driver_id são definidos
       const updateData = {
         estimated_price: priceValue,
         final_price: priceValue,
         driver_id: selectedDriver,
-        status: 'offer_sent',
-        ride_status: 'offer_sent',
-        payment_confirmation_status: 'waiting_for_payment',
         updated_at: new Date().toISOString()
       };
 
