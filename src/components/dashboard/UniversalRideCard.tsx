@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Clock, MapPin, Users, Car, Phone, MessageCircle, DollarSign, Calendar, Eye } from 'lucide-react';
+import { Clock, MapPin, Users, Car, Phone, MessageCircle, DollarSign, Calendar } from 'lucide-react';
 import { ComprehensiveStatusTimeline } from '@/components/timeline/ComprehensiveStatusTimeline';
 import { format, parseISO } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
@@ -17,8 +17,6 @@ interface UniversalRideCardProps {
   onMessage?: () => void;
   onViewSummary?: () => void;
   onStatusUpdate?: () => void;
-  onViewDetails?: () => void;
-  onCall?: () => void;
 }
 
 export const UniversalRideCard = ({ 
@@ -28,9 +26,7 @@ export const UniversalRideCard = ({
   className = "",
   onMessage,
   onViewSummary,
-  onStatusUpdate,
-  onViewDetails,
-  onCall
+  onStatusUpdate
 }: UniversalRideCardProps) => {
   const [showDetails, setShowDetails] = useState(false);
   const { toast } = useToast();
@@ -61,35 +57,24 @@ export const UniversalRideCard = ({
   };
 
   // Handle phone call action
-  const handleCall = () => {
-    if (onCall) {
-      onCall();
-    } else if (otherUser?.phone) {
+  const handleCallDriver = () => {
+    if (userType === 'passenger' && otherUser?.phone) {
       window.location.href = `tel:${otherUser.phone}`;
     } else {
       toast({
         title: "Phone Number Not Available",
-        description: `${userType === 'passenger' ? 'Driver' : 'Passenger'}'s phone number is not available.`,
+        description: "Driver's phone number is not available.",
         variant: "destructive"
       });
     }
   };
 
   // Handle message action
-  const handleMessage = () => {
+  const handleMessageDriver = () => {
     if (onMessage) {
       onMessage();
     } else if (onAction) {
       onAction('message');
-    }
-  };
-
-  // Handle view details action
-  const handleViewDetails = () => {
-    if (onViewDetails) {
-      onViewDetails();
-    } else if (onAction) {
-      onAction('view_details');
     }
   };
 
@@ -200,7 +185,7 @@ export const UniversalRideCard = ({
             variant="outline" 
             size="sm" 
             className="flex-1"
-            onClick={handleMessage}
+            onClick={handleMessageDriver}
           >
             <MessageCircle className="h-4 w-4 mr-2" />
             Message
@@ -209,22 +194,10 @@ export const UniversalRideCard = ({
           <Button 
             variant="outline" 
             size="sm"
-            onClick={handleCall}
+            onClick={handleCallDriver}
           >
             <Phone className="h-4 w-4" />
           </Button>
-          
-          {/* View Details button for drivers */}
-          {userType === 'driver' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleViewDetails}
-            >
-              <Eye className="h-4 w-4 mr-2" />
-              View Details
-            </Button>
-          )}
           
           <Button
             variant="default"
@@ -232,7 +205,7 @@ export const UniversalRideCard = ({
             className="flex-1"
             onClick={() => setShowDetails(!showDetails)}
           >
-            {showDetails ? 'Hide Details' : 'Show Details'}
+            {showDetails ? 'Hide Details' : 'View Details'}
           </Button>
         </div>
 
