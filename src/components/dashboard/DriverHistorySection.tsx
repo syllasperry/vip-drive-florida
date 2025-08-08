@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,26 +11,38 @@ interface DriverHistorySectionProps {
   currentDriverId: string;
   currentDriverName: string;
   currentDriverAvatar?: string;
+  onMessage?: (booking: any) => void;
+  onCall?: (booking: any) => void;
 }
 
 export const DriverHistorySection = ({ 
   bookings, 
   currentDriverId, 
   currentDriverName, 
-  currentDriverAvatar 
+  currentDriverAvatar,
+  onMessage,
+  onCall
 }: DriverHistorySectionProps) => {
   const [selectedBookingForMessage, setSelectedBookingForMessage] = useState<any>(null);
   const [selectedBookingForDetails, setSelectedBookingForDetails] = useState<any>(null);
 
   const handleMessage = (booking: any) => {
-    setSelectedBookingForMessage(booking);
+    if (onMessage) {
+      onMessage(booking);
+    } else {
+      setSelectedBookingForMessage(booking);
+    }
   };
 
   const handleCall = (booking: any) => {
-    const passengerPhone = booking.passengers?.phone || booking.passenger?.phone;
-    if (passengerPhone) {
-      const cleanPhone = passengerPhone.replace(/[^\d]/g, '');
-      window.location.href = `tel:+1${cleanPhone}`;
+    if (onCall) {
+      onCall(booking);
+    } else {
+      const passengerPhone = booking.passengers?.phone || booking.passenger?.phone;
+      if (passengerPhone) {
+        const cleanPhone = passengerPhone.replace(/[^\d]/g, '');
+        window.location.href = `tel:+1${cleanPhone}`;
+      }
     }
   };
 
@@ -202,8 +213,8 @@ export const DriverHistorySection = ({
         </CardContent>
       </Card>
 
-      {/* Messaging Interface */}
-      {selectedBookingForMessage && (
+      {/* Messaging Interface - only show if not using parent handlers */}
+      {!onMessage && selectedBookingForMessage && (
         <MessagingInterface
           isOpen={!!selectedBookingForMessage}
           onClose={() => setSelectedBookingForMessage(null)}
@@ -227,4 +238,30 @@ export const DriverHistorySection = ({
       )}
     </>
   );
+};
+
+const getStatusBadgeVariant = (status: string) => {
+  switch (status) {
+    case 'completed':
+      return 'default';
+    case 'cancelled':
+      return 'destructive';
+    case 'confirmed':
+      return 'secondary';
+    default:
+      return 'outline';
+  }
+};
+
+const formatDateTime = (dateString: string, timeString?: string) => {
+  if (!dateString) return 'Date TBD';
+  
+  const date = new Date(dateString + (timeString ? ` ${timeString}` : ''));
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: timeString ? '2-digit' : undefined,
+    minute: timeString ? '2-digit' : undefined
+  });
 };

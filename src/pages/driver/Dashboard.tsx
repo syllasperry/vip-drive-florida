@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -20,7 +19,18 @@ import { useRealtimeBookings } from "@/hooks/useRealtimeBookings";
 
 interface BookingData {
   id: string;
-  // Add other booking properties as needed
+  status?: string;
+  date?: string;
+  time?: string;
+  pickup_location?: string;
+  dropoff_location?: string;
+  final_price?: number;
+  estimated_price?: number;
+  passengers?: {
+    full_name?: string;
+    phone?: string;
+    profile_photo_url?: string;
+  };
   [key: string]: any;
 }
 
@@ -29,7 +39,7 @@ const DriverDashboard = () => {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
-  const [selectedBookingForMessage, setSelectedBookingForMessage] = useState<any>(null);
+  const [selectedBookingForMessage, setSelectedBookingForMessage] = useState<BookingData | null>(null);
   const [completedBookings, setCompletedBookings] = useState<BookingData[]>([]);
   const [bookings, setBookings] = useState<BookingData[]>([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
@@ -41,16 +51,17 @@ const DriverDashboard = () => {
   const { isConnected } = useRealtimeBookings({
     userId: user?.id || '',
     userType: 'driver',
-    onBookingUpdate: (booking: BookingData) => {
+    onBookingUpdate: (booking: any) => {
       // Handle booking updates here
+      const typedBooking = booking as BookingData;
       setBookings(prev => {
-        const index = prev.findIndex(b => b.id === booking.id);
+        const index = prev.findIndex(b => b.id === typedBooking.id);
         if (index >= 0) {
           const updated = [...prev];
-          updated[index] = booking;
+          updated[index] = typedBooking;
           return updated;
         } else {
-          return [booking, ...prev];
+          return [typedBooking, ...prev];
         }
       });
     }
@@ -166,11 +177,11 @@ const DriverDashboard = () => {
     }
   };
 
-  const handleMessage = (booking: any) => {
+  const handleMessage = (booking: BookingData) => {
     setSelectedBookingForMessage(booking);
   };
 
-  const handleCall = (booking: any) => {
+  const handleCall = (booking: BookingData) => {
     const passengerPhone = booking.passengers?.phone;
     if (passengerPhone) {
       const cleanPhone = passengerPhone.replace(/[^\d]/g, '');
@@ -184,7 +195,7 @@ const DriverDashboard = () => {
     }
   };
 
-  const handleViewSummary = (booking: any) => {
+  const handleViewSummary = (booking: BookingData) => {
     console.log("View summary for booking:", booking);
     // Implement view summary functionality
   };
