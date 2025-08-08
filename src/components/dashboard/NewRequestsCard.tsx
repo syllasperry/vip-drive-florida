@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +13,7 @@ interface NewRequestsCardProps {
   className?: string;
   onAccept?: (booking: any) => void;
   onDecline?: (booking: any) => void;
+  onSendOffer?: (booking: any) => void;
   onMessage?: (booking: any) => void;
   onCall?: (booking: any) => void;
 }
@@ -24,6 +24,7 @@ export const NewRequestsCard = ({
   className = "",
   onAccept,
   onDecline,
+  onSendOffer,
   onMessage,
   onCall
 }: NewRequestsCardProps) => {
