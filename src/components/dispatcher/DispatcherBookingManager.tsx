@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,7 +18,6 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [finalPrice, setFinalPrice] = useState(booking.estimated_price || '');
-  const [notes, setNotes] = useState(booking.dispatcher_notes || '');
   const [selectedDriver, setSelectedDriver] = useState(booking.driver_id || '');
   const [drivers, setDrivers] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -38,12 +36,26 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
   };
 
   const handleUpdateBooking = async () => {
+    if (!selectedDriver || !finalPrice) {
+      toast({
+        title: "Missing Information",
+        description: "Please select a driver and set a price",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const updateData: any = {
         estimated_price: parseFloat(finalPrice),
-        driver_id: selectedDriver || null,
-        status: selectedDriver && finalPrice ? 'offer_sent' : 'pending'
+        final_price: parseFloat(finalPrice),
+        driver_id: selectedDriver,
+        simple_status: 'payment_pending',
+        status: 'offer_sent',
+        ride_status: 'offer_sent',
+        payment_confirmation_status: 'waiting_for_payment',
+        updated_at: new Date().toISOString()
       };
 
       const { error } = await supabase
@@ -55,7 +67,7 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
 
       toast({
         title: "Success",
-        description: "Booking updated successfully",
+        description: "Offer sent to passenger successfully",
       });
 
       onUpdate();
@@ -64,7 +76,7 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
       console.error('Error updating booking:', error);
       toast({
         title: "Error",
-        description: "Failed to update booking",
+        description: "Failed to send offer",
         variant: "destructive",
       });
     } finally {
@@ -87,7 +99,7 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Manage Booking</DialogTitle>
+          <DialogTitle>Assign Driver & Set Price</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
@@ -119,23 +131,12 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
             </Select>
           </div>
 
-          <div>
-            <Label htmlFor="notes">Dispatcher Notes</Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add any notes about this booking..."
-              rows={3}
-            />
-          </div>
-
           <div className="flex justify-end space-x-2">
             <Button variant="outline" onClick={() => setIsOpen(false)}>
               Cancel
             </Button>
             <Button onClick={handleUpdateBooking} disabled={loading}>
-              {loading ? 'Updating...' : 'Update Booking'}
+              {loading ? 'Sending Offer...' : 'Send Offer'}
             </Button>
           </div>
         </div>

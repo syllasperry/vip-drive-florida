@@ -128,7 +128,7 @@ const PassengerDashboard = () => {
     if (status === 'completed' || rideStatus === 'completed') return 'completed';
     if (status === 'cancelled') return 'cancelled';
     if (paymentStatus === 'all_set' || rideStatus === 'all_set') return 'all_set';
-    if (rideStatus === 'offer_sent' || status === 'offer_sent') return 'payment_pending';
+    if (rideStatus === 'offer_sent' || status === 'offer_sent' || paymentStatus === 'waiting_for_payment') return 'payment_pending';
     return 'booking_requested';
   };
 
@@ -145,38 +145,30 @@ const PassengerDashboard = () => {
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case 'booking_requested': return 'Pending';
-      case 'payment_pending': return 'Pending';
-      case 'all_set': return 'Confirmed';
+      case 'booking_requested': return 'Booking Requested';
+      case 'payment_pending': return 'Offer Price Sent';
+      case 'all_set': return 'All Set';
       case 'completed': return 'Completed';
       case 'cancelled': return 'Cancelled';
       default: return status;
     }
   };
 
-  const getStatusMessage = (booking: Booking) => {
-    switch (booking.simple_status) {
-      case 'booking_requested':
-        return 'We\'ve received your booking request and are working on confirming your ride. You\'ll be notified once we have a driver and final price.';
-      case 'payment_pending':
-        return `Your ride is confirmed! The final price is $${booking.final_negotiated_price}. Please complete your payment to finalize the booking.`;
-      case 'all_set':
-        return 'Payment confirmed! Your ride is all set. Your driver will contact you before pickup.';
-      case 'completed':
-        return 'Your ride has been completed. Thank you for choosing our service!';
-      case 'cancelled':
-        return 'This booking has been cancelled. Please contact us if you have any questions.';
-      default:
-        return 'Status update in progress...';
-    }
-  };
-
   const handlePayment = (booking: Booking) => {
-    // For now, simulate payment - in production this would integrate with Stripe
+    // Placeholder for Stripe payment integration
     toast({
-      title: "Payment Instructions",
-      description: "You will receive payment instructions via email shortly.",
+      title: "Payment Processing",
+      description: `Processing payment of $${booking.final_price || booking.estimated_price}`,
     });
+    
+    // TODO: Integrate with Stripe checkout here
+    // For now, simulate payment completion
+    setTimeout(() => {
+      toast({
+        title: "Payment Successful",
+        description: "Your booking is now confirmed!",
+      });
+    }, 2000);
   };
 
   const handleCall = () => {
@@ -280,7 +272,7 @@ const PassengerDashboard = () => {
                     #{booking.id.slice(-8).toUpperCase()}
                   </div>
 
-                  {/* Locations */}
+                  {/* Locations with vector icons */}
                   <div className="space-y-2 mb-4">
                     <div className="flex items-start space-x-3">
                       <div className="w-3 h-3 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
@@ -323,11 +315,32 @@ const PassengerDashboard = () => {
                   {/* Price */}
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-2xl font-bold text-red-600">
-                      ${booking.final_negotiated_price || booking.estimated_price || 0}
+                      ${booking.final_price || booking.estimated_price || 0}
                     </span>
                   </div>
 
-                  {/* Driver Information (only shown when all_set) */}
+                  {/* Driver Information (only name and photo for payment_pending, full info for all_set) */}
+                  {booking.simple_status === 'payment_pending' && booking.driver_profiles && (
+                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                      <p className="text-sm font-medium text-gray-900 mb-2">Your Assigned Driver</p>
+                      <div className="flex items-center space-x-3">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={booking.driver_profiles.profile_photo_url} />
+                          <AvatarFallback className="bg-gray-200 text-gray-600">
+                            {booking.driver_profiles.full_name.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900">{booking.driver_profiles.full_name}</p>
+                          <p className="text-sm text-gray-500">
+                            {booking.driver_profiles.car_make} {booking.driver_profiles.car_model}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Full Driver Information (only shown when all_set) */}
                   {booking.simple_status === 'all_set' && booking.driver_profiles && (
                     <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                       <p className="text-sm font-medium text-gray-900 mb-2">Your Driver</p>
@@ -340,6 +353,7 @@ const PassengerDashboard = () => {
                         </Avatar>
                         <div className="flex-1">
                           <p className="font-medium text-gray-900">{booking.driver_profiles.full_name}</p>
+                          <p className="text-sm text-gray-500">{booking.driver_profiles.phone}</p>
                           <p className="text-sm text-gray-500">
                             {booking.driver_profiles.car_make} {booking.driver_profiles.car_model} 
                             ({booking.driver_profiles.car_color})
@@ -379,7 +393,6 @@ const PassengerDashboard = () => {
                       size="sm"
                       className="flex-1 bg-red-500 hover:bg-red-600 text-white"
                       onClick={() => {
-                        // Navigate to view details page or show modal
                         toast({
                           title: "View Details",
                           description: "Detailed view coming soon",
@@ -396,7 +409,7 @@ const PassengerDashboard = () => {
                       className="w-full mt-3 bg-red-500 hover:bg-red-600 text-white"
                       onClick={() => handlePayment(booking)}
                     >
-                      Complete Payment
+                      Pay ${booking.final_price || booking.estimated_price} - Complete Booking
                     </Button>
                   )}
                 </CardContent>

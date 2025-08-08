@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -90,7 +89,7 @@ const DispatcherDashboard = () => {
     if (status === 'completed' || rideStatus === 'completed') return 'completed';
     if (status === 'cancelled') return 'cancelled';
     if (paymentStatus === 'all_set' || rideStatus === 'all_set') return 'all_set';
-    if (rideStatus === 'offer_sent' || status === 'offer_sent') return 'payment_pending';
+    if (rideStatus === 'offer_sent' || status === 'offer_sent' || paymentStatus === 'waiting_for_payment') return 'payment_pending';
     return 'booking_requested';
   };
 
@@ -107,9 +106,9 @@ const DispatcherDashboard = () => {
 
   const getStatusLabel = (status: Booking['simple_status']) => {
     switch (status) {
-      case 'booking_requested': return 'Pending';
-      case 'payment_pending': return 'Pending';
-      case 'all_set': return 'Confirmed';
+      case 'booking_requested': return 'Booking Requested';
+      case 'payment_pending': return 'Offer Price Sent';
+      case 'all_set': return 'All Set';
       case 'completed': return 'Completed';
       case 'cancelled': return 'Cancelled';
       default: return status;
@@ -226,7 +225,7 @@ const DispatcherDashboard = () => {
                         #{booking.id.slice(-8).toUpperCase()}
                       </div>
 
-                      {/* Locations */}
+                      {/* Locations with vector icons */}
                       <div className="space-y-2 mb-4">
                         <div className="flex items-start space-x-3">
                           <div className="w-3 h-3 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
@@ -269,7 +268,7 @@ const DispatcherDashboard = () => {
                       {/* Price */}
                       <div className="flex items-center justify-between">
                         <span className="text-2xl font-bold text-red-600">
-                          ${booking.estimated_price || 0}
+                          ${booking.final_price || booking.estimated_price || 0}
                         </span>
                         {booking.simple_status === 'booking_requested' && (
                           <Button 

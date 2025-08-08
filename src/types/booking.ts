@@ -9,6 +9,7 @@ export interface Booking {
   simple_status: 'booking_requested' | 'payment_pending' | 'all_set' | 'completed' | 'cancelled';
   estimated_price?: number;
   final_negotiated_price?: number;
+  final_price?: number;
   created_at: string;
   passenger_id: string;
   driver_id?: string;
