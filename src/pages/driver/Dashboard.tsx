@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProfileHeader } from '@/components/dashboard/ProfileHeader';
 import { BookingToggle } from '@/components/dashboard/BookingToggle';
-import { OrganizedBookingsList } from '@/components/dashboard/OrganizedBookingsList';
+import OrganizedBookingsList from '@/components/dashboard/OrganizedBookingsList';
 import { MessagesTab } from '@/components/dashboard/MessagesTab';
 import { EarningsSection } from '@/components/dashboard/EarningsSection';
 import { PaymentsTab } from '@/components/PaymentsTab';
@@ -21,6 +22,7 @@ const Dashboard = () => {
   const [showPassengerDetails, setShowPassengerDetails] = useState(false);
   const [selectedPassenger, setSelectedPassenger] = useState<any>(null);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState('rides');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -38,7 +40,7 @@ const Dashboard = () => {
         if (driverError) throw driverError;
 
         setDriverData(driverData);
-        setIsAvailable(driverData?.is_available || false);
+        setIsAvailable(driverData?.available || false);
       } catch (error: any) {
         console.error("Error fetching driver data:", error);
         toast({
@@ -97,7 +99,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     const setupRealtime = async () => {
-      await supabase
+      const channel = supabase
         .channel('public:bookings')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, async (payload) => {
           console.log('Change received!', payload)
@@ -137,7 +139,7 @@ const Dashboard = () => {
         .subscribe()
 
       return () => {
-        supabase.removeChannel('public:bookings');
+        supabase.removeChannel(channel);
       };
     };
 
@@ -242,13 +244,11 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-md mx-auto bg-white min-h-screen">
         <ProfileHeader 
-          user={driverData} 
-          userType="driver" 
-          isAvailable={isAvailable}
-          onAvailabilityChange={setIsAvailable}
+          driverData={driverData} 
+          userType="driver"
         />
         
-        <Tabs defaultValue="rides" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="rides">Rides</TabsTrigger>
             <TabsTrigger value="messages">Messages</TabsTrigger>
@@ -257,7 +257,7 @@ const Dashboard = () => {
           
           <TabsContent value="rides" className="px-4 pb-20">
             <BookingToggle 
-              isAvailable={isAvailable}
+              available={isAvailable}
               onToggle={setIsAvailable}
             />
             
@@ -270,16 +270,24 @@ const Dashboard = () => {
           </TabsContent>
           
           <TabsContent value="messages" className="px-4 pb-20">
-            <MessagesTab userType="driver" />
+            <MessagesTab 
+              userType="driver" 
+              userId={driverData?.id || ''}
+              onSelectChat={() => {}}
+            />
           </TabsContent>
           
           <TabsContent value="payments" className="px-4 pb-20">
             <EarningsSection driverId={driverData?.id} />
-            <PaymentsTab />
+            <PaymentsTab userId={driverData?.id || ''} userType="driver" />
           </TabsContent>
         </Tabs>
 
-        <BottomNavigation userType="driver" />
+        <BottomNavigation 
+          userType="driver" 
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
 
         {messageBookingId && (
           <MessagingInterface

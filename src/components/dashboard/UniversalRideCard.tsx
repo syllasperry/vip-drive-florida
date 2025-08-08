@@ -1,9 +1,10 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Clock, MapPin, Users, Car, Phone, MessageCircle, DollarSign, Calendar } from 'lucide-react';
+import { Clock, MapPin, Users, Car, Phone, MessageCircle, DollarSign, Calendar, Eye } from 'lucide-react';
 import { ComprehensiveStatusTimeline } from '@/components/timeline/ComprehensiveStatusTimeline';
 import { format, parseISO } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
@@ -11,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 interface UniversalRideCardProps {
   booking: any;
   userType: 'passenger' | 'driver';
-  onAction?: (action: string) => void;
+  onAction?: (action: string, bookingId: string) => void;
   className?: string;
   onMessage?: () => void;
   onViewSummary?: () => void;
@@ -57,30 +58,22 @@ export const UniversalRideCard = ({
 
   // Handle phone call action
   const handleCall = () => {
-    if (otherUser?.phone) {
-      window.location.href = `tel:${otherUser.phone}`;
-    } else {
-      toast({
-        title: "Phone Number Not Available",
-        description: `${userType === 'passenger' ? 'Driver' : 'Passenger'}'s phone number is not available.`,
-        variant: "destructive"
-      });
+    if (onAction) {
+      onAction('call', booking.id);
     }
   };
 
   // Handle message action
   const handleMessage = () => {
-    if (onMessage) {
-      onMessage();
-    } else if (onAction) {
-      onAction('message');
+    if (onAction) {
+      onAction('message', booking.id);
     }
   };
 
   // Handle view details action
   const handleViewDetails = () => {
     if (onAction) {
-      onAction('view_details');
+      onAction('view_details', booking.id);
     }
   };
 
@@ -185,7 +178,7 @@ export const UniversalRideCard = ({
           />
         </div>
 
-        {/* Action buttons */}
+        {/* Action buttons - The three requested buttons */}
         <div className="flex space-x-2 pt-3 border-t">
           <Button 
             variant="outline" 
@@ -213,6 +206,7 @@ export const UniversalRideCard = ({
             onClick={handleViewDetails}
             className="flex-1"
           >
+            <Eye className="h-4 w-4 mr-2" />
             View Details
           </Button>
         </div>
