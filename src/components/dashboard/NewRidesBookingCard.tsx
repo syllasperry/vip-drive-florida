@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MapPin, Clock, Users, DollarSign, MessageCircle, Phone } from 'lucide-react';
-import { StatusTimeline } from '@/components/timeline/StatusTimeline';
+import { ComprehensiveStatusTimeline } from '@/components/timeline/ComprehensiveStatusTimeline';
 import { format } from 'date-fns';
 import { Button } from "@/components/ui/button";
 
@@ -35,6 +35,17 @@ export const NewRidesBookingCard = ({
       case 'offer_accepted': return 'bg-green-500 text-white';
       default: return 'bg-gray-500 text-white';
     }
+  };
+
+  // Prepare participant data for timeline
+  const passengerData = {
+    name: passenger?.full_name || 'Passenger',
+    photo_url: passenger?.profile_photo_url
+  };
+
+  const driverData = {
+    name: driver?.full_name || 'Driver',
+    photo_url: driver?.profile_photo_url
   };
 
   return (
@@ -112,12 +123,13 @@ export const NewRidesBookingCard = ({
           </div>
         </div>
 
-        {/* Status Timeline */}
-        <StatusTimeline
+        {/* Comprehensive Status Timeline */}
+        <ComprehensiveStatusTimeline
           bookingId={booking.id}
           userType="driver"
-          userPhotoUrl={driver?.profile_photo_url}
-          otherUserPhotoUrl={passenger?.profile_photo_url}
+          passengerData={passengerData}
+          driverData={driverData}
+          finalPrice={booking.final_price || booking.estimated_price}
           className="w-full mb-4"
         />
 

@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MapPin, Clock, Users, DollarSign } from 'lucide-react';
-import { StatusTimeline } from '@/components/timeline/StatusTimeline';
+import { ComprehensiveStatusTimeline } from '@/components/timeline/ComprehensiveStatusTimeline';
 import { format } from 'date-fns';
 
 interface BookingCardProps {
@@ -44,6 +44,17 @@ export const BookingCard = ({
       case 'all_set': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  // Prepare participant data for timeline
+  const passengerData = {
+    name: booking.passengers?.full_name || 'Passenger',
+    photo_url: booking.passengers?.profile_photo_url
+  };
+
+  const driverData = {
+    name: booking.drivers?.full_name || 'Driver', 
+    photo_url: booking.drivers?.profile_photo_url
   };
 
   return (
@@ -121,12 +132,13 @@ export const BookingCard = ({
           </div>
         </div>
 
-        {/* Visual Status Timeline */}
-        <StatusTimeline
+        {/* Comprehensive Status Timeline */}
+        <ComprehensiveStatusTimeline
           bookingId={booking.id}
           userType={userType}
-          userPhotoUrl={currentUser?.profile_photo_url}
-          otherUserPhotoUrl={otherUser?.profile_photo_url}
+          passengerData={passengerData}
+          driverData={driverData}
+          finalPrice={booking.final_price || booking.estimated_price}
           className="w-full"
         />
       </CardContent>
