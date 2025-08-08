@@ -9,28 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MapPin, Clock, Users, DollarSign, MessageCircle, Phone, ArrowLeft } from 'lucide-react';
 import { MessagingInterface } from "@/components/MessagingInterface";
 import { format } from 'date-fns';
-
-interface Booking {
-  id: string;
-  pickup_location: string;
-  dropoff_location: string;
-  pickup_time: string;
-  passenger_count: number;
-  vehicle_type?: string;
-  simple_status: 'booking_requested' | 'payment_pending' | 'all_set' | 'completed' | 'cancelled';
-  estimated_price?: number;
-  final_negotiated_price?: number;
-  created_at: string;
-  driver_profiles?: {
-    full_name: string;
-    phone: string;
-    profile_photo_url?: string;
-    car_make: string;
-    car_model: string;
-    car_color: string;
-    license_plate: string;
-  };
-}
+import { Booking } from "@/types/booking";
 
 const PassengerDashboard = () => {
   const navigate = useNavigate();
@@ -89,7 +68,7 @@ const PassengerDashboard = () => {
         .from('bookings')
         .select(`
           *,
-          driver_profiles (
+          drivers (
             full_name,
             phone,
             profile_photo_url,
@@ -104,12 +83,32 @@ const PassengerDashboard = () => {
 
       if (error) throw error;
 
-      // Map the data to include simple_status based on existing status
-      const mappedBookings = (data || []).map(booking => ({
-        ...booking,
+      // Map the data to match our Booking interface
+      const mappedBookings: Booking[] = (data || []).map(booking => ({
+        id: booking.id,
+        pickup_location: booking.pickup_location,
+        dropoff_location: booking.dropoff_location,
+        pickup_time: booking.pickup_time,
+        passenger_count: booking.passenger_count,
+        vehicle_type: booking.vehicle_type,
         simple_status: mapToSimpleStatus(booking.status, booking.ride_status, booking.payment_confirmation_status),
-        final_negotiated_price: booking.estimated_price
-      })) as Booking[];
+        estimated_price: booking.estimated_price,
+        final_negotiated_price: booking.estimated_price,
+        created_at: booking.created_at,
+        passenger_id: booking.passenger_id,
+        driver_id: booking.driver_id,
+        status: booking.status,
+        ride_status: booking.ride_status,
+        driver_profiles: booking.drivers ? {
+          full_name: booking.drivers.full_name,
+          phone: booking.drivers.phone,
+          profile_photo_url: booking.drivers.profile_photo_url,
+          car_make: booking.drivers.car_make,
+          car_model: booking.drivers.car_model,
+          car_color: booking.drivers.car_color,
+          license_plate: booking.drivers.license_plate
+        } : undefined
+      }));
 
       setBookings(mappedBookings);
     } catch (error) {
@@ -209,6 +208,10 @@ const PassengerDashboard = () => {
           <MessagingInterface
             bookingId={selectedBooking.id}
             userType="passenger"
+            isOpen={true}
+            onClose={() => setShowMessaging(false)}
+            currentUserId={selectedBooking.passenger_id}
+            currentUserName="Passenger"
           />
         </div>
       </div>
