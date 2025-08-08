@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -15,23 +16,22 @@ import { EnhancedSettingsModal } from "@/components/EnhancedSettingsModal";
 import { BookingRequestModal } from "@/components/booking/BookingRequestModal";
 import { DriverHistorySection } from "@/components/dashboard/DriverHistorySection";
 import { MessagingInterface } from "@/components/MessagingInterface";
-import { useRealtimeBookings } from "@/hooks/useRealtimeBookings";
 
-interface BookingData {
+// Simplified booking interface to avoid circular references
+interface SimpleBooking {
   id: string;
-  status?: string;
-  date?: string;
-  time?: string;
-  pickup_location?: string;
-  dropoff_location?: string;
-  final_price?: number;
-  estimated_price?: number;
-  passengers?: {
-    full_name?: string;
-    phone?: string;
-    profile_photo_url?: string;
-  };
-  [key: string]: any;
+  status: string;
+  date: string;
+  time: string;
+  pickup_location: string;
+  dropoff_location: string;
+  final_price: number;
+  estimated_price: number;
+  passengers: {
+    full_name: string;
+    phone: string;
+    profile_photo_url: string;
+  } | null;
 }
 
 const DriverDashboard = () => {
@@ -39,33 +39,62 @@ const DriverDashboard = () => {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
-  const [selectedBookingForMessage, setSelectedBookingForMessage] = useState<BookingData | null>(null);
-  const [completedBookings, setCompletedBookings] = useState<BookingData[]>([]);
-  const [bookings, setBookings] = useState<BookingData[]>([]);
+  const [selectedBookingForMessage, setSelectedBookingForMessage] = useState<SimpleBooking | null>(null);
+  const [completedBookings, setCompletedBookings] = useState<SimpleBooking[]>([]);
+  const [bookings, setBookings] = useState<SimpleBooking[]>([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [bookingsError, setBookingsError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('rides');
+  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
   const { toast } = useToast();
 
-  // Set up realtime bookings subscription
-  const { isConnected } = useRealtimeBookings({
-    userId: user?.id || '',
-    userType: 'driver',
-    onBookingUpdate: (booking: any) => {
-      // Handle booking updates here
-      const typedBooking = booking as BookingData;
-      setBookings(prev => {
-        const index = prev.findIndex(b => b.id === typedBooking.id);
-        if (index >= 0) {
-          const updated = [...prev];
-          updated[index] = typedBooking;
-          return updated;
-        } else {
-          return [typedBooking, ...prev];
+  // Simplified realtime setup without complex hook
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel('bookings_updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings',
+        },
+        (payload) => {
+          const booking = payload.new as any;
+          
+          if (booking?.driver_id === user.id) {
+            console.log('📡 Realtime booking update:', {
+              event: payload.eventType,
+              bookingId: booking?.id,
+              status: booking?.status
+            });
+            
+            // Update bookings state
+            setBookings(prev => {
+              const index = prev.findIndex(b => b.id === booking.id);
+              if (index >= 0) {
+                const updated = [...prev];
+                updated[index] = booking;
+                return updated;
+              } else {
+                return [booking, ...prev];
+              }
+            });
+          }
         }
+      )
+      .subscribe((status) => {
+        console.log('📡 Realtime connection status:', status);
+        setIsRealtimeConnected(status === 'SUBSCRIBED');
       });
-    }
-  });
+
+    return () => {
+      supabase.removeChannel(channel);
+      setIsRealtimeConnected(false);
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     const getSession = async () => {
@@ -177,11 +206,11 @@ const DriverDashboard = () => {
     }
   };
 
-  const handleMessage = (booking: BookingData) => {
+  const handleMessage = (booking: SimpleBooking) => {
     setSelectedBookingForMessage(booking);
   };
 
-  const handleCall = (booking: BookingData) => {
+  const handleCall = (booking: SimpleBooking) => {
     const passengerPhone = booking.passengers?.phone;
     if (passengerPhone) {
       const cleanPhone = passengerPhone.replace(/[^\d]/g, '');
@@ -195,7 +224,7 @@ const DriverDashboard = () => {
     }
   };
 
-  const handleViewSummary = (booking: BookingData) => {
+  const handleViewSummary = (booking: SimpleBooking) => {
     console.log("View summary for booking:", booking);
     // Implement view summary functionality
   };
