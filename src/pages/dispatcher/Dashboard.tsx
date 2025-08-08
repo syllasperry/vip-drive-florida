@@ -86,10 +86,19 @@ const DispatcherDashboard = () => {
   };
 
   const mapToSimpleStatus = (status?: string, rideStatus?: string, paymentStatus?: string): Booking['simple_status'] => {
+    console.log('Mapping status:', { status, rideStatus, paymentStatus });
+    
     if (status === 'completed' || rideStatus === 'completed') return 'completed';
     if (status === 'cancelled') return 'cancelled';
+    
+    // Check for All Set status
     if (paymentStatus === 'all_set' || rideStatus === 'all_set') return 'all_set';
-    if (rideStatus === 'offer_sent' || status === 'offer_sent' || paymentStatus === 'waiting_for_payment') return 'payment_pending';
+    
+    // Check for Offer Price Sent status - this is the key fix
+    if (status === 'offer_sent' || rideStatus === 'offer_sent' || paymentStatus === 'waiting_for_payment') {
+      return 'payment_pending';
+    }
+    
     return 'booking_requested';
   };
 
@@ -265,7 +274,7 @@ const DispatcherDashboard = () => {
                         )}
                       </div>
 
-                      {/* Price */}
+                      {/* Price - show final_price if available, otherwise estimated_price */}
                       <div className="flex items-center justify-between">
                         <span className="text-2xl font-bold text-red-600">
                           ${booking.final_price || booking.estimated_price || 0}

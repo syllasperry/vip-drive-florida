@@ -101,6 +101,7 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
         description: "Offer sent to passenger successfully",
       });
 
+      // Force refresh of the bookings list
       onUpdate();
       setIsOpen(false);
     } catch (error) {
