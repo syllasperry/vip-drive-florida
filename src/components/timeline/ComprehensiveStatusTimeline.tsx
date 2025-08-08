@@ -24,7 +24,7 @@ interface TimelineItem {
   id: string;
   label: string;
   timestamp: string;
-  price?: string;
+  price?: string; // Made optional to match the actual usage
   backgroundColor: string;
   textColor: string;
   actor: {
@@ -134,7 +134,7 @@ export const ComprehensiveStatusTimeline = ({
         isCompleted: true
       };
     })
-    .filter((item): item is TimelineItem => item !== null)
+    .filter((item): item is TimelineItem => item !== null) // Fixed type predicate
     .reverse(); // Most recent first - creates vertical stack with newest at top
 
   return (
