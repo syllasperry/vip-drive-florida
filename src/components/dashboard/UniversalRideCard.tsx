@@ -13,13 +13,19 @@ interface UniversalRideCardProps {
   userType: 'passenger' | 'driver';
   onAction?: (action: string) => void;
   className?: string;
+  onMessage?: () => void;
+  onViewSummary?: () => void;
+  onStatusUpdate?: () => void;
 }
 
 export const UniversalRideCard = ({ 
   booking, 
   userType, 
   onAction,
-  className = "" 
+  className = "",
+  onMessage,
+  onViewSummary,
+  onStatusUpdate
 }: UniversalRideCardProps) => {
   const [showDetails, setShowDetails] = useState(false);
 

@@ -12,13 +12,23 @@ interface BookingCardProps {
   userType: 'passenger' | 'driver';
   onClick?: () => void;
   className?: string;
+  onMessage?: () => void;
+  onReview?: () => void;
+  onViewSummary?: () => void;
+  onCancelSuccess?: () => void;
+  onNavigate?: () => void;
 }
 
 export const BookingCard = ({ 
   booking, 
   userType, 
   onClick,
-  className = "" 
+  className = "",
+  onMessage,
+  onReview,
+  onViewSummary,
+  onCancelSuccess,
+  onNavigate
 }: BookingCardProps) => {
   if (!booking) return null;
 
