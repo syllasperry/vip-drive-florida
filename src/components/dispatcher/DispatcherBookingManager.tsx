@@ -28,17 +28,17 @@ interface DispatcherBookingManagerProps {
 
 export const DispatcherBookingManager = ({ booking, onUpdate }: DispatcherBookingManagerProps) => {
   const { toast } = useToast();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [offerPrice, setOfferPrice] = useState('');
-  const [selectedDriverId, setSelectedDriverId] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [offerPrice, setOfferPrice] = useState<string>('');
+  const [selectedDriverId, setSelectedDriverId] = useState<string>('');
   const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
     loadDrivers();
   }, []);
 
-  const loadDrivers = async () => {
+  const loadDrivers = async (): Promise<void> => {
     try {
       const { data, error } = await supabase
         .from('drivers')
@@ -53,7 +53,7 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: DispatcherBookin
     }
   };
 
-  const handleSendOffer = async () => {
+  const handleSendOffer = async (): Promise<void> => {
     if (!offerPrice || !selectedDriverId) {
       toast({
         title: "Missing Information",
@@ -65,7 +65,7 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: DispatcherBookin
 
     setLoading(true);
     try {
-      const priceValue = parseFloat(offerPrice);
+      const priceValue: number = parseFloat(offerPrice);
       
       // Update booking with offer price and manually assigned driver
       const { error } = await supabase
@@ -104,12 +104,20 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: DispatcherBookin
     }
   };
 
-  const calculateCommission = (price: number) => {
+  const calculateCommission = (price: number): string => {
     return (price * 0.20).toFixed(2);
   };
 
-  const calculateDriverAmount = (price: number) => {
+  const calculateDriverAmount = (price: number): string => {
     return (price * 0.80).toFixed(2);
+  };
+
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    setOfferPrice(e.target.value);
+  };
+
+  const handleDriverChange = (value: string): void => {
+    setSelectedDriverId(value);
   };
 
   return (
@@ -132,12 +140,12 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: DispatcherBookin
               <User className="w-4 h-4" />
               <span>Assign Driver</span>
             </Label>
-            <Select value={selectedDriverId} onValueChange={setSelectedDriverId}>
+            <Select value={selectedDriverId} onValueChange={handleDriverChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a driver" />
               </SelectTrigger>
               <SelectContent>
-                {drivers.map((driver) => (
+                {drivers.map((driver: Driver) => (
                   <SelectItem key={driver.id} value={driver.id}>
                     <div className="flex items-center space-x-2">
                       <Car className="w-4 h-4" />
@@ -157,7 +165,7 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: DispatcherBookin
               type="number"
               step="0.01"
               value={offerPrice}
-              onChange={(e) => setOfferPrice(e.target.value)}
+              onChange={handlePriceChange}
               placeholder="Enter offer price"
             />
           </div>
