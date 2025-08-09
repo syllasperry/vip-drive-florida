@@ -1,68 +1,30 @@
+
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MapPin, Clock, Users, DollarSign, MessageCircle, Phone, Car, LogOut, Calculator, Settings } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DispatcherBookingList } from "@/components/dispatcher/DispatcherBookingList";
-import { DispatcherBookingManager } from "@/components/dispatcher/DispatcherBookingManager";
-import { DriverManagement } from "@/components/dispatcher/DriverManagement";
 import { DispatcherMessaging } from "@/components/dispatcher/DispatcherMessaging";
+import { DriverManagement } from "@/components/dispatcher/DriverManagement";
 import { PaymentCalculator } from "@/components/dispatcher/PaymentCalculator";
+import { FinancialReports } from "@/components/dispatcher/FinancialReports";
 import { DispatcherSettings } from "@/components/dispatcher/DispatcherSettings";
-import { format } from 'date-fns';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Car, MessageSquare, Users, Calculator, BarChart3, Settings, LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Booking } from "@/types/booking";
 
-const DispatcherDashboard = () => {
-  const navigate = useNavigate();
-  const { toast } = useToast();
+export default function DispatcherDashboard() {
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("bookings");
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
-    checkAuth();
-    setupRealtimeSubscription();
+    loadBookings();
     
-    const refreshInterval = setInterval(async () => {
-      console.log('🔄 Auto-refreshing dispatcher dashboard...');
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user && user.email === 'syllasperry@gmail.com') {
-          await loadBookings();
-        }
-      } catch (error) {
-        console.error('Error in auto-refresh:', error);
-      }
-    }, 10000);
-
-    return () => {
-      clearInterval(refreshInterval);
-    };
-  }, []);
-
-  const checkAuth = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user || user.email !== 'syllasperry@gmail.com') {
-        navigate('/passenger/login');
-        return;
-      }
-
-      loadBookings();
-    } catch (error) {
-      console.error('Auth error:', error);
-      navigate('/passenger/login');
-    }
-  };
-
-  const setupRealtimeSubscription = () => {
+    // Set up real-time subscription for bookings
     const channel = supabase
-      .channel('dispatcher-bookings-enhanced')
+      .channel('dispatcher-dashboard')
       .on(
         'postgres_changes',
         {
@@ -71,28 +33,27 @@ const DispatcherDashboard = () => {
           table: 'bookings'
         },
         (payload) => {
-          console.log('📡 Enhanced real-time update for dispatcher:', payload);
+          console.log('📡 Dispatcher dashboard real-time update:', payload);
           loadBookings();
         }
       )
-      .subscribe((status) => {
-        console.log('📡 Dispatcher subscription status:', status);
-      });
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  };
+  }, []);
 
   const loadBookings = async () => {
     try {
-      console.log('🔄 Loading bookings for dispatcher...');
+      console.log('🔄 Loading bookings for dispatcher dashboard...');
       
       const { data, error } = await supabase
         .from('bookings')
         .select(`
           *,
-          passengers (
+          passengers:passenger_id (
+            id,
             full_name,
             phone,
             profile_photo_url,
@@ -102,7 +63,7 @@ const DispatcherDashboard = () => {
             trip_purpose,
             additional_notes
           ),
-          drivers (
+          drivers:driver_id (
             full_name,
             phone,
             profile_photo_url,
@@ -116,236 +77,158 @@ const DispatcherDashboard = () => {
 
       if (error) throw error;
 
-      const mappedBookings: Booking[] = (data || []).map(booking => {
-        console.log('📋 Processing dispatcher booking:', {
+      const processedBookings: Booking[] = (data || []).map(booking => {
+        // Only show driver info if both driver_id exists AND final_price exists (indicating manual assignment)
+        const hasManualAssignment = booking.driver_id && booking.final_price;
+        
+        console.log('📋 Processing booking for dispatcher dashboard:', {
           id: booking.id,
-          status: booking.status,
-          ride_status: booking.ride_status,
-          final_price: booking.final_price,
           driver_id: booking.driver_id,
-          isManuallyAssigned: booking.driver_id ? 'YES' : 'NO'
+          final_price: booking.final_price,
+          hasManualAssignment,
+          status: booking.status,
+          ride_status: booking.ride_status
         });
 
         return {
           id: booking.id,
-          pickup_location: booking.pickup_location,
-          dropoff_location: booking.dropoff_location,
-          pickup_time: booking.pickup_time,
-          passenger_count: booking.passenger_count,
+          pickup_location: booking.pickup_location || '',
+          dropoff_location: booking.dropoff_location || '',
+          pickup_time: booking.pickup_time || '',
+          passenger_count: booking.passenger_count || 1,
           vehicle_type: booking.vehicle_type,
-          simple_status: mapToSimpleStatus(booking.status, booking.ride_status, booking.payment_confirmation_status),
+          simple_status: mapToSimpleStatus(booking),
           estimated_price: booking.estimated_price,
           final_negotiated_price: booking.final_price,
           final_price: booking.final_price,
           created_at: booking.created_at,
           passenger_id: booking.passenger_id,
-          driver_id: booking.driver_id,
+          driver_id: hasManualAssignment ? booking.driver_id : undefined, // Only show if manually assigned
           status: booking.status,
           ride_status: booking.ride_status,
           payment_confirmation_status: booking.payment_confirmation_status,
-          passengers: booking.passengers ? {
-            id: booking.passenger_id,
-            full_name: booking.passengers.full_name,
-            phone: booking.passengers.phone,
-            profile_photo_url: booking.passengers.profile_photo_url,
-            preferred_temperature: booking.passengers.preferred_temperature,
-            music_preference: booking.passengers.music_preference,
-            interaction_preference: booking.passengers.interaction_preference,
-            trip_purpose: booking.passengers.trip_purpose,
-            additional_notes: booking.passengers.additional_notes
-          } : undefined,
-          drivers: booking.drivers ? {
-            full_name: booking.drivers.full_name,
-            phone: booking.drivers.phone,
-            profile_photo_url: booking.drivers.profile_photo_url,
-            car_make: booking.drivers.car_make,
-            car_model: booking.drivers.car_model,
-            car_color: booking.drivers.car_color,
-            license_plate: booking.drivers.license_plate
-          } : undefined
+          passengers: booking.passengers,
+          drivers: hasManualAssignment ? booking.drivers : undefined, // Only show if manually assigned
+          driver_profiles: hasManualAssignment ? booking.drivers : undefined // Only show if manually assigned
         };
       });
 
-      console.log('📊 Dispatcher bookings loaded:', {
-        total: mappedBookings.length,
-        withDrivers: mappedBookings.filter(b => b.driver_id).length,
-        withoutDrivers: mappedBookings.filter(b => !b.driver_id).length
-      });
-      
-      setBookings(mappedBookings);
+      setBookings(processedBookings);
+      console.log('📊 Bookings loaded for dispatcher dashboard:', processedBookings.length);
     } catch (error) {
-      console.error('Error loading bookings:', error);
+      console.error('❌ Error loading bookings:', error);
       toast({
         title: "Error",
         description: "Failed to load bookings",
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const mapToSimpleStatus = (status?: string, rideStatus?: string, paymentStatus?: string): Booking['simple_status'] => {
-    console.log('🔍 Dispatcher status mapping:', { status, rideStatus, paymentStatus });
-    
-    if (status === 'completed' || rideStatus === 'completed') return 'completed';
-    if (status === 'cancelled') return 'cancelled';
-    
-    if (paymentStatus === 'all_set' || rideStatus === 'all_set') return 'all_set';
-    
-    if (status === 'offer_sent' || rideStatus === 'offer_sent') {
-      return 'payment_pending';
-    }
-    
-    // Map 'pending' status to 'booking_requested' for consistency
-    if (status === 'pending') return 'booking_requested';
-    
-    return status === 'assigned' ? 'payment_pending' : 'booking_requested';
+  const mapToSimpleStatus = (booking: any): Booking['simple_status'] => {
+    if (booking.status === 'completed' || booking.ride_status === 'completed') return 'completed';
+    if (booking.status === 'cancelled') return 'cancelled';
+    if (booking.payment_confirmation_status === 'all_set' || booking.ride_status === 'all_set') return 'all_set';
+    if (booking.ride_status === 'offer_sent' || booking.payment_confirmation_status === 'price_awaiting_acceptance') return 'payment_pending';
+    return 'booking_requested';
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/passenger/login');
-  };
-
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case "bookings":
-        return (
-          <div className="max-w-4xl mx-auto px-6 py-6 space-y-6">
-            <DispatcherBookingManager onUpdate={loadBookings} />
-            <DispatcherBookingList bookings={bookings} onUpdate={loadBookings} />
-          </div>
-        );
-      case "drivers":
-        return (
-          <div className="max-w-4xl mx-auto px-6 py-6">
-            <DriverManagement />
-          </div>
-        );
-      case "payments":
-        return (
-          <div className="max-w-4xl mx-auto px-6 py-6">
-            <PaymentCalculator />
-          </div>
-        );
-      case "messages":
-        return (
-          <div className="max-w-4xl mx-auto px-6 py-6">
-            <DispatcherMessaging />
-          </div>
-        );
-      case "settings":
-        return (
-          <div className="max-w-4xl mx-auto px-6 py-6">
-            <DispatcherSettings />
-          </div>
-        );
-      default:
-        return (
-          <div className="max-w-4xl mx-auto px-6 py-6 space-y-6">
-            <DispatcherBookingManager onUpdate={loadBookings} />
-            <DispatcherBookingList bookings={bookings} onUpdate={loadBookings} />
-          </div>
-        );
+    try {
+      await supabase.auth.signOut();
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast({
+        title: "Error",
+        description: "Failed to log out",
+        variant: "destructive",
+      });
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading bookings...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground mt-2">Loading dashboard...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-4xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-semibold text-gray-900">VIP Dispatcher Dashboard</h1>
-            <Button onClick={handleLogout} variant="outline" size="sm">
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
-          </div>
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto p-6">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-foreground">VIP Dispatcher Dashboard</h1>
+          <Button onClick={handleLogout} variant="outline" className="flex items-center gap-2">
+            <LogOut className="w-4 h-4" />
+            Logout
+          </Button>
         </div>
-      </div>
 
-      {/* Main Content */}
-      {renderTabContent()}
+        {/* Main Content - Tabs */}
+        <Tabs defaultValue="bookings" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-6">
+            <TabsTrigger value="bookings" className="flex items-center gap-2">
+              <Car className="w-4 h-4" />
+              Bookings
+            </TabsTrigger>
+            <TabsTrigger value="messages" className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4" />
+              Messages
+            </TabsTrigger>
+            <TabsTrigger value="drivers" className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Drivers
+            </TabsTrigger>
+            <TabsTrigger value="calculator" className="flex items-center gap-2">
+              <Calculator className="w-4 h-4" />
+              Calculator
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4" />
+              Reports
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              Settings
+            </TabsTrigger>
+          </TabsList>
 
-      {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
-        <div className="grid grid-cols-5 max-w-lg mx-auto">
-          <button
-            onClick={() => setActiveTab("bookings")}
-            className={`flex flex-col items-center justify-center py-3 px-2 transition-colors ${
-              activeTab === "bookings"
-                ? "text-red-600 font-semibold"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            <Car className={`h-6 w-6 mb-1 ${activeTab === "bookings" ? "scale-110" : ""}`} />
-            <span className="text-xs">Bookings</span>
-          </button>
-          
-          <button
-            onClick={() => setActiveTab("drivers")}
-            className={`flex flex-col items-center justify-center py-3 px-2 transition-colors ${
-              activeTab === "drivers"
-                ? "text-red-600 font-semibold"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            <Users className={`h-6 w-6 mb-1 ${activeTab === "drivers" ? "scale-110" : ""}`} />
-            <span className="text-xs">Drivers</span>
-          </button>
-          
-          <button
-            onClick={() => setActiveTab("payments")}
-            className={`flex flex-col items-center justify-center py-3 px-2 transition-colors ${
-              activeTab === "payments"
-                ? "text-red-600 font-semibold"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            <Calculator className={`h-6 w-6 mb-1 ${activeTab === "payments" ? "scale-110" : ""}`} />
-            <span className="text-xs">Payments</span>
-          </button>
-          
-          <button
-            onClick={() => setActiveTab("messages")}
-            className={`flex flex-col items-center justify-center py-3 px-2 transition-colors ${
-              activeTab === "messages"
-                ? "text-red-600 font-semibold"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            <MessageCircle className={`h-6 w-6 mb-1 ${activeTab === "messages" ? "scale-110" : ""}`} />
-            <span className="text-xs">Messages</span>
-          </button>
-          
-          <button
-            onClick={() => setActiveTab("settings")}
-            className={`flex flex-col items-center justify-center py-3 px-2 transition-colors ${
-              activeTab === "settings"
-                ? "text-red-600 font-semibold"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            <Settings className={`h-6 w-6 mb-1 ${activeTab === "settings" ? "scale-110" : ""}`} />
-            <span className="text-xs">Settings</span>
-          </button>
-        </div>
+          <TabsContent value="bookings" className="space-y-6">
+            <DispatcherBookingList 
+              bookings={bookings} 
+              onUpdate={loadBookings}
+            />
+          </TabsContent>
+
+          <TabsContent value="messages">
+            <DispatcherMessaging />
+          </TabsContent>
+
+          <TabsContent value="drivers">
+            <DriverManagement />
+          </TabsContent>
+
+          <TabsContent value="calculator">
+            <PaymentCalculator />
+          </TabsContent>
+
+          <TabsContent value="reports">
+            <FinancialReports />
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <DispatcherSettings />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
-};
-
-export default DispatcherDashboard;
+}

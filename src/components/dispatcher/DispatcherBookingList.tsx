@@ -18,47 +18,39 @@ export const DispatcherBookingList = ({ bookings, onUpdate }: DispatcherBookingL
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
 
   const getStatusColor = (booking: Booking) => {
-    // Check multiple status fields to determine current state with enhanced detection
-    const hasOfferSent = booking.ride_status === 'offer_sent' || 
-                        booking.status === 'offer_sent' ||
-                        booking.payment_confirmation_status === 'price_awaiting_acceptance' ||
-                        (booking.final_price && booking.final_price > 0 && booking.driver_id);
+    // Enhanced status detection - driver info only shown after manual assignment with price
+    const hasManualAssignment = booking.driver_id && booking.final_price && booking.final_price > 0;
     
-    const isPending = !booking.driver_id || 
-                     (booking.status === 'pending' && !booking.final_price) || 
-                     booking.ride_status === 'pending_driver' ||
-                     booking.simple_status === 'booking_requested';
-
+    if (hasManualAssignment && (booking.ride_status === 'offer_sent' || 
+        booking.status === 'offer_sent' ||
+        booking.payment_confirmation_status === 'price_awaiting_acceptance')) {
+      return 'bg-blue-100 text-blue-800 border-blue-200';
+    }
+    
     const isAllSet = booking.ride_status === 'all_set' || 
                     booking.payment_confirmation_status === 'all_set';
-
-    if (hasOfferSent) return 'bg-blue-100 text-blue-800 border-blue-200';
     if (isAllSet) return 'bg-green-100 text-green-800 border-green-200';
-    if (isPending) return 'bg-orange-100 text-orange-800 border-orange-200';
     
-    return 'bg-gray-100 text-gray-800 border-gray-200';
+    // Show as new request if no driver assigned or no offer sent
+    return 'bg-orange-100 text-orange-800 border-orange-200';
   };
 
   const getStatusLabel = (booking: Booking) => {
-    // Enhanced status detection with proper priority
-    const hasOfferSent = booking.ride_status === 'offer_sent' || 
-                        booking.status === 'offer_sent' ||
-                        booking.payment_confirmation_status === 'price_awaiting_acceptance' ||
-                        (booking.final_price && booking.final_price > 0 && booking.driver_id);
+    const hasManualAssignment = booking.driver_id && booking.final_price && booking.final_price > 0;
     
-    if (hasOfferSent) return 'Offer Sent to Passenger';
-    
-    const isAllSet = booking.ride_status === 'all_set' || 
-                    booking.payment_confirmation_status === 'all_set';
-    
-    if (isAllSet) return 'All Set';
-    
-    // Check if driver is assigned but no offer sent yet
-    if (booking.driver_id && !booking.final_price) {
-      return 'Driver Assigned - Send Offer';
+    if (hasManualAssignment) {
+      const hasOfferSent = booking.ride_status === 'offer_sent' || 
+                          booking.status === 'offer_sent' ||
+                          booking.payment_confirmation_status === 'price_awaiting_acceptance';
+      
+      if (hasOfferSent) return 'Offer Sent to Passenger';
+      
+      const isAllSet = booking.ride_status === 'all_set' || 
+                      booking.payment_confirmation_status === 'all_set';
+      if (isAllSet) return 'All Set';
     }
     
-    // Default to pending for unassigned bookings
+    // Default to new request for any booking without manual assignment
     return 'New Request';
   };
 
@@ -66,13 +58,12 @@ export const DispatcherBookingList = ({ bookings, onUpdate }: DispatcherBookingL
     return format(new Date(dateString), 'MMM dd, yyyy - HH:mm');
   };
 
-  // Enhanced check for driver assignment status
-  const isDriverAssignedWithOffer = (booking: Booking): boolean => {
+  const isManuallyAssigned = (booking: Booking): boolean => {
     return !!(booking.driver_id && booking.final_price && booking.final_price > 0);
   };
 
   const getCurrentPrice = (booking: Booking): number => {
-    // Show final_price if dispatcher has sent offer, otherwise show estimated_price or 0
+    // Show final_price if manually assigned, otherwise show estimated_price or 0
     if (booking.final_price && booking.final_price > 0) {
       return booking.final_price;
     }
@@ -178,25 +169,20 @@ export const DispatcherBookingList = ({ bookings, onUpdate }: DispatcherBookingL
                 )}
               </div>
 
-              {/* Price - Show current price with proper status indication */}
+              {/* Price */}
               <div className="flex items-center justify-between mb-4">
                 <span className="text-2xl font-bold text-red-600">
                   ${getCurrentPrice(booking)}
                 </span>
-                {isDriverAssignedWithOffer(booking) && (
+                {isManuallyAssigned(booking) && (
                   <Badge variant="outline" className="text-xs">
-                    Offer Sent
-                  </Badge>
-                )}
-                {booking.driver_id && !booking.final_price && (
-                  <Badge variant="secondary" className="text-xs">
-                    Send Offer
+                    Manually Assigned
                   </Badge>
                 )}
               </div>
 
-              {/* Driver Info - Only show when assigned */}
-              {booking.drivers && booking.driver_id && (
+              {/* Driver Info - Only show if manually assigned by dispatcher with price */}
+              {isManuallyAssigned(booking) && booking.drivers && (
                 <div className="mb-4 p-3 bg-green-50 rounded-lg">
                   <p className="text-sm font-medium text-gray-900 mb-2">Assigned Driver</p>
                   <div className="flex items-center space-x-3">
@@ -217,7 +203,7 @@ export const DispatcherBookingList = ({ bookings, onUpdate }: DispatcherBookingL
               )}
 
               {/* Status notice for unassigned bookings */}
-              {!booking.driver_id && (
+              {!isManuallyAssigned(booking) && (
                 <div className="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
                   <p className="text-sm text-yellow-800">
                     🎯 Ready for manual driver assignment
@@ -233,7 +219,7 @@ export const DispatcherBookingList = ({ bookings, onUpdate }: DispatcherBookingL
                 className="w-full flex items-center gap-2"
               >
                 <Settings className="w-4 h-4" />
-                {booking.driver_id ? 'Manage Offer' : 'Assign & Send Offer'}
+                {isManuallyAssigned(booking) ? 'Manage Offer' : 'Assign & Send Offer'}
               </Button>
             </CardContent>
           </Card>
