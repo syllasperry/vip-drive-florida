@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MapPin, Clock, Users, DollarSign, MessageCircle, Phone, Car, LogOut, Calculator, Settings } from 'lucide-react';
 import { DispatcherBookingList } from "@/components/dispatcher/DispatcherBookingList";
+import { DispatcherBookingManager } from "@/components/dispatcher/DispatcherBookingManager";
 import { DriverManagement } from "@/components/dispatcher/DriverManagement";
 import { DispatcherMessaging } from "@/components/dispatcher/DispatcherMessaging";
 import { PaymentCalculator } from "@/components/dispatcher/PaymentCalculator";
@@ -203,7 +204,8 @@ const DispatcherDashboard = () => {
     switch (activeTab) {
       case "bookings":
         return (
-          <div className="max-w-4xl mx-auto px-6 py-6">
+          <div className="max-w-4xl mx-auto px-6 py-6 space-y-6">
+            <DispatcherBookingManager onUpdate={loadBookings} />
             <DispatcherBookingList bookings={bookings} onUpdate={loadBookings} />
           </div>
         );
@@ -233,7 +235,8 @@ const DispatcherDashboard = () => {
         );
       default:
         return (
-          <div className="max-w-4xl mx-auto px-6 py-6">
+          <div className="max-w-4xl mx-auto px-6 py-6 space-y-6">
+            <DispatcherBookingManager onUpdate={loadBookings} />
             <DispatcherBookingList bookings={bookings} onUpdate={loadBookings} />
           </div>
         );

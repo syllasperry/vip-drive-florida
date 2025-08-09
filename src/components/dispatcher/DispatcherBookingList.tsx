@@ -3,7 +3,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Clock, Users, Car, MapPin } from 'lucide-react';
-import { DispatcherBookingManager } from "./DispatcherBookingManager";
 import { format } from 'date-fns';
 import { Booking } from "@/types/booking";
 
@@ -132,17 +131,11 @@ export const DispatcherBookingList = ({ bookings, onUpdate }: DispatcherBookingL
                 )}
               </div>
 
-              {/* Price - Show final_price if available, otherwise estimated_price */}
+              {/* Price */}
               <div className="flex items-center justify-between mb-4">
                 <span className="text-2xl font-bold text-red-600">
                   ${booking.final_price || booking.estimated_price || 0}
                 </span>
-                {booking.simple_status === 'booking_requested' && (
-                  <DispatcherBookingManager
-                    booking={booking}
-                    onUpdate={onUpdate}
-                  />
-                )}
               </div>
 
               {/* Driver Info - Only show when manually assigned by dispatcher */}
