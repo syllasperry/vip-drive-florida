@@ -28,7 +28,7 @@ const PassengerDashboard = () => {
     checkAuth();
     setupRealtimeSubscription();
     
-    // Set up automatic refresh every 10 seconds
+    // Set up automatic refresh every 5 seconds for better synchronization
     const refreshInterval = setInterval(async () => {
       console.log('🔄 Auto-refreshing passenger dashboard...');
       try {
@@ -39,7 +39,7 @@ const PassengerDashboard = () => {
       } catch (error) {
         console.error('Error in auto-refresh:', error);
       }
-    }, 10000);
+    }, 5000);
 
     return () => {
       clearInterval(refreshInterval);
@@ -48,7 +48,7 @@ const PassengerDashboard = () => {
 
   const setupRealtimeSubscription = () => {
     const channel = supabase
-      .channel('passenger-bookings-enhanced')
+      .channel('passenger-bookings-realtime')
       .on(
         'postgres_changes',
         {
@@ -57,16 +57,16 @@ const PassengerDashboard = () => {
           table: 'bookings'
         },
         async (payload) => {
-          console.log('📡 Enhanced real-time booking update for passenger:', payload);
+          console.log('📡 Real-time booking update for passenger:', payload);
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            // Force refresh on any changes
+            // Force refresh on any changes to ensure sync
             loadBookings(user.id);
           }
         }
       )
       .subscribe((status) => {
-        console.log('📡 Passenger subscription status:', status);
+        console.log('📡 Passenger realtime subscription status:', status);
       });
 
     return () => {
@@ -140,7 +140,8 @@ const PassengerDashboard = () => {
           status: booking.status,
           ride_status: booking.ride_status,
           final_price: booking.final_price,
-          driver_id: booking.driver_id
+          driver_id: booking.driver_id,
+          payment_confirmation_status: booking.payment_confirmation_status
         });
 
         return {
@@ -195,7 +196,7 @@ const PassengerDashboard = () => {
     if (paymentStatus === 'all_set' || rideStatus === 'all_set') return 'all_set';
     
     // When dispatcher sends offer, show as payment_pending for passenger
-    if (status === 'offer_sent' || rideStatus === 'offer_sent') {
+    if (status === 'offer_sent' || rideStatus === 'offer_sent' || paymentStatus === 'price_awaiting_acceptance') {
       return 'payment_pending';
     }
     
@@ -217,7 +218,7 @@ const PassengerDashboard = () => {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'booking_requested': return 'Booking Requested';
-      case 'payment_pending': return 'Offer Price Sent to Passenger';
+      case 'payment_pending': return 'Offer Price Sent - Review & Pay';
       case 'all_set': return 'All Set';
       case 'completed': return 'Completed';
       case 'cancelled': return 'Cancelled';
@@ -245,6 +246,11 @@ const PassengerDashboard = () => {
 
   const formatDateTime = (dateString: string) => {
     return format(new Date(dateString), 'MMM dd, yyyy - HH:mm');
+  };
+
+  const getCurrentPrice = (booking: Booking): number => {
+    // Show final_price if dispatcher has sent offer, otherwise show estimated_price
+    return booking.final_price || booking.estimated_price || 0;
   };
 
   if (loading) {
@@ -372,28 +378,36 @@ const PassengerDashboard = () => {
                       )}
                     </div>
 
-                    {/* Price - always show final_price if available, otherwise estimated_price */}
+                    {/* Price - Show final_price if offer sent, otherwise estimated_price */}
                     <div className="flex items-center justify-between mb-4">
                       <span className="text-2xl font-bold text-red-600">
-                        ${booking.final_price || booking.estimated_price || 0}
+                        ${getCurrentPrice(booking)}
                       </span>
+                      {booking.simple_status === 'payment_pending' && (
+                        <Badge variant="outline" className="text-xs">
+                          Offer Received
+                        </Badge>
+                      )}
                     </div>
 
-                    {/* Driver Information - show different info based on status */}
+                    {/* Driver Information - show when offer is sent by dispatcher */}
                     {booking.simple_status === 'payment_pending' && booking.driver_profiles && (
-                      <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                        <p className="text-sm font-medium text-gray-900 mb-2">Your Assigned Driver</p>
+                      <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <p className="text-sm font-medium text-blue-900 mb-2">Your Assigned Driver</p>
                         <div className="flex items-center space-x-3">
                           <Avatar className="h-10 w-10">
                             <AvatarImage src={booking.driver_profiles.profile_photo_url} />
-                            <AvatarFallback className="bg-gray-200 text-gray-600">
+                            <AvatarFallback className="bg-blue-200 text-blue-800">
                               {booking.driver_profiles.full_name.charAt(0)}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1">
-                            <p className="font-medium text-gray-900">{booking.driver_profiles.full_name}</p>
-                            <p className="text-sm text-gray-500">
+                            <p className="font-medium text-blue-900">{booking.driver_profiles.full_name}</p>
+                            <p className="text-sm text-blue-700">
                               {booking.driver_profiles.car_make} {booking.driver_profiles.car_model}
+                            </p>
+                            <p className="text-sm text-blue-600">
+                              {booking.driver_profiles.car_color} • {booking.driver_profiles.license_plate}
                             </p>
                           </div>
                         </div>
@@ -402,7 +416,7 @@ const PassengerDashboard = () => {
 
                     {/* Full Driver Information (only shown when all_set) */}
                     {booking.simple_status === 'all_set' && booking.driver_profiles && (
-                      <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                      <div className="mb-4 p-3 bg-green-50 rounded-lg">
                         <p className="text-sm font-medium text-gray-900 mb-2">Your Driver</p>
                         <div className="flex items-center space-x-3">
                           <Avatar className="h-10 w-10">
