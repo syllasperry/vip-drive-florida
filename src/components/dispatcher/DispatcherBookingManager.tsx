@@ -71,13 +71,17 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
         final_price: priceValue
       });
 
-      // Update booking with driver assignment and final price
-      // The database trigger will automatically set status to 'offer_sent'
+      // Update booking with explicit status that will be recognized by both dashboards
       const updateData = {
         driver_id: selectedDriver,
         final_price: priceValue,
+        status: 'offer_sent',
+        ride_status: 'offer_sent',
+        payment_confirmation_status: 'waiting_for_payment',
         updated_at: new Date().toISOString()
       };
+
+      console.log('📤 Sending update data:', updateData);
 
       const { data, error } = await supabase
         .from('bookings')
@@ -90,7 +94,7 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
         throw error;
       }
 
-      console.log('✅ Offer sent successfully by dispatcher:', data);
+      console.log('✅ Booking updated successfully:', data);
 
       toast({
         title: "Success",

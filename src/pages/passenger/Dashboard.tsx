@@ -90,6 +90,8 @@ const PassengerDashboard = () => {
 
   const loadBookings = async (userId: string) => {
     try {
+      console.log('🔄 Loading bookings for passenger:', userId);
+      
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -109,35 +111,45 @@ const PassengerDashboard = () => {
 
       if (error) throw error;
 
-      const mappedBookings: Booking[] = (data || []).map(booking => ({
-        id: booking.id,
-        pickup_location: booking.pickup_location,
-        dropoff_location: booking.dropoff_location,
-        pickup_time: booking.pickup_time,
-        passenger_count: booking.passenger_count,
-        vehicle_type: booking.vehicle_type,
-        simple_status: mapToSimpleStatus(booking.status, booking.ride_status, booking.payment_confirmation_status),
-        estimated_price: booking.estimated_price,
-        final_negotiated_price: booking.final_price,
-        final_price: booking.final_price,
-        created_at: booking.created_at,
-        passenger_id: booking.passenger_id,
-        driver_id: booking.driver_id,
-        status: booking.status,
-        ride_status: booking.ride_status,
-        payment_confirmation_status: booking.payment_confirmation_status,
-        driver_profiles: booking.drivers ? {
-          full_name: booking.drivers.full_name,
-          phone: booking.drivers.phone,
-          profile_photo_url: booking.drivers.profile_photo_url,
-          car_make: booking.drivers.car_make,
-          car_model: booking.drivers.car_model,
-          car_color: booking.drivers.car_color,
-          license_plate: booking.drivers.license_plate
-        } : undefined
-      }));
+      const mappedBookings: Booking[] = (data || []).map(booking => {
+        console.log('📋 Processing passenger booking:', {
+          id: booking.id,
+          status: booking.status,
+          ride_status: booking.ride_status,
+          final_price: booking.final_price,
+          driver_id: booking.driver_id
+        });
 
-      console.log('📊 Passenger bookings loaded:', mappedBookings);
+        return {
+          id: booking.id,
+          pickup_location: booking.pickup_location,
+          dropoff_location: booking.dropoff_location,
+          pickup_time: booking.pickup_time,
+          passenger_count: booking.passenger_count,
+          vehicle_type: booking.vehicle_type,
+          simple_status: mapToSimpleStatus(booking.status, booking.ride_status, booking.payment_confirmation_status),
+          estimated_price: booking.estimated_price,
+          final_negotiated_price: booking.final_price,
+          final_price: booking.final_price,
+          created_at: booking.created_at,
+          passenger_id: booking.passenger_id,
+          driver_id: booking.driver_id,
+          status: booking.status,
+          ride_status: booking.ride_status,
+          payment_confirmation_status: booking.payment_confirmation_status,
+          driver_profiles: booking.drivers ? {
+            full_name: booking.drivers.full_name,
+            phone: booking.drivers.phone,
+            profile_photo_url: booking.drivers.profile_photo_url,
+            car_make: booking.drivers.car_make,
+            car_model: booking.drivers.car_model,
+            car_color: booking.drivers.car_color,
+            license_plate: booking.drivers.license_plate
+          } : undefined
+        };
+      });
+
+      console.log('📊 Passenger bookings loaded:', mappedBookings.length);
       setBookings(mappedBookings);
     } catch (error) {
       console.error('Error loading bookings:', error);
@@ -159,7 +171,7 @@ const PassengerDashboard = () => {
     
     if (paymentStatus === 'all_set' || rideStatus === 'all_set') return 'all_set';
     
-    // Map offer_sent status to payment_pending for UI display
+    // When dispatcher sends offer, show as payment_pending for passenger
     if (status === 'offer_sent' || rideStatus === 'offer_sent') {
       return 'payment_pending';
     }
@@ -344,10 +356,10 @@ const PassengerDashboard = () => {
                     )}
                   </div>
 
-                  {/* Price - show final_price if available, otherwise show $0 for new requests */}
+                  {/* Price - show final_price if available, otherwise show estimated_price or $0 */}
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-2xl font-bold text-red-600">
-                      ${booking.final_price || 0}
+                      ${booking.final_price || booking.estimated_price || 0}
                     </span>
                   </div>
 
