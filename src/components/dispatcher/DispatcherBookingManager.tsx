@@ -8,7 +8,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { DollarSign, User, Car } from "lucide-react";
-import { Booking } from "@/types/booking";
+
+// Simplified local interface to avoid circular type issues
+interface SimpleBooking {
+  id: string;
+  pickup_location: string;
+  dropoff_location: string;
+  pickup_time: string;
+  passenger_count: number;
+  estimated_price?: number;
+  final_price?: number;
+  passenger_id: string;
+  driver_id?: string;
+}
 
 interface Driver {
   id: string;
@@ -22,7 +34,7 @@ interface Driver {
 }
 
 interface DispatcherBookingManagerProps {
-  booking: Booking;
+  booking: SimpleBooking;
   onUpdate: () => void;
 }
 
