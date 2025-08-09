@@ -1,22 +1,21 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DispatcherBookingList } from "@/components/dispatcher/DispatcherBookingList";
 import { DispatcherMessaging } from "@/components/dispatcher/DispatcherMessaging";
 import { DriverManagement } from "@/components/dispatcher/DriverManagement";
 import { PaymentCalculator } from "@/components/dispatcher/PaymentCalculator";
 import { FinancialReports } from "@/components/dispatcher/FinancialReports";
 import { DispatcherSettings } from "@/components/dispatcher/DispatcherSettings";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Car, MessageSquare, Users, Calculator, BarChart3, Settings, LogOut } from "lucide-react";
+import { BottomNavigation } from "@/components/dashboard/BottomNavigation";
 import { Button } from "@/components/ui/button";
+import { LogOut } from "lucide-react";
 import { Booking } from "@/types/booking";
 
 export default function DispatcherDashboard() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("bookings");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -160,9 +159,28 @@ export default function DispatcherDashboard() {
     );
   }
 
+  const renderActiveTab = () => {
+    switch (activeTab) {
+      case "bookings":
+        return <DispatcherBookingList bookings={bookings} onUpdate={loadBookings} />;
+      case "messages":
+        return <DispatcherMessaging />;
+      case "drivers":
+        return <DriverManagement />;
+      case "calculator":
+        return <PaymentCalculator />;
+      case "reports":
+        return <FinancialReports />;
+      case "settings":
+        return <DispatcherSettings />;
+      default:
+        return <DispatcherBookingList bookings={bookings} onUpdate={loadBookings} />;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-6 safe-bottom">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-foreground">VIP Dispatcher Dashboard</h1>
@@ -172,63 +190,18 @@ export default function DispatcherDashboard() {
           </Button>
         </div>
 
-        {/* Main Content - Tabs */}
-        <Tabs defaultValue="bookings" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="bookings" className="flex items-center gap-2">
-              <Car className="w-4 h-4" />
-              Bookings
-            </TabsTrigger>
-            <TabsTrigger value="messages" className="flex items-center gap-2">
-              <MessageSquare className="w-4 h-4" />
-              Messages
-            </TabsTrigger>
-            <TabsTrigger value="drivers" className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Drivers
-            </TabsTrigger>
-            <TabsTrigger value="calculator" className="flex items-center gap-2">
-              <Calculator className="w-4 h-4" />
-              Calculator
-            </TabsTrigger>
-            <TabsTrigger value="reports" className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
-              Reports
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              Settings
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="bookings" className="space-y-6">
-            <DispatcherBookingList 
-              bookings={bookings} 
-              onUpdate={loadBookings}
-            />
-          </TabsContent>
-
-          <TabsContent value="messages">
-            <DispatcherMessaging />
-          </TabsContent>
-
-          <TabsContent value="drivers">
-            <DriverManagement />
-          </TabsContent>
-
-          <TabsContent value="calculator">
-            <PaymentCalculator />
-          </TabsContent>
-
-          <TabsContent value="reports">
-            <FinancialReports />
-          </TabsContent>
-
-          <TabsContent value="settings">
-            <DispatcherSettings />
-          </TabsContent>
-        </Tabs>
+        {/* Main Content */}
+        <div className="space-y-6">
+          {renderActiveTab()}
+        </div>
       </div>
+
+      {/* Bottom Navigation */}
+      <BottomNavigation
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        userType="dispatcher"
+      />
     </div>
   );
 }
