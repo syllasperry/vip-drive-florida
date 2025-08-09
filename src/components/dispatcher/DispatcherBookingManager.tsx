@@ -158,7 +158,7 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
 
     setIsAssigning(true);
     try {
-      console.log('👨‍💼 Dispatcher assigning driver:', {
+      console.log('👨‍💼 Dispatcher manually assigning driver:', {
         booking_id: selectedBooking,
         driver_id: selectedDriver
       });
@@ -182,12 +182,11 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
       setSelectedBooking("");
       setSelectedDriver("");
       
-      // Call onUpdate if provided
       if (onUpdate) {
         onUpdate();
       }
       
-      console.log('✅ Driver assignment completed successfully');
+      console.log('✅ Manual driver assignment completed successfully');
     } catch (error) {
       console.error('Error assigning driver:', error);
       toast({
@@ -200,16 +199,17 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
     }
   };
 
-  // Filter for truly unassigned bookings - include all bookings without a driver
-  const unassignedBookings = bookings.filter(b => {
-    const isUnassigned = !b.driver_id;
-    const isNewRequest = b.simple_status === 'booking_requested';
+  // Remove automatic assignment by strictly filtering only bookings without drivers
+  const unassignedBookings = bookings.filter(booking => {
+    const isUnassigned = !booking.driver_id;
+    const isNewRequest = booking.simple_status === 'booking_requested' || booking.status === 'pending';
     
     console.log('🔍 Checking booking for unassigned filter:', {
-      id: b.id,
-      driver_id: b.driver_id,
+      id: booking.id,
+      driver_id: booking.driver_id,
       isUnassigned,
-      simple_status: b.simple_status,
+      simple_status: booking.simple_status,
+      status: booking.status,
       isNewRequest,
       shouldShow: isUnassigned && isNewRequest
     });
