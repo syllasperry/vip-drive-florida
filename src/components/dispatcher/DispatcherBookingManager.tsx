@@ -2,113 +2,141 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, User, Car, Phone } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Users, Car, MapPin, Calendar, Clock } from "lucide-react";
 
-interface Driver {
+// Simplified types to avoid deep instantiation issues
+interface SimpleDriver {
   id: string;
   full_name: string;
-  phone: string;
   email: string;
-  car_make: string;
-  car_model: string;
-  car_color: string;
-  license_plate: string;
+  phone: string | null;
+  car_make: string | null;
+  car_model: string | null;
 }
 
-interface Booking {
+interface SimpleBooking {
   id: string;
   pickup_location: string;
   dropoff_location: string;
   pickup_time: string;
-  passenger_count: number;
-  estimated_price: number;
   status: string;
   passenger_id: string;
-  passengers?: {
-    full_name: string;
-    phone: string;
-  };
+  driver_id: string | null;
+  vehicle_type: string | null;
+  estimated_price: number | null;
+  final_price: number | null;
 }
 
-interface DispatcherBookingManagerProps {
-  booking: Booking;
-  onUpdate: () => void;
-}
-
-export const DispatcherBookingManager = ({ booking, onUpdate }: DispatcherBookingManagerProps) => {
+export const DispatcherBookingManager = () => {
+  const [bookings, setBookings] = useState<SimpleBooking[]>([]);
+  const [drivers, setDrivers] = useState<SimpleDriver[]>([]);
+  const [selectedBooking, setSelectedBooking] = useState<string>("");
+  const [selectedDriver, setSelectedDriver] = useState<string>("");
+  const [isAssigning, setIsAssigning] = useState(false);
   const { toast } = useToast();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [offerPrice, setOfferPrice] = useState('');
-  const [selectedDriverId, setSelectedDriverId] = useState('');
-  const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    loadBookings();
     loadDrivers();
   }, []);
+
+  const loadBookings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('id, pickup_location, dropoff_location, pickup_time, status, passenger_id, driver_id, vehicle_type, estimated_price, final_price')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const simpleBookings: SimpleBooking[] = (data || []).map(booking => ({
+        id: booking.id,
+        pickup_location: booking.pickup_location || '',
+        dropoff_location: booking.dropoff_location || '',
+        pickup_time: booking.pickup_time || '',
+        status: booking.status || 'pending',
+        passenger_id: booking.passenger_id || '',
+        driver_id: booking.driver_id,
+        vehicle_type: booking.vehicle_type,
+        estimated_price: booking.estimated_price,
+        final_price: booking.final_price
+      }));
+
+      setBookings(simpleBookings);
+    } catch (error) {
+      console.error('Error loading bookings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load bookings",
+        variant: "destructive",
+      });
+    }
+  };
 
   const loadDrivers = async () => {
     try {
       const { data, error } = await supabase
         .from('drivers')
-        .select(`
-          id,
-          full_name,
-          phone,
-          email,
-          car_make,
-          car_model,
-          car_color,
-          license_plate
-        `)
-        .eq('status', 'active')
-        .order('full_name');
+        .select('id, full_name, email, phone, car_make, car_model')
+        .eq('status', 'active');
 
       if (error) throw error;
-      setDrivers(data || []);
+
+      const simpleDrivers: SimpleDriver[] = (data || []).map(driver => ({
+        id: driver.id,
+        full_name: driver.full_name || 'Unknown',
+        email: driver.email || '',
+        phone: driver.phone,
+        car_make: driver.car_make,
+        car_model: driver.car_model
+      }));
+
+      setDrivers(simpleDrivers);
     } catch (error) {
       console.error('Error loading drivers:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load drivers",
+        variant: "destructive",
+      });
     }
   };
 
-  const handleAssignDriver = async () => {
-    if (!selectedDriverId || !offerPrice) {
+  const assignDriver = async () => {
+    if (!selectedBooking || !selectedDriver) {
       toast({
         title: "Error",
-        description: "Please select a driver and enter an offer price",
+        description: "Please select both a booking and a driver",
         variant: "destructive",
       });
       return;
     }
 
-    setLoading(true);
+    setIsAssigning(true);
     try {
       const { error } = await supabase
         .from('bookings')
-        .update({
-          driver_id: selectedDriverId,
-          final_price: parseFloat(offerPrice),
-          status: 'offer_sent'
+        .update({ 
+          driver_id: selectedDriver,
+          status: 'assigned'
         })
-        .eq('id', booking.id);
+        .eq('id', selectedBooking);
 
       if (error) throw error;
 
       toast({
         title: "Success",
-        description: "Driver assigned and offer sent to passenger",
+        description: "Driver assigned successfully",
       });
 
-      setIsModalOpen(false);
-      setOfferPrice('');
-      setSelectedDriverId('');
-      onUpdate();
+      await loadBookings();
+      setSelectedBooking("");
+      setSelectedDriver("");
     } catch (error) {
       console.error('Error assigning driver:', error);
       toast({
@@ -117,100 +145,121 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: DispatcherBookin
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setIsAssigning(false);
     }
   };
 
+  const unassignedBookings = bookings.filter(b => !b.driver_id);
+  const assignedBookings = bookings.filter(b => b.driver_id);
+
   return (
-    <>
-      <Button
-        onClick={() => setIsModalOpen(true)}
-        className="w-full bg-blue-500 hover:bg-blue-600 text-white"
-      >
-        Assign Driver & Send Offer
-      </Button>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Booking Management</h1>
+        <div className="flex gap-4">
+          <Badge variant="secondary">
+            <Users className="w-4 h-4 mr-1" />
+            {drivers.length} Drivers
+          </Badge>
+          <Badge variant="outline">
+            <Car className="w-4 h-4 mr-1" />
+            {unassignedBookings.length} Unassigned
+          </Badge>
+        </div>
+      </div>
 
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Assign Driver & Send Offer</DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Booking Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <User className="h-4 w-4" />
-                  <span>{booking.passengers?.full_name || 'Unknown'}</span>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {booking.pickup_location} → {booking.dropoff_location}
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <DollarSign className="h-4 w-4" />
-                  <span>Estimated: ${booking.estimated_price}</span>
-                </div>
-              </CardContent>
-            </Card>
+      <Tabs defaultValue="assign" className="w-full">
+        <TabsList>
+          <TabsTrigger value="assign">Assign Drivers</TabsTrigger>
+          <TabsTrigger value="active">Active Bookings</TabsTrigger>
+        </TabsList>
 
-            <div className="space-y-2">
-              <Label htmlFor="driver">Select Driver</Label>
-              <Select value={selectedDriverId} onValueChange={setSelectedDriverId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a driver" />
-                </SelectTrigger>
-                <SelectContent>
-                  {drivers.map((driver) => (
-                    <SelectItem key={driver.id} value={driver.id}>
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        <span>{driver.full_name}</span>
-                        <Car className="h-4 w-4 ml-2" />
-                        <span className="text-sm text-muted-foreground">
-                          {driver.car_make} {driver.car_model}
-                        </span>
+        <TabsContent value="assign">
+          <Card>
+            <CardHeader>
+              <CardTitle>Assign Driver to Booking</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Select Booking</label>
+                  <Select value={selectedBooking} onValueChange={setSelectedBooking}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose unassigned booking" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {unassignedBookings.map((booking) => (
+                        <SelectItem key={booking.id} value={booking.id}>
+                          {booking.pickup_location} → {booking.dropoff_location}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Select Driver</label>
+                  <Select value={selectedDriver} onValueChange={setSelectedDriver}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose available driver" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {drivers.map((driver) => (
+                        <SelectItem key={driver.id} value={driver.id}>
+                          {driver.full_name} ({driver.car_make} {driver.car_model})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <Button 
+                onClick={assignDriver} 
+                disabled={!selectedBooking || !selectedDriver || isAssigning}
+                className="w-full"
+              >
+                {isAssigning ? "Assigning..." : "Assign Driver"}
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="active">
+          <div className="grid gap-4">
+            {assignedBookings.map((booking) => {
+              const driver = drivers.find(d => d.id === booking.driver_id);
+              return (
+                <Card key={booking.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <MapPin className="w-4 h-4" />
+                            {booking.pickup_location} → {booking.dropoff_location}
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                            <Calendar className="w-4 h-4" />
+                            {new Date(booking.pickup_time).toLocaleString()}
+                          </div>
+                        </div>
                       </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="price">Offer Price ($)</Label>
-              <Input
-                id="price"
-                type="number"
-                value={offerPrice}
-                onChange={(e) => setOfferPrice(e.target.value)}
-                placeholder="Enter offer price"
-                min="0"
-                step="0.01"
-              />
-            </div>
-
-            <div className="flex gap-2 pt-4">
-              <Button 
-                variant="outline" 
-                onClick={() => setIsModalOpen(false)}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleAssignDriver}
-                disabled={loading}
-                className="flex-1"
-              >
-                {loading ? "Assigning..." : "Assign & Send Offer"}
-              </Button>
-            </div>
+                      <div className="text-right">
+                        <div className="font-medium">{driver?.full_name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {driver?.car_make} {driver?.car_model}
+                        </div>
+                        <Badge variant="default">{booking.status}</Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
-        </DialogContent>
-      </Dialog>
-    </>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 };

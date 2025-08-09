@@ -8,7 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
-import { User, Phone, Mail, LogOut, Bell, Shield, HelpCircle } from "lucide-react";
+import { User, Phone, Mail, LogOut, Bell, Shield, HelpCircle, Camera, Upload } from "lucide-react";
+import { NotificationSettingsCard } from "./NotificationSettingsCard";
+import { PrivacySecurityCard } from "./PrivacySecurityCard";
+import { HelpSupportCard } from "./HelpSupportCard";
 
 interface SettingsTabProps {
   passengerInfo: any;
@@ -18,11 +21,15 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [editing, setEditing] = useState(false);
+  const [activeModal, setActiveModal] = useState<'notifications' | 'privacy' | 'help' | null>(null);
   const [formData, setFormData] = useState({
     full_name: '',
     phone: '',
     email: ''
   });
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     if (passengerInfo) {
@@ -34,14 +41,80 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
     }
   }, [passengerInfo]);
 
+  const handlePhotoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!validTypes.includes(file.type)) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select a valid image file (JPG, PNG, GIF, WebP)",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Validate file size (5MB limit)
+      const maxSize = 5 * 1024 * 1024;
+      if (file.size > maxSize) {
+        toast({
+          title: "File too large", 
+          description: "File size must be less than 5MB",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setPhotoFile(file);
+      setPhotoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const uploadPhoto = async () => {
+    if (!photoFile || !passengerInfo?.id) return null;
+
+    const fileExt = photoFile.name.split('.').pop();
+    const fileName = `${passengerInfo.id}.${fileExt}`;
+    const filePath = `avatars/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, photoFile, { upsert: true });
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath);
+
+    return publicUrl;
+  };
+
   const handleSave = async () => {
     try {
+      setIsUploading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      let photoUrl = passengerInfo?.profile_photo_url;
+
+      // Upload photo if a new one was selected
+      if (photoFile) {
+        photoUrl = await uploadPhoto();
+      }
+
+      const updateData: any = {
+        ...formData
+      };
+
+      if (photoUrl) {
+        updateData.profile_photo_url = photoUrl;
+      }
+
       const { error } = await supabase
         .from('passengers')
-        .update(formData)
+        .update(updateData)
         .eq('id', user.id);
 
       if (error) throw error;
@@ -50,7 +123,10 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
         title: "Success",
         description: "Profile updated successfully",
       });
+      
       setEditing(false);
+      setPhotoFile(null);
+      setPhotoPreview(null);
     } catch (error) {
       console.error('Error updating profile:', error);
       toast({
@@ -58,6 +134,8 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
         description: "Failed to update profile",
         variant: "destructive",
       });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -69,6 +147,54 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
       console.error('Error signing out:', error);
     }
   };
+
+  if (activeModal === 'notifications') {
+    return (
+      <div className="space-y-4">
+        <Button 
+          variant="ghost" 
+          onClick={() => setActiveModal(null)}
+          className="mb-4"
+        >
+          ← Back to Settings
+        </Button>
+        <NotificationSettingsCard 
+          userId={passengerInfo?.id} 
+          onClose={() => setActiveModal(null)} 
+        />
+      </div>
+    );
+  }
+
+  if (activeModal === 'privacy') {
+    return (
+      <div className="space-y-4">
+        <Button 
+          variant="ghost" 
+          onClick={() => setActiveModal(null)}
+          className="mb-4"
+        >
+          ← Back to Settings
+        </Button>
+        <PrivacySecurityCard onClose={() => setActiveModal(null)} />
+      </div>
+    );
+  }
+
+  if (activeModal === 'help') {
+    return (
+      <div className="space-y-4">
+        <Button 
+          variant="ghost" 
+          onClick={() => setActiveModal(null)}
+          className="mb-4"
+        >
+          ← Back to Settings
+        </Button>
+        <HelpSupportCard onClose={() => setActiveModal(null)} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -84,12 +210,21 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-4 mb-4">
-            <Avatar className="h-16 w-16">
-              <AvatarImage src={passengerInfo?.profile_photo_url} />
-              <AvatarFallback className="bg-gray-200 text-gray-600">
-                {passengerInfo?.full_name?.charAt(0) || 'P'}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <Avatar className="h-16 w-16">
+                <AvatarImage src={photoPreview || passengerInfo?.profile_photo_url} />
+                <AvatarFallback className="bg-gray-200 text-gray-600">
+                  {passengerInfo?.full_name?.charAt(0) || 'P'}
+                </AvatarFallback>
+              </Avatar>
+              {editing && (
+                <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center cursor-pointer"
+                     onClick={() => document.getElementById('photo-upload')?.click()}>
+                  <Camera className="w-6 h-6 text-white" />
+                </div>
+              )}
+            </div>
+            
             {!editing && (
               <div>
                 <h3 className="font-medium text-gray-900">{passengerInfo?.full_name || 'Unknown'}</h3>
@@ -97,6 +232,14 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
               </div>
             )}
           </div>
+
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handlePhotoSelect}
+            className="hidden"
+            id="photo-upload"
+          />
 
           {editing ? (
             <div className="space-y-4">
@@ -124,9 +267,29 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 />
               </div>
+              {photoFile && (
+                <div className="text-sm text-gray-600">
+                  New photo selected: {photoFile.name}
+                </div>
+              )}
               <div className="flex gap-2">
-                <Button onClick={handleSave} className="flex-1">Save Changes</Button>
-                <Button variant="outline" onClick={() => setEditing(false)} className="flex-1">
+                <Button 
+                  onClick={handleSave} 
+                  className="flex-1"
+                  disabled={isUploading}
+                >
+                  {isUploading ? "Saving..." : "Save Changes"}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setEditing(false);
+                    setPhotoFile(null);
+                    setPhotoPreview(null);
+                  }} 
+                  className="flex-1"
+                  disabled={isUploading}
+                >
                   Cancel
                 </Button>
               </div>
@@ -151,7 +314,10 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
 
       {/* Settings Options */}
       <div className="space-y-3">
-        <Card className="cursor-pointer hover:shadow-md transition-shadow">
+        <Card 
+          className="cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => setActiveModal('notifications')}
+        >
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <Bell className="w-5 h-5 text-gray-600" />
@@ -163,7 +329,10 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:shadow-md transition-shadow">
+        <Card 
+          className="cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => setActiveModal('privacy')}
+        >
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <Shield className="w-5 h-5 text-gray-600" />
@@ -175,7 +344,10 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:shadow-md transition-shadow">
+        <Card 
+          className="cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => setActiveModal('help')}
+        >
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <HelpCircle className="w-5 h-5 text-gray-600" />
