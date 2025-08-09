@@ -28,6 +28,32 @@ export const DispatcherBookingList = ({ onManageBooking }: DispatcherBookingList
     setupRealtimeSubscription();
   }, []);
 
+  const mapToSimpleStatus = (booking: any): Booking['simple_status'] => {
+    console.log('🔍 Dispatcher mapping booking status:', { 
+      status: booking.status,
+      ride_status: booking.ride_status, 
+      payment_confirmation_status: booking.payment_confirmation_status,
+      final_price: booking.final_price,
+      driver_id: booking.driver_id
+    });
+    
+    if (booking.status === 'completed' || booking.ride_status === 'completed') return 'completed';
+    if (booking.status === 'cancelled') return 'cancelled';
+    
+    if (booking.payment_confirmation_status === 'all_set' || booking.ride_status === 'all_set') return 'all_set';
+    
+    const hasOfferSent = booking.status === 'offer_sent' || 
+                        booking.ride_status === 'offer_sent' || 
+                        booking.payment_confirmation_status === 'price_awaiting_acceptance' ||
+                        (booking.final_price && booking.final_price > 0 && booking.driver_id);
+    
+    if (hasOfferSent) {
+      return 'payment_pending';
+    }
+    
+    return 'booking_requested';
+  };
+
   const loadBookings = async () => {
     try {
       console.log('🔄 Loading all bookings for dispatcher...');
@@ -37,7 +63,6 @@ export const DispatcherBookingList = ({ onManageBooking }: DispatcherBookingList
         .select(`
           *,
           passengers:passenger_id (
-            id,
             full_name,
             phone,
             profile_photo_url
@@ -76,12 +101,7 @@ export const DispatcherBookingList = ({ onManageBooking }: DispatcherBookingList
         passenger_id: booking.passenger_id || '',
         driver_id: booking.driver_id,
         vehicle_id: booking.vehicle_id,
-        passengers: booking.passengers ? {
-          id: booking.passengers.id,
-          full_name: booking.passengers.full_name,
-          phone: booking.passengers.phone,
-          profile_photo_url: booking.passengers.profile_photo_url
-        } : undefined,
+        passengers: booking.passengers,
         drivers: booking.drivers
       }));
 
@@ -141,7 +161,10 @@ export const DispatcherBookingList = ({ onManageBooking }: DispatcherBookingList
     }
   };
 
+  const [forceModalStep, setForceModalStep] = useState<string | null>(null);
+
   const handleReopenModal = (step: string) => {
+    setForceModalStep(step);
     setIsModalOpen(true);
   };
 
@@ -283,8 +306,9 @@ export const DispatcherBookingList = ({ onManageBooking }: DispatcherBookingList
       <BookingManagementModal
         isOpen={isModalOpen}
         onClose={handleModalClose}
-        booking={selectedBooking || {} as Booking}
+        booking={selectedBooking || {}}
         onUpdate={handleBookingUpdate}
+        forceOpenStep={forceModalStep}
       />
     </div>
   );
