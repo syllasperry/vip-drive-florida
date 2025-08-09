@@ -1,9 +1,8 @@
 
 import React, { useState, useEffect } from "react";
-import { CalendarDays, ClipboardList, UsersRound, MessagesSquare, Settings } from "lucide-react";
+import { CalendarDays, ClipboardList, UsersRound, MessagesSquare, Settings, Calculator } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { DispatcherBookingList } from "@/components/dispatcher/DispatcherBookingList";
 import { FinancialReports } from "@/components/dispatcher/FinancialReports";
@@ -29,14 +28,8 @@ export default function Dashboard() {
       case 'bookings':
         return (
           <div className="space-y-6">
-            {/* Enhanced Booking List Manager */}
             <DispatcherBookingList />
-            
-            {/* Financial Reports */}
             <FinancialReports />
-            
-            {/* Smart Pricing Calculator */}
-            <PaymentCalculator />
           </div>
         );
       case 'drivers':
@@ -50,6 +43,8 @@ export default function Dashboard() {
         );
       case 'messages':
         return <DispatcherMessaging />;
+      case 'calculator':
+        return <PaymentCalculator />;
       case 'settings':
         return <DispatcherSettings />;
       default:
@@ -58,125 +53,100 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="container py-10">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Dispatcher Dashboard</h1>
-        <Button onClick={() => toast({ title: "Dashboard atualizado!" })}>
-          Test Toast
-        </Button>
+    <div className="min-h-screen bg-background">
+      {/* Header with Airbnb-inspired clean design */}
+      <div className="sticky top-0 z-40 bg-card border-b border-border/50 backdrop-blur-lg">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-2xl font-semibold text-foreground">Dashboard</h1>
+              <p className="text-sm text-muted-foreground mt-1">Manage your rides and operations</p>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => toast({ title: "Dashboard refreshed!" })}
+              className="hidden md:flex"
+            >
+              Refresh
+            </Button>
+          </div>
+        </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        {/* Desktop Navigation */}
-        <div className="hidden md:block">
-          <TabsList>
-            <TabsTrigger value="bookings">
-              <ClipboardList className="h-4 w-4 mr-2" />
-              Bookings
-            </TabsTrigger>
-            <TabsTrigger value="drivers">
-              <UsersRound className="h-4 w-4 mr-2" />
-              Drivers
-            </TabsTrigger>
-            <TabsTrigger value="payments">
-              <CalendarDays className="h-4 w-4 mr-2" />
-              Payments
-            </TabsTrigger>
-            <TabsTrigger value="messages">
-              <MessagesSquare className="h-4 w-4 mr-2" />
-              Messages
-            </TabsTrigger>
-            <TabsTrigger value="settings">
-              <Settings className="h-4 w-4 mr-2" />
-              Settings
-            </TabsTrigger>
-          </TabsList>
+      {/* Main Content with proper spacing for bottom navigation */}
+      <div className="container mx-auto px-4 py-6 pb-24">
+        <div className="max-w-7xl mx-auto">
+          {renderActiveTab()}
         </div>
+      </div>
 
-        {/* Mobile Bottom Navigation */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border z-50">
-          <div className="grid grid-cols-5 gap-1 p-2">
+      {/* Bottom Navigation Menu - Airbnb Style */}
+      <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-lg border-t border-border/50 z-50">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-5 gap-1 py-2">
             <button
               onClick={() => setActiveTab("bookings")}
-              className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${
+              className={`flex flex-col items-center justify-center py-3 px-2 rounded-xl transition-all duration-200 ${
                 activeTab === "bookings" 
-                  ? "bg-primary text-primary-foreground" 
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-primary text-primary-foreground shadow-lg scale-105" 
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
               }`}
             >
-              <ClipboardList className="h-5 w-5" />
-              <span className="text-xs">Bookings</span>
+              <ClipboardList className={`h-5 w-5 mb-1 ${activeTab === "bookings" ? "text-primary-foreground" : ""}`} />
+              <span className="text-xs font-medium">Bookings</span>
             </button>
             
             <button
               onClick={() => setActiveTab("drivers")}
-              className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${
+              className={`flex flex-col items-center justify-center py-3 px-2 rounded-xl transition-all duration-200 ${
                 activeTab === "drivers" 
-                  ? "bg-primary text-primary-foreground" 
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-primary text-primary-foreground shadow-lg scale-105" 
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
               }`}
             >
-              <UsersRound className="h-5 w-5" />
-              <span className="text-xs">Drivers</span>
+              <UsersRound className={`h-5 w-5 mb-1 ${activeTab === "drivers" ? "text-primary-foreground" : ""}`} />
+              <span className="text-xs font-medium">Drivers</span>
             </button>
             
             <button
               onClick={() => setActiveTab("payments")}
-              className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${
+              className={`flex flex-col items-center justify-center py-3 px-2 rounded-xl transition-all duration-200 ${
                 activeTab === "payments" 
-                  ? "bg-primary text-primary-foreground" 
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-primary text-primary-foreground shadow-lg scale-105" 
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
               }`}
             >
-              <CalendarDays className="h-5 w-5" />
-              <span className="text-xs">Payments</span>
+              <CalendarDays className={`h-5 w-5 mb-1 ${activeTab === "payments" ? "text-primary-foreground" : ""}`} />
+              <span className="text-xs font-medium">Payments</span>
             </button>
             
             <button
               onClick={() => setActiveTab("messages")}
-              className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${
+              className={`flex flex-col items-center justify-center py-3 px-2 rounded-xl transition-all duration-200 ${
                 activeTab === "messages" 
-                  ? "bg-primary text-primary-foreground" 
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-primary text-primary-foreground shadow-lg scale-105" 
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
               }`}
             >
-              <MessagesSquare className="h-5 w-5" />
-              <span className="text-xs">Messages</span>
+              <MessagesSquare className={`h-5 w-5 mb-1 ${activeTab === "messages" ? "text-primary-foreground" : ""}`} />
+              <span className="text-xs font-medium">Messages</span>
             </button>
             
             <button
-              onClick={() => setActiveTab("settings")}
-              className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${
-                activeTab === "settings" 
-                  ? "bg-primary text-primary-foreground" 
-                  : "text-muted-foreground hover:text-foreground"
+              onClick={() => setActiveTab("calculator")}
+              className={`flex flex-col items-center justify-center py-3 px-2 rounded-xl transition-all duration-200 ${
+                activeTab === "calculator" 
+                  ? "bg-primary text-primary-foreground shadow-lg scale-105" 
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
               }`}
             >
-              <Settings className="h-5 w-5" />
-              <span className="text-xs">Settings</span>
+              <Calculator className={`h-5 w-5 mb-1 ${activeTab === "calculator" ? "text-primary-foreground" : ""}`} />
+              <span className="text-xs font-medium">Calculator</span>
             </button>
           </div>
         </div>
-
-        {/* Tab Contents */}
-        <div className="pb-20 md:pb-0">
-          <TabsContent value="bookings" className="space-y-4 mt-0">
-            {renderActiveTab()}
-          </TabsContent>
-          <TabsContent value="drivers" className="space-y-4 mt-0">
-            {renderActiveTab()}
-          </TabsContent>
-          <TabsContent value="payments" className="space-y-4 mt-0">
-            {renderActiveTab()}
-          </TabsContent>
-          <TabsContent value="messages" className="space-y-4 mt-0">
-            {renderActiveTab()}
-          </TabsContent>
-          <TabsContent value="settings" className="space-y-4 mt-0">
-            {renderActiveTab()}
-          </TabsContent>
-        </div>
-      </Tabs>
+      </div>
     </div>
   );
 }
