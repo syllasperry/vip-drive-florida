@@ -1,61 +1,46 @@
 
-import React from "react";
 import { Badge } from "@/components/ui/badge";
-import { Booking } from "@/types/booking";
-import { ReopenModalButton } from "../dashboard/ReopenModalButton";
 
 interface StatusBadgesProps {
-  booking: Booking;
-  onReopenAlert: () => void;
-  showReopenButton: boolean;
+  booking: any;
 }
 
-export const StatusBadges = ({ booking, onReopenAlert, showReopenButton }: StatusBadgesProps) => {
-  const getStatusBadgeColor = (status: string) => {
+export const StatusBadges = ({ booking }: StatusBadgesProps) => {
+  const getStatusInfo = () => {
+    if (!booking) return { text: 'Unknown', color: 'gray' };
+
+    const status = booking.status || booking.ride_status || 'pending';
+    
     switch (status) {
-      case 'booking_requested':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'payment_pending':
-        return 'bg-orange-100 text-orange-800';
+      case 'pending':
+        return { text: 'Pending', color: 'orange' };
+      case 'offer_sent':
+        return { text: 'Offer Sent', color: 'blue' };
+      case 'accepted':
       case 'all_set':
-        return 'bg-green-100 text-green-800';
+        return { text: 'Confirmed', color: 'green' };
       case 'completed':
-        return 'bg-blue-100 text-blue-800';
+        return { text: 'Completed', color: 'gray' };
       case 'cancelled':
-        return 'bg-red-100 text-red-800';
+        return { text: 'Cancelled', color: 'red' };
       default:
-        return 'bg-gray-100 text-gray-800';
+        return { text: status, color: 'gray' };
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'booking_requested':
-        return 'Requested';
-      case 'payment_pending':
-        return 'Payment Pending';
-      case 'all_set':
-        return 'All Set';
-      case 'completed':
-        return 'Completed';
-      case 'cancelled':
-        return 'Cancelled';
-      default:
-        return status;
-    }
+  const { text, color } = getStatusInfo();
+
+  const colorClasses = {
+    gray: 'bg-gray-100 text-gray-800 border-gray-200',
+    orange: 'bg-orange-100 text-orange-800 border-orange-200',
+    blue: 'bg-blue-100 text-blue-800 border-blue-200',
+    green: 'bg-green-100 text-green-800 border-green-200',
+    red: 'bg-red-100 text-red-800 border-red-200',
   };
 
   return (
-    <div className="flex items-center space-x-2">
-      <Badge className={getStatusBadgeColor(booking.simple_status || 'booking_requested')}>
-        {getStatusLabel(booking.simple_status || 'booking_requested')}
-      </Badge>
-      {showReopenButton && (
-        <ReopenModalButton 
-          booking={booking} 
-          onReopenModal={(step: string) => console.log('Reopen modal:', step)} 
-        />
-      )}
-    </div>
+    <Badge className={`${colorClasses[color]} border`}>
+      {text}
+    </Badge>
   );
 };

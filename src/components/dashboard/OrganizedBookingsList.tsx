@@ -1,156 +1,170 @@
-
-import React, { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { StandardDriverRideCard } from "../StandardDriverRideCard";
-import { Booking } from "@/types/booking";
-import { mapToSimpleStatus } from "@/utils/bookingHelpers";
+import { StandardDriverRideCard } from '../StandardDriverRideCard';
+import { BookingCard } from './BookingCard';
+import { Badge } from "@/components/ui/badge";
 
 interface OrganizedBookingsListProps {
-  refreshTrigger?: number;
+  bookings: any[];
+  userType: 'passenger' | 'driver';
+  onMessage: (booking: any) => void;
+  onReview?: (bookingId: string) => void;
+  onViewSummary?: (booking: any) => void;
+  onCancelSuccess?: () => void;
+  onNavigate?: (booking: any) => void;
 }
 
-export const OrganizedBookingsList = ({ refreshTrigger }: OrganizedBookingsListProps) => {
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
+const OrganizedBookingsList: React.FC<OrganizedBookingsListProps> = ({
+  bookings,
+  userType,
+  onMessage,
+  onReview,
+  onViewSummary,
+  onCancelSuccess,
+  onNavigate
+}) => {
+  // Sort all bookings by updated_at and pickup_time to prioritize most recent activity
+  const sortedBookings = [...bookings].sort((a, b) => {
+    // First, prioritize by status importance (newer activity first)
+    const statusPriority = {
+      'price_proposed': 1,
+      'pending': 2,
+      'accepted': 3,
+      'confirmed': 3,
+      'payment_confirmed': 4,
+      'ready_to_go': 5,
+      'completed': 6,
+      'cancelled': 7,
+      'declined': 7,
+      'rejected_by_passenger': 7
+    };
+    
+    const priorityA = statusPriority[a.status as keyof typeof statusPriority] || 8;
+    const priorityB = statusPriority[b.status as keyof typeof statusPriority] || 8;
+    
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB;
+    }
+    
+    // Then sort by pickup time (most recent first)
+    const dateA = new Date(a.date + ' ' + a.time);
+    const dateB = new Date(b.date + ' ' + b.time);
+    return dateB.getTime() - dateA.getTime();
+  });
 
-  useEffect(() => {
-    loadBookings();
-  }, [refreshTrigger]);
+  // Group bookings by status
+  const statusGroups = {
+    pending: sortedBookings.filter(b => b.status === 'pending'),
+    confirmed: sortedBookings.filter(b => b.status === 'accepted' || b.status === 'confirmed'),
+    payment_confirmed: sortedBookings.filter(b => 
+      b.status === 'payment_confirmed' || 
+      b.status === 'price_proposed' || 
+      b.status === 'ready_to_go'
+    ),
+    completed: sortedBookings.filter(b => b.status === 'completed'),
+    canceled: sortedBookings.filter(b => 
+      b.status === 'cancelled' || 
+      b.status === 'declined' || 
+      b.status === 'rejected_by_passenger'
+    )
+  };
 
-  const loadBookings = async () => {
-    try {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) return;
-
-      const { data, error } = await supabase
-        .from('bookings')
-        .select(`
-          *,
-          passengers:passenger_id (
-            id,
-            full_name,
-            phone,
-            profile_photo_url
-          ),
-          drivers:driver_id (
-            full_name,
-            phone,
-            profile_photo_url,
-            car_make,
-            car_model,
-            car_color,
-            license_plate
-          )
-        `)
-        .eq('driver_id', user.user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      const processedBookings: Booking[] = (data || []).map(booking => ({
-        id: booking.id,
-        pickup_location: booking.pickup_location || '',
-        dropoff_location: booking.dropoff_location || '',
-        pickup_time: booking.pickup_time || '',
-        passenger_count: booking.passenger_count || 1,
-        vehicle_type: booking.vehicle_type,
-        status: booking.status || 'pending',
-        ride_status: booking.ride_status,
-        payment_confirmation_status: booking.payment_confirmation_status,
-        status_passenger: booking.status_passenger,
-        status_driver: booking.status_driver,
-        simple_status: mapToSimpleStatus(booking),
-        estimated_price: booking.estimated_price,
-        final_price: booking.final_price,
-        created_at: booking.created_at,
-        updated_at: booking.updated_at,
-        passenger_id: booking.passenger_id || '',
-        driver_id: booking.driver_id,
-        vehicle_id: booking.vehicle_id,
-        passengers: booking.passengers ? {
-          id: booking.passengers.id,
-          full_name: booking.passengers.full_name,
-          phone: booking.passengers.phone,
-          profile_photo_url: booking.passengers.profile_photo_url
-        } : undefined,
-        drivers: booking.drivers
-      }));
-
-      setBookings(processedBookings);
-    } catch (error) {
-      console.error('Error loading bookings:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load bookings",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
+  const getStatusConfig = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return {
+          title: '🟡 ⏳ Pending',
+          bgColor: 'bg-yellow-50 dark:bg-yellow-950/20',
+          borderColor: 'border-yellow-200 dark:border-yellow-800'
+        };
+      case 'confirmed':
+        return {
+          title: '🟢 ✅ Confirmed',
+          bgColor: 'bg-green-50 dark:bg-green-950/20',
+          borderColor: 'border-green-200 dark:border-green-800'
+        };
+      case 'payment_confirmed':
+        return {
+          title: '🔵 💸 Payment Confirmed',
+          bgColor: 'bg-blue-50 dark:bg-blue-950/20',
+          borderColor: 'border-blue-200 dark:border-blue-800'
+        };
+      case 'completed':
+        return {
+          title: '🟤 ✅ Completed',
+          bgColor: 'bg-slate-50 dark:bg-slate-950/20',
+          borderColor: 'border-slate-200 dark:border-slate-800'
+        };
+      case 'canceled':
+        return {
+          title: '🔴 ❌ Canceled',
+          bgColor: 'bg-red-50 dark:bg-red-950/20',
+          borderColor: 'border-red-200 dark:border-red-800'
+        };
+      default:
+        return {
+          title: status,
+          bgColor: 'bg-muted/50',
+          borderColor: 'border-muted'
+        };
     }
   };
 
-  const organizeBookings = () => {
-    return {
-      new: bookings.filter(b => b.simple_status === 'booking_requested'),
-      active: bookings.filter(b => ['payment_pending', 'all_set'].includes(b.simple_status || '')),
-      completed: bookings.filter(b => b.simple_status === 'completed')
-    };
-  };
+  const hasAnyBookings = Object.values(statusGroups).some(group => group.length > 0);
 
-  const organizedBookings = organizeBookings();
-
-  if (loading) {
-    return <div className="text-center py-4">Loading bookings...</div>;
+  if (!hasAnyBookings) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center">
+          <p className="text-muted-foreground">No bookings found</p>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>My Rides</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="new" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="new">New ({organizedBookings.new.length})</TabsTrigger>
-            <TabsTrigger value="active">Active ({organizedBookings.active.length})</TabsTrigger>
-            <TabsTrigger value="completed">Completed ({organizedBookings.completed.length})</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="new" className="space-y-4">
-            {organizedBookings.new.length > 0 ? (
-              organizedBookings.new.map(booking => (
-                <StandardDriverRideCard key={booking.id} booking={booking} />
-              ))
-            ) : (
-              <p className="text-center text-gray-500 py-8">No new ride requests</p>
-            )}
-          </TabsContent>
-
-          <TabsContent value="active" className="space-y-4">
-            {organizedBookings.active.length > 0 ? (
-              organizedBookings.active.map(booking => (
-                <StandardDriverRideCard key={booking.id} booking={booking} />
-              ))
-            ) : (
-              <p className="text-center text-gray-500 py-8">No active rides</p>
-            )}
-          </TabsContent>
-
-          <TabsContent value="completed" className="space-y-4">
-            {organizedBookings.completed.length > 0 ? (
-              organizedBookings.completed.map(booking => (
-                <StandardDriverRideCard key={booking.id} booking={booking} />
-              ))
-            ) : (
-              <p className="text-center text-gray-500 py-8">No completed rides</p>
-            )}
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+    <div className="space-y-6">
+      {Object.entries(statusGroups).map(([status, bookings]) => {
+        if (bookings.length === 0) return null;
+        
+        const config = getStatusConfig(status);
+        
+        return (
+          <div key={status} className="space-y-3">
+            {/* Status Header */}
+            <div className={`${config.bgColor} ${config.borderColor} border rounded-lg p-3`}>
+              <h3 className="font-semibold text-foreground">{config.title}</h3>
+              <p className="text-sm text-muted-foreground">{bookings.length} booking{bookings.length !== 1 ? 's' : ''}</p>
+            </div>
+            
+            {/* Bookings in this status */}
+            <div className="space-y-6">
+              {bookings.map((booking) => (
+                <div key={booking.id} className="border-2 border-primary/20 rounded-xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.18)] transition-all duration-300 bg-gradient-to-br from-card via-card/95 to-primary/5 backdrop-blur-sm mb-6 p-1">
+                  {userType === 'driver' ? (
+                    <StandardDriverRideCard
+                      booking={booking}
+                      onMessage={() => onMessage(booking)}
+                    />
+                  ) : (
+                    <BookingCard
+                      booking={booking}
+                      userType={userType}
+                      onMessage={() => onMessage(booking)}
+                      onReview={onReview ? () => onReview(booking.id) : undefined}
+                      onViewSummary={onViewSummary ? () => onViewSummary(booking) : undefined}
+                      onCancelSuccess={onCancelSuccess}
+                      onNavigate={onNavigate ? () => onNavigate(booking) : undefined}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 };
+
+export default OrganizedBookingsList;

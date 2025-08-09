@@ -1,114 +1,274 @@
 
-import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Clock, CheckCircle, AlertCircle, XCircle } from "lucide-react";
+import React from 'react';
+import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from "date-fns";
-import { useBookingTimeline } from "@/hooks/useBookingTimeline";
+import { useRideStatus } from '@/hooks/useRideStatus';
 
 interface StatusTimelineProps {
   bookingId: string;
   userType: 'passenger' | 'driver';
+  userPhotoUrl?: string;
+  otherUserPhotoUrl?: string;
+  className?: string;
 }
 
-export const StatusTimeline = ({ bookingId, userType }: StatusTimelineProps) => {
-  const { data: timeline, isLoading, error } = useBookingTimeline(bookingId);
+interface StatusBlock {
+  id: string;
+  label: string;
+  timestamp: string;
+  amount?: string;
+  backgroundColor: string;
+  textColor: string;
+  order: number;
+  isCompleted: boolean;
+  actorName: string;
+  actorRole: string;
+  actorPhotoUrl?: string;
+  actualTimestamp: Date;
+  statusKey: string;
+}
 
-  if (isLoading) {
+const passengerStatusConfig = {
+  'pending': { 
+    label: 'Booking Request Sent', 
+    bg: 'bg-sky-400', 
+    text: 'text-white',
+    order: 1,
+    actor: 'passenger'
+  },
+  'offer_sent': { 
+    label: 'Offer Received - Awaiting Acceptance', 
+    bg: 'bg-orange-400', 
+    text: 'text-white',
+    order: 2,
+    actor: 'driver'
+  },
+  'offer_accepted': { 
+    label: 'Offer Accepted', 
+    bg: 'bg-emerald-500', 
+    text: 'text-white',
+    order: 3,
+    actor: 'passenger'
+  },
+  'payment_confirmed': { 
+    label: 'Payment Confirmed', 
+    bg: 'bg-sky-500', 
+    text: 'text-white',
+    order: 4,
+    actor: 'passenger'
+  },
+  'all_set': { 
+    label: 'All Set', 
+    bg: 'bg-purple-500', 
+    text: 'text-white',
+    order: 5,
+    actor: 'driver'
+  }
+};
+
+const driverStatusConfig = {
+  'pending': { 
+    label: 'Booking Request Received', 
+    bg: 'bg-sky-500', 
+    text: 'text-white',
+    order: 1,
+    actor: 'passenger'
+  },
+  'offer_sent': { 
+    label: 'Offer Sent - Awaiting Passenger Response', 
+    bg: 'bg-orange-500', 
+    text: 'text-white',
+    order: 2,
+    actor: 'driver'
+  },
+  'offer_accepted': { 
+    label: 'Offer Accepted', 
+    bg: 'bg-amber-400', 
+    text: 'text-black',
+    order: 3,
+    actor: 'passenger'
+  },
+  'payment_confirmed': { 
+    label: 'Payment Confirmed', 
+    bg: 'bg-emerald-400', 
+    text: 'text-white',
+    order: 4,
+    actor: 'passenger'
+  },
+  'all_set': { 
+    label: 'All Set', 
+    bg: 'bg-emerald-600', 
+    text: 'text-white',
+    order: 5,
+    actor: 'driver'
+  }
+};
+
+const statusOrder = ['pending', 'offer_sent', 'offer_accepted', 'payment_confirmed', 'all_set'];
+
+export const StatusTimeline = ({ 
+  bookingId, 
+  userType, 
+  userPhotoUrl, 
+  otherUserPhotoUrl,
+  className = "" 
+}: StatusTimelineProps) => {
+  const { statusData, loading } = useRideStatus({ 
+    rideId: bookingId, 
+    userType,
+    enabled: !!bookingId 
+  });
+
+  if (loading) {
     return (
-      <Card>
-        <CardContent className="text-center py-8">
-          <div className="animate-spin w-8 h-8 border-2 border-gray-300 border-t-blue-600 rounded-full mx-auto"></div>
-          <p className="mt-2 text-gray-600">Loading timeline...</p>
-        </CardContent>
-      </Card>
+      <div className="space-y-3">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="h-20 bg-gray-200 rounded-xl animate-pulse" />
+        ))}
+      </div>
     );
   }
 
-  if (error) {
-    return (
-      <Card>
-        <CardContent className="text-center py-8">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-2" />
-          <p className="text-red-500">Failed to load status timeline</p>
-        </CardContent>
-      </Card>
-    );
-  }
+  const statusConfig = userType === 'passenger' ? passengerStatusConfig : driverStatusConfig;
+  const currentStatus = statusData?.current_status || 'pending';
+  const currentStatusIndex = statusOrder.indexOf(currentStatus);
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed':
-      case 'all_set':
-        return <CheckCircle className="w-5 h-5 text-green-500" />;
-      case 'cancelled':
-        return <XCircle className="w-5 h-5 text-red-500" />;
-      default:
-        return <Clock className="w-5 h-5 text-blue-500" />;
-    }
-  };
+  console.log('🔍 StatusTimeline Debug:', {
+    currentStatus,
+    statusHistory: statusData?.statuses,
+    userType,
+    userPhotoUrl,
+    otherUserPhotoUrl
+  });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'booking_requested':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-      case 'payment_pending':
-        return 'bg-orange-100 text-orange-800 border-orange-300';
-      case 'all_set':
-        return 'bg-green-100 text-green-800 border-green-300';
-      case 'completed':
-        return 'bg-blue-100 text-blue-800 border-blue-300';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800 border-red-300';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-300';
+  // Remove duplicates and create status blocks only for completed/current statuses
+  const uniqueStatuses = statusData?.statuses ? 
+    statusData.statuses.reduce((acc, statusEntry) => {
+      const existingIndex = acc.findIndex(item => item.status_code === statusEntry.status_code);
+      
+      if (existingIndex >= 0) {
+        // Keep the more recent entry
+        const existingTimestamp = new Date(acc[existingIndex].status_timestamp);
+        const currentTimestamp = new Date(statusEntry.status_timestamp);
+        
+        if (currentTimestamp > existingTimestamp) {
+          acc[existingIndex] = statusEntry;
+        }
+      } else {
+        acc.push(statusEntry);
+      }
+      
+      return acc;
+    }, [] as typeof statusData.statuses) : [];
+
+  const statusBlocks: StatusBlock[] = uniqueStatuses.map((statusEntry) => {
+    const statusKey = statusEntry.status_code;
+    const config = statusConfig[statusKey as keyof typeof statusConfig];
+    
+    if (!config) {
+      return null;
     }
-  };
+    
+    // Fix: Show the correct photo based on who performed the action
+    const isUserActor = config.actor === userType;
+    const actorPhotoUrl = isUserActor ? userPhotoUrl : otherUserPhotoUrl;
+    const actorRole = config.actor === 'passenger' ? 'Passenger' : 'Driver';
+    const actorName = isUserActor ? 'You' : actorRole;
+    
+    const actualTimestamp = statusEntry.status_timestamp 
+      ? new Date(statusEntry.status_timestamp)
+      : new Date();
+    
+    return {
+      id: `${statusKey}-${actualTimestamp.getTime()}`,
+      label: config.label,
+      timestamp: format(actualTimestamp, 'h:mm a'),
+      amount: statusEntry?.metadata?.offer_price ? `$${statusEntry.metadata.offer_price}` : '',
+      backgroundColor: config.bg,
+      textColor: config.text,
+      order: config.order,
+      isCompleted: true,
+      actorName,
+      actorRole,
+      actorPhotoUrl,
+      actualTimestamp,
+      statusKey
+    };
+  }).filter(Boolean) as StatusBlock[];
+
+  // Sort by actual timestamp - most recent first
+  statusBlocks.sort((a, b) => b.actualTimestamp.getTime() - a.actualTimestamp.getTime());
+
+  console.log('📊 StatusTimeline Final Blocks:', statusBlocks.map(block => ({
+    id: block.id,
+    status: block.statusKey,
+    timestamp: block.actualTimestamp.toISOString(),
+    actor: block.actorRole,
+    photo_url: block.actorPhotoUrl
+  })));
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
-          <Clock className="w-5 h-5" />
-          <span>Ride Status Timeline</span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {timeline && timeline.length > 0 ? (
-          <div className="space-y-4">
-            {timeline.map((entry, index) => (
-              <div key={index} className="relative">
-                <div className="flex items-start space-x-4">
-                  <div className="flex-shrink-0 mt-1">
-                    {getStatusIcon(entry.status_code)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <Badge className={getStatusColor(entry.status_code)}>
-                        {entry.status_label}
-                      </Badge>
-                      <span className="text-sm text-gray-500 capitalize">
-                        by {entry.actor_role}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600">
-                      {format(new Date(entry.status_timestamp), 'MMM dd, yyyy at h:mm a')}
+    <div className={`space-y-3 ${className}`}>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-medium text-gray-900">Ride Status</h3>
+        {statusBlocks.length > 0 && statusBlocks[0].amount && (
+          <span className="text-lg font-semibold text-emerald-600">
+            {statusBlocks[0].amount}
+          </span>
+        )}
+      </div>
+      
+      {statusBlocks.map((block, index) => (
+        <Card 
+          key={block.id}
+          className={`${block.backgroundColor} border-none shadow-sm rounded-xl`}
+        >
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <h4 className={`font-semibold text-sm ${block.textColor}`}>
+                      {block.label}
+                    </h4>
+                    <p className={`text-xs ${block.textColor} opacity-75 mt-1`}>
+                      {block.actorName} • {block.actorRole}
                     </p>
                   </div>
+                  <div className="text-right">
+                    {block.timestamp && (
+                      <div className={`text-sm ${block.textColor} opacity-90`}>
+                        {block.timestamp}
+                      </div>
+                    )}
+                    {block.amount && (
+                      <div className={`text-sm font-medium ${block.textColor} opacity-90`}>
+                        {block.amount}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                {index < timeline.length - 1 && (
-                  <div className="absolute left-2.5 top-8 w-0.5 h-8 bg-gray-200"></div>
-                )}
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <Clock className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-500">No status updates yet</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+              
+              <div className="ml-4">
+                <Avatar className="h-12 w-12 border-2 border-white/20">
+                  <AvatarImage src={block.actorPhotoUrl} alt={block.actorName} />
+                  <AvatarFallback className="bg-white/20 text-white text-sm font-semibold">
+                    {block.actorRole.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+      
+      {statusBlocks.length === 0 && (
+        <div className="text-center py-8 text-gray-500">
+          No status updates yet
+        </div>
+      )}
+    </div>
   );
 };

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DateTimePicker } from "@/components/DateTimePicker";
-import GoogleMapsAutocomplete from "@/components/GoogleMapsAutocomplete";
+import { GoogleMapsAutocomplete } from "@/components/GoogleMapsAutocomplete";
 import { ArrowLeft, MapPin, Clock, Users, Car } from "lucide-react";
 
 interface VehicleType {
@@ -75,7 +75,7 @@ const BookingForm = () => {
     setIsSubmitting(true);
     
     try {
-      console.log('📝 Creating booking request - NO automatic driver assignment');
+      console.log('📝 Creating booking request - dispatcher will assign driver manually');
       
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -83,7 +83,8 @@ const BookingForm = () => {
         return;
       }
 
-      // Create booking with NO driver assignment - dispatcher will handle manually
+      // Create booking WITHOUT automatic driver assignment
+      // The dispatcher will manually assign the driver regardless of vehicle selection
       const { data, error } = await supabase
         .from('bookings')
         .insert({
@@ -94,24 +95,23 @@ const BookingForm = () => {
           passenger_count: passengerCount,
           vehicle_type: `${selectedVehicle.make} ${selectedVehicle.model}`,
           status: 'pending',
-          ride_status: 'pending_dispatcher_assignment',
-          payment_confirmation_status: 'awaiting_dispatcher',
+          ride_status: 'pending_driver',
+          payment_confirmation_status: 'waiting_for_offer',
           status_passenger: 'passenger_requested',
-          status_driver: 'awaiting_assignment',
-          // CRITICAL: NO automatic driver assignment whatsoever
-          driver_id: null,
-          vehicle_id: null
+          status_driver: 'new_request',
+          // NO driver_id - dispatcher will assign manually
+          driver_id: null
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      console.log('✅ Booking created successfully - awaiting dispatcher assignment:', data);
+      console.log('✅ Booking created successfully without auto-assignment:', data);
 
       toast({
         title: "Booking Requested!",
-        description: "Your ride request has been submitted. Our dispatch team will assign a driver shortly and send you an offer.",
+        description: "Your ride request has been submitted. A dispatcher will assign a driver shortly.",
       });
 
       navigate(`/passenger/confirmation?booking=${data.id}`);
@@ -186,8 +186,8 @@ const BookingForm = () => {
                 <span>Pickup Time</span>
               </Label>
               <DateTimePicker 
-                value={pickupTime} 
-                onChange={setPickupTime}
+                date={pickupTime} 
+                setDate={setPickupTime}
                 className="mt-1"
               />
             </div>
@@ -241,7 +241,7 @@ const BookingForm = () => {
 
             {/* Info Note */}
             <div className="text-xs text-gray-500 bg-blue-50 p-3 rounded-lg">
-              <p><strong>Note:</strong> Your vehicle preference is noted, but our dispatch team will assign the most suitable available driver for your trip and send you a personalized offer.</p>
+              <p><strong>Note:</strong> Your vehicle selection is a preference. Our dispatcher will assign the most suitable available driver for your trip.</p>
             </div>
           </CardContent>
         </Card>
