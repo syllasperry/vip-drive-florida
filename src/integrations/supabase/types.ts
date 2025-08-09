@@ -275,11 +275,43 @@ export type Database = {
           },
         ]
       }
+      driver_registration_links: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          email: string
+          expires_at: string
+          id: string
+          token: string
+          used: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          email: string
+          expires_at: string
+          id?: string
+          token: string
+          used?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          token?: string
+          used?: boolean | null
+        }
+        Relationships: []
+      }
       drivers: {
         Row: {
           account_name: string | null
           account_type: string | null
           apple_pay_info: string | null
+          bank_info: Json | null
+          business_type: string | null
           cancellation_policy: string | null
           car_color: string | null
           car_make: string | null
@@ -300,6 +332,10 @@ export type Database = {
           phone: string | null
           preferred_payment_method: string | null
           profile_photo_url: string | null
+          registration_link_expires_at: string | null
+          registration_link_token: string | null
+          self_registered: boolean | null
+          status: string | null
           venmo_info: string | null
           zelle_info: string | null
         }
@@ -307,6 +343,8 @@ export type Database = {
           account_name?: string | null
           account_type?: string | null
           apple_pay_info?: string | null
+          bank_info?: Json | null
+          business_type?: string | null
           cancellation_policy?: string | null
           car_color?: string | null
           car_make?: string | null
@@ -327,6 +365,10 @@ export type Database = {
           phone?: string | null
           preferred_payment_method?: string | null
           profile_photo_url?: string | null
+          registration_link_expires_at?: string | null
+          registration_link_token?: string | null
+          self_registered?: boolean | null
+          status?: string | null
           venmo_info?: string | null
           zelle_info?: string | null
         }
@@ -334,6 +376,8 @@ export type Database = {
           account_name?: string | null
           account_type?: string | null
           apple_pay_info?: string | null
+          bank_info?: Json | null
+          business_type?: string | null
           cancellation_policy?: string | null
           car_color?: string | null
           car_make?: string | null
@@ -354,6 +398,10 @@ export type Database = {
           phone?: string | null
           preferred_payment_method?: string | null
           profile_photo_url?: string | null
+          registration_link_expires_at?: string | null
+          registration_link_token?: string | null
+          self_registered?: boolean | null
+          status?: string | null
           venmo_info?: string | null
           zelle_info?: string | null
         }
@@ -964,6 +1012,10 @@ export type Database = {
           driver_email: string
           driver_phone: string
         }[]
+      }
+      generate_driver_registration_token: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       get_complete_schema: {
         Args: Record<PropertyKey, never>

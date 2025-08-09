@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-interface SimpleDriver {
+interface Driver {
   id: string;
   full_name: string;
   email: string;
@@ -15,7 +15,7 @@ interface SimpleDriver {
   car_model: string | null;
 }
 
-interface SimpleBooking {
+interface Booking {
   id: string;
   pickup_location: string;
   dropoff_location: string;
@@ -34,8 +34,8 @@ interface DispatcherBookingManagerProps {
 }
 
 export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerProps) => {
-  const [bookings, setBookings] = useState<SimpleBooking[]>([]);
-  const [drivers, setDrivers] = useState<SimpleDriver[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
   const [selectedBooking, setSelectedBooking] = useState<string>("");
   const [selectedDriver, setSelectedDriver] = useState<string>("");
   const [isAssigning, setIsAssigning] = useState(false);
@@ -57,7 +57,7 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
 
       if (error) throw error;
 
-      const processedBookings: SimpleBooking[] = (data || []).map(booking => {
+      const processedBookings: Booking[] = (data || []).map(booking => {
         const simpleStatus = mapToSimpleStatus(booking.status);
         
         console.log('📋 Processing booking for assignment:', {
@@ -125,7 +125,7 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
 
       if (error) throw error;
 
-      const processedDrivers: SimpleDriver[] = (data || []).map(driver => ({
+      const processedDrivers: Driver[] = (data || []).map(driver => ({
         id: driver.id,
         full_name: driver.full_name || 'Unknown',
         email: driver.email || '',
@@ -199,7 +199,7 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
     }
   };
 
-  // Remove automatic assignment by strictly filtering only bookings without drivers
+  // Filter for unassigned bookings only - no automatic assignment
   const unassignedBookings = bookings.filter(booking => {
     const isUnassigned = !booking.driver_id;
     const isNewRequest = booking.simple_status === 'booking_requested' || booking.status === 'pending';
