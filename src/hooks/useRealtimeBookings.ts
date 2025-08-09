@@ -1,56 +1,70 @@
+
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { Booking } from '@/types/booking';
 
-interface UseRealtimeBookingsOptions {
-  userId: string;
-  userType: 'passenger' | 'driver';
-  onBookingUpdate?: (booking: any) => void;
-}
-
-export const useRealtimeBookings = ({ userId, userType, onBookingUpdate }: UseRealtimeBookingsOptions) => {
-  const [isConnected, setIsConnected] = useState(false);
+export const useRealtimeBookings = () => {
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Create realtime subscription for bookings
+    let mounted = true;
+
+    const fetchBookings = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('bookings')
+          .select(`
+            *,
+            passengers:passenger_id(*),
+            drivers:driver_id(*)
+          `)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (mounted) {
+          setBookings(data || []);
+          setError(null);
+        }
+      } catch (err) {
+        console.error('Error fetching bookings:', err);
+        if (mounted) {
+          setError(err instanceof Error ? err.message : 'Failed to fetch bookings');
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchBookings();
+
+    // Set up real-time subscription
     const channel = supabase
-      .channel('bookings_updates')
+      .channel('bookings_changes')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'bookings',
+          table: 'bookings'
         },
         (payload) => {
-          const booking = payload.new as any;
-          
-          // Only process updates relevant to current user
-          const isRelevantToUser = userType === 'passenger' 
-            ? booking?.passenger_id === userId
-            : booking?.driver_id === userId;
-
-          if (isRelevantToUser && onBookingUpdate) {
-            console.log('📡 Realtime booking update:', {
-              event: payload.eventType,
-              bookingId: booking?.id,
-              statusPassenger: booking?.status_passenger,
-              statusDriver: booking?.status_driver,
-              userType
-            });
-            onBookingUpdate(booking);
-          }
+          console.log('📡 Real-time booking update:', payload);
+          fetchBookings(); // Refresh the entire list for simplicity
         }
       )
-      .subscribe((status) => {
-        console.log('📡 Realtime connection status:', status);
-        setIsConnected(status === 'SUBSCRIBED');
-      });
+      .subscribe();
 
     return () => {
+      mounted = false;
       supabase.removeChannel(channel);
-      setIsConnected(false);
     };
-  }, [userId, userType, onBookingUpdate]);
+  }, []);
 
-  return { isConnected };
+  return { bookings, loading, error, refetch: () => window.location.reload() };
 };

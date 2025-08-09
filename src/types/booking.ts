@@ -6,16 +6,23 @@ export interface Booking {
   pickup_time: string;
   passenger_count: number;
   vehicle_type?: string;
-  simple_status: 'booking_requested' | 'payment_pending' | 'all_set' | 'completed' | 'cancelled';
-  estimated_price?: number;
-  final_negotiated_price?: number;
-  final_price?: number;
-  created_at: string;
-  passenger_id: string;
-  driver_id?: string;
-  status?: string;
+  status: string;
   ride_status?: string;
   payment_confirmation_status?: string;
+  status_passenger?: string;
+  status_driver?: string;
+  ride_stage?: string;
+  payment_status?: string;
+  payment_method?: string;
+  driver_status?: string;
+  passenger_status?: string;
+  estimated_price?: number;
+  final_price?: number;
+  created_at: string;
+  updated_at?: string;
+  passenger_id: string;
+  driver_id?: string;
+  vehicle_id?: string;
   passengers?: {
     id: string;
     full_name: string;
@@ -28,15 +35,6 @@ export interface Booking {
     additional_notes?: string;
   };
   drivers?: {
-    full_name: string;
-    phone: string;
-    profile_photo_url?: string;
-    car_make: string;
-    car_model: string;
-    car_color: string;
-    license_plate: string;
-  };
-  driver_profiles?: {
     full_name: string;
     phone: string;
     profile_photo_url?: string;
