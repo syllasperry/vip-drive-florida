@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -123,7 +122,8 @@ const DispatcherDashboard = () => {
           status: booking.status,
           ride_status: booking.ride_status,
           final_price: booking.final_price,
-          driver_id: booking.driver_id
+          driver_id: booking.driver_id,
+          isManuallyAssigned: booking.driver_id ? 'YES' : 'NO'
         });
 
         return {
@@ -166,7 +166,12 @@ const DispatcherDashboard = () => {
         };
       });
 
-      console.log('📊 Dispatcher bookings loaded:', mappedBookings.length);
+      console.log('📊 Dispatcher bookings loaded:', {
+        total: mappedBookings.length,
+        withDrivers: mappedBookings.filter(b => b.driver_id).length,
+        withoutDrivers: mappedBookings.filter(b => !b.driver_id).length
+      });
+      
       setBookings(mappedBookings);
     } catch (error) {
       console.error('Error loading bookings:', error);
@@ -192,7 +197,10 @@ const DispatcherDashboard = () => {
       return 'payment_pending';
     }
     
-    return 'booking_requested';
+    // Map 'pending' status to 'booking_requested' for consistency
+    if (status === 'pending') return 'booking_requested';
+    
+    return status === 'assigned' ? 'payment_pending' : 'booking_requested';
   };
 
   const handleLogout = async () => {

@@ -21,6 +21,7 @@ interface SimpleBooking {
   dropoff_location: string;
   pickup_time: string;
   status: string;
+  simple_status: string;
   passenger_id: string;
   driver_id: string | null;
   vehicle_type: string | null;
@@ -47,6 +48,8 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
 
   const loadBookings = async () => {
     try {
+      console.log('🔄 Loading bookings for dispatcher assignment...');
+      
       const { data, error } = await supabase
         .from('bookings')
         .select('id, pickup_location, dropoff_location, pickup_time, status, passenger_id, driver_id, vehicle_type, estimated_price, final_price')
@@ -54,20 +57,34 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
 
       if (error) throw error;
 
-      const simpleBookings: SimpleBooking[] = (data || []).map(booking => ({
-        id: booking.id,
-        pickup_location: booking.pickup_location || '',
-        dropoff_location: booking.dropoff_location || '',
-        pickup_time: booking.pickup_time || '',
-        status: booking.status || 'pending',
-        passenger_id: booking.passenger_id || '',
-        driver_id: booking.driver_id,
-        vehicle_type: booking.vehicle_type,
-        estimated_price: booking.estimated_price,
-        final_price: booking.final_price
-      }));
+      const processedBookings: SimpleBooking[] = (data || []).map(booking => {
+        const simpleStatus = mapToSimpleStatus(booking.status);
+        
+        console.log('📋 Processing booking for assignment:', {
+          id: booking.id,
+          status: booking.status,
+          simple_status: simpleStatus,
+          driver_id: booking.driver_id,
+          isUnassigned: !booking.driver_id
+        });
 
-      setBookings(simpleBookings);
+        return {
+          id: booking.id,
+          pickup_location: booking.pickup_location || '',
+          dropoff_location: booking.dropoff_location || '',
+          pickup_time: booking.pickup_time || '',
+          status: booking.status || 'pending',
+          simple_status: simpleStatus,
+          passenger_id: booking.passenger_id || '',
+          driver_id: booking.driver_id,
+          vehicle_type: booking.vehicle_type,
+          estimated_price: booking.estimated_price,
+          final_price: booking.final_price
+        };
+      });
+
+      setBookings(processedBookings);
+      console.log('📊 Bookings loaded for assignment:', processedBookings.length);
     } catch (error) {
       console.error('Error loading bookings:', error);
       toast({
@@ -78,8 +95,29 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
     }
   };
 
+  const mapToSimpleStatus = (status: string): string => {
+    switch (status) {
+      case 'pending':
+      case 'booking_requested':
+        return 'booking_requested';
+      case 'offer_sent':
+      case 'payment_pending':
+        return 'payment_pending';
+      case 'all_set':
+        return 'all_set';
+      case 'completed':
+        return 'completed';
+      case 'cancelled':
+        return 'cancelled';
+      default:
+        return 'booking_requested';
+    }
+  };
+
   const loadDrivers = async () => {
     try {
+      console.log('🚗 Loading active drivers...');
+      
       const { data, error } = await supabase
         .from('drivers')
         .select('id, full_name, email, phone, car_make, car_model')
@@ -87,7 +125,7 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
 
       if (error) throw error;
 
-      const simpleDrivers: SimpleDriver[] = (data || []).map(driver => ({
+      const processedDrivers: SimpleDriver[] = (data || []).map(driver => ({
         id: driver.id,
         full_name: driver.full_name || 'Unknown',
         email: driver.email || '',
@@ -96,7 +134,8 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
         car_model: driver.car_model
       }));
 
-      setDrivers(simpleDrivers);
+      setDrivers(processedDrivers);
+      console.log('✅ Active drivers loaded:', processedDrivers.length);
     } catch (error) {
       console.error('Error loading drivers:', error);
       toast({
@@ -119,6 +158,11 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
 
     setIsAssigning(true);
     try {
+      console.log('👨‍💼 Dispatcher assigning driver:', {
+        booking_id: selectedBooking,
+        driver_id: selectedDriver
+      });
+
       const { error } = await supabase
         .from('bookings')
         .update({ 
@@ -142,6 +186,8 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
       if (onUpdate) {
         onUpdate();
       }
+      
+      console.log('✅ Driver assignment completed successfully');
     } catch (error) {
       console.error('Error assigning driver:', error);
       toast({
@@ -154,8 +200,24 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
     }
   };
 
-  // Filter for truly unassigned bookings only
-  const unassignedBookings = bookings.filter(b => !b.driver_id && b.status === 'pending');
+  // Filter for truly unassigned bookings - include all bookings without a driver
+  const unassignedBookings = bookings.filter(b => {
+    const isUnassigned = !b.driver_id;
+    const isNewRequest = b.simple_status === 'booking_requested';
+    
+    console.log('🔍 Checking booking for unassigned filter:', {
+      id: b.id,
+      driver_id: b.driver_id,
+      isUnassigned,
+      simple_status: b.simple_status,
+      isNewRequest,
+      shouldShow: isUnassigned && isNewRequest
+    });
+    
+    return isUnassigned && isNewRequest;
+  });
+
+  console.log('📋 Unassigned bookings for dropdown:', unassignedBookings.length);
 
   return (
     <Card>
