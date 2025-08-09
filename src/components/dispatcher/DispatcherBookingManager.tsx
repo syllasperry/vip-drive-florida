@@ -1,63 +1,63 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Settings } from "lucide-react";
+import { DollarSign, User, Car } from "lucide-react";
+import { Booking } from "@/types/booking";
 
-interface BookingManagerProps {
-  booking: any;
+interface Driver {
+  id: string;
+  full_name: string;
+  phone: string;
+  email: string;
+  car_make: string;
+  car_model: string;
+  car_color: string;
+  license_plate: string;
+}
+
+interface DispatcherBookingManagerProps {
+  booking: Booking;
   onUpdate: () => void;
 }
 
-export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerProps) => {
+export const DispatcherBookingManager = ({ booking, onUpdate }: DispatcherBookingManagerProps) => {
   const { toast } = useToast();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [offerPrice, setOfferPrice] = useState('');
+  const [selectedDriverId, setSelectedDriverId] = useState('');
+  const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(false);
-  const [finalPrice, setFinalPrice] = useState(booking.estimated_price || booking.final_price || '');
-  const [selectedDriver, setSelectedDriver] = useState(booking.driver_id || '');
-  const [drivers, setDrivers] = useState([]);
-  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    loadDrivers();
+  }, []);
 
   const loadDrivers = async () => {
     try {
       const { data, error } = await supabase
         .from('drivers')
-        .select('*');
-      
-      if (error) {
-        console.error('Error loading drivers:', error);
-        throw error;
-      }
+        .select('*')
+        .eq('status', 'active')
+        .order('full_name');
+
+      if (error) throw error;
       setDrivers(data || []);
     } catch (error) {
       console.error('Error loading drivers:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load drivers",
-        variant: "destructive",
-      });
     }
   };
 
   const handleSendOffer = async () => {
-    if (!selectedDriver || !finalPrice) {
+    if (!offerPrice || !selectedDriverId) {
       toast({
         title: "Missing Information",
-        description: "Please select a driver and set a price",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const priceValue = parseFloat(finalPrice);
-    if (isNaN(priceValue) || priceValue <= 0) {
-      toast({
-        title: "Invalid Price",
-        description: "Please enter a valid price greater than 0",
+        description: "Please select a driver and enter an offer price",
         variant: "destructive",
       });
       return;
@@ -65,59 +65,38 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
 
     setLoading(true);
     try {
-      console.log('📝 Dispatcher sending offer with data:', {
-        booking_id: booking.id,
-        driver_id: selectedDriver,
-        final_price: priceValue
-      });
-
-      // Update booking with proper status fields for immediate dashboard updates
-      const updateData = {
-        driver_id: selectedDriver,
-        final_price: priceValue,
-        status: 'offer_sent',
-        ride_status: 'offer_sent',
-        status_passenger: 'offer_sent',
-        status_driver: 'offer_sent',
-        payment_confirmation_status: 'waiting_for_payment',
-        updated_at: new Date().toISOString()
-      };
-
-      console.log('📤 Sending comprehensive update data:', updateData);
-
-      const { data, error } = await supabase
-        .from('bookings')
-        .update(updateData)
-        .eq('id', booking.id)
-        .select();
-
-      if (error) {
-        console.error('❌ Supabase error details:', error);
-        throw error;
-      }
-
-      console.log('✅ Booking updated successfully:', data);
-
-      // Force immediate refresh on both dashboards
-      onUpdate();
+      const priceValue = parseFloat(offerPrice);
       
-      // Additional refresh after a short delay to ensure real-time propagation
-      setTimeout(() => {
-        onUpdate();
-      }, 1000);
+      // Update booking with offer price and manually assigned driver
+      const { error } = await supabase
+        .from('bookings')
+        .update({
+          final_price: priceValue,
+          driver_id: selectedDriverId,
+          status: 'offer_sent',
+          ride_status: 'offer_sent',
+          status_driver: 'offer_sent',
+          payment_confirmation_status: 'waiting_for_passenger',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', booking.id);
+
+      if (error) throw error;
 
       toast({
-        title: "Success",
-        description: `Offer of $${priceValue} sent to passenger successfully`,
+        title: "Offer Sent Successfully",
+        description: `Offer of $${priceValue} sent to passenger with assigned driver`,
       });
 
-      setIsOpen(false);
-      
+      setIsModalOpen(false);
+      setOfferPrice('');
+      setSelectedDriverId('');
+      onUpdate();
     } catch (error) {
-      console.error('❌ Error sending offer:', error);
+      console.error('Error sending offer:', error);
       toast({
         title: "Error",
-        description: `Failed to send offer: ${error.message || 'Unknown error'}`,
+        description: "Failed to send offer",
         variant: "destructive",
       });
     } finally {
@@ -125,60 +104,99 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
     }
   };
 
-  const handleOpenDialog = () => {
-    loadDrivers();
-    setIsOpen(true);
+  const calculateCommission = (price: number) => {
+    return (price * 0.20).toFixed(2);
+  };
+
+  const calculateDriverAmount = (price: number) => {
+    return (price * 0.80).toFixed(2);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" onClick={handleOpenDialog}>
-          <Settings className="h-4 w-4 mr-1" />
-          Manage
+        <Button className="bg-red-600 hover:bg-red-700 text-white">
+          <DollarSign className="w-4 h-4 mr-2" />
+          Send Offer
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Assign Driver & Set Price</DialogTitle>
+          <DialogTitle>Send Price Offer</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
+          {/* Driver Selection */}
           <div>
-            <Label htmlFor="finalPrice">Final Price ($)</Label>
-            <Input
-              id="finalPrice"
-              type="number"
-              step="0.01"
-              min="0"
-              value={finalPrice}
-              onChange={(e) => setFinalPrice(e.target.value)}
-              placeholder="Enter final price"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="driver">Assign Driver</Label>
-            <Select value={selectedDriver} onValueChange={setSelectedDriver}>
+            <Label htmlFor="driver" className="flex items-center space-x-2">
+              <User className="w-4 h-4" />
+              <span>Assign Driver</span>
+            </Label>
+            <Select value={selectedDriverId} onValueChange={setSelectedDriverId}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a driver" />
               </SelectTrigger>
               <SelectContent>
-                {drivers.map((driver: any) => (
+                {drivers.map((driver) => (
                   <SelectItem key={driver.id} value={driver.id}>
-                    {driver.full_name} - {driver.car_make} {driver.car_model}
+                    <div className="flex items-center space-x-2">
+                      <Car className="w-4 h-4" />
+                      <span>{driver.full_name} - {driver.car_make} {driver.car_model}</span>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
+          {/* Price Input */}
+          <div>
+            <Label htmlFor="price">Offer Price ($)</Label>
+            <Input
+              id="price"
+              type="number"
+              step="0.01"
+              value={offerPrice}
+              onChange={(e) => setOfferPrice(e.target.value)}
+              placeholder="Enter offer price"
+            />
+          </div>
+
+          {/* Price Breakdown */}
+          {offerPrice && (
+            <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+              <h4 className="font-medium text-sm">Price Breakdown</h4>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span>Total Price:</span>
+                  <span className="font-semibold">${offerPrice}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Platform Commission (20%):</span>
+                  <span>${calculateCommission(parseFloat(offerPrice))}</span>
+                </div>
+                <div className="flex justify-between border-t pt-1">
+                  <span>Driver Amount (80%):</span>
+                  <span className="font-semibold">${calculateDriverAmount(parseFloat(offerPrice))}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={() => setIsOpen(false)}>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsModalOpen(false)}
+              disabled={loading}
+            >
               Cancel
             </Button>
-            <Button onClick={handleSendOffer} disabled={loading}>
-              {loading ? 'Sending Offer...' : 'Send Offer'}
+            <Button 
+              onClick={handleSendOffer}
+              disabled={loading || !offerPrice || !selectedDriverId}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {loading ? "Sending..." : "Send Offer"}
             </Button>
           </div>
         </div>
