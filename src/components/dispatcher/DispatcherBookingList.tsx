@@ -1,10 +1,13 @@
 
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Clock, Users, Car, MapPin } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Clock, Users, Car, MapPin, Settings } from 'lucide-react';
 import { format } from 'date-fns';
 import { Booking } from "@/types/booking";
+import { BookingManagementModal } from "./BookingManagementModal";
 
 interface DispatcherBookingListProps {
   bookings: Booking[];
@@ -12,6 +15,8 @@ interface DispatcherBookingListProps {
 }
 
 export const DispatcherBookingList = ({ bookings, onUpdate }: DispatcherBookingListProps) => {
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'booking_requested': return 'bg-orange-100 text-orange-800 border-orange-200';
@@ -50,6 +55,12 @@ export const DispatcherBookingList = ({ bookings, onUpdate }: DispatcherBookingL
        (booking.simple_status !== 'booking_requested' && booking.status !== 'pending'))
     );
   };
+
+  const handleManageBooking = (bookingId: string) => {
+    setSelectedBookingId(bookingId);
+  };
+
+  const selectedBooking = bookings.find(b => b.id === selectedBookingId);
 
   if (bookings.length === 0) {
     return (
@@ -180,10 +191,34 @@ export const DispatcherBookingList = ({ bookings, onUpdate }: DispatcherBookingL
                   </p>
                 </div>
               )}
+
+              {/* Manage Button */}
+              <Button 
+                onClick={() => handleManageBooking(booking.id)}
+                variant="outline" 
+                size="sm" 
+                className="w-full flex items-center gap-2"
+              >
+                <Settings className="w-4 h-4" />
+                Manage
+              </Button>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {/* Booking Management Modal */}
+      {selectedBooking && (
+        <BookingManagementModal
+          isOpen={!!selectedBookingId}
+          onClose={() => setSelectedBookingId(null)}
+          booking={selectedBooking}
+          onUpdate={() => {
+            onUpdate();
+            setSelectedBookingId(null);
+          }}
+        />
+      )}
     </div>
   );
 };
