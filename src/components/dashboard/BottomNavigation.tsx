@@ -1,10 +1,9 @@
-
-import { Car, Calendar, MessageCircle, CreditCard, Settings, DollarSign, AlertCircle, Navigation, Users, Calculator, BarChart3 } from "lucide-react";
+import { Car, Calendar, MessageCircle, CreditCard, Settings, DollarSign, AlertCircle, Navigation } from "lucide-react";
 
 interface BottomNavigationProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
-  userType: "passenger" | "driver" | "dispatcher";
+  userType: "passenger" | "driver";
   pendingActionsCount?: number;
   hasActiveRide?: boolean;
 }
@@ -24,33 +23,11 @@ export const BottomNavigation = ({ activeTab, onTabChange, userType, pendingActi
     { id: "settings", label: "Settings", icon: Settings }
   ];
 
-  const dispatcherTabs = [
-    { id: "bookings", label: "Bookings", icon: Car },
-    { id: "messages", label: "Messages", icon: MessageCircle },
-    { id: "drivers", label: "Drivers", icon: Users },
-    { id: "calculator", label: "Calculator", icon: Calculator },
-    { id: "reports", label: "Reports", icon: BarChart3 },
-    { id: "settings", label: "Settings", icon: Settings }
-  ];
-
-  const getFinalTabs = () => {
-    switch (userType) {
-      case "passenger":
-        return passengerTabs;
-      case "driver":
-        return driverTabs;
-      case "dispatcher":
-        return dispatcherTabs;
-      default:
-        return passengerTabs;
-    }
-  };
-
-  const finalTabs = getFinalTabs();
+  const finalTabs = userType === "passenger" ? passengerTabs : driverTabs;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border/50 backdrop-blur-lg z-50">
-      <div className="grid max-w-lg mx-auto"
+      <div className="grid grid-cols-4 max-w-lg mx-auto"
            style={{ gridTemplateColumns: `repeat(${finalTabs.length}, minmax(0, 1fr))` }}>
         {finalTabs.map((tab) => {
           const Icon = tab.icon;
