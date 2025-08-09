@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,7 +7,7 @@ import { DispatcherBookingList } from "@/components/dispatcher/DispatcherBooking
 import { DispatcherBookingManager } from "@/components/dispatcher/DispatcherBookingManager";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Cog6ToothIcon } from "@heroicons/react/24/outline";
+import { Settings } from "lucide-react";
 import { mapToSimpleStatus } from "@/utils/bookingHelpers";
 
 const DispatcherDashboard = () => {
@@ -14,7 +15,7 @@ const DispatcherDashboard = () => {
   const { toast } = useToast();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [dispatcherInfo, setDispatcherInfo] = useState(null);
+  const [dispatcherInfo, setDispatcherInfo] = useState<any>(null);
 
   useEffect(() => {
     checkAuth();
@@ -33,6 +34,7 @@ const DispatcherDashboard = () => {
         return;
       }
 
+      // Load dispatcher info from passengers table (since dispatchers are also passengers)
       loadDispatcherInfo(user.id);
     } catch (error) {
       console.error('Auth error:', error);
@@ -43,7 +45,7 @@ const DispatcherDashboard = () => {
   const loadDispatcherInfo = async (userId: string) => {
     try {
       const { data, error } = await supabase
-        .from('dispatchers')
+        .from('passengers')
         .select('*')
         .eq('id', userId)
         .single();
@@ -57,6 +59,8 @@ const DispatcherDashboard = () => {
         description: "Failed to load your profile information",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -65,6 +69,14 @@ const DispatcherDashboard = () => {
     // to refresh the booking list
     console.log('🔄 Refreshing booking list after update...');
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div>Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -77,7 +89,7 @@ const DispatcherDashboard = () => {
               onClick={() => navigate('/dispatcher/settings')}
               className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
             >
-              <Cog6ToothIcon className="h-6 w-6 text-gray-600" />
+              <Settings className="h-6 w-6 text-gray-600" />
             </button>
           </div>
         </div>

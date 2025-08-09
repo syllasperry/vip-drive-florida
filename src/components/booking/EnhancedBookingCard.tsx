@@ -1,3 +1,4 @@
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -270,8 +271,8 @@ export const EnhancedBookingCard = ({
           </div>
           
           <StatusBadges 
-            rideStatus={booking.ride_status || booking.status} 
-            paymentStatus={booking.payment_confirmation_status || "waiting_for_offer"}
+            booking={booking}
+            userType={userType}
             onReopenAlert={onReopenAlert}
             showReopenButton={true}
           />
