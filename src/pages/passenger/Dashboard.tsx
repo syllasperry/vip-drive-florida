@@ -137,7 +137,7 @@ const PassengerDashboard = () => {
         } : undefined
       }));
 
-      console.log('📊 Passenger loaded bookings:', mappedBookings);
+      console.log('📊 Passenger bookings loaded:', mappedBookings);
       setBookings(mappedBookings);
     } catch (error) {
       console.error('Error loading bookings:', error);
@@ -152,14 +152,14 @@ const PassengerDashboard = () => {
   };
 
   const mapToSimpleStatus = (status?: string, rideStatus?: string, paymentStatus?: string): Booking['simple_status'] => {
-    console.log('Passenger mapping status:', { status, rideStatus, paymentStatus });
+    console.log('🔍 Passenger status mapping:', { status, rideStatus, paymentStatus });
     
     if (status === 'completed' || rideStatus === 'completed') return 'completed';
     if (status === 'cancelled') return 'cancelled';
     
     if (paymentStatus === 'all_set' || rideStatus === 'all_set') return 'all_set';
     
-    // Check for offer sent status - this should catch when trigger updates status to 'offer_sent'
+    // Check for offer sent status - this maps to payment_pending for UI
     if (status === 'offer_sent' || rideStatus === 'offer_sent' || paymentStatus === 'waiting_for_payment') {
       return 'payment_pending';
     }
@@ -181,7 +181,7 @@ const PassengerDashboard = () => {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'booking_requested': return 'Booking Requested';
-      case 'payment_pending': return 'Offer Price Sent';
+      case 'payment_pending': return 'Offer Price Sent to Passenger';
       case 'all_set': return 'All Set';
       case 'completed': return 'Completed';
       case 'cancelled': return 'Cancelled';

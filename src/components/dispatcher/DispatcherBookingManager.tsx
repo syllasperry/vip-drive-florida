@@ -65,14 +65,14 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
 
     setLoading(true);
     try {
-      console.log('Updating booking with data:', {
+      console.log('📝 Sending offer with data:', {
         booking_id: booking.id,
         driver_id: selectedDriver,
         final_price: priceValue
       });
 
       // Update booking with driver assignment and final price
-      // The SQL trigger will automatically set the status to 'offer_sent'
+      // The SQL trigger will automatically set status to 'offer_sent'
       const updateData = {
         driver_id: selectedDriver,
         final_price: priceValue,
@@ -87,28 +87,29 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
         .select();
 
       if (error) {
-        console.error('Supabase error details:', error);
+        console.error('❌ Supabase error details:', error);
         throw error;
       }
 
-      console.log('Booking updated successfully - trigger should set status to offer_sent:', data);
+      console.log('✅ Offer sent successfully - status should be offer_sent:', data);
 
       toast({
         title: "Success",
-        description: "Offer sent to passenger successfully",
+        description: `Offer of $${priceValue} sent to passenger successfully`,
       });
 
-      // Force immediate refresh of the bookings list
-      onUpdate();
       setIsOpen(false);
       
-      // Additional safety refresh after a short delay
+      // Force immediate refresh
+      onUpdate();
+      
+      // Additional refresh to ensure real-time sync
       setTimeout(() => {
         onUpdate();
       }, 1000);
 
     } catch (error) {
-      console.error('Error updating booking:', error);
+      console.error('❌ Error sending offer:', error);
       toast({
         title: "Error",
         description: `Failed to send offer: ${error.message || 'Unknown error'}`,

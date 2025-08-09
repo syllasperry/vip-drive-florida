@@ -49,7 +49,7 @@ const DispatcherDashboard = () => {
           table: 'bookings'
         },
         (payload) => {
-          console.log('📡 Real-time booking update:', payload);
+          console.log('📡 Real-time update for dispatcher:', payload);
           loadBookings();
         }
       )
@@ -129,7 +129,7 @@ const DispatcherDashboard = () => {
         } : undefined
       }));
 
-      console.log('📊 Loaded dispatcher bookings:', mappedBookings);
+      console.log('📊 Dispatcher bookings loaded:', mappedBookings);
       setBookings(mappedBookings);
     } catch (error) {
       console.error('Error loading bookings:', error);
@@ -144,19 +144,18 @@ const DispatcherDashboard = () => {
   };
 
   const mapToSimpleStatus = (status?: string, rideStatus?: string, paymentStatus?: string): Booking['simple_status'] => {
-    console.log('Dispatcher mapping status:', { status, rideStatus, paymentStatus });
+    console.log('🔍 Dispatcher status mapping:', { status, rideStatus, paymentStatus });
     
     if (status === 'completed' || rideStatus === 'completed') return 'completed';
     if (status === 'cancelled') return 'cancelled';
     
     if (paymentStatus === 'all_set' || rideStatus === 'all_set') return 'all_set';
     
-    // Check for offer sent status - this should catch when trigger updates status to 'offer_sent'
+    // Check for offer sent status - this maps to payment_pending for UI
     if (status === 'offer_sent' || rideStatus === 'offer_sent' || paymentStatus === 'waiting_for_payment') {
       return 'payment_pending';
     }
     
-    // If driver is assigned but no offer sent yet, still show as requested
     return 'booking_requested';
   };
 
@@ -174,7 +173,7 @@ const DispatcherDashboard = () => {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'booking_requested': return 'New Request';
-      case 'payment_pending': return 'Offer Price Sent';
+      case 'payment_pending': return 'Offer Price Sent to Passenger';
       case 'all_set': return 'All Set';
       case 'completed': return 'Completed';
       case 'cancelled': return 'Cancelled';
@@ -307,6 +306,19 @@ const DispatcherDashboard = () => {
                     )}
                   </div>
 
+                  {/* Price - show final_price if available, otherwise estimated_price */}
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-2xl font-bold text-red-600">
+                      ${booking.final_price || booking.estimated_price || 0}
+                    </span>
+                    {booking.simple_status === 'booking_requested' && (
+                      <DispatcherBookingManager
+                        booking={booking}
+                        onUpdate={loadBookings}
+                      />
+                    )}
+                  </div>
+
                   {/* Driver Info - show when assigned */}
                   {booking.drivers && (
                     <div className="mb-4 p-3 bg-green-50 rounded-lg">
@@ -327,19 +339,6 @@ const DispatcherDashboard = () => {
                       </div>
                     </div>
                   )}
-
-                  {/* Price - show final_price if available, otherwise estimated_price */}
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-2xl font-bold text-red-600">
-                      ${booking.final_price || booking.estimated_price || 0}
-                    </span>
-                    {booking.simple_status === 'booking_requested' && (
-                      <DispatcherBookingManager
-                        booking={booking}
-                        onUpdate={loadBookings}
-                      />
-                    )}
-                  </div>
 
                   {/* Action Buttons - only show for non-new-requests */}
                   {booking.simple_status !== 'booking_requested' && (
