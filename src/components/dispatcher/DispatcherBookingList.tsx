@@ -38,6 +38,19 @@ export const DispatcherBookingList = ({ bookings, onUpdate }: DispatcherBookingL
     return format(new Date(dateString), 'MMM dd, yyyy - HH:mm');
   };
 
+  // Check if driver was manually assigned by dispatcher
+  const isDriverManuallyAssigned = (booking: Booking): boolean => {
+    // Only show assigned driver if:
+    // 1. There is a driver_id AND
+    // 2. The status is 'assigned' (which indicates manual dispatcher assignment) OR
+    // 3. The status is beyond 'pending' and not 'booking_requested' (indicating progression past initial request)
+    return !!(
+      booking.driver_id && 
+      (booking.status === 'assigned' || 
+       (booking.simple_status !== 'booking_requested' && booking.status !== 'pending'))
+    );
+  };
+
   if (bookings.length === 0) {
     return (
       <div className="text-center py-12">
@@ -139,7 +152,7 @@ export const DispatcherBookingList = ({ bookings, onUpdate }: DispatcherBookingL
               </div>
 
               {/* Driver Info - Only show when manually assigned by dispatcher */}
-              {booking.drivers && booking.driver_id && (
+              {booking.drivers && booking.driver_id && isDriverManuallyAssigned(booking) && (
                 <div className="mb-4 p-3 bg-green-50 rounded-lg">
                   <p className="text-sm font-medium text-gray-900 mb-2">Assigned Driver</p>
                   <div className="flex items-center space-x-3">
@@ -156,6 +169,15 @@ export const DispatcherBookingList = ({ bookings, onUpdate }: DispatcherBookingL
                       </p>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Show notice for bookings that need manual assignment */}
+              {booking.driver_id && !isDriverManuallyAssigned(booking) && (
+                <div className="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <p className="text-sm text-yellow-800">
+                    ⚠️ Driver requires manual assignment by dispatcher
+                  </p>
                 </div>
               )}
             </CardContent>

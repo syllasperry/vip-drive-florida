@@ -65,7 +65,7 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
           status: booking.status,
           simple_status: simpleStatus,
           driver_id: booking.driver_id,
-          isUnassigned: !booking.driver_id
+          isUnassigned: !booking.driver_id || booking.status === 'pending'
         });
 
         return {
@@ -199,25 +199,27 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
     }
   };
 
-  // Filter for unassigned bookings only - no automatic assignment
+  // Filter for bookings that need manual assignment
   const unassignedBookings = bookings.filter(booking => {
-    const isUnassigned = !booking.driver_id;
+    // Show bookings that:
+    // 1. Have no driver assigned OR
+    // 2. Have a driver but status is still 'pending' (indicating auto-assignment that needs manual confirmation)
+    const needsManualAssignment = !booking.driver_id || booking.status === 'pending';
     const isNewRequest = booking.simple_status === 'booking_requested' || booking.status === 'pending';
     
-    console.log('🔍 Checking booking for unassigned filter:', {
+    console.log('🔍 Checking booking for manual assignment:', {
       id: booking.id,
       driver_id: booking.driver_id,
-      isUnassigned,
-      simple_status: booking.simple_status,
       status: booking.status,
+      needsManualAssignment,
       isNewRequest,
-      shouldShow: isUnassigned && isNewRequest
+      shouldShow: needsManualAssignment && isNewRequest
     });
     
-    return isUnassigned && isNewRequest;
+    return needsManualAssignment && isNewRequest;
   });
 
-  console.log('📋 Unassigned bookings for dropdown:', unassignedBookings.length);
+  console.log('📋 Bookings needing manual assignment:', unassignedBookings.length);
 
   return (
     <Card>
@@ -241,7 +243,7 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
                   ))
                 ) : (
                   <SelectItem value="no-bookings" disabled>
-                    No unassigned bookings available
+                    No bookings requiring manual assignment
                   </SelectItem>
                 )}
               </SelectContent>
