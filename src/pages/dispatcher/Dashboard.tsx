@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,8 +7,7 @@ import { DispatcherBookingList } from "@/components/dispatcher/DispatcherBooking
 import { DispatcherBookingManager } from "@/components/dispatcher/DispatcherBookingManager";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Cog6ToothIcon } from "@heroicons/react/24/outline";
-import { mapToSimpleStatus } from "@/utils/bookingHelpers";
+import { CogIcon } from "@heroicons/react/24/outline";
 
 const DispatcherDashboard = () => {
   const navigate = useNavigate();
@@ -33,30 +33,17 @@ const DispatcherDashboard = () => {
         return;
       }
 
-      loadDispatcherInfo(user.id);
+      // Since we removed the dispatchers table, use user info directly
+      setDispatcherInfo({
+        full_name: user.user_metadata?.full_name || 'Dispatcher',
+        email: user.email,
+        phone: user.user_metadata?.phone || '',
+        profile_photo_url: user.user_metadata?.profile_photo_url || null
+      });
+      setLoading(false);
     } catch (error) {
       console.error('Auth error:', error);
       navigate('/dispatcher/login');
-    }
-  };
-
-  const loadDispatcherInfo = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('dispatchers')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) throw error;
-      setDispatcherInfo(data);
-    } catch (error) {
-      console.error('Error loading dispatcher info:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load your profile information",
-        variant: "destructive",
-      });
     }
   };
 
@@ -77,7 +64,7 @@ const DispatcherDashboard = () => {
               onClick={() => navigate('/dispatcher/settings')}
               className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
             >
-              <Cog6ToothIcon className="h-6 w-6 text-gray-600" />
+              <CogIcon className="h-6 w-6 text-gray-600" />
             </button>
           </div>
         </div>
