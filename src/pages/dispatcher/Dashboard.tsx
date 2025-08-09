@@ -20,6 +20,20 @@ const DispatcherDashboard = () => {
   useEffect(() => {
     checkAuth();
     setupRealtimeSubscription();
+    
+    // Set up automatic refresh every 10 seconds
+    const refreshInterval = setInterval(() => {
+      console.log('🔄 Auto-refreshing dispatcher dashboard...');
+      const { data: { user } } = supabase.auth.getUser().then(({ data }) => {
+        if (data.user && data.user.email === 'syllasperry@gmail.com') {
+          loadBookings();
+        }
+      });
+    }, 10000);
+
+    return () => {
+      clearInterval(refreshInterval);
+    };
   }, []);
 
   const checkAuth = async () => {
@@ -40,7 +54,7 @@ const DispatcherDashboard = () => {
 
   const setupRealtimeSubscription = () => {
     const channel = supabase
-      .channel('dispatcher-bookings')
+      .channel('dispatcher-bookings-enhanced')
       .on(
         'postgres_changes',
         {
@@ -49,11 +63,14 @@ const DispatcherDashboard = () => {
           table: 'bookings'
         },
         (payload) => {
-          console.log('📡 Real-time update for dispatcher:', payload);
+          console.log('📡 Enhanced real-time update for dispatcher:', payload);
+          // Force refresh on any booking changes
           loadBookings();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('📡 Dispatcher subscription status:', status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -93,7 +110,7 @@ const DispatcherDashboard = () => {
       if (error) throw error;
 
       const mappedBookings: Booking[] = (data || []).map(booking => {
-        console.log('📋 Processing booking:', {
+        console.log('📋 Processing dispatcher booking:', {
           id: booking.id,
           status: booking.status,
           ride_status: booking.ride_status,
@@ -319,7 +336,7 @@ const DispatcherDashboard = () => {
                     )}
                   </div>
 
-                  {/* Price - show final_price if available, otherwise show estimated_price or $0 */}
+                  {/* Price - always show final_price if available, otherwise estimated_price */}
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-2xl font-bold text-red-600">
                       ${booking.final_price || booking.estimated_price || 0}

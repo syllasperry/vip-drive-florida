@@ -24,11 +24,25 @@ const PassengerDashboard = () => {
   useEffect(() => {
     checkAuth();
     setupRealtimeSubscription();
+    
+    // Set up automatic refresh every 10 seconds
+    const refreshInterval = setInterval(() => {
+      console.log('🔄 Auto-refreshing passenger dashboard...');
+      const { data: { user } } = supabase.auth.getUser().then(({ data }) => {
+        if (data.user) {
+          loadBookings(data.user.id);
+        }
+      });
+    }, 10000);
+
+    return () => {
+      clearInterval(refreshInterval);
+    };
   }, []);
 
   const setupRealtimeSubscription = () => {
     const channel = supabase
-      .channel('passenger-bookings')
+      .channel('passenger-bookings-enhanced')
       .on(
         'postgres_changes',
         {
@@ -37,14 +51,17 @@ const PassengerDashboard = () => {
           table: 'bookings'
         },
         async (payload) => {
-          console.log('📡 Real-time booking update for passenger:', payload);
+          console.log('📡 Enhanced real-time booking update for passenger:', payload);
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
+            // Force refresh on any changes
             loadBookings(user.id);
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('📡 Passenger subscription status:', status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -356,7 +373,7 @@ const PassengerDashboard = () => {
                     )}
                   </div>
 
-                  {/* Price - show final_price if available, otherwise show estimated_price or $0 */}
+                  {/* Price - always show final_price if available, otherwise estimated_price */}
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-2xl font-bold text-red-600">
                       ${booking.final_price || booking.estimated_price || 0}
@@ -447,7 +464,7 @@ const PassengerDashboard = () => {
                     </Button>
                   </div>
 
-                  {/* Payment Button for payment_pending status */}
+                  {/* Payment Button for payment_pending status - show final_price */}
                   {booking.simple_status === 'payment_pending' && booking.final_price && (
                     <Button 
                       className="w-full mt-3 bg-red-500 hover:bg-red-600 text-white"

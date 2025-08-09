@@ -71,17 +71,19 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
         final_price: priceValue
       });
 
-      // Update booking with explicit status that will be recognized by both dashboards
+      // Update booking with explicit status fields that both dashboards recognize
       const updateData = {
         driver_id: selectedDriver,
         final_price: priceValue,
         status: 'offer_sent',
         ride_status: 'offer_sent',
+        status_passenger: 'offer_sent',
+        status_driver: 'offer_sent',
         payment_confirmation_status: 'waiting_for_payment',
         updated_at: new Date().toISOString()
       };
 
-      console.log('📤 Sending update data:', updateData);
+      console.log('📤 Sending comprehensive update data:', updateData);
 
       const { data, error } = await supabase
         .from('bookings')
@@ -96,13 +98,17 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
 
       console.log('✅ Booking updated successfully:', data);
 
+      // Force immediate refresh on both sides
+      setTimeout(() => {
+        onUpdate();
+      }, 500);
+
       toast({
         title: "Success",
         description: `Offer of $${priceValue} sent to passenger successfully`,
       });
 
       setIsOpen(false);
-      onUpdate();
       
     } catch (error) {
       console.error('❌ Error sending offer:', error);
