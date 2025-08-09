@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
@@ -216,18 +215,6 @@ const ChooseVehicle = () => {
                     </span>
                   </div>
                 </div>
-
-                {/* Driver section completely removed - no automatic driver assignment */}
-                {selectedVehicle === vehicle.id && vehicle.available && (
-                  <div className="mt-4 p-4 bg-muted/30 rounded-lg border border-border/50">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-                      <p className="text-sm text-muted-foreground">
-                        Your driver will be assigned by our dispatch team
-                      </p>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           ))}
