@@ -17,7 +17,7 @@ interface OrganizedBookingsListProps {
 }
 
 export const OrganizedBookingsList = ({ userType, onRefresh }: OrganizedBookingsListProps) => {
-  const { bookings, loading, refreshBookings } = useRealtimeBookings(userType);
+  const { bookings, loading, refetch } = useRealtimeBookings(userType);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [showMessaging, setShowMessaging] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
@@ -31,7 +31,7 @@ export const OrganizedBookingsList = ({ userType, onRefresh }: OrganizedBookings
   }, [bookings, onRefresh]);
 
   const handleUpdate = () => {
-    refreshBookings();
+    refetch();
     if (onRefresh) {
       onRefresh();
     }
@@ -184,8 +184,11 @@ export const OrganizedBookingsList = ({ userType, onRefresh }: OrganizedBookings
       {/* Modals */}
       {showMessaging && selectedBooking && (
         <MessagingInterface
+          isOpen={showMessaging}
           bookingId={selectedBooking.id}
           userType={userType}
+          currentUserId={selectedBooking.passenger_id || selectedBooking.driver_id || ''}
+          currentUserName={selectedBooking.passengers?.full_name || selectedBooking.drivers?.full_name || 'User'}
           onClose={() => setShowMessaging(false)}
         />
       )}
@@ -203,7 +206,6 @@ export const OrganizedBookingsList = ({ userType, onRefresh }: OrganizedBookings
           isOpen={showPayment}
           onClose={() => setShowPayment(false)}
           booking={selectedBooking}
-          onUpdate={handleUpdate}
         />
       )}
 

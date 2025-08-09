@@ -5,17 +5,25 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Clock, AlertCircle } from "lucide-react";
 
 interface ComprehensiveStatusTimelineProps {
-  rideId: string;
+  bookingId?: string;
+  rideId?: string;
   userType: 'passenger' | 'driver';
+  passengerData?: any;
+  driverData?: any;
+  finalPrice?: any;
   className?: string;
 }
 
 export const ComprehensiveStatusTimeline = ({ 
+  bookingId,
   rideId, 
   userType, 
+  passengerData,
+  driverData,
+  finalPrice,
   className = "" 
 }: ComprehensiveStatusTimelineProps) => {
-  const { status, loading, error } = useRideStatus(rideId);
+  const { status, loading, error } = useRideStatus(bookingId || rideId || '');
 
   if (loading) {
     return (

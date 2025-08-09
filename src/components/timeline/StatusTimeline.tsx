@@ -5,17 +5,29 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Clock, AlertTriangle } from "lucide-react";
 
 interface StatusTimelineProps {
-  rideId: string;
+  bookingId?: string;
+  rideId?: string;
   userType: 'passenger' | 'driver';
+  userPhotoUrl?: string;
+  otherUserPhotoUrl?: string;
   compact?: boolean;
+  className?: string;
 }
 
-export const StatusTimeline = ({ rideId, userType, compact = false }: StatusTimelineProps) => {
-  const { status, loading, error } = useRideStatus(rideId);
+export const StatusTimeline = ({ 
+  bookingId, 
+  rideId, 
+  userType, 
+  userPhotoUrl, 
+  otherUserPhotoUrl, 
+  compact = false,
+  className = ""
+}: StatusTimelineProps) => {
+  const { status, loading, error } = useRideStatus(bookingId || rideId || '');
 
   if (loading) {
     return (
-      <Card className={compact ? "p-2" : ""}>
+      <Card className={`${compact ? "p-2" : ""} ${className}`}>
         <CardContent className={compact ? "p-2" : "p-4"}>
           <div className="flex items-center gap-2 text-sm">
             <Clock className="w-4 h-4 animate-spin" />
@@ -28,7 +40,7 @@ export const StatusTimeline = ({ rideId, userType, compact = false }: StatusTime
 
   if (error) {
     return (
-      <Card className={compact ? "p-2" : ""}>
+      <Card className={`${compact ? "p-2" : ""} ${className}`}>
         <CardContent className={compact ? "p-2" : "p-4"}>
           <div className="flex items-center gap-2 text-sm text-red-500">
             <AlertTriangle className="w-4 h-4" />
@@ -73,7 +85,7 @@ export const StatusTimeline = ({ rideId, userType, compact = false }: StatusTime
   };
 
   return (
-    <Card className={compact ? "p-1" : ""}>
+    <Card className={`${compact ? "p-1" : ""} ${className}`}>
       <CardContent className={compact ? "p-2" : "p-4"}>
         <div className="flex items-center justify-between">
           <span className={compact ? "text-sm font-medium" : "font-medium"}>

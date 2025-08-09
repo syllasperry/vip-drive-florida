@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -142,10 +141,7 @@ export const DispatcherBookingList = ({ onManageBooking }: DispatcherBookingList
     }
   };
 
-  const [forceModalStep, setForceModalStep] = useState<string | null>(null);
-
   const handleReopenModal = (step: string) => {
-    setForceModalStep(step);
     setIsModalOpen(true);
   };
 
@@ -289,7 +285,6 @@ export const DispatcherBookingList = ({ onManageBooking }: DispatcherBookingList
         onClose={handleModalClose}
         booking={selectedBooking || {} as Booking}
         onUpdate={handleBookingUpdate}
-        forceOpenStep={forceModalStep}
       />
     </div>
   );
