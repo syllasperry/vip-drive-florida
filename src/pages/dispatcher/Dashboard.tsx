@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,8 +7,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MapPin, Clock, Users, DollarSign, MessageCircle, Phone, Car, LogOut } from 'lucide-react';
+import { MapPin, Clock, Users, DollarSign, MessageCircle, Phone, Car, LogOut, Calculator, Settings, CreditCard } from 'lucide-react';
 import { DispatcherBookingManager } from "@/components/dispatcher/DispatcherBookingManager";
+import { PaymentCalculator } from "@/components/dispatcher/PaymentCalculator";
 import { format } from 'date-fns';
 import { Booking } from "@/types/booking";
 
@@ -16,6 +18,7 @@ const DispatcherDashboard = () => {
   const { toast } = useToast();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("bookings");
 
   useEffect(() => {
     checkAuth();
@@ -27,7 +30,7 @@ const DispatcherDashboard = () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user && user.email === 'syllasperry@gmail.com') {
-          loadBookings();
+          await loadBookings();
         }
       } catch (error) {
         console.error('Error in auto-refresh:', error);
@@ -223,6 +226,212 @@ const DispatcherDashboard = () => {
     return format(new Date(dateString), 'MMM dd, yyyy - HH:mm');
   };
 
+  const renderBookingsContent = () => (
+    <div className="max-w-4xl mx-auto px-6 py-6">
+      <div className="mb-6">
+        <h2 className="text-lg font-medium text-gray-900 mb-2">All Bookings</h2>
+        <p className="text-gray-600">Manage ride requests and assignments</p>
+      </div>
+
+      {bookings.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Car className="w-8 h-8 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings yet</h3>
+          <p className="text-gray-500">New ride requests will appear here</p>
+        </div>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {bookings.map((booking) => (
+            <Card key={booking.id} className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+              <CardContent className="p-4">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-medium text-gray-900">#{booking.id.slice(-8).toUpperCase()}</span>
+                    <Clock className="w-4 h-4 text-gray-400" />
+                  </div>
+                  <Badge className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(booking.simple_status)}`}>
+                    {getStatusLabel(booking.simple_status)}
+                  </Badge>
+                </div>
+
+                {/* Passenger Info */}
+                {booking.passengers && (
+                  <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                    <p className="text-sm font-medium text-gray-900 mb-2">Passenger</p>
+                    <div className="flex items-center space-x-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={booking.passengers.profile_photo_url} />
+                        <AvatarFallback className="bg-gray-200 text-gray-600">
+                          {booking.passengers.full_name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900">{booking.passengers.full_name}</p>
+                        <p className="text-sm text-gray-500">{booking.passengers.phone}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Locations */}
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-start space-x-3">
+                    <div className="w-3 h-3 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <div>
+                      <p className="text-sm text-gray-500">Pickup</p>
+                      <p className="text-sm font-medium text-gray-900">{booking.pickup_location}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-3">
+                    <div className="w-3 h-3 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <div>
+                      <p className="text-sm text-gray-500">Drop-off</p>
+                      <p className="text-sm font-medium text-gray-900">{booking.dropoff_location}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Trip Details */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="flex items-center space-x-2">
+                    <Clock className="w-4 h-4 text-gray-400" />
+                    <span className="text-xs text-gray-600">
+                      {formatDateTime(booking.pickup_time)}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Users className="w-4 h-4 text-gray-400" />
+                    <span className="text-xs text-gray-600">
+                      {booking.passenger_count} passengers
+                    </span>
+                  </div>
+                  {booking.vehicle_type && (
+                    <div className="flex items-center space-x-2 col-span-2">
+                      <Car className="w-4 h-4 text-gray-400" />
+                      <span className="text-xs text-gray-600">{booking.vehicle_type}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Price - always show final_price if available, otherwise estimated_price */}
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-2xl font-bold text-red-600">
+                    ${booking.final_price || booking.estimated_price || 0}
+                  </span>
+                  {booking.simple_status === 'booking_requested' && (
+                    <DispatcherBookingManager
+                      booking={booking}
+                      onUpdate={loadBookings}
+                    />
+                  )}
+                </div>
+
+                {/* Driver Info - show when assigned */}
+                {booking.drivers && (
+                  <div className="mb-4 p-3 bg-green-50 rounded-lg">
+                    <p className="text-sm font-medium text-gray-900 mb-2">Assigned Driver</p>
+                    <div className="flex items-center space-x-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={booking.drivers.profile_photo_url} />
+                        <AvatarFallback className="bg-gray-200 text-gray-600">
+                          {booking.drivers.full_name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-900">{booking.drivers.full_name}</p>
+                        <p className="text-xs text-gray-500">
+                          {booking.drivers.car_make} {booking.drivers.car_model}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons - only show for non-new-requests */}
+                {booking.simple_status !== 'booking_requested' && (
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
+                    >
+                      <MessageCircle className="w-4 h-4 mr-2" />
+                      Message
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
+                    >
+                      <Phone className="w-4 h-4 mr-2" />
+                      Call
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderPaymentsContent = () => (
+    <div className="max-w-4xl mx-auto px-6 py-6">
+      <PaymentCalculator />
+    </div>
+  );
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "bookings":
+        return renderBookingsContent();
+      case "drivers":
+        return (
+          <div className="max-w-4xl mx-auto px-6 py-6">
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Car className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Driver Management</h3>
+              <p className="text-gray-500">Driver management features coming soon</p>
+            </div>
+          </div>
+        );
+      case "payments":
+        return renderPaymentsContent();
+      case "messages":
+        return (
+          <div className="max-w-4xl mx-auto px-6 py-6">
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <MessageCircle className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Messages</h3>
+              <p className="text-gray-500">Messaging features coming soon</p>
+            </div>
+          </div>
+        );
+      case "settings":
+        return (
+          <div className="max-w-4xl mx-auto px-6 py-6">
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Settings className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Settings</h3>
+              <p className="text-gray-500">Settings features coming soon</p>
+            </div>
+          </div>
+        );
+      default:
+        return renderBookingsContent();
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -235,7 +444,7 @@ const DispatcherDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-20">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-6 py-4">
@@ -250,155 +459,71 @@ const DispatcherDashboard = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-6 py-6">
-        <div className="mb-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-2">All Bookings</h2>
-          <p className="text-gray-600">Manage ride requests and assignments</p>
+      {renderTabContent()}
+
+      {/* Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
+        <div className="grid grid-cols-5 max-w-lg mx-auto">
+          <button
+            onClick={() => setActiveTab("bookings")}
+            className={`flex flex-col items-center justify-center py-3 px-2 transition-colors ${
+              activeTab === "bookings"
+                ? "text-red-600 font-semibold"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <Car className={`h-6 w-6 mb-1 ${activeTab === "bookings" ? "scale-110" : ""}`} />
+            <span className="text-xs">Bookings</span>
+          </button>
+          
+          <button
+            onClick={() => setActiveTab("drivers")}
+            className={`flex flex-col items-center justify-center py-3 px-2 transition-colors ${
+              activeTab === "drivers"
+                ? "text-red-600 font-semibold"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <Users className={`h-6 w-6 mb-1 ${activeTab === "drivers" ? "scale-110" : ""}`} />
+            <span className="text-xs">Drivers</span>
+          </button>
+          
+          <button
+            onClick={() => setActiveTab("payments")}
+            className={`flex flex-col items-center justify-center py-3 px-2 transition-colors ${
+              activeTab === "payments"
+                ? "text-red-600 font-semibold"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <Calculator className={`h-6 w-6 mb-1 ${activeTab === "payments" ? "scale-110" : ""}`} />
+            <span className="text-xs">Payments</span>
+          </button>
+          
+          <button
+            onClick={() => setActiveTab("messages")}
+            className={`flex flex-col items-center justify-center py-3 px-2 transition-colors ${
+              activeTab === "messages"
+                ? "text-red-600 font-semibold"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <MessageCircle className={`h-6 w-6 mb-1 ${activeTab === "messages" ? "scale-110" : ""}`} />
+            <span className="text-xs">Messages</span>
+          </button>
+          
+          <button
+            onClick={() => setActiveTab("settings")}
+            className={`flex flex-col items-center justify-center py-3 px-2 transition-colors ${
+              activeTab === "settings"
+                ? "text-red-600 font-semibold"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <Settings className={`h-6 w-6 mb-1 ${activeTab === "settings" ? "scale-110" : ""}`} />
+            <span className="text-xs">Settings</span>
+          </button>
         </div>
-
-        {bookings.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Car className="w-8 h-8 text-gray-400" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings yet</h3>
-            <p className="text-gray-500">New ride requests will appear here</p>
-          </div>
-        ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {bookings.map((booking) => (
-              <Card key={booking.id} className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  {/* Header */}
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm font-medium text-gray-900">#{booking.id.slice(-8).toUpperCase()}</span>
-                      <Clock className="w-4 h-4 text-gray-400" />
-                    </div>
-                    <Badge className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(booking.simple_status)}`}>
-                      {getStatusLabel(booking.simple_status)}
-                    </Badge>
-                  </div>
-
-                  {/* Passenger Info */}
-                  {booking.passengers && (
-                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                      <p className="text-sm font-medium text-gray-900 mb-2">Passenger</p>
-                      <div className="flex items-center space-x-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={booking.passengers.profile_photo_url} />
-                          <AvatarFallback className="bg-gray-200 text-gray-600">
-                            {booking.passengers.full_name.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <p className="font-medium text-gray-900">{booking.passengers.full_name}</p>
-                          <p className="text-sm text-gray-500">{booking.passengers.phone}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Locations */}
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-start space-x-3">
-                      <div className="w-3 h-3 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-                      <div>
-                        <p className="text-sm text-gray-500">Pickup</p>
-                        <p className="text-sm font-medium text-gray-900">{booking.pickup_location}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <div className="w-3 h-3 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
-                      <div>
-                        <p className="text-sm text-gray-500">Drop-off</p>
-                        <p className="text-sm font-medium text-gray-900">{booking.dropoff_location}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Trip Details */}
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div className="flex items-center space-x-2">
-                      <Clock className="w-4 h-4 text-gray-400" />
-                      <span className="text-xs text-gray-600">
-                        {formatDateTime(booking.pickup_time)}
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Users className="w-4 h-4 text-gray-400" />
-                      <span className="text-xs text-gray-600">
-                        {booking.passenger_count} passengers
-                      </span>
-                    </div>
-                    {booking.vehicle_type && (
-                      <div className="flex items-center space-x-2 col-span-2">
-                        <Car className="w-4 h-4 text-gray-400" />
-                        <span className="text-xs text-gray-600">{booking.vehicle_type}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Price - always show final_price if available, otherwise estimated_price */}
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-2xl font-bold text-red-600">
-                      ${booking.final_price || booking.estimated_price || 0}
-                    </span>
-                    {booking.simple_status === 'booking_requested' && (
-                      <DispatcherBookingManager
-                        booking={booking}
-                        onUpdate={loadBookings}
-                      />
-                    )}
-                  </div>
-
-                  {/* Driver Info - show when assigned */}
-                  {booking.drivers && (
-                    <div className="mb-4 p-3 bg-green-50 rounded-lg">
-                      <p className="text-sm font-medium text-gray-900 mb-2">Assigned Driver</p>
-                      <div className="flex items-center space-x-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={booking.drivers.profile_photo_url} />
-                          <AvatarFallback className="bg-gray-200 text-gray-600">
-                            {booking.drivers.full_name.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900">{booking.drivers.full_name}</p>
-                          <p className="text-xs text-gray-500">
-                            {booking.drivers.car_make} {booking.drivers.car_model}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Action Buttons - only show for non-new-requests */}
-                  {booking.simple_status !== 'booking_requested' && (
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
-                      >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        Message
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
-                      >
-                        <Phone className="w-4 h-4 mr-2" />
-                        Call
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );
