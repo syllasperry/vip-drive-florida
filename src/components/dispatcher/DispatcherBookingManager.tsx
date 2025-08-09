@@ -43,7 +43,7 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
     }
   };
 
-  const handleUpdateBooking = async () => {
+  const handleSendOffer = async () => {
     if (!selectedDriver || !finalPrice) {
       toast({
         title: "Missing Information",
@@ -65,18 +65,17 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
 
     setLoading(true);
     try {
-      console.log('📝 Sending offer with data:', {
+      console.log('📝 Dispatcher sending offer with data:', {
         booking_id: booking.id,
         driver_id: selectedDriver,
         final_price: priceValue
       });
 
       // Update booking with driver assignment and final price
-      // The SQL trigger will automatically set status to 'offer_sent'
+      // The database trigger will automatically set status to 'offer_sent'
       const updateData = {
         driver_id: selectedDriver,
         final_price: priceValue,
-        estimated_price: priceValue,
         updated_at: new Date().toISOString()
       };
 
@@ -91,7 +90,7 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
         throw error;
       }
 
-      console.log('✅ Offer sent successfully - status should be offer_sent:', data);
+      console.log('✅ Offer sent successfully by dispatcher:', data);
 
       toast({
         title: "Success",
@@ -99,15 +98,8 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
       });
 
       setIsOpen(false);
-      
-      // Force immediate refresh
       onUpdate();
       
-      // Additional refresh to ensure real-time sync
-      setTimeout(() => {
-        onUpdate();
-      }, 1000);
-
     } catch (error) {
       console.error('❌ Error sending offer:', error);
       toast({
@@ -172,7 +164,7 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
             <Button variant="outline" onClick={() => setIsOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleUpdateBooking} disabled={loading}>
+            <Button onClick={handleSendOffer} disabled={loading}>
               {loading ? 'Sending Offer...' : 'Send Offer'}
             </Button>
           </div>

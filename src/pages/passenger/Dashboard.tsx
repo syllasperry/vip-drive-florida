@@ -159,11 +159,12 @@ const PassengerDashboard = () => {
     
     if (paymentStatus === 'all_set' || rideStatus === 'all_set') return 'all_set';
     
-    // Check for offer sent status - this maps to payment_pending for UI
-    if (status === 'offer_sent' || rideStatus === 'offer_sent' || paymentStatus === 'waiting_for_payment') {
+    // Map offer_sent status to payment_pending for UI display
+    if (status === 'offer_sent' || rideStatus === 'offer_sent') {
       return 'payment_pending';
     }
     
+    // If booking is pending and no driver assigned, show as booking_requested
     return 'booking_requested';
   };
 
@@ -343,10 +344,10 @@ const PassengerDashboard = () => {
                     )}
                   </div>
 
-                  {/* Price - show final_price if available, otherwise estimated_price */}
+                  {/* Price - show final_price if available, otherwise show $0 for new requests */}
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-2xl font-bold text-red-600">
-                      ${booking.final_price || booking.estimated_price || 0}
+                      ${booking.final_price || 0}
                     </span>
                   </div>
 
@@ -434,13 +435,13 @@ const PassengerDashboard = () => {
                     </Button>
                   </div>
 
-                  {/* Payment Button for Offer Price Sent status */}
-                  {booking.simple_status === 'payment_pending' && (
+                  {/* Payment Button for payment_pending status */}
+                  {booking.simple_status === 'payment_pending' && booking.final_price && (
                     <Button 
                       className="w-full mt-3 bg-red-500 hover:bg-red-600 text-white"
                       onClick={() => handlePayment(booking)}
                     >
-                      Pay ${booking.final_price || booking.estimated_price} - Complete Booking
+                      Pay ${booking.final_price} - Complete Booking
                     </Button>
                   )}
                 </CardContent>

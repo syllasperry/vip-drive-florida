@@ -151,11 +151,12 @@ const DispatcherDashboard = () => {
     
     if (paymentStatus === 'all_set' || rideStatus === 'all_set') return 'all_set';
     
-    // Check for offer sent status - this maps to payment_pending for UI
-    if (status === 'offer_sent' || rideStatus === 'offer_sent' || paymentStatus === 'waiting_for_payment') {
+    // Map offer_sent status to payment_pending for UI display
+    if (status === 'offer_sent' || rideStatus === 'offer_sent') {
       return 'payment_pending';
     }
     
+    // If booking is pending and no driver assigned, show as booking_requested
     return 'booking_requested';
   };
 
@@ -306,10 +307,10 @@ const DispatcherDashboard = () => {
                     )}
                   </div>
 
-                  {/* Price - show final_price if available, otherwise estimated_price */}
+                  {/* Price - show final_price if available, otherwise show $0 for new requests */}
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-2xl font-bold text-red-600">
-                      ${booking.final_price || booking.estimated_price || 0}
+                      ${booking.final_price || 0}
                     </span>
                     {booking.simple_status === 'booking_requested' && (
                       <DispatcherBookingManager
