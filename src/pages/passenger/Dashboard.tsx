@@ -28,18 +28,18 @@ const PassengerDashboard = () => {
     checkAuth();
     setupRealtimeSubscription();
     
-    // Set up automatic refresh every 5 seconds for better synchronization
+    // Set up automatic refresh every 3 seconds for better synchronization
     const refreshInterval = setInterval(async () => {
       console.log('🔄 Auto-refreshing passenger dashboard...');
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          loadBookings(user.id);
+          await loadBookings(user.id);
         }
       } catch (error) {
         console.error('Error in auto-refresh:', error);
       }
-    }, 5000);
+    }, 3000);
 
     return () => {
       clearInterval(refreshInterval);
@@ -140,7 +140,9 @@ const PassengerDashboard = () => {
           status: booking.status,
           ride_status: booking.ride_status,
           final_price: booking.final_price,
+          estimated_price: booking.estimated_price,
           driver_id: booking.driver_id,
+          status_passenger: booking.status_passenger,
           payment_confirmation_status: booking.payment_confirmation_status
         });
 
@@ -151,7 +153,7 @@ const PassengerDashboard = () => {
           pickup_time: booking.pickup_time,
           passenger_count: booking.passenger_count,
           vehicle_type: booking.vehicle_type,
-          simple_status: mapToSimpleStatus(booking.status, booking.ride_status, booking.payment_confirmation_status),
+          simple_status: mapToSimpleStatus(booking),
           estimated_price: booking.estimated_price,
           final_negotiated_price: booking.final_price,
           final_price: booking.final_price,
@@ -160,6 +162,7 @@ const PassengerDashboard = () => {
           driver_id: booking.driver_id,
           status: booking.status,
           ride_status: booking.ride_status,
+          status_passenger: booking.status_passenger,
           payment_confirmation_status: booking.payment_confirmation_status,
           driver_profiles: booking.drivers ? {
             full_name: booking.drivers.full_name,
@@ -187,16 +190,29 @@ const PassengerDashboard = () => {
     }
   };
 
-  const mapToSimpleStatus = (status?: string, rideStatus?: string, paymentStatus?: string): Booking['simple_status'] => {
-    console.log('🔍 Passenger status mapping:', { status, rideStatus, paymentStatus });
+  const mapToSimpleStatus = (booking: any): Booking['simple_status'] => {
+    console.log('🔍 Passenger status mapping:', { 
+      status: booking.status,
+      ride_status: booking.ride_status, 
+      status_passenger: booking.status_passenger,
+      payment_confirmation_status: booking.payment_confirmation_status,
+      final_price: booking.final_price,
+      driver_id: booking.driver_id
+    });
     
-    if (status === 'completed' || rideStatus === 'completed') return 'completed';
-    if (status === 'cancelled') return 'cancelled';
+    if (booking.status === 'completed' || booking.ride_status === 'completed') return 'completed';
+    if (booking.status === 'cancelled') return 'cancelled';
     
-    if (paymentStatus === 'all_set' || rideStatus === 'all_set') return 'all_set';
+    if (booking.payment_confirmation_status === 'all_set' || booking.ride_status === 'all_set') return 'all_set';
     
     // When dispatcher sends offer, show as payment_pending for passenger
-    if (status === 'offer_sent' || rideStatus === 'offer_sent' || paymentStatus === 'price_awaiting_acceptance') {
+    const hasOfferSent = booking.status === 'offer_sent' || 
+                        booking.ride_status === 'offer_sent' || 
+                        booking.status_passenger === 'payment_pending' ||
+                        booking.payment_confirmation_status === 'price_awaiting_acceptance' ||
+                        (booking.final_price && booking.final_price > 0 && booking.driver_id);
+    
+    if (hasOfferSent) {
       return 'payment_pending';
     }
     
@@ -249,8 +265,11 @@ const PassengerDashboard = () => {
   };
 
   const getCurrentPrice = (booking: Booking): number => {
-    // Show final_price if dispatcher has sent offer, otherwise show estimated_price
-    return booking.final_price || booking.estimated_price || 0;
+    // Show final_price if dispatcher has sent offer (final_price > 0), otherwise show estimated_price
+    if (booking.final_price && booking.final_price > 0) {
+      return booking.final_price;
+    }
+    return booking.estimated_price || 0;
   };
 
   if (loading) {

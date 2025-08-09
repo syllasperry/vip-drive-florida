@@ -138,16 +138,17 @@ export const BookingManagementModal = ({ isOpen, onClose, booking, onUpdate }: B
         paymentMethod
       });
 
-      // Update booking with comprehensive status synchronization
+      // Update booking with comprehensive status and price synchronization
       const { error } = await supabase
         .from('bookings')
         .update({ 
           driver_id: selectedDriver,
           final_price: parseFloat(offerPrice),
+          estimated_price: parseFloat(offerPrice), // Also update estimated_price for consistency
           status: 'offer_sent',
           ride_status: 'offer_sent',
-          status_driver: 'offer_sent',
-          status_passenger: 'offer_received',
+          status_driver: 'offer_sent', 
+          status_passenger: 'payment_pending', // Passenger should see payment pending
           payment_confirmation_status: 'price_awaiting_acceptance',
           payment_method: paymentMethod,
           payment_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
@@ -157,11 +158,11 @@ export const BookingManagementModal = ({ isOpen, onClose, booking, onUpdate }: B
 
       if (error) throw error;
 
-      console.log('✅ Offer sent successfully, statuses updated');
+      console.log('✅ Offer sent successfully, all status fields updated');
 
       toast({
         title: "Offer Sent Successfully!",
-        description: "Driver has been assigned and offer sent to passenger.",
+        description: `Driver assigned and offer of $${offerPrice} sent to passenger.`,
       });
 
       // Force immediate refresh of parent component data
@@ -171,7 +172,7 @@ export const BookingManagementModal = ({ isOpen, onClose, booking, onUpdate }: B
       onClose();
 
     } catch (error) {
-      console.error('Error sending offer:', error);
+      console.error('❌ Error sending offer:', error);
       toast({
         title: "Error",
         description: "Failed to send offer. Please try again.",
