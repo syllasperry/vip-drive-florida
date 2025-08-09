@@ -26,13 +26,16 @@ const PassengerDashboard = () => {
     setupRealtimeSubscription();
     
     // Set up automatic refresh every 10 seconds
-    const refreshInterval = setInterval(() => {
+    const refreshInterval = setInterval(async () => {
       console.log('🔄 Auto-refreshing passenger dashboard...');
-      const { data: { user } } = supabase.auth.getUser().then(({ data }) => {
-        if (data.user) {
-          loadBookings(data.user.id);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          loadBookings(user.id);
         }
-      });
+      } catch (error) {
+        console.error('Error in auto-refresh:', error);
+      }
     }, 10000);
 
     return () => {

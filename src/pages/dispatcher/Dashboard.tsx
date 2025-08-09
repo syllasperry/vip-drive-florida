@@ -22,13 +22,16 @@ const DispatcherDashboard = () => {
     setupRealtimeSubscription();
     
     // Set up automatic refresh every 10 seconds
-    const refreshInterval = setInterval(() => {
+    const refreshInterval = setInterval(async () => {
       console.log('🔄 Auto-refreshing dispatcher dashboard...');
-      const { data: { user } } = supabase.auth.getUser().then(({ data }) => {
-        if (data.user && data.user.email === 'syllasperry@gmail.com') {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user && user.email === 'syllasperry@gmail.com') {
           loadBookings();
         }
-      });
+      } catch (error) {
+        console.error('Error in auto-refresh:', error);
+      }
     }, 10000);
 
     return () => {
