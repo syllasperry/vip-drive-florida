@@ -71,7 +71,7 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
         final_price: priceValue
       });
 
-      // Update booking with explicit status fields that both dashboards recognize
+      // Update booking with proper status fields for immediate dashboard updates
       const updateData = {
         driver_id: selectedDriver,
         final_price: priceValue,
@@ -98,10 +98,13 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
 
       console.log('✅ Booking updated successfully:', data);
 
-      // Force immediate refresh on both sides
+      // Force immediate refresh on both dashboards
+      onUpdate();
+      
+      // Additional refresh after a short delay to ensure real-time propagation
       setTimeout(() => {
         onUpdate();
-      }, 500);
+      }, 1000);
 
       toast({
         title: "Success",
