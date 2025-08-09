@@ -40,11 +40,11 @@ interface DispatcherBookingManagerProps {
 
 export const DispatcherBookingManager = ({ booking, onUpdate }: DispatcherBookingManagerProps) => {
   const { toast } = useToast();
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [offerPrice, setOfferPrice] = useState<string>('');
-  const [selectedDriverId, setSelectedDriverId] = useState<string>('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [offerPrice, setOfferPrice] = useState('');
+  const [selectedDriverId, setSelectedDriverId] = useState('');
   const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     loadDrivers();
@@ -52,14 +52,28 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: DispatcherBookin
 
   const loadDrivers = async () => {
     try {
-      const { data, error } = await supabase
+      // Explicitly type the query result to avoid circular dependencies
+      const { data, error }: { data: any[] | null; error: any } = await supabase
         .from('drivers')
         .select('*')
         .eq('status', 'active')
         .order('full_name');
 
       if (error) throw error;
-      setDrivers(data || []);
+      
+      // Map the result to our Driver interface to ensure type safety
+      const mappedDrivers: Driver[] = (data || []).map((driver: any) => ({
+        id: driver.id,
+        full_name: driver.full_name,
+        phone: driver.phone,
+        email: driver.email,
+        car_make: driver.car_make,
+        car_model: driver.car_model,
+        car_color: driver.car_color,
+        license_plate: driver.license_plate,
+      }));
+      
+      setDrivers(mappedDrivers);
     } catch (error) {
       console.error('Error loading drivers:', error);
     }
