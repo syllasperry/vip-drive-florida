@@ -19,8 +19,7 @@ export const DispatcherBookingList = ({ bookings, onUpdate }: DispatcherBookingL
   const getStatusColor = (booking: Booking) => {
     // Check multiple status fields to determine current state
     const hasOfferSent = booking.ride_status === 'offer_sent' || 
-                        booking.status === 'offer_sent' || 
-                        booking.status_driver === 'offer_sent' ||
+                        booking.status === 'offer_sent' ||
                         booking.payment_confirmation_status === 'price_awaiting_acceptance';
     
     const isPending = booking.status === 'pending' || 
@@ -40,8 +39,7 @@ export const DispatcherBookingList = ({ bookings, onUpdate }: DispatcherBookingL
   const getStatusLabel = (booking: Booking) => {
     // Check for offer sent status first
     const hasOfferSent = booking.ride_status === 'offer_sent' || 
-                        booking.status === 'offer_sent' || 
-                        booking.status_driver === 'offer_sent' ||
+                        booking.status === 'offer_sent' ||
                         booking.payment_confirmation_status === 'price_awaiting_acceptance';
     
     if (hasOfferSent) return 'Offer Sent to Passenger';
@@ -65,7 +63,6 @@ export const DispatcherBookingList = ({ bookings, onUpdate }: DispatcherBookingL
     return !!(booking.driver_id && (
       booking.ride_status === 'offer_sent' || 
       booking.status === 'offer_sent' ||
-      booking.status_driver === 'offer_sent' ||
       booking.payment_confirmation_status === 'price_awaiting_acceptance'
     ));
   };
