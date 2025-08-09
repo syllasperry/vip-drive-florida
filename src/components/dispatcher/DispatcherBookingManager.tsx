@@ -44,6 +44,27 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
   useEffect(() => {
     loadBookings();
     loadDrivers();
+    
+    // Set up real-time subscription for bookings
+    const channel = supabase
+      .channel('dispatcher-booking-manager')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings'
+        },
+        (payload) => {
+          console.log('📡 Dispatcher booking manager real-time update:', payload);
+          loadBookings();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const loadBookings = async () => {
@@ -52,20 +73,25 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
       
       const { data, error } = await supabase
         .from('bookings')
-        .select('id, pickup_location, dropoff_location, pickup_time, status, passenger_id, driver_id, vehicle_type, estimated_price, final_price')
+        .select('id, pickup_location, dropoff_location, pickup_time, status, ride_status, payment_confirmation_status, passenger_id, driver_id, vehicle_type, estimated_price, final_price')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
       const processedBookings: Booking[] = (data || []).map(booking => {
-        const simpleStatus = mapToSimpleStatus(booking.status);
+        // Only show truly unassigned bookings (no driver_id and no offer sent)
+        const isUnassigned = !booking.driver_id && !booking.final_price;
+        const simpleStatus = isUnassigned ? 'booking_requested' : mapToSimpleStatus(booking);
         
-        console.log('📋 Processing booking for assignment:', {
+        console.log('📋 Processing booking for dispatcher assignment:', {
           id: booking.id,
           status: booking.status,
-          simple_status: simpleStatus,
+          ride_status: booking.ride_status,
+          payment_confirmation_status: booking.payment_confirmation_status,
           driver_id: booking.driver_id,
-          isUnassigned: !booking.driver_id || booking.status === 'pending'
+          final_price: booking.final_price,
+          isUnassigned,
+          simpleStatus
         });
 
         return {
@@ -84,9 +110,9 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
       });
 
       setBookings(processedBookings);
-      console.log('📊 Bookings loaded for assignment:', processedBookings.length);
+      console.log('📊 Bookings loaded for dispatcher assignment:', processedBookings.length);
     } catch (error) {
-      console.error('Error loading bookings:', error);
+      console.error('❌ Error loading bookings:', error);
       toast({
         title: "Error",
         description: "Failed to load bookings",
@@ -95,23 +121,12 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
     }
   };
 
-  const mapToSimpleStatus = (status: string): string => {
-    switch (status) {
-      case 'pending':
-      case 'booking_requested':
-        return 'booking_requested';
-      case 'offer_sent':
-      case 'payment_pending':
-        return 'payment_pending';
-      case 'all_set':
-        return 'all_set';
-      case 'completed':
-        return 'completed';
-      case 'cancelled':
-        return 'cancelled';
-      default:
-        return 'booking_requested';
-    }
+  const mapToSimpleStatus = (booking: any): string => {
+    if (booking.status === 'completed' || booking.ride_status === 'completed') return 'completed';
+    if (booking.status === 'cancelled') return 'cancelled';
+    if (booking.payment_confirmation_status === 'all_set' || booking.ride_status === 'all_set') return 'all_set';
+    if (booking.ride_status === 'offer_sent' || booking.payment_confirmation_status === 'price_awaiting_acceptance') return 'payment_pending';
+    return 'booking_requested';
   };
 
   const loadDrivers = async () => {
@@ -137,7 +152,7 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
       setDrivers(processedDrivers);
       console.log('✅ Active drivers loaded:', processedDrivers.length);
     } catch (error) {
-      console.error('Error loading drivers:', error);
+      console.error('❌ Error loading drivers:', error);
       toast({
         title: "Error",
         description: "Failed to load drivers",
@@ -167,7 +182,7 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
         .from('bookings')
         .update({ 
           driver_id: selectedDriver,
-          status: 'assigned'
+          updated_at: new Date().toISOString()
         })
         .eq('id', selectedBooking);
 
@@ -175,9 +190,10 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
 
       toast({
         title: "Success",
-        description: "Driver assigned successfully",
+        description: "Driver assigned successfully! You can now send an offer.",
       });
 
+      // Force reload of bookings to reflect assignment
       await loadBookings();
       setSelectedBooking("");
       setSelectedDriver("");
@@ -188,7 +204,7 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
       
       console.log('✅ Manual driver assignment completed successfully');
     } catch (error) {
-      console.error('Error assigning driver:', error);
+      console.error('❌ Error assigning driver:', error);
       toast({
         title: "Error",
         description: "Failed to assign driver",
@@ -199,27 +215,28 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
     }
   };
 
-  // Filter for bookings that need manual assignment
+  // Filter for bookings that truly need manual assignment
   const unassignedBookings = bookings.filter(booking => {
-    // Show bookings that:
-    // 1. Have no driver assigned OR
-    // 2. Have a driver but status is still 'pending' (indicating auto-assignment that needs manual confirmation)
-    const needsManualAssignment = !booking.driver_id || booking.status === 'pending';
-    const isNewRequest = booking.simple_status === 'booking_requested' || booking.status === 'pending';
+    // Show bookings that have no driver AND no offer sent yet
+    const isUnassigned = !booking.driver_id && !booking.final_price;
+    const isNewRequest = ['pending', 'booking_requested'].includes(booking.status) || 
+                        booking.simple_status === 'booking_requested';
     
     console.log('🔍 Checking booking for manual assignment:', {
       id: booking.id,
       driver_id: booking.driver_id,
+      final_price: booking.final_price,
       status: booking.status,
-      needsManualAssignment,
+      simple_status: booking.simple_status,
+      isUnassigned,
       isNewRequest,
-      shouldShow: needsManualAssignment && isNewRequest
+      shouldShow: isUnassigned && isNewRequest
     });
     
-    return needsManualAssignment && isNewRequest;
+    return isUnassigned && isNewRequest;
   });
 
-  console.log('📋 Bookings needing manual assignment:', unassignedBookings.length);
+  console.log('📋 Unassigned bookings available for dispatcher:', unassignedBookings.length);
 
   return (
     <Card>
@@ -229,7 +246,7 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="text-sm font-medium">Select Booking</label>
+            <label className="text-sm font-medium">Select Unassigned Booking</label>
             <Select value={selectedBooking} onValueChange={setSelectedBooking}>
               <SelectTrigger>
                 <SelectValue placeholder="Choose unassigned booking" />
@@ -238,20 +255,23 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
                 {unassignedBookings.length > 0 ? (
                   unassignedBookings.map((booking) => (
                     <SelectItem key={booking.id} value={booking.id}>
-                      {booking.pickup_location} → {booking.dropoff_location} (${booking.estimated_price || booking.final_price || 0})
+                      #{booking.id.slice(-8).toUpperCase()} - {booking.pickup_location} → {booking.dropoff_location} (${booking.estimated_price || 0})
                     </SelectItem>
                   ))
                 ) : (
                   <SelectItem value="no-bookings" disabled>
-                    No bookings requiring manual assignment
+                    No unassigned bookings available
                   </SelectItem>
                 )}
               </SelectContent>
             </Select>
+            <p className="text-xs text-gray-500 mt-1">
+              Showing {unassignedBookings.length} booking(s) requiring manual assignment
+            </p>
           </div>
 
           <div>
-            <label className="text-sm font-medium">Select Driver</label>
+            <label className="text-sm font-medium">Select Available Driver</label>
             <Select value={selectedDriver} onValueChange={setSelectedDriver}>
               <SelectTrigger>
                 <SelectValue placeholder="Choose available driver" />
@@ -264,6 +284,9 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
                 ))}
               </SelectContent>
             </Select>
+            <p className="text-xs text-gray-500 mt-1">
+              {drivers.length} active driver(s) available
+            </p>
           </div>
         </div>
 
@@ -272,8 +295,12 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
           disabled={!selectedBooking || !selectedDriver || isAssigning || selectedBooking === "no-bookings"}
           className="w-full"
         >
-          {isAssigning ? "Assigning..." : "Assign Driver"}
+          {isAssigning ? "Assigning Driver..." : "Assign Driver to Booking"}
         </Button>
+        
+        <div className="text-xs text-gray-600 bg-blue-50 p-2 rounded">
+          <strong>Note:</strong> After assigning a driver, use the "Manage" button in the booking list to send the offer price to the passenger.
+        </div>
       </CardContent>
     </Card>
   );

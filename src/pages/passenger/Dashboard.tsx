@@ -28,18 +28,18 @@ const PassengerDashboard = () => {
     checkAuth();
     setupRealtimeSubscription();
     
-    // Set up automatic refresh every 3 seconds for better synchronization
+    // Enhanced auto-refresh with better synchronization
     const refreshInterval = setInterval(async () => {
-      console.log('🔄 Auto-refreshing passenger dashboard...');
+      console.log('🔄 Auto-refreshing passenger dashboard for status sync...');
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           await loadBookings(user.id);
         }
       } catch (error) {
-        console.error('Error in auto-refresh:', error);
+        console.error('❌ Error in auto-refresh:', error);
       }
-    }, 3000);
+    }, 2000); // Reduced to 2 seconds for better real-time feel
 
     return () => {
       clearInterval(refreshInterval);
@@ -48,7 +48,7 @@ const PassengerDashboard = () => {
 
   const setupRealtimeSubscription = () => {
     const channel = supabase
-      .channel('passenger-bookings-realtime')
+      .channel('passenger-bookings-realtime-enhanced')
       .on(
         'postgres_changes',
         {
@@ -57,16 +57,17 @@ const PassengerDashboard = () => {
           table: 'bookings'
         },
         async (payload) => {
-          console.log('📡 Real-time booking update for passenger:', payload);
+          console.log('📡 Enhanced real-time booking update for passenger:', payload);
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            // Force refresh on any changes to ensure sync
+            // Force immediate refresh with full reload
+            console.log('🔄 Force refreshing passenger dashboard due to real-time update');
             loadBookings(user.id);
           }
         }
       )
       .subscribe((status) => {
-        console.log('📡 Passenger realtime subscription status:', status);
+        console.log('📡 Enhanced passenger realtime subscription status:', status);
       });
 
     return () => {
@@ -113,7 +114,7 @@ const PassengerDashboard = () => {
 
   const loadBookings = async (userId: string) => {
     try {
-      console.log('🔄 Loading bookings for passenger:', userId);
+      console.log('🔄 Loading bookings for passenger with enhanced sync:', userId);
       
       const { data, error } = await supabase
         .from('bookings')
@@ -135,15 +136,14 @@ const PassengerDashboard = () => {
       if (error) throw error;
 
       const mappedBookings: Booking[] = (data || []).map(booking => {
-        console.log('📋 Processing passenger booking:', {
+        console.log('📋 Processing passenger booking with enhanced status detection:', {
           id: booking.id,
           status: booking.status,
           ride_status: booking.ride_status,
+          payment_confirmation_status: booking.payment_confirmation_status,
           final_price: booking.final_price,
           estimated_price: booking.estimated_price,
-          driver_id: booking.driver_id,
-          status_passenger: booking.status_passenger,
-          payment_confirmation_status: booking.payment_confirmation_status
+          driver_id: booking.driver_id
         });
 
         return {
@@ -162,7 +162,6 @@ const PassengerDashboard = () => {
           driver_id: booking.driver_id,
           status: booking.status,
           ride_status: booking.ride_status,
-          status_passenger: booking.status_passenger,
           payment_confirmation_status: booking.payment_confirmation_status,
           driver_profiles: booking.drivers ? {
             full_name: booking.drivers.full_name,
@@ -176,10 +175,10 @@ const PassengerDashboard = () => {
         };
       });
 
-      console.log('📊 Passenger bookings loaded:', mappedBookings.length);
+      console.log('📊 Passenger bookings loaded with enhanced sync:', mappedBookings.length);
       setBookings(mappedBookings);
     } catch (error) {
-      console.error('Error loading bookings:', error);
+      console.error('❌ Error loading bookings:', error);
       toast({
         title: "Error",
         description: "Failed to load your bookings",
@@ -191,10 +190,9 @@ const PassengerDashboard = () => {
   };
 
   const mapToSimpleStatus = (booking: any): Booking['simple_status'] => {
-    console.log('🔍 Passenger status mapping:', { 
+    console.log('🔍 Enhanced passenger status mapping:', { 
       status: booking.status,
       ride_status: booking.ride_status, 
-      status_passenger: booking.status_passenger,
       payment_confirmation_status: booking.payment_confirmation_status,
       final_price: booking.final_price,
       driver_id: booking.driver_id
@@ -205,18 +203,18 @@ const PassengerDashboard = () => {
     
     if (booking.payment_confirmation_status === 'all_set' || booking.ride_status === 'all_set') return 'all_set';
     
-    // When dispatcher sends offer, show as payment_pending for passenger
+    // Enhanced detection: When dispatcher sends offer, show as payment_pending for passenger
     const hasOfferSent = booking.status === 'offer_sent' || 
                         booking.ride_status === 'offer_sent' || 
-                        booking.status_passenger === 'payment_pending' ||
                         booking.payment_confirmation_status === 'price_awaiting_acceptance' ||
                         (booking.final_price && booking.final_price > 0 && booking.driver_id);
     
     if (hasOfferSent) {
+      console.log('✅ Detected offer sent - showing payment_pending to passenger');
       return 'payment_pending';
     }
     
-    // If booking is pending and no driver assigned, show as booking_requested
+    // If booking is pending and no driver assigned or no offer sent, show as booking_requested
     return 'booking_requested';
   };
 
@@ -234,7 +232,7 @@ const PassengerDashboard = () => {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'booking_requested': return 'Booking Requested';
-      case 'payment_pending': return 'Offer Price Sent - Review & Pay';
+      case 'payment_pending': return 'Offer Received - Review & Pay';
       case 'all_set': return 'All Set';
       case 'completed': return 'Completed';
       case 'cancelled': return 'Cancelled';
@@ -265,10 +263,12 @@ const PassengerDashboard = () => {
   };
 
   const getCurrentPrice = (booking: Booking): number => {
-    // Show final_price if dispatcher has sent offer (final_price > 0), otherwise show estimated_price
+    // Enhanced price display: Show final_price if offer sent, otherwise show estimated_price
     if (booking.final_price && booking.final_price > 0) {
+      console.log('💰 Showing final price from dispatcher offer:', booking.final_price);
       return booking.final_price;
     }
+    console.log('💰 Showing estimated price:', booking.estimated_price);
     return booking.estimated_price || 0;
   };
 
@@ -397,19 +397,19 @@ const PassengerDashboard = () => {
                       )}
                     </div>
 
-                    {/* Price - Show final_price if offer sent, otherwise estimated_price */}
+                    {/* Enhanced Price Display - Show correct price with status indication */}
                     <div className="flex items-center justify-between mb-4">
                       <span className="text-2xl font-bold text-red-600">
                         ${getCurrentPrice(booking)}
                       </span>
                       {booking.simple_status === 'payment_pending' && (
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200 text-blue-800">
                           Offer Received
                         </Badge>
                       )}
                     </div>
 
-                    {/* Driver Information - show when offer is sent by dispatcher */}
+                    {/* Enhanced Driver Information - show when offer is sent by dispatcher */}
                     {booking.simple_status === 'payment_pending' && booking.driver_profiles && (
                       <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                         <p className="text-sm font-medium text-blue-900 mb-2">Your Assigned Driver</p>
@@ -496,7 +496,7 @@ const PassengerDashboard = () => {
                       </Button>
                     </div>
 
-                    {/* Payment Button for payment_pending status - show final_price */}
+                    {/* Enhanced Payment Button for payment_pending status */}
                     {booking.simple_status === 'payment_pending' && booking.final_price && (
                       <Button 
                         className="w-full mt-3 bg-red-500 hover:bg-red-600 text-white"

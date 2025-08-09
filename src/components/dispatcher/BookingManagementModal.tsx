@@ -33,8 +33,8 @@ interface BookingManagementModalProps {
 
 export const BookingManagementModal = ({ isOpen, onClose, booking, onUpdate }: BookingManagementModalProps) => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [selectedDriver, setSelectedDriver] = useState<string>("");
-  const [offerPrice, setOfferPrice] = useState<string>(booking.estimated_price?.toString() || "");
+  const [selectedDriver, setSelectedDriver] = useState<string>(booking.driver_id || "");
+  const [offerPrice, setOfferPrice] = useState<string>(booking.final_price?.toString() || booking.estimated_price?.toString() || "");
   const [paymentMethod, setPaymentMethod] = useState("stripe");
   const [commissionRate, setCommissionRate] = useState(20);
   const [stripeFeeRate, setStripeFeeRate] = useState(2.9);
@@ -57,8 +57,14 @@ export const BookingManagementModal = ({ isOpen, onClose, booking, onUpdate }: B
       if (booking.driver_id) {
         setSelectedDriver(booking.driver_id);
       }
+      // Set initial price from booking
+      if (booking.final_price) {
+        setOfferPrice(booking.final_price.toString());
+      } else if (booking.estimated_price) {
+        setOfferPrice(booking.estimated_price.toString());
+      }
     }
-  }, [isOpen, booking.driver_id]);
+  }, [isOpen, booking.driver_id, booking.final_price, booking.estimated_price]);
 
   useEffect(() => {
     if (offerPrice && !isNaN(parseFloat(offerPrice))) {
@@ -131,7 +137,7 @@ export const BookingManagementModal = ({ isOpen, onClose, booking, onUpdate }: B
     setIsSending(true);
     
     try {
-      console.log('🔄 Dispatcher sending offer:', {
+      console.log('🔄 Dispatcher sending offer with full synchronization:', {
         bookingId: booking.id,
         driverId: selectedDriver,
         price: parseFloat(offerPrice),
@@ -139,37 +145,32 @@ export const BookingManagementModal = ({ isOpen, onClose, booking, onUpdate }: B
       });
 
       // Update booking with comprehensive status and price synchronization
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('bookings')
         .update({ 
           driver_id: selectedDriver,
           final_price: parseFloat(offerPrice),
-          estimated_price: parseFloat(offerPrice), // Also update estimated_price for consistency
-          status: 'offer_sent',
-          ride_status: 'offer_sent',
-          status_driver: 'offer_sent', 
-          status_passenger: 'payment_pending', // Passenger should see payment pending
-          payment_confirmation_status: 'price_awaiting_acceptance',
+          estimated_price: parseFloat(offerPrice), // Sync both price fields
           payment_method: paymentMethod,
           payment_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
           updated_at: new Date().toISOString()
+          // Status will be automatically updated by the database trigger
         })
-        .eq('id', booking.id);
+        .eq('id', booking.id)
+        .select();
 
       if (error) throw error;
 
-      console.log('✅ Offer sent successfully, all status fields updated');
+      console.log('✅ Offer sent successfully, database trigger handled status sync:', data);
 
       toast({
         title: "Offer Sent Successfully!",
         description: `Driver assigned and offer of $${offerPrice} sent to passenger.`,
       });
 
-      // Force immediate refresh of parent component data
-      onUpdate();
-      
-      // Close modal after successful update
+      // Close modal immediately and refresh parent
       onClose();
+      onUpdate();
 
     } catch (error) {
       console.error('❌ Error sending offer:', error);
@@ -199,6 +200,11 @@ export const BookingManagementModal = ({ isOpen, onClose, booking, onUpdate }: B
     return ['venmo', 'zelle', 'cash'].includes(paymentMethod);
   };
 
+  // Check if booking already has an offer sent
+  const hasOfferSent = booking.ride_status === 'offer_sent' || 
+                      booking.payment_confirmation_status === 'price_awaiting_acceptance' ||
+                      (booking.final_price && booking.final_price > 0);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -206,6 +212,11 @@ export const BookingManagementModal = ({ isOpen, onClose, booking, onUpdate }: B
           <DialogTitle className="flex items-center gap-2">
             <Calculator className="h-5 w-5" />
             Manage Booking #{booking.id.slice(-8).toUpperCase()}
+            {hasOfferSent && (
+              <Badge variant="outline" className="ml-2">
+                Offer Sent
+              </Badge>
+            )}
           </DialogTitle>
         </DialogHeader>
 
@@ -416,7 +427,7 @@ export const BookingManagementModal = ({ isOpen, onClose, booking, onUpdate }: B
               size="lg"
             >
               <Send className="w-5 h-5 mr-2" />
-              {isSending ? "Sending Offer..." : "Send Offer to Passenger"}
+              {isSending ? "Sending Offer..." : hasOfferSent ? "Update Offer" : "Send Offer to Passenger"}
             </Button>
           </div>
         </div>
