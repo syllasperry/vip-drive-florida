@@ -50,7 +50,7 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: DispatcherBookin
     loadDrivers();
   }, []);
 
-  const loadDrivers = async (): Promise<void> => {
+  const loadDrivers = async () => {
     try {
       const { data, error } = await supabase
         .from('drivers')
@@ -65,7 +65,7 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: DispatcherBookin
     }
   };
 
-  const handleSendOffer = async (): Promise<void> => {
+  const handleSendOffer = async () => {
     if (!offerPrice || !selectedDriverId) {
       toast({
         title: "Missing Information",
@@ -77,7 +77,7 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: DispatcherBookin
 
     setLoading(true);
     try {
-      const priceValue: number = parseFloat(offerPrice);
+      const priceValue = parseFloat(offerPrice);
       
       // Update booking with offer price and manually assigned driver
       const { error } = await supabase
@@ -116,19 +116,19 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: DispatcherBookin
     }
   };
 
-  const calculateCommission = (price: number): string => {
+  const calculateCommission = (price: number) => {
     return (price * 0.20).toFixed(2);
   };
 
-  const calculateDriverAmount = (price: number): string => {
+  const calculateDriverAmount = (price: number) => {
     return (price * 0.80).toFixed(2);
   };
 
-  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setOfferPrice(e.target.value);
   };
 
-  const handleDriverChange = (value: string): void => {
+  const handleDriverChange = (value: string) => {
     setSelectedDriverId(value);
   };
 
@@ -157,7 +157,7 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: DispatcherBookin
                 <SelectValue placeholder="Select a driver" />
               </SelectTrigger>
               <SelectContent>
-                {drivers.map((driver: Driver) => (
+                {drivers.map((driver) => (
                   <SelectItem key={driver.id} value={driver.id}>
                     <div className="flex items-center space-x-2">
                       <Car className="w-4 h-4" />
