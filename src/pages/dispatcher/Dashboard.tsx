@@ -129,7 +129,7 @@ const DispatcherDashboard = () => {
         } : undefined
       }));
 
-      console.log('📊 Loaded bookings:', mappedBookings);
+      console.log('📊 Loaded dispatcher bookings:', mappedBookings);
       setBookings(mappedBookings);
     } catch (error) {
       console.error('Error loading bookings:', error);
@@ -151,10 +151,12 @@ const DispatcherDashboard = () => {
     
     if (paymentStatus === 'all_set' || rideStatus === 'all_set') return 'all_set';
     
+    // Check for offer sent status - this should catch when trigger updates status to 'offer_sent'
     if (status === 'offer_sent' || rideStatus === 'offer_sent' || paymentStatus === 'waiting_for_payment') {
       return 'payment_pending';
     }
     
+    // If driver is assigned but no offer sent yet, still show as requested
     return 'booking_requested';
   };
 

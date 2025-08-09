@@ -38,7 +38,6 @@ const PassengerDashboard = () => {
         },
         async (payload) => {
           console.log('📡 Real-time booking update for passenger:', payload);
-          // Refresh bookings when changes occur
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
             loadBookings(user.id);
@@ -61,7 +60,6 @@ const PassengerDashboard = () => {
         return;
       }
 
-      // Check if user is dispatcher - redirect them
       if (user.email === 'syllasperry@gmail.com') {
         navigate('/dispatcher/dashboard');
         return;
@@ -161,6 +159,7 @@ const PassengerDashboard = () => {
     
     if (paymentStatus === 'all_set' || rideStatus === 'all_set') return 'all_set';
     
+    // Check for offer sent status - this should catch when trigger updates status to 'offer_sent'
     if (status === 'offer_sent' || rideStatus === 'offer_sent' || paymentStatus === 'waiting_for_payment') {
       return 'payment_pending';
     }

@@ -53,7 +53,6 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
       return;
     }
 
-    // Validate price
     const priceValue = parseFloat(finalPrice);
     if (isNaN(priceValue) || priceValue <= 0) {
       toast({
@@ -69,16 +68,15 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
       console.log('Updating booking with data:', {
         booking_id: booking.id,
         driver_id: selectedDriver,
-        final_price: priceValue,
-        estimated_price: priceValue
+        final_price: priceValue
       });
 
-      // O trigger SQL agora vai automaticamente definir o status como 'offer_sent'
-      // quando final_price e driver_id são definidos
+      // Update booking with driver assignment and final price
+      // The SQL trigger will automatically set the status to 'offer_sent'
       const updateData = {
-        estimated_price: priceValue,
-        final_price: priceValue,
         driver_id: selectedDriver,
+        final_price: priceValue,
+        estimated_price: priceValue,
         updated_at: new Date().toISOString()
       };
 
@@ -93,16 +91,22 @@ export const DispatcherBookingManager = ({ booking, onUpdate }: BookingManagerPr
         throw error;
       }
 
-      console.log('Booking updated successfully:', data);
+      console.log('Booking updated successfully - trigger should set status to offer_sent:', data);
 
       toast({
         title: "Success",
         description: "Offer sent to passenger successfully",
       });
 
-      // Force refresh of the bookings list
+      // Force immediate refresh of the bookings list
       onUpdate();
       setIsOpen(false);
+      
+      // Additional safety refresh after a short delay
+      setTimeout(() => {
+        onUpdate();
+      }, 1000);
+
     } catch (error) {
       console.error('Error updating booking:', error);
       toast({
