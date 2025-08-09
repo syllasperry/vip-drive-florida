@@ -1,13 +1,9 @@
-import { useState, useEffect } from "react";
+
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { CheckCircle, X, Clock, MapPin, User, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { BookingStatusPatterns } from "@/utils/bookingStatusUpdater";
+import { updateBookingStatus } from "@/utils/bookingHelpers";
 
 interface OfferAcceptanceModalProps {
   isOpen: boolean;
@@ -17,204 +13,107 @@ interface OfferAcceptanceModalProps {
   onDecline: () => void;
 }
 
-export const OfferAcceptanceModal = ({ 
-  isOpen, 
-  onClose, 
-  booking, 
-  onAccept, 
-  onDecline 
-}: OfferAcceptanceModalProps) => {
-  const [timeLeft, setTimeLeft] = useState<string>("");
+export const OfferAcceptanceModal = ({ isOpen, onClose, booking, onAccept, onDecline }: OfferAcceptanceModalProps) => {
+  const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
-  // Timer for offer expiration (15 minutes)
-  useEffect(() => {
-    if (!isOpen || !booking) return;
-
-    // Default to 15 minutes from now if no expiry time is set
-    let expiryTime: Date;
-    
-    if (booking.payment_expires_at) {
-      expiryTime = new Date(booking.payment_expires_at);
-      console.log('Using existing expiry time:', expiryTime.toISOString());
-    } else {
-      expiryTime = new Date(Date.now() + 15 * 60 * 1000);
-      console.log('Setting new expiry time:', expiryTime.toISOString());
-    }
-
-    const updateTimer = () => {
-      const now = new Date();
-      const timeDiff = expiryTime.getTime() - now.getTime();
-      
-      console.log('Timer update - Now:', now.toISOString(), 'Expiry:', expiryTime.toISOString(), 'Diff:', timeDiff);
-      
-      if (timeDiff <= 0) {
-        setTimeLeft("Expired");
-        return;
-      }
-      
-      const minutes = Math.floor(timeDiff / (1000 * 60));
-      const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
-      
-      setTimeLeft(`${minutes}:${seconds.toString().padStart(2, '0')}`);
-    };
-
-    // Initialize timer immediately
-    updateTimer();
-    const interval = setInterval(updateTimer, 1000);
-
-    return () => clearInterval(interval);
-  }, [isOpen, booking?.id, booking?.payment_expires_at]);
-
   const handleAccept = async () => {
+    setIsProcessing(true);
     try {
-      await BookingStatusPatterns.passengerAcceptOffer(booking.id);
-      
+      await updateBookingStatus(booking.id, {
+        status_passenger: 'offer_accepted',
+        payment_confirmation_status: 'waiting_for_payment'
+      });
+
       toast({
         title: "Offer Accepted",
-        description: "You have accepted the driver's offer. Please proceed to payment.",
+        description: "You have accepted the offer. Please proceed with payment.",
       });
 
       onAccept();
-      onClose();
     } catch (error) {
       console.error('Error accepting offer:', error);
       toast({
         title: "Error",
         description: "Failed to accept offer. Please try again.",
-        variant: "destructive"
+        variant: "destructive",
       });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const handleDecline = async () => {
+    setIsProcessing(true);
     try {
-      await BookingStatusPatterns.passengerRejectOffer(booking.id);
-      
+      await updateBookingStatus(booking.id, {
+        status: 'cancelled',
+        status_passenger: 'offer_declined'
+      });
+
       toast({
-        title: "Price Declined",
-        description: "The driver has been notified. You can request a new ride.",
+        title: "Offer Declined",
+        description: "You have declined the offer.",
       });
 
       onDecline();
-      onClose();
     } catch (error) {
       console.error('Error declining offer:', error);
       toast({
         title: "Error",
         description: "Failed to decline offer. Please try again.",
-        variant: "destructive"
+        variant: "destructive",
       });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   if (!booking) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose} modal>
-      <DialogContent 
-        className="max-w-sm mx-auto bg-background border shadow-lg p-4"
-      >
-        <DialogHeader className="text-center space-y-1">
-          <DialogTitle className="text-lg font-bold text-foreground">
-            Driver Offer Received
-          </DialogTitle>
-          <Badge variant="secondary" className="mx-auto text-xs">
-            <Clock className="h-3 w-3 mr-1" />
-            {timeLeft} remaining
-          </Badge>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Review Ride Offer</DialogTitle>
         </DialogHeader>
-
         <div className="space-y-4">
-          {/* Driver Information */}
-          <Card className="border-primary/20">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-2 mb-3">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage 
-                    src={booking.drivers?.profile_photo_url} 
-                    alt={booking.drivers?.full_name}
-                  />
-                  <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
-                    {booking.drivers?.full_name?.charAt(0)?.toUpperCase() || "D"}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="font-medium text-foreground text-sm">
-                    {booking.drivers?.full_name || "Your Driver"}
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    {booking.vehicle_type}
-                  </p>
-                </div>
-              </div>
-
-              {/* Trip Summary */}
-              <div className="space-y-2">
-                <div className="flex items-start gap-2">
-                  <MapPin className="h-3 w-3 text-primary mt-0.5 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-foreground truncate">
-                      From: {booking.pickup_location}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      To: {booking.dropoff_location}
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Clock className="h-3 w-3 text-primary" />
-                  <span className="text-xs text-foreground">
-                    {booking.pickup_time ? new Date(booking.pickup_time).toLocaleDateString() : ''} at {booking.pickup_time ? new Date(booking.pickup_time).toLocaleTimeString() : ''}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Price Offer */}
-          <Card className="border-primary/20 bg-primary/5">
-            <CardContent className="p-3 text-center">
-              <p className="text-xs text-muted-foreground mb-1">
-                Proposed Fare
-              </p>
-              <div className="flex items-center justify-center gap-1">
-                <DollarSign className="h-5 w-5 text-primary" />
-                <span className="text-2xl font-bold text-primary">
-                  {booking.final_price?.toFixed(2) || "0.00"}
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Do you want to accept this ride for this price?
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Action Buttons */}
-          <div className="grid grid-cols-2 gap-2">
-            <Button 
-              onClick={handleAccept}
-              disabled={timeLeft === "Expired"}
-              className="h-10 bg-primary hover:bg-primary/90 text-white font-medium rounded-lg text-sm"
-            >
-              <CheckCircle className="h-4 w-4 mr-1" />
-              Accept
-            </Button>
-
-            <Button 
-              onClick={handleDecline}
-              disabled={timeLeft === "Expired"}
-              variant="outline"
-              className="h-10 border-destructive text-destructive hover:bg-destructive/10 rounded-lg text-sm"
-            >
-              <X className="h-4 w-4 mr-1" />
-              Decline
-            </Button>
+          <div className="text-center">
+            <h3 className="text-2xl font-bold">${booking.final_price}</h3>
+            <p className="text-gray-600">Ride offer from your driver</p>
+          </div>
+          
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <span>From:</span>
+              <span className="font-medium">{booking.pickup_location}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>To:</span>
+              <span className="font-medium">{booking.dropoff_location}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Passengers:</span>
+              <span className="font-medium">{booking.passenger_count}</span>
+            </div>
           </div>
 
-          <div className="text-xs text-muted-foreground text-center px-2">
-            This offer will expire in {timeLeft}. Please make your decision promptly.
+          <div className="flex gap-2">
+            <Button
+              onClick={handleAccept}
+              disabled={isProcessing}
+              className="flex-1 bg-green-600 hover:bg-green-700"
+            >
+              {isProcessing ? "Processing..." : "Accept Offer"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleDecline}
+              disabled={isProcessing}
+              className="flex-1"
+            >
+              Decline
+            </Button>
           </div>
         </div>
       </DialogContent>

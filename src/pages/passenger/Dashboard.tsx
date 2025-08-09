@@ -13,6 +13,7 @@ import { Booking } from "@/types/booking";
 import { MessagesTab } from "@/components/passenger/MessagesTab";
 import { PaymentsTab } from "@/components/passenger/PaymentsTab";
 import { SettingsTab } from "@/components/passenger/SettingsTab";
+import { mapToSimpleStatus } from "@/utils/bookingHelpers";
 
 const PassengerDashboard = () => {
   const navigate = useNavigate();
@@ -187,35 +188,6 @@ const PassengerDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const mapToSimpleStatus = (booking: any): Booking['simple_status'] => {
-    console.log('🔍 Enhanced passenger status mapping:', { 
-      status: booking.status,
-      ride_status: booking.ride_status, 
-      payment_confirmation_status: booking.payment_confirmation_status,
-      final_price: booking.final_price,
-      driver_id: booking.driver_id
-    });
-    
-    if (booking.status === 'completed' || booking.ride_status === 'completed') return 'completed';
-    if (booking.status === 'cancelled') return 'cancelled';
-    
-    if (booking.payment_confirmation_status === 'all_set' || booking.ride_status === 'all_set') return 'all_set';
-    
-    // Enhanced detection: When dispatcher sends offer, show as payment_pending for passenger
-    const hasOfferSent = booking.status === 'offer_sent' || 
-                        booking.ride_status === 'offer_sent' || 
-                        booking.payment_confirmation_status === 'price_awaiting_acceptance' ||
-                        (booking.final_price && booking.final_price > 0 && booking.driver_id);
-    
-    if (hasOfferSent) {
-      console.log('✅ Detected offer sent - showing payment_pending to passenger');
-      return 'payment_pending';
-    }
-    
-    // If booking is pending and no driver assigned or no offer sent, show as booking_requested
-    return 'booking_requested';
   };
 
   const getStatusColor = (status: string) => {

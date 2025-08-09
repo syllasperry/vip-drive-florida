@@ -1,12 +1,9 @@
+
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Car, DollarSign, X, MapPin, Clock } from "lucide-react";
-import { useState } from "react";
-import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import { updateBookingWithTransition } from "@/utils/roadmapStatusManager";
+import { DollarSign, MapPin, Clock, Users } from "lucide-react";
 
 interface PassengerOfferReviewModalProps {
   isOpen: boolean;
@@ -16,187 +13,120 @@ interface PassengerOfferReviewModalProps {
   onDecline: () => void;
 }
 
-export const PassengerOfferReviewModal = ({
-  isOpen,
-  onClose,
-  booking,
-  onAccept,
-  onDecline
+export const PassengerOfferReviewModal = ({ 
+  isOpen, 
+  onClose, 
+  booking, 
+  onAccept, 
+  onDecline 
 }: PassengerOfferReviewModalProps) => {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
   const handleAccept = async () => {
-    setIsLoading(true);
+    setIsProcessing(true);
     try {
-      await updateBookingWithTransition(booking.id, 'offer_accepted', {
-        status_passenger: 'offer_accepted'
-      });
-      
+      await onAccept();
       toast({
-        title: "Offer Accepted!",
-        description: "Please proceed with payment instructions.",
+        title: "Offer Accepted",
+        description: "You have accepted the ride offer. Please proceed with payment.",
       });
-      
-      onAccept();
-      onClose();
     } catch (error) {
       console.error('Error accepting offer:', error);
       toast({
         title: "Error",
         description: "Failed to accept offer. Please try again.",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsProcessing(false);
     }
   };
 
   const handleDecline = async () => {
-    setIsLoading(true);
+    setIsProcessing(true);
     try {
-      await updateBookingWithTransition(booking.id, 'offer_declined', {
-        status_passenger: 'offer_declined'
-      });
-      
+      await onDecline();
       toast({
         title: "Offer Declined",
-        description: "Ride request has been cancelled.",
-        variant: "destructive"
+        description: "You have declined the ride offer.",
       });
-      
-      onDecline();
-      onClose();
     } catch (error) {
       console.error('Error declining offer:', error);
+      toast({
+        title: "Error",
+        description: "Failed to decline offer. Please try again.",
+        variant: "destructive",
+      });
     } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const formatDateTime = (dateTimeString: string) => {
-    try {
-      const date = new Date(dateTimeString);
-      return {
-        date: format(date, "MMM d, yyyy"),
-        time: format(date, "h:mm a")
-      };
-    } catch {
-      return { date: "Invalid date", time: "Invalid time" };
+      setIsProcessing(false);
     }
   };
 
   if (!booking) return null;
 
-  const { date, time } = formatDateTime(booking.pickup_time);
-  const driverName = booking.drivers?.full_name || "Your Driver";
-  const finalPrice = booking.final_price || booking.estimated_price || 0;
-
   return (
-    <Dialog open={isOpen} onOpenChange={onClose} modal>
-      <DialogContent className="max-w-md mx-auto bg-background border shadow-lg">
-        <DialogHeader className="text-center space-y-2">
-          <DialogTitle className="text-xl font-bold text-foreground">
-            💰 Driver Offer Received
-          </DialogTitle>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="absolute right-4 top-4 h-6 w-6 p-0"
-            onClick={onClose}
-          >
-            <X className="h-4 w-4" />
-          </Button>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Review Ride Offer</DialogTitle>
         </DialogHeader>
-
         <div className="space-y-4">
-          {/* Driver Information */}
-          <Card className="border-primary/20">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3 mb-3">
-                <Avatar className="h-12 w-12">
-                  <AvatarImage 
-                    src={booking.drivers?.profile_photo_url} 
-                    alt={driverName}
-                  />
-                  <AvatarFallback className="bg-primary/10 text-primary">
-                    {driverName.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-foreground">{driverName}</h3>
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Car className="h-3 w-3" />
-                    <span>{booking.vehicle_type}</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Price Display */}
+          <div className="text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <DollarSign className="w-8 h-8 text-green-600" />
+            </div>
+            <h3 className="text-3xl font-bold text-green-600">${booking.final_price}</h3>
+            <p className="text-gray-600">Total ride cost</p>
+          </div>
 
           {/* Trip Details */}
-          <Card>
-            <CardContent className="p-4 space-y-3">
-              <div className="flex items-start gap-3">
-                <MapPin className="h-4 w-4 text-green-600 mt-0.5" />
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium">PICKUP</p>
-                  <p className="font-medium text-sm">{booking.pickup_location}</p>
-                </div>
+          <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+            <div className="flex items-start space-x-3">
+              <div className="w-3 h-3 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+              <div className="flex-1">
+                <p className="text-sm text-gray-500">From</p>
+                <p className="font-medium">{booking.pickup_location}</p>
               </div>
-
-              <div className="flex items-start gap-3">
-                <div className="h-4 w-4 flex items-center justify-center mt-0.5">
-                  <div className="h-2 w-2 bg-red-500 rounded-full"></div>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium">DROP-OFF</p>
-                  <p className="font-medium text-sm">{booking.dropoff_location}</p>
-                </div>
+            </div>
+            <div className="flex items-start space-x-3">
+              <div className="w-3 h-3 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
+              <div className="flex-1">
+                <p className="text-sm text-gray-500">To</p>
+                <p className="font-medium">{booking.dropoff_location}</p>
               </div>
-
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <Clock className="h-3 w-3" />
-                <span>{date} at {time}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center space-x-2">
+                <Clock className="w-4 h-4 text-gray-400" />
+                <span>{new Date(booking.pickup_time).toLocaleString()}</span>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Price Offer */}
-          <Card className="border-green-500 bg-green-50 dark:bg-green-950/20">
-            <CardContent className="p-4 text-center">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <DollarSign className="h-6 w-6 text-green-600" />
-                <span className="text-3xl font-bold text-green-600">${finalPrice}</span>
+              <div className="flex items-center space-x-2">
+                <Users className="w-4 h-4 text-gray-400" />
+                <span>{booking.passenger_count} passengers</span>
               </div>
-              <p className="text-sm text-green-700 dark:text-green-300">
-                Driver's Final Price
-              </p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Action Buttons */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex gap-3">
+            <Button
+              onClick={handleAccept}
+              disabled={isProcessing}
+              className="flex-1 bg-green-600 hover:bg-green-700"
+            >
+              {isProcessing ? "Processing..." : "Accept Offer"}
+            </Button>
             <Button
               variant="outline"
               onClick={handleDecline}
-              disabled={isLoading}
-              className="hover:bg-red-50 hover:border-red-300 hover:text-red-700"
+              disabled={isProcessing}
+              className="flex-1"
             >
-              Decline Offer
-            </Button>
-            <Button
-              onClick={handleAccept}
-              disabled={isLoading}
-              className="bg-green-600 hover:bg-green-700 text-white"
-            >
-              {isLoading ? "Accepting..." : "Accept Offer"}
+              Decline
             </Button>
           </div>
-
-          <p className="text-xs text-muted-foreground text-center px-2">
-            By accepting, you agree to pay the driver directly using their preferred payment method
-          </p>
         </div>
       </DialogContent>
     </Dialog>

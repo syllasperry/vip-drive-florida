@@ -1,474 +1,250 @@
-import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { useScrollToTop } from "@/hooks/useScrollToTop";
-import { Users, Luggage, Plane, ArrowLeft } from "lucide-react";
+
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { DateTimePicker } from "@/components/DateTimePicker";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { createBookingStatusEntries } from "@/utils/rideStatusManager";
+import { GoogleMapsAutocomplete } from "@/components/GoogleMapsAutocomplete";
+import { ArrowLeft, MapPin, Clock, Users, Car } from "lucide-react";
+
+interface VehicleType {
+  id: string;
+  vehicle_name: string;
+  code_name: string;
+  make: string;
+  model: string;
+}
 
 const BookingForm = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { pickup, dropoff, selectedVehicle } = location.state || {};
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
   
-  // Auto-scroll to top when this page loads
-  useScrollToTop();
+  const [pickupLocation, setPickupLocation] = useState("");
+  const [dropoffLocation, setDropoffLocation] = useState("");
+  const [pickupTime, setPickupTime] = useState<Date | undefined>(new Date());
+  const [passengerCount, setPassengerCount] = useState(1);
+  const [selectedVehicle, setSelectedVehicle] = useState<VehicleType | null>(null);
+  const [vehicleTypes, setVehicleTypes] = useState<VehicleType[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [formData, setFormData] = useState({
-    flightInfo: "",
-    date: "",
-    time: "",
-    passengers: "1",
-    luggage: "1",
-    luggageSize: "medium",
-    notes: "",
-    bookingForOther: false,
-    otherPersonName: "",
-    otherPersonPhone: "",
-    otherPersonEmail: ""
-  });
+  useEffect(() => {
+    loadVehicleTypes();
+    
+    // Get pre-selected vehicle from URL params
+    const vehicleParam = searchParams.get('vehicle');
+    if (vehicleParam) {
+      const decodedVehicle = JSON.parse(decodeURIComponent(vehicleParam));
+      setSelectedVehicle(decodedVehicle);
+    }
+  }, [searchParams]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
+  const loadVehicleTypes = async () => {
     try {
-      // Get current user
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast({
-          title: "Authentication required",
-          description: "Please log in to create a booking.",
-          variant: "destructive",
-        });
-        navigate("/passenger/login");
-        return;
-      }
-
-      // Combine date and time for pickup_time - parse safely without timezone issues
-      const [year, month, day] = formData.date.split('-').map(Number);
-      const [hours, minutes] = formData.time.split(':').map(Number);
-      const pickupDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
-      
-      // Validate 6-hour minimum notice
-      const now = new Date();
-      const minBookingTime = new Date(now.getTime() + (6 * 60 * 60 * 1000)); // 6 hours from now
-      
-      if (pickupDateTime <= minBookingTime) {
-        toast({
-          title: "Invalid Booking Time",
-          description: "Please select a time at least 6 hours from now.",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
-
-      // Get vehicle details from the selected vehicle
-      const vehicleMapping = {
-        'tesla-y': { make: 'Tesla', model: 'Model Y' },
-        'bmw-sedan': { make: 'BMW', model: '5 Series' },
-        'chevrolet-suv': { make: 'Chevrolet', model: 'Tahoe' },
-        'mercedes-van': { make: 'Mercedes-Benz', model: 'Sprinter' }
-      };
-
-      const vehicleInfo = vehicleMapping[selectedVehicle?.id as keyof typeof vehicleMapping];
-      if (!vehicleInfo) {
-        throw new Error('Invalid vehicle selection');
-      }
-
-      // Find matching drivers based only on car_make
-      const { data: matchingDrivers, error: matchError } = await supabase
-        .from('drivers')
-        .select('id, full_name, email, phone, car_make')
-        .ilike('car_make', `%${vehicleInfo.make}%`)
-        .not('car_make', 'is', null);
-
-      if (matchError) {
-        console.error('Error finding matching drivers:', matchError);
-        throw new Error('Failed to find matching drivers');
-      }
-
-      if (!matchingDrivers || matchingDrivers.length === 0) {
-        toast({
-          title: "No Available Drivers",
-          description: `No drivers with ${vehicleInfo.make} ${vehicleInfo.model} are currently available.`,
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
-
-      // The database trigger will automatically assign a matching driver
-
-      // Get passenger data to denormalize into booking
-      const { data: passengerData, error: passengerError } = await supabase
-        .from('passengers')
+      const { data, error } = await supabase
+        .from('vehicle_types')
         .select('*')
-        .eq('id', session.user.id)
-        .maybeSingle();
+        .order('vehicle_name');
 
-      if (passengerError) {
-        console.error('Error fetching passenger data:', passengerError);
-        throw new Error('Please complete your passenger profile before booking');
-      }
-
-      if (!passengerData) {
-        toast({
-          title: "Profile Incomplete",
-          description: "Please complete your passenger profile before booking.",
-          variant: "destructive",
-        });
-        setLoading(false);
-        navigate("/passenger/dashboard");
-        return;
-      }
-
-      // Create booking request payload
-      const bookingPayload = {
-        passenger_id: session.user.id,
-        driver_id: null, // Database trigger will assign matching driver
-        pickup_location: pickup,
-        dropoff_location: dropoff,
-        pickup_time: pickupDateTime.toISOString(),
-        passenger_count: parseInt(formData.passengers),
-        luggage_count: parseInt(formData.luggage),
-        luggage_size: formData.luggageSize, // Add luggage size
-        flight_info: formData.flightInfo || '',
-        vehicle_type: `${vehicleInfo.make} ${vehicleInfo.model}`,
-        ride_status: 'pending_driver',
-        payment_confirmation_status: 'waiting_for_offer',
-        status: 'pending',
-        payment_status: 'pending',
-        status_passenger: 'passenger_requested',
-        status_driver: 'new_request',
-        // Denormalized passenger data
-        passenger_first_name: passengerData.full_name?.split(' ')[0] || '',
-        passenger_last_name: passengerData.full_name?.split(' ').slice(1).join(' ') || '',
-        passenger_phone: passengerData.phone || '',
-        passenger_photo_url: passengerData.profile_photo_url || '',
-        passenger_preferences: {
-          temperature: passengerData.preferred_temperature,
-          music: passengerData.music_preference,
-          interaction: passengerData.interaction_preference,
-          trip_purpose: passengerData.trip_purpose,
-          notes: passengerData.additional_notes
-        }
-      };
-
-      console.log('📝 Booking payload:', bookingPayload);
-
-      // Create booking request in database - trigger will assign matching driver
-      const { data: booking, error } = await supabase
-        .from('bookings')
-        .insert(bookingPayload)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('❌ Error creating booking:', error);
-        console.error('❌ Error details:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        });
-        toast({
-          title: "Error",
-          description: `Failed to create booking: ${error.message}`,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log('✅ Booking created:', booking);
-
-      // Create initial status entries
-      try {
-        await createBookingStatusEntries.passengerRequestCreated(booking.id, {
-          name: passengerData?.full_name || 'Passenger',
-          photo: passengerData?.profile_photo_url,
-          pickup: pickup,
-          dropoff: dropoff
-        });
-
-        console.log('✅ Initial status entry created');
-      } catch (statusError) {
-        console.error('Error creating status entry:', statusError);
-        // Don't fail the booking for status entry errors
-      }
-
-      // Send booking request notification to all matching drivers
-      try {
-        await supabase.functions.invoke('send-booking-notifications', {
-          body: {
-            bookingId: booking.id,
-            status: 'pending_driver',
-            triggerType: 'new_booking_request',
-            matchingDrivers: matchingDrivers.map(d => d.id)
-          }
-        });
-      } catch (emailError) {
-        console.error('Failed to send booking request notifications:', emailError);
-        // Don't fail the booking creation if email fails
-      }
-
-      toast({
-        title: "Booking request sent!",
-        description: `Your request has been sent to ${matchingDrivers.length} available driver(s). You'll be notified when a driver responds.`,
-      });
-
-      // Navigate to confirmation page
-      navigate("/passenger/confirmation", {
-        state: {
-          pickup,
-          dropoff,
-          selectedVehicle,
-          bookingDetails: formData,
-          bookingId: booking.id
-        }
-      });
-    } catch (error: any) {
+      if (error) throw error;
+      setVehicleTypes(data || []);
+    } catch (error) {
+      console.error('Error loading vehicle types:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to create booking. Please try again.",
+        description: "Failed to load vehicle options",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
   };
 
-  const handleInputChange = (field: string, value: string | boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
+  const handleSubmit = async () => {
+    if (!pickupLocation || !dropoffLocation || !pickupTime || !selectedVehicle) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  const handleGoBack = () => {
-    navigate("/passenger/choose-vehicle", { 
-      state: { pickup, dropoff } 
-    });
-  };
+    setIsSubmitting(true);
+    
+    try {
+      console.log('📝 Creating booking request - dispatcher will assign driver manually');
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/passenger/login');
+        return;
+      }
 
+      // Create booking WITHOUT automatic driver assignment
+      // The dispatcher will manually assign the driver regardless of vehicle selection
+      const { data, error } = await supabase
+        .from('bookings')
+        .insert({
+          passenger_id: user.id,
+          pickup_location: pickupLocation,
+          dropoff_location: dropoffLocation,
+          pickup_time: pickupTime.toISOString(),
+          passenger_count: passengerCount,
+          vehicle_type: `${selectedVehicle.make} ${selectedVehicle.model}`,
+          status: 'pending',
+          ride_status: 'pending_driver',
+          payment_confirmation_status: 'waiting_for_offer',
+          status_passenger: 'passenger_requested',
+          status_driver: 'new_request',
+          // NO driver_id - dispatcher will assign manually
+          driver_id: null
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      console.log('✅ Booking created successfully without auto-assignment:', data);
+
+      toast({
+        title: "Booking Requested!",
+        description: "Your ride request has been submitted. A dispatcher will assign a driver shortly.",
+      });
+
+      navigate(`/passenger/confirmation?booking=${data.id}`);
+      
+    } catch (error) {
+      console.error('❌ Error creating booking:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create booking. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4">
-      <div className="max-w-2xl mx-auto pt-8">
-        {/* Go Back button */}
-        <div className="flex justify-start mb-6">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleGoBack}
-            className="text-muted-foreground hover:text-foreground text-base"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Go Back
-          </Button>
-        </div>
-
-        <div className="text-center mb-8 space-y-2">
-          <h1 className="text-3xl font-bold text-foreground">Complete Your Booking</h1>
-          <p className="text-muted-foreground">Fill in the details for your ride</p>
-        </div>
-
-        {selectedVehicle && (
-          <div className="bg-card rounded-xl p-6 mb-6 shadow-lg">
-            <div className="flex items-center space-x-4">
-              <img 
-                src={selectedVehicle.image} 
-                alt={selectedVehicle.name}
-                className="w-20 h-16 object-cover rounded-lg"
-              />
-              <div>
-                <h3 className="font-bold text-card-foreground">{selectedVehicle.name}</h3>
-                <p className="text-sm text-muted-foreground">{selectedVehicle.description}</p>
-              </div>
-            </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div className="max-w-md mx-auto px-6 py-4">
+          <div className="flex items-center">
+            <Button
+              variant="ghost"
+              onClick={() => navigate(-1)}
+              className="p-0 h-auto text-gray-600 mr-4"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-xl font-semibold text-gray-900">Book Your Ride</h1>
           </div>
-        )}
+        </div>
+      </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="bg-card rounded-xl p-6 shadow-lg space-y-6">
-            <h2 className="text-xl font-bold text-card-foreground flex items-center">
-              <Plane className="mr-2 h-5 w-5 text-primary" />
-              Trip Details
-            </h2>
-
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="flightInfo" className="text-card-foreground">
-                  Flight Information (Optional)
-                </Label>
-                <Input
-                  id="flightInfo"
-                  placeholder="e.g., AA123 arriving at 3:00 PM"
-                  value={formData.flightInfo}
-                  onChange={(e) => handleInputChange("flightInfo", e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-
-              <DateTimePicker
-                selectedDate={formData.date}
-                selectedTime={formData.time}
-                onDateChange={(date) => handleInputChange("date", date)}
-                onTimeChange={(time) => handleInputChange("time", time)}
-              />
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="passengers" className="text-card-foreground flex items-center">
-                    <Users className="mr-1 h-4 w-4" />
-                    Passengers
-                  </Label>
-                  <Select value={formData.passengers} onValueChange={(value) => handleInputChange("passengers", value)}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[1,2,3,4,5,6,7,8].map(num => (
-                        <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="luggage" className="text-card-foreground flex items-center">
-                    <Luggage className="mr-1 h-4 w-4" />
-                    Luggage Count
-                  </Label>
-                  <Select value={formData.luggage} onValueChange={(value) => handleInputChange("luggage", value)}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[0,1,2,3,4,5,6,7,8].map(num => (
-                        <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="luggageSize" className="text-card-foreground">
-                  Luggage Size
-                </Label>
-                <Select value={formData.luggageSize} onValueChange={(value) => handleInputChange("luggageSize", value)}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="small">Small (carry-on)</SelectItem>
-                    <SelectItem value="medium">Medium (standard)</SelectItem>
-                    <SelectItem value="large">Large (oversized)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="notes" className="text-card-foreground">
-                  Special Notes (Optional)
-                </Label>
-                <Textarea
-                  id="notes"
-                  placeholder="Any special requests or instructions..."
-                  value={formData.notes}
-                  onChange={(e) => handleInputChange("notes", e.target.value)}
-                  className="mt-1"
-                  rows={3}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-card rounded-xl p-6 shadow-lg space-y-4">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="bookingForOther" className="text-card-foreground font-medium">
-                Booking for another person?
+      {/* Form */}
+      <div className="max-w-md mx-auto px-6 py-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Trip Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Pickup Location */}
+            <div>
+              <Label htmlFor="pickup" className="flex items-center space-x-2">
+                <MapPin className="h-4 w-4 text-green-500" />
+                <span>Pickup Location</span>
               </Label>
-              <Switch
-                id="bookingForOther"
-                checked={formData.bookingForOther}
-                onCheckedChange={(checked) => handleInputChange("bookingForOther", checked)}
+              <GoogleMapsAutocomplete
+                onPlaceSelected={(place) => setPickupLocation(place)}
+                placeholder="Enter pickup address"
+                className="mt-1"
               />
             </div>
 
-            {formData.bookingForOther && (
-              <div className="space-y-4 pt-4 border-t border-border">
-                <div>
-                  <Label htmlFor="otherPersonName" className="text-card-foreground">
-                    Passenger Name
-                  </Label>
-                  <Input
-                    id="otherPersonName"
-                    placeholder="Full name of the passenger"
-                    value={formData.otherPersonName}
-                    onChange={(e) => handleInputChange("otherPersonName", e.target.value)}
-                    className="mt-1"
-                    required={formData.bookingForOther}
-                  />
+            {/* Dropoff Location */}
+            <div>
+              <Label htmlFor="dropoff" className="flex items-center space-x-2">
+                <MapPin className="h-4 w-4 text-red-500" />
+                <span>Drop-off Location</span>
+              </Label>
+              <GoogleMapsAutocomplete
+                onPlaceSelected={(place) => setDropoffLocation(place)}
+                placeholder="Enter destination address"
+                className="mt-1"
+              />
+            </div>
+
+            {/* Pickup Time */}
+            <div>
+              <Label className="flex items-center space-x-2">
+                <Clock className="h-4 w-4" />
+                <span>Pickup Time</span>
+              </Label>
+              <DateTimePicker 
+                date={pickupTime} 
+                setDate={setPickupTime}
+                className="mt-1"
+              />
+            </div>
+
+            {/* Passenger Count */}
+            <div>
+              <Label htmlFor="passengers" className="flex items-center space-x-2">
+                <Users className="h-4 w-4" />
+                <span>Number of Passengers</span>
+              </Label>
+              <Input
+                id="passengers"
+                type="number"
+                min="1"
+                max="8"
+                value={passengerCount}
+                onChange={(e) => setPassengerCount(parseInt(e.target.value) || 1)}
+                className="mt-1"
+              />
+            </div>
+
+            {/* Selected Vehicle */}
+            {selectedVehicle && (
+              <div>
+                <Label className="flex items-center space-x-2">
+                  <Car className="h-4 w-4" />
+                  <span>Selected Vehicle</span>
+                </Label>
+                <div className="mt-1 p-3 bg-gray-50 rounded-lg">
+                  <p className="font-medium">{selectedVehicle.vehicle_name}</p>
+                  <p className="text-sm text-gray-600">{selectedVehicle.make} {selectedVehicle.model}</p>
                 </div>
-                <div>
-                  <Label htmlFor="otherPersonPhone" className="text-card-foreground">
-                    Passenger Phone
-                  </Label>
-                  <Input
-                    id="otherPersonPhone"
-                    placeholder="Phone number"
-                    value={formData.otherPersonPhone}
-                    onChange={(e) => handleInputChange("otherPersonPhone", e.target.value)}
-                    className="mt-1"
-                    required={formData.bookingForOther}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="otherPersonEmail" className="text-card-foreground">
-                    Passenger Email
-                  </Label>
-                  <Input
-                    id="otherPersonEmail"
-                    type="email"
-                    placeholder="Email address"
-                    value={formData.otherPersonEmail}
-                    onChange={(e) => handleInputChange("otherPersonEmail", e.target.value)}
-                    className="mt-1"
-                    required={formData.bookingForOther}
-                  />
-                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => navigate('/passenger/choose-vehicle')}
+                  className="mt-2 w-full"
+                >
+                  Change Vehicle
+                </Button>
               </div>
             )}
-          </div>
 
-          <Button
-            type="submit"
-            variant="luxury"
-            size="lg"
-            className="w-full"
-            disabled={loading || !formData.date || !formData.time}
-          >
-            {loading ? "Creating Booking..." : "Submit Booking Request"}
-          </Button>
+            {/* Submit Button */}
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting || !pickupLocation || !dropoffLocation || !selectedVehicle}
+              className="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-medium"
+            >
+              {isSubmitting ? "Creating Booking..." : "Request Ride"}
+            </Button>
 
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground">
-              Your booking request will be sent to available drivers
-            </p>
-          </div>
-        </form>
+            {/* Info Note */}
+            <div className="text-xs text-gray-500 bg-blue-50 p-3 rounded-lg">
+              <p><strong>Note:</strong> Your vehicle selection is a preference. Our dispatcher will assign the most suitable available driver for your trip.</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

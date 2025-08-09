@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { OfferAcceptanceModal } from "./OfferAcceptanceModal";
 import { PaymentInstructionsAlert } from "./PaymentInstructionsAlert";
@@ -7,9 +8,7 @@ import { AllSetConfirmationAlert } from "./AllSetConfirmationAlert";
 import { DriverRideRequestModal } from "../roadmap/DriverRideRequestModal";
 import { PassengerOfferReviewModal } from "../roadmap/PassengerOfferReviewModal";
 import { DriverPaymentConfirmationModal } from "../roadmap/DriverPaymentConfirmationModal";
-import { useBookingStore } from "@/stores/bookingStore";
-import { getUnifiedStatus, getRequiredModal } from "@/utils/unifiedStatusManager";
-import { updateBookingStatus } from "@/utils/supabaseHelpers";
+import { updateBookingStatus } from "@/utils/bookingHelpers";
 
 interface RideFlowManagerProps {
   booking: any;
@@ -29,14 +28,6 @@ export const RideFlowManager = ({
   manualModalTrigger
 }: RideFlowManagerProps) => {
   const [currentStep, setCurrentStep] = useState<string | null>(null);
-  const { subscribeToBooking } = useBookingStore();
-
-  useEffect(() => {
-    if (!booking?.id) return;
-
-    // Subscribe to real-time booking updates
-    subscribeToBooking(booking.id);
-  }, [booking?.id]);
 
   useEffect(() => {
     // Handle manual modal trigger
@@ -54,12 +45,20 @@ export const RideFlowManager = ({
 
     if (!booking) return;
 
-    // Use unified status system
-    const unifiedStatus = getUnifiedStatus(booking);
-    const requiredModal = getRequiredModal(unifiedStatus, userType);
-    
-    console.log('🔄 RideFlowManager - Unified status:', unifiedStatus, 'Required modal:', requiredModal, 'UserType:', userType);
+    // Simple status determination based on booking state
+    let requiredModal = null;
 
+    if (booking.ride_status === 'offer_sent' && userType === 'passenger') {
+      requiredModal = 'offer_acceptance';
+    } else if (booking.payment_confirmation_status === 'waiting_for_payment' && userType === 'passenger') {
+      requiredModal = 'payment_instructions';
+    } else if (booking.payment_confirmation_status === 'passenger_paid' && userType === 'driver') {
+      requiredModal = 'driver_payment_confirmation';
+    } else if (booking.payment_confirmation_status === 'all_set') {
+      requiredModal = 'all_set_confirmation';
+    }
+    
+    console.log('🔄 RideFlowManager - Status:', booking.status, 'Required modal:', requiredModal, 'UserType:', userType);
     setCurrentStep(requiredModal);
   }, [booking, userType, forceOpenStep, manualModalTrigger]);
 

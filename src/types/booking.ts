@@ -23,6 +23,8 @@ export interface Booking {
   passenger_id: string;
   driver_id?: string;
   vehicle_id?: string;
+  simple_status?: 'booking_requested' | 'payment_pending' | 'all_set' | 'completed' | 'cancelled';
+  final_negotiated_price?: number;
   passengers?: {
     id: string;
     full_name: string;
@@ -35,6 +37,15 @@ export interface Booking {
     additional_notes?: string;
   };
   drivers?: {
+    full_name: string;
+    phone: string;
+    profile_photo_url?: string;
+    car_make: string;
+    car_model: string;
+    car_color: string;
+    license_plate: string;
+  };
+  driver_profiles?: {
     full_name: string;
     phone: string;
     profile_photo_url?: string;

@@ -1,257 +1,315 @@
-
-import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Clock, Users, Car, Settings } from 'lucide-react';
+import { MapPin, Clock, Users, DollarSign, MessageCircle, Car } from 'lucide-react';
 import { format } from 'date-fns';
 import { Booking } from "@/types/booking";
+import { DispatcherBookingManager } from "./DispatcherBookingManager";
 import { BookingManagementModal } from "./BookingManagementModal";
+import { ReopenModalButton } from "../dashboard/ReopenModalButton";
+import { WriteUnderlinedStatus } from "../ride/WriteUnderlinedStatus";
+import { mapToSimpleStatus } from "@/utils/bookingHelpers";
 
 interface DispatcherBookingListProps {
-  bookings: Booking[];
-  onUpdate: () => void;
+  onManageBooking?: () => void;
 }
 
-export const DispatcherBookingList = ({ bookings, onUpdate }: DispatcherBookingListProps) => {
-  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+export const DispatcherBookingList = ({ onManageBooking }: DispatcherBookingListProps) => {
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  const getStatusColor = (booking: Booking) => {
-    // Check multiple status fields to determine current state with enhanced detection
-    const hasOfferSent = booking.ride_status === 'offer_sent' || 
-                        booking.status === 'offer_sent' ||
+  useEffect(() => {
+    loadBookings();
+    setupRealtimeSubscription();
+  }, []);
+
+  const mapToSimpleStatus = (booking: any): Booking['simple_status'] => {
+    console.log('🔍 Dispatcher mapping booking status:', { 
+      status: booking.status,
+      ride_status: booking.ride_status, 
+      payment_confirmation_status: booking.payment_confirmation_status,
+      final_price: booking.final_price,
+      driver_id: booking.driver_id
+    });
+    
+    if (booking.status === 'completed' || booking.ride_status === 'completed') return 'completed';
+    if (booking.status === 'cancelled') return 'cancelled';
+    
+    if (booking.payment_confirmation_status === 'all_set' || booking.ride_status === 'all_set') return 'all_set';
+    
+    const hasOfferSent = booking.status === 'offer_sent' || 
+                        booking.ride_status === 'offer_sent' || 
                         booking.payment_confirmation_status === 'price_awaiting_acceptance' ||
                         (booking.final_price && booking.final_price > 0 && booking.driver_id);
     
-    const isPending = !booking.driver_id || 
-                     (booking.status === 'pending' && !booking.final_price) || 
-                     booking.ride_status === 'pending_driver' ||
-                     booking.simple_status === 'booking_requested';
-
-    const isAllSet = booking.ride_status === 'all_set' || 
-                    booking.payment_confirmation_status === 'all_set';
-
-    if (hasOfferSent) return 'bg-blue-100 text-blue-800 border-blue-200';
-    if (isAllSet) return 'bg-green-100 text-green-800 border-green-200';
-    if (isPending) return 'bg-orange-100 text-orange-800 border-orange-200';
-    
-    return 'bg-gray-100 text-gray-800 border-gray-200';
-  };
-
-  const getStatusLabel = (booking: Booking) => {
-    // Enhanced status detection with proper priority
-    const hasOfferSent = booking.ride_status === 'offer_sent' || 
-                        booking.status === 'offer_sent' ||
-                        booking.payment_confirmation_status === 'price_awaiting_acceptance' ||
-                        (booking.final_price && booking.final_price > 0 && booking.driver_id);
-    
-    if (hasOfferSent) return 'Offer Sent to Passenger';
-    
-    const isAllSet = booking.ride_status === 'all_set' || 
-                    booking.payment_confirmation_status === 'all_set';
-    
-    if (isAllSet) return 'All Set';
-    
-    // Check if driver is assigned but no offer sent yet
-    if (booking.driver_id && !booking.final_price) {
-      return 'Driver Assigned - Send Offer';
+    if (hasOfferSent) {
+      return 'payment_pending';
     }
     
-    // Default to pending for unassigned bookings
-    return 'New Request';
+    return 'booking_requested';
   };
 
-  const formatDateTime = (dateString: string) => {
-    return format(new Date(dateString), 'MMM dd, yyyy - HH:mm');
-  };
+  const loadBookings = async () => {
+    try {
+      console.log('🔄 Loading all bookings for dispatcher...');
+      
+      const { data, error } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          passengers:passenger_id (
+            full_name,
+            phone,
+            profile_photo_url
+          ),
+          drivers:driver_id (
+            full_name,
+            phone,
+            profile_photo_url,
+            car_make,
+            car_model,
+            car_color,
+            license_plate
+          )
+        `)
+        .order('created_at', { ascending: false });
 
-  // Enhanced check for driver assignment status
-  const isDriverAssignedWithOffer = (booking: Booking): boolean => {
-    return !!(booking.driver_id && booking.final_price && booking.final_price > 0);
-  };
+      if (error) throw error;
 
-  const getCurrentPrice = (booking: Booking): number => {
-    // Show final_price if dispatcher has sent offer, otherwise show estimated_price or 0
-    if (booking.final_price && booking.final_price > 0) {
-      return booking.final_price;
+      const processedBookings: Booking[] = (data || []).map(booking => ({
+        id: booking.id,
+        pickup_location: booking.pickup_location || '',
+        dropoff_location: booking.dropoff_location || '',
+        pickup_time: booking.pickup_time || '',
+        passenger_count: booking.passenger_count || 1,
+        vehicle_type: booking.vehicle_type,
+        status: booking.status || 'pending',
+        ride_status: booking.ride_status,
+        payment_confirmation_status: booking.payment_confirmation_status,
+        status_passenger: booking.status_passenger,
+        status_driver: booking.status_driver,
+        simple_status: mapToSimpleStatus(booking),
+        estimated_price: booking.estimated_price,
+        final_price: booking.final_price,
+        created_at: booking.created_at,
+        updated_at: booking.updated_at,
+        passenger_id: booking.passenger_id || '',
+        driver_id: booking.driver_id,
+        vehicle_id: booking.vehicle_id,
+        passengers: booking.passengers,
+        drivers: booking.drivers
+      }));
+
+      setBookings(processedBookings);
+      console.log('📊 Dispatcher bookings loaded:', processedBookings.length);
+    } catch (error) {
+      console.error('❌ Error loading bookings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load bookings",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-    return booking.estimated_price || 0;
   };
 
-  const handleManageBooking = (bookingId: string) => {
-    setSelectedBookingId(bookingId);
+  const setupRealtimeSubscription = () => {
+    const channel = supabase
+      .channel('dispatcher-booking-list')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings'
+        },
+        (payload) => {
+          console.log('📡 Dispatcher real-time booking update:', payload);
+          loadBookings();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   };
 
-  const selectedBooking = bookings.find(b => b.id === selectedBookingId);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
-  if (bookings.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Car className="w-8 h-8 text-gray-400" />
-        </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings yet</h3>
-        <p className="text-gray-500">New ride requests will appear here</p>
-      </div>
-    );
-  }
+  const handleManageBooking = (booking: Booking) => {
+    setSelectedBooking(booking);
+    setIsModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setSelectedBooking(null);
+  };
+
+  const handleBookingUpdate = () => {
+    loadBookings();
+    if (onManageBooking) {
+      onManageBooking();
+    }
+  };
+
+  const [forceModalStep, setForceModalStep] = useState<string | null>(null);
+
+  const handleReopenModal = (step: string) => {
+    setForceModalStep(step);
+    setIsModalOpen(true);
+  };
 
   return (
     <div>
-      <div className="mb-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-2">All Bookings</h2>
-        <p className="text-gray-600">Manage ride requests and assignments</p>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {bookings.map((booking) => (
-          <Card key={booking.id} className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              {/* Header */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm font-medium text-gray-900">#{booking.id.slice(-8).toUpperCase()}</span>
-                  <Clock className="w-4 h-4 text-gray-400" />
-                </div>
-                <Badge className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(booking)}`}>
-                  {getStatusLabel(booking)}
-                </Badge>
-              </div>
-
-              {/* Passenger Info */}
-              {booking.passengers && (
-                <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                  <p className="text-sm font-medium text-gray-900 mb-2">Passenger</p>
-                  <div className="flex items-center space-x-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={booking.passengers.profile_photo_url} />
-                      <AvatarFallback className="bg-gray-200 text-gray-600">
-                        {booking.passengers.full_name.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">{booking.passengers.full_name}</p>
-                      <p className="text-sm text-gray-500">{booking.passengers.phone}</p>
+      <Card>
+        <CardHeader>
+          <CardTitle>All Bookings</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-4">Loading bookings...</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {bookings.map((booking) => (
+                <Card key={booking.id} className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <CardContent className="p-4">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium text-gray-900">Booking ID</span>
+                        <WriteUnderlinedStatus booking={booking} userType="dispatcher" />
+                      </div>
+                      <Clock className="w-4 h-4 text-gray-400" />
                     </div>
-                  </div>
-                </div>
-              )}
 
-              {/* Locations */}
-              <div className="space-y-2 mb-4">
-                <div className="flex items-start space-x-3">
-                  <div className="w-3 h-3 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-                  <div>
-                    <p className="text-sm text-gray-500">Pickup</p>
-                    <p className="text-sm font-medium text-gray-900">{booking.pickup_location}</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-3 h-3 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
-                  <div>
-                    <p className="text-sm text-gray-500">Drop-off</p>
-                    <p className="text-sm font-medium text-gray-900">{booking.dropoff_location}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Trip Details */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="flex items-center space-x-2">
-                  <Clock className="w-4 h-4 text-gray-400" />
-                  <span className="text-xs text-gray-600">
-                    {formatDateTime(booking.pickup_time)}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Users className="w-4 h-4 text-gray-400" />
-                  <span className="text-xs text-gray-600">
-                    {booking.passenger_count} passengers
-                  </span>
-                </div>
-                {booking.vehicle_type && (
-                  <div className="flex items-center space-x-2 col-span-2">
-                    <Car className="w-4 h-4 text-gray-400" />
-                    <span className="text-xs text-gray-600">{booking.vehicle_type}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Price - Show current price with proper status indication */}
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-2xl font-bold text-red-600">
-                  ${getCurrentPrice(booking)}
-                </span>
-                {isDriverAssignedWithOffer(booking) && (
-                  <Badge variant="outline" className="text-xs">
-                    Offer Sent
-                  </Badge>
-                )}
-                {booking.driver_id && !booking.final_price && (
-                  <Badge variant="secondary" className="text-xs">
-                    Send Offer
-                  </Badge>
-                )}
-              </div>
-
-              {/* Driver Info - Only show when assigned */}
-              {booking.drivers && booking.driver_id && (
-                <div className="mb-4 p-3 bg-green-50 rounded-lg">
-                  <p className="text-sm font-medium text-gray-900 mb-2">Assigned Driver</p>
-                  <div className="flex items-center space-x-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={booking.drivers.profile_photo_url} />
-                      <AvatarFallback className="bg-gray-200 text-gray-600">
-                        {booking.drivers.full_name.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">{booking.drivers.full_name}</p>
-                      <p className="text-xs text-gray-500">
-                        {booking.drivers.car_make} {booking.drivers.car_model} - {booking.drivers.license_plate}
-                      </p>
+                    {/* Booking ID */}
+                    <div className="text-lg font-semibold text-gray-900 mb-4">
+                      #{booking.id.slice(-8).toUpperCase()}
                     </div>
-                  </div>
-                </div>
-              )}
 
-              {/* Status notice for unassigned bookings */}
-              {!booking.driver_id && (
-                <div className="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                  <p className="text-sm text-yellow-800">
-                    🎯 Ready for manual driver assignment
-                  </p>
-                </div>
-              )}
+                    {/* Locations with vector icons */}
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-start space-x-3">
+                        <div className="w-3 h-3 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                        <div>
+                          <p className="text-sm text-gray-500">Pickup</p>
+                          <p className="text-sm font-medium text-gray-900">{booking.pickup_location}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start space-x-3">
+                        <div className="w-3 h-3 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
+                        <div>
+                          <p className="text-sm text-gray-500">Drop-off</p>
+                          <p className="text-sm font-medium text-gray-900">{booking.dropoff_location}</p>
+                        </div>
+                      </div>
+                    </div>
 
-              {/* Manage Button */}
-              <Button 
-                onClick={() => handleManageBooking(booking.id)}
-                variant="outline" 
-                size="sm" 
-                className="w-full flex items-center gap-2"
-              >
-                <Settings className="w-4 h-4" />
-                {booking.driver_id ? 'Manage Offer' : 'Assign & Send Offer'}
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                    {/* Trip Details */}
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div className="flex items-center space-x-2">
+                        <Clock className="w-4 h-4 text-gray-400" />
+                        <span className="text-xs text-gray-600">
+                          {format(new Date(booking.pickup_time), 'MMM dd, yyyy - HH:mm')}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Users className="w-4 h-4 text-gray-400" />
+                        <span className="text-xs text-gray-600">
+                          {booking.passenger_count} passengers
+                        </span>
+                      </div>
+                      {booking.vehicle_type && (
+                        <div className="flex items-center space-x-2 col-span-2">
+                          <Car className="w-4 h-4 text-gray-400" />
+                          <span className="text-xs text-gray-600">{booking.vehicle_type}</span>
+                        </div>
+                      )}
+                    </div>
 
-      {/* Booking Management Modal */}
-      {selectedBooking && (
-        <BookingManagementModal
-          isOpen={!!selectedBookingId}
-          onClose={() => setSelectedBookingId(null)}
-          booking={selectedBooking}
-          onUpdate={() => {
-            onUpdate();
-            setSelectedBookingId(null);
-          }}
-        />
-      )}
+                    {/* Price Display */}
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-2xl font-bold text-green-600">
+                        ${booking.final_price || booking.estimated_price || 0}
+                      </span>
+                    </div>
+
+                    {/* Passenger Info */}
+                    {booking.passengers && (
+                      <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                        <p className="text-sm font-medium text-gray-900 mb-2">Passenger</p>
+                        <div className="flex items-center space-x-3">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={booking.passengers.profile_photo_url} />
+                            <AvatarFallback className="bg-gray-200 text-gray-600">
+                              {booking.passengers.full_name.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900">{booking.passengers.full_name}</p>
+                            <p className="text-sm text-gray-500">{booking.passengers.phone}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Driver Info */}
+                    {booking.drivers && (
+                      <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                        <p className="text-sm font-medium text-blue-900 mb-2">Assigned Driver</p>
+                        <div className="flex items-center space-x-3">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={booking.drivers.profile_photo_url} />
+                            <AvatarFallback className="bg-blue-200 text-blue-800">
+                              {booking.drivers.full_name.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <p className="font-medium text-blue-900">{booking.drivers.full_name}</p>
+                            <p className="text-sm text-blue-500">{booking.drivers.phone}</p>
+                            <p className="text-sm text-blue-500">
+                              {booking.drivers.car_make} {booking.drivers.car_model} ({booking.drivers.car_color})
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+                        onClick={() => handleManageBooking(booking)}
+                      >
+                        Manage
+                      </Button>
+                      <ReopenModalButton booking={booking} onReopenModal={handleReopenModal} />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <BookingManagementModal
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        booking={selectedBooking || {}}
+        onUpdate={handleBookingUpdate}
+        forceOpenStep={forceModalStep}
+      />
     </div>
   );
 };
