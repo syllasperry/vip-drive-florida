@@ -46,7 +46,8 @@ const DispatcherDashboard = () => {
 
     (async () => {
       await loadBookings();
-      unsubscribe = listenForBookingChanges((payload: any) => {
+      // Fix: Properly handle the returned cleanup function
+      const cleanup = listenForBookingChanges((payload: any) => {
         const { eventType, new: n, old: o } = payload;
         setBookings((prev) => {
           if (eventType === "INSERT" && n) return [n, ...prev];
@@ -55,6 +56,7 @@ const DispatcherDashboard = () => {
           return prev;
         });
       });
+      unsubscribe = cleanup;
     })();
 
     return () => {
@@ -212,7 +214,7 @@ const DispatcherDashboard = () => {
   const getCurrentPrice = (booking: any): number | null => {
     if (booking.final_price && booking.final_price > 0) return booking.final_price;
     return null;
-    };
+  };
 
   const getPriceDisplay = (booking: any): string => {
     const currentPrice = getCurrentPrice(booking);
@@ -224,7 +226,11 @@ const DispatcherDashboard = () => {
     setShowManagementModal(true);
   };
 
-  // ---------- Render ----------
+  // Fix: Create a proper tab change handler
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab as "bookings" | "drivers" | "payments" | "messages" | "settings");
+  };
+
   const renderBookingCard = (booking: any) => (
     <Card key={booking.id} className="mb-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
       <CardContent className="p-4">
@@ -412,7 +418,7 @@ const DispatcherDashboard = () => {
       {/* Bottom Nav */}
       <BottomNavigation
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
         userType="dispatcher"
         pendingActionsCount={bookings.filter((b) => !b.driver_id).length}
         hasActiveRide={false}
