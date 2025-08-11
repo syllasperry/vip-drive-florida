@@ -1,12 +1,13 @@
 
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, MapPin, User, DollarSign, Phone, MessageCircle } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { MapPin, Clock, Users, MessageSquare, CreditCard, CheckCircle, Edit } from 'lucide-react';
 
 export interface EnhancedBookingCardProps {
   booking: any;
+  userType: 'passenger' | 'driver';
   onMessage: () => void;
   onViewSummary: () => void;
   onMakePayment: () => void;
@@ -17,6 +18,7 @@ export interface EnhancedBookingCardProps {
 
 export const EnhancedBookingCard: React.FC<EnhancedBookingCardProps> = ({
   booking,
+  userType,
   onMessage,
   onViewSummary,
   onMakePayment,
@@ -37,97 +39,97 @@ export const EnhancedBookingCard: React.FC<EnhancedBookingCardProps> = ({
 
   return (
     <Card className="w-full">
-      <CardHeader>
-        <div className="flex justify-between items-start">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
           <CardTitle className="text-lg">
-            Booking #{booking.id?.slice(-8)}
+            Booking #{booking.id?.slice(-6)}
           </CardTitle>
           <Badge className={getStatusColor(booking.status)}>
             {booking.status}
           </Badge>
         </div>
       </CardHeader>
-      
       <CardContent className="space-y-4">
-        {/* Route Information */}
+        {/* Trip Details */}
         <div className="space-y-2">
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 text-sm">
             <MapPin className="h-4 w-4 text-green-600" />
-            <span className="text-sm font-medium">From:</span>
-            <span className="text-sm">{booking.pickup_location}</span>
+            <span className="text-muted-foreground">From:</span>
+            <span className="font-medium">{booking.pickup_location}</span>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 text-sm">
             <MapPin className="h-4 w-4 text-red-600" />
-            <span className="text-sm font-medium">To:</span>
-            <span className="text-sm">{booking.dropoff_location}</span>
+            <span className="text-muted-foreground">To:</span>
+            <span className="font-medium">{booking.dropoff_location}</span>
+          </div>
+          <div className="flex items-center space-x-2 text-sm">
+            <Clock className="h-4 w-4" />
+            <span className="text-muted-foreground">Time:</span>
+            <span className="font-medium">
+              {new Date(booking.pickup_time).toLocaleString()}
+            </span>
+          </div>
+          <div className="flex items-center space-x-2 text-sm">
+            <Users className="h-4 w-4" />
+            <span className="text-muted-foreground">Passengers:</span>
+            <span className="font-medium">{booking.passenger_count}</span>
           </div>
         </div>
 
-        {/* Time and Date */}
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <Calendar className="h-4 w-4 text-gray-500" />
-            <span className="text-sm">
-              {new Date(booking.pickup_time).toLocaleDateString()}
-            </span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Clock className="h-4 w-4 text-gray-500" />
-            <span className="text-sm">
-              {new Date(booking.pickup_time).toLocaleTimeString()}
-            </span>
-          </div>
-        </div>
-
-        {/* Passenger Info */}
-        <div className="flex items-center space-x-2">
-          <User className="h-4 w-4 text-gray-500" />
-          <span className="text-sm">
-            {booking.passenger_count} passenger{booking.passenger_count !== 1 ? 's' : ''}
-          </span>
-        </div>
-
-        {/* Price */}
-        {booking.final_price && (
-          <div className="flex items-center space-x-2">
-            <DollarSign className="h-4 w-4 text-gray-500" />
-            <span className="text-sm font-medium">
-              ${booking.final_price}
-            </span>
+        {/* Price Information */}
+        {(booking.estimated_price || booking.final_price) && (
+          <div className="border-t pt-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Price:</span>
+              <span className="font-medium">
+                ${booking.final_price || booking.estimated_price}
+              </span>
+            </div>
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="flex flex-wrap gap-2 pt-4">
-          <Button variant="outline" size="sm" onClick={onMessage}>
-            <MessageCircle className="h-4 w-4 mr-1" />
+        {/* Actions */}
+        <div className="flex gap-2 pt-3 border-t">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onMessage}
+            className="flex items-center gap-1"
+          >
+            <MessageSquare className="h-4 w-4" />
             Message
           </Button>
           
-          <Button variant="outline" size="sm" onClick={onViewSummary}>
-            View Summary
-          </Button>
-
-          {booking.status === 'pending' && (
-            <Button size="sm" onClick={onAcceptOffer}>
-              Accept Offer
+          {booking.status === 'pending' && userType === 'passenger' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onMakePayment}
+              className="flex items-center gap-1"
+            >
+              <CreditCard className="h-4 w-4" />
+              Pay
             </Button>
           )}
 
-          {booking.payment_confirmation_status === 'waiting_for_payment' && (
-            <Button size="sm" onClick={onMakePayment}>
-              Make Payment
+          {booking.status === 'confirmed' && userType === 'driver' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onConfirmPayment}
+              className="flex items-center gap-1"
+            >
+              <CheckCircle className="h-4 w-4" />
+              Confirm
             </Button>
           )}
 
-          {booking.payment_confirmation_status === 'passenger_paid' && (
-            <Button size="sm" onClick={onConfirmPayment}>
-              Confirm Payment
-            </Button>
-          )}
-
-          <Button variant="outline" size="sm" onClick={onEditPrice}>
-            Edit Price
+          <Button
+            variant="default"
+            size="sm"
+            onClick={onViewSummary}
+          >
+            View Details
           </Button>
         </div>
       </CardContent>

@@ -57,3 +57,24 @@ export const validatePickupTime = (pickupTime: Date): { isValid: boolean; error?
   
   return { isValid: true };
 };
+
+export const validateInput = (input: string, type: 'address' | 'text' | 'email' | 'phone'): boolean => {
+  if (!input || typeof input !== 'string') {
+    return false;
+  }
+
+  const sanitized = sanitizeInput(input);
+  
+  switch (type) {
+    case 'address':
+      return validateLocationInput(sanitized).isValid;
+    case 'text':
+      return sanitized.length > 0 && sanitized.length <= 1000;
+    case 'email':
+      return validateEmail(sanitized);
+    case 'phone':
+      return validatePhone(sanitized);
+    default:
+      return false;
+  }
+};

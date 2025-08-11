@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, MapPin, Calendar, Users, MessageSquare } from 'lucide-react';
 import { SecureGoogleMapsAutocomplete } from '@/components/SecureGoogleMapsAutocomplete';
 import { MinimalDateTimePicker } from '@/components/MinimalDateTimePicker';
-import { validateInput } from '@/utils/inputValidation';
+import { validateInput, validateLocationInput, validatePassengerCount, validatePickupTime } from '@/utils/inputValidation';
 import { useToast } from '@/hooks/use-toast';
 
 const BookingForm = () => {
@@ -28,17 +28,49 @@ const BookingForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate inputs
-    if (!validateInput(pickupLocation, 'address') || !validateInput(dropoffLocation, 'address')) {
+    // Validate inputs using the validation functions
+    const pickupValidation = validateLocationInput(pickupLocation);
+    const dropoffValidation = validateLocationInput(dropoffLocation);
+    const passengerValidation = validatePassengerCount(parseInt(passengerCount));
+    const timeValidation = validatePickupTime(pickupTime);
+    
+    if (!pickupValidation.isValid) {
       toast({
-        title: "Invalid Input",
-        description: "Please enter valid pickup and dropoff locations.",
+        title: "Invalid Pickup Location",
+        description: pickupValidation.error,
         variant: "destructive",
       });
       return;
     }
 
-    if (!validateInput(specialRequests, 'text')) {
+    if (!dropoffValidation.isValid) {
+      toast({
+        title: "Invalid Dropoff Location", 
+        description: dropoffValidation.error,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!passengerValidation.isValid) {
+      toast({
+        title: "Invalid Passenger Count",
+        description: passengerValidation.error,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!timeValidation.isValid) {
+      toast({
+        title: "Invalid Pickup Time",
+        description: timeValidation.error,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (specialRequests && !validateInput(specialRequests, 'text')) {
       toast({
         title: "Invalid Input",
         description: "Special requests contain invalid characters.",
@@ -104,7 +136,7 @@ const BookingForm = () => {
                 <Label htmlFor="pickup">Pickup Location</Label>
                 <SecureGoogleMapsAutocomplete
                   value={pickupLocation}
-                  onChange={setPickupLocation}
+                  onSelect={setPickupLocation}
                   placeholder="Enter pickup address"
                   id="pickup"
                   required
@@ -116,7 +148,7 @@ const BookingForm = () => {
                 <Label htmlFor="dropoff">Dropoff Location</Label>
                 <SecureGoogleMapsAutocomplete
                   value={dropoffLocation}
-                  onChange={setDropoffLocation}
+                  onSelect={setDropoffLocation}
                   placeholder="Enter destination address"
                   id="dropoff"
                   required
