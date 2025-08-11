@@ -25,8 +25,9 @@ export const BottomNavigation = ({ activeTab, onTabChange, userType, pendingActi
   ];
 
   const dispatcherTabs = [
-    { id: "dashboard", label: "Dashboard", icon: BarChart3 },
-    { id: "rides", label: "Rides", icon: Car },
+    { id: "bookings", label: "Bookings", icon: Car },
+    { id: "drivers", label: "Drivers", icon: Users },
+    { id: "payments", label: "Payments", icon: CreditCard },
     { id: "messages", label: "Messages", icon: MessageCircle },
     { id: "settings", label: "Settings", icon: Settings }
   ];
@@ -47,43 +48,41 @@ export const BottomNavigation = ({ activeTab, onTabChange, userType, pendingActi
   const finalTabs = getFinalTabs();
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-card/95 border-t border-border/50 backdrop-blur-lg z-50">
-      <div className="grid max-w-lg mx-auto"
-           style={{ gridTemplateColumns: `repeat(${finalTabs.length}, minmax(0, 1fr))` }}>
-        {finalTabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          
-          return (
-            <button
-              key={tab.id}
-              onClick={() => onTabChange(tab.id)}
-              className={`flex flex-col items-center justify-center py-3 px-2 transition-all duration-300 relative ${
-                isActive
-                  ? "text-primary font-semibold"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <div className="relative mb-1">
-                <Icon className={`h-5 w-5 transition-all duration-200 ${isActive ? "scale-110" : ""}`} />
-                {userType === "dispatcher" && tab.id === "rides" && pendingActionsCount > 0 && (
-                  <div className="absolute -top-1 -right-2 bg-destructive text-destructive-foreground text-xs rounded-full h-4 w-4 flex items-center justify-center animate-pulse">
-                    {pendingActionsCount > 9 ? '9+' : pendingActionsCount}
-                  </div>
-                )}
-                {hasActiveRide && tab.id === "rides" && (
-                  <div className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full h-3 w-3 animate-pulse" />
-                )}
-              </div>
-              <span className={`text-xs ${isActive ? "font-semibold" : "font-medium"}`}>
-                {tab.label}
-              </span>
-              {isActive && (
-                <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-primary rounded-t-full" />
-              )}
-            </button>
-          );
-        })}
+    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
+      <div className="max-w-md mx-auto">
+        <div className="grid grid-cols-5 h-16">
+          {finalTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            
+            return (
+              <button
+                key={tab.id}
+                onClick={() => onTabChange(tab.id)}
+                className={`flex flex-col items-center justify-center h-full relative transition-colors ${
+                  isActive
+                    ? "text-red-500"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                <div className="relative mb-1">
+                  <Icon className={`h-5 w-5 ${isActive ? "text-red-500" : "text-gray-500"}`} />
+                  {userType === "dispatcher" && tab.id === "bookings" && pendingActionsCount > 0 && (
+                    <div className="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                      {pendingActionsCount > 9 ? '9+' : pendingActionsCount}
+                    </div>
+                  )}
+                  {hasActiveRide && tab.id === "rides" && (
+                    <div className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full h-3 w-3" />
+                  )}
+                </div>
+                <span className={`text-xs ${isActive ? "text-red-500 font-medium" : "text-gray-500"}`}>
+                  {tab.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
