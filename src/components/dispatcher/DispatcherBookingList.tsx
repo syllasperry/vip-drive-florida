@@ -42,8 +42,25 @@ export const DispatcherBookingList: React.FC<DispatcherBookingListProps> = ({
   const loadBookings = async () => {
     try {
       setLoading(true);
-      console.log('🔒 Loading bookings with secure access control');
+      console.log('🔒 DispatcherBookingList: Loading bookings with enhanced debugging');
       
+      // First check what the current user can access
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('👤 Current user in DispatcherBookingList:', { id: user?.id, email: user?.email });
+      
+      // Try basic query first
+      const { data: basicBookings, error: basicError } = await supabase
+        .from('bookings')
+        .select('id, status, created_at, passenger_id')
+        .limit(5);
+        
+      console.log('🔍 Basic bookings query result:', { 
+        count: basicBookings?.length || 0, 
+        error: basicError,
+        bookings: basicBookings 
+      });
+
+      // Now try the full query
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -67,7 +84,13 @@ export const DispatcherBookingList: React.FC<DispatcherBookingListProps> = ({
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ Error loading bookings:', error);
+        console.error('❌ Error loading bookings in DispatcherBookingList:', error);
+        console.log('❌ Full error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         throw error;
       }
 
@@ -83,9 +106,10 @@ export const DispatcherBookingList: React.FC<DispatcherBookingListProps> = ({
       }));
 
       setBookings(transformedBookings);
-      console.log('✅ Loaded bookings:', transformedBookings.length);
+      console.log('✅ DispatcherBookingList: Loaded bookings:', transformedBookings.length);
+      console.log('📋 Sample booking:', transformedBookings[0]);
     } catch (error) {
-      console.error('❌ Error in loadBookings:', error);
+      console.error('❌ Error in DispatcherBookingList loadBookings:', error);
       toast({
         title: "Error",
         description: "Failed to load bookings",
@@ -109,9 +133,9 @@ export const DispatcherBookingList: React.FC<DispatcherBookingListProps> = ({
       }
 
       setDrivers(data || []);
-      console.log('✅ Loaded drivers:', data?.length || 0);
+      console.log('✅ DispatcherBookingList: Loaded drivers:', data?.length || 0);
     } catch (error) {
-      console.error('❌ Error in loadDrivers:', error);
+      console.error('❌ Error in DispatcherBookingList loadDrivers:', error);
       toast({
         title: "Error",
         description: "Failed to load drivers",
@@ -122,7 +146,7 @@ export const DispatcherBookingList: React.FC<DispatcherBookingListProps> = ({
 
   const setupRealtimeSubscription = () => {
     const channel = supabase
-      .channel('dispatcher-bookings')
+      .channel('dispatcher-bookings-list')
       .on(
         'postgres_changes',
         {
@@ -130,12 +154,14 @@ export const DispatcherBookingList: React.FC<DispatcherBookingListProps> = ({
           schema: 'public',
           table: 'bookings'
         },
-        () => {
-          console.log('🔄 Real-time booking update detected');
+        (payload) => {
+          console.log('🔄 DispatcherBookingList: Real-time booking update detected', payload);
           loadBookings();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('📡 DispatcherBookingList: Realtime subscription status:', status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -184,7 +210,8 @@ export const DispatcherBookingList: React.FC<DispatcherBookingListProps> = ({
         <CardContent>
           {bookings.length === 0 ? (
             <div className="text-center text-gray-500 py-8">
-              No bookings found
+              <div className="mb-2">No bookings found</div>
+              <div className="text-xs">Check console for debugging information</div>
             </div>
           ) : (
             <div className="space-y-4">
