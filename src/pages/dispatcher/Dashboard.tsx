@@ -147,15 +147,15 @@ const DispatcherDashboard = () => {
   const loadBookings = async () => {
     try {
       setLoading(true);
-      console.log('🔄 DISPATCHER: Loading ALL bookings for visibility...');
+      console.log('🔄 CRITICAL FIX: Loading ALL bookings for dispatcher visibility...');
       
       // CRITICAL FIX: Query ALL bookings without any restrictive filters
-      // The new RLS policies will handle access control
+      // Dispatcher needs to see ALL bookings regardless of status or driver assignment
       const { data, error } = await supabase
         .from('bookings')
         .select(`
           *,
-          passengers!inner(
+          passengers(
             id,
             full_name,
             phone,
@@ -180,11 +180,11 @@ const DispatcherDashboard = () => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ CRITICAL ERROR loading bookings for dispatcher:', error);
+        console.error('❌ CRITICAL ERROR loading bookings:', error);
         throw error;
       }
 
-      console.log('✅ DISPATCHER BOOKINGS LOADED:', data?.length || 0);
+      console.log('✅ DISPATCHER BOOKINGS LOADED (ALL):', data?.length || 0);
       console.log('📋 RAW BOOKING DATA:', data?.map(b => ({
         id: b.id.slice(-8),
         status: b.status,
@@ -196,29 +196,12 @@ const DispatcherDashboard = () => {
         created_at: b.created_at
       })));
 
-      // Transform the data to match Booking interface
-      const transformedBookings = (data || []).map(booking => ({
-        ...booking,
-        passengers: booking.passengers ? {
-          id: booking.passengers.id,
-          full_name: booking.passengers.full_name,
-          phone: booking.passengers.phone,
-          email: booking.passengers.email,
-          profile_photo_url: booking.passengers.profile_photo_url,
-          preferred_temperature: booking.passengers.preferred_temperature,
-          music_preference: booking.passengers.music_preference,
-          interaction_preference: booking.passengers.interaction_preference,
-          trip_purpose: booking.passengers.trip_purpose,
-          additional_notes: booking.passengers.additional_notes
-        } : undefined
-      }));
-
-      setBookings(transformedBookings);
+      setBookings(data || []);
     } catch (error) {
       console.error('❌ CRITICAL ERROR in loadBookings:', error);
       toast({
         title: "Error",
-        description: "Failed to load bookings. Please check console for details.",
+        description: "Failed to load bookings",
         variant: "destructive",
       });
     } finally {
@@ -488,7 +471,7 @@ const DispatcherDashboard = () => {
             ) : bookings.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <div className="mb-2">No bookings found</div>
-                <div className="text-xs">Create a test booking as a passenger to see it appear here</div>
+                <div className="text-xs">Check console for debugging info</div>
               </div>
             ) : (
               <div className="space-y-4">
