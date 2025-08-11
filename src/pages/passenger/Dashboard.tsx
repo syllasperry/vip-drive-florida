@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { getAllBookings, listenForBookingChanges } from "../../data/bookings";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,32 @@ const PassengerDashboard = () => {
   const [showMessaging, setShowMessaging] = useState(false);
   const [passengerInfo, setPassengerInfo] = useState(null);
   const [activeTab, setActiveTab] = useState("bookings");
+useEffect(() => {
+  async function fetchBookings() {
+    const allBookings = await getAllBookings();
+    setBookings(allBookings);
+  }
 
+  fetchBookings();
+
+  // Escuta em tempo real alterações nos bookings
+  const unsubscribe = listenForBookingChanges((updatedBooking) => {
+    setBookings((prevBookings) => {
+      const index = prevBookings.findIndex(b => b.id === updatedBooking.id);
+      if (index !== -1) {
+        const newBookings = [...prevBookings];
+        newBookings[index] = updatedBooking;
+        return newBookings;
+      } else {
+        return [...prevBookings, updatedBooking];
+      }
+    });
+  });
+
+  return () => {
+    if (unsubscribe) unsubscribe();
+  };
+}, []);
   useEffect(() => {
     checkAuth();
     setupRealtimeSubscription();
