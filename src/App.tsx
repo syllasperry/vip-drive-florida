@@ -29,7 +29,8 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<SplashScreen />} />
+            <Route path="/" element={<HomeScreen />} />
+            <Route path="/splash" element={<SplashScreen />} />
             <Route path="/onboarding" element={<OnboardingScreen />} />
             <Route path="/home" element={<HomeScreen />} />
             <Route path="/passenger/price-estimate" element={<PriceEstimate />} />
