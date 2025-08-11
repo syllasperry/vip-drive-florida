@@ -1,38 +1,32 @@
 
-import { useState } from "react";
+import React from 'react';
 import { Button } from "@/components/ui/button";
 import { RotateCcw } from "lucide-react";
 
 interface ReopenModalButtonProps {
   booking: any;
-  onReopenModal: (step: string) => void;
+  onReopenModal: (status: string) => void;
+  className?: string;
 }
 
-export const ReopenModalButton = ({ booking, onReopenModal }: ReopenModalButtonProps) => {
-  const getRequiredStep = () => {
-    if (booking.ride_status === 'offer_sent') {
-      return 'offer_acceptance';
-    } else if (booking.payment_confirmation_status === 'waiting_for_payment') {
-      return 'payment_instructions';
-    } else if (booking.payment_confirmation_status === 'passenger_paid') {
-      return 'driver_payment_confirmation';
-    }
-    return null;
+export const ReopenModalButton: React.FC<ReopenModalButtonProps> = ({
+  booking,
+  onReopenModal,
+  className = ""
+}) => {
+  const handleClick = () => {
+    onReopenModal(booking.status || 'pending');
   };
-
-  const step = getRequiredStep();
-  
-  if (!step) return null;
 
   return (
     <Button
       variant="outline"
       size="sm"
-      onClick={() => onReopenModal(step)}
-      className="flex items-center space-x-1"
+      onClick={handleClick}
+      className={className}
     >
-      <RotateCcw className="w-3 h-3" />
-      <span>Reopen</span>
+      <RotateCcw className="h-4 w-4 mr-2" />
+      Reopen
     </Button>
   );
 };

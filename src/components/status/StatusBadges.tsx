@@ -1,46 +1,38 @@
 
+import React from 'react';
 import { Badge } from "@/components/ui/badge";
 
 interface StatusBadgesProps {
-  booking: any;
+  status?: string;
+  paymentStatus?: string;
+  onReopenAlert?: () => void;
+  showReopenButton?: boolean;
 }
 
-export const StatusBadges = ({ booking }: StatusBadgesProps) => {
-  const getStatusInfo = () => {
-    if (!booking) return { text: 'Unknown', color: 'gray' };
-
-    const status = booking.status || booking.ride_status || 'pending';
-    
+export const StatusBadges: React.FC<StatusBadgesProps> = ({
+  status = 'pending',
+  paymentStatus = 'pending',
+  onReopenAlert,
+  showReopenButton = false
+}) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending':
-        return { text: 'Pending', color: 'orange' };
-      case 'offer_sent':
-        return { text: 'Offer Sent', color: 'blue' };
-      case 'accepted':
-      case 'all_set':
-        return { text: 'Confirmed', color: 'green' };
-      case 'completed':
-        return { text: 'Completed', color: 'gray' };
-      case 'cancelled':
-        return { text: 'Cancelled', color: 'red' };
-      default:
-        return { text: status, color: 'gray' };
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'confirmed': return 'bg-green-100 text-green-800';
+      case 'completed': return 'bg-blue-100 text-blue-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const { text, color } = getStatusInfo();
-
-  const colorClasses = {
-    gray: 'bg-gray-100 text-gray-800 border-gray-200',
-    orange: 'bg-orange-100 text-orange-800 border-orange-200',
-    blue: 'bg-blue-100 text-blue-800 border-blue-200',
-    green: 'bg-green-100 text-green-800 border-green-200',
-    red: 'bg-red-100 text-red-800 border-red-200',
-  };
-
   return (
-    <Badge className={`${colorClasses[color]} border`}>
-      {text}
-    </Badge>
+    <div className="flex gap-2">
+      <Badge className={getStatusColor(status)}>
+        {status}
+      </Badge>
+      <Badge className={getStatusColor(paymentStatus)}>
+        {paymentStatus}
+      </Badge>
+    </div>
   );
 };

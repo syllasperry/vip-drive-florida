@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,13 +8,10 @@ import { DispatcherBookingManager } from "@/components/dispatcher/DispatcherBook
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Cog6ToothIcon } from "@heroicons/react/24/outline";
-import { mapToSimpleStatus } from "@/utils/bookingHelpers";
 
 const DispatcherDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [dispatcherInfo, setDispatcherInfo] = useState(null);
 
   useEffect(() => {
@@ -28,28 +26,52 @@ const DispatcherDashboard = () => {
         return;
       }
 
-      if (user.email !== 'syllasperry@gmail.com') {
+      // Check if user has dispatcher role using new role-based system
+      const { data: userRole, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'dispatcher')
+        .single();
+
+      if (roleError || !userRole) {
+        console.log('🔒 Access denied: User does not have dispatcher role');
         navigate('/passenger/dashboard');
         return;
       }
 
       loadDispatcherInfo(user.id);
     } catch (error) {
-      console.error('Auth error:', error);
+      console.error('🔒 Auth error:', error);
       navigate('/dispatcher/login');
     }
   };
 
   const loadDispatcherInfo = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      // Try to get from dispatchers table first
+      const { data: dispatcherData, error: dispatcherError } = await supabase
         .from('dispatchers')
         .select('*')
         .eq('id', userId)
         .single();
 
-      if (error) throw error;
-      setDispatcherInfo(data);
+      if (dispatcherData) {
+        setDispatcherInfo(dispatcherData);
+        return;
+      }
+
+      // Fallback to auth user data if not in dispatchers table
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setDispatcherInfo({
+          id: user.id,
+          full_name: user.user_metadata?.full_name || 'Dispatcher',
+          email: user.email,
+          phone: user.user_metadata?.phone,
+          profile_photo_url: user.user_metadata?.avatar_url
+        });
+      }
     } catch (error) {
       console.error('Error loading dispatcher info:', error);
       toast({
@@ -61,8 +83,6 @@ const DispatcherDashboard = () => {
   };
 
   const handleBookingUpdate = () => {
-    // This function will be called after a booking is updated
-    // to refresh the booking list
     console.log('🔄 Refreshing booking list after update...');
   };
 

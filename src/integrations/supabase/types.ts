@@ -221,6 +221,36 @@ export type Database = {
           },
         ]
       }
+      dispatchers: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          phone: string | null
+          profile_photo_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          full_name: string
+          id: string
+          phone?: string | null
+          profile_photo_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          profile_photo_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       driver_offers: {
         Row: {
           booking_id: string | null
@@ -912,6 +942,27 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           created_at: string
@@ -1021,6 +1072,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      get_current_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
       get_ride_status_summary: {
         Args: { p_ride_id: string }
         Returns: {
@@ -1041,12 +1096,20 @@ export type Database = {
           metadata: Json
         }[]
       }
+      has_role: {
+        Args: {
+          _user_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: boolean
+      }
       user_owns_booking: {
         Args: { booking_id: string }
         Returns: boolean
       }
     }
     Enums: {
+      app_role: "admin" | "dispatcher" | "driver" | "passenger"
       booking_status:
         | "pending"
         | "offer_sent"
@@ -1190,6 +1253,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "dispatcher", "driver", "passenger"],
       booking_status: [
         "pending",
         "offer_sent",

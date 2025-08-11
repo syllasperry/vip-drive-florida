@@ -1,26 +1,24 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MapPin, Clock, Users, DollarSign, MessageCircle, Car } from 'lucide-react';
-import { format } from 'date-fns';
+import { BookingManagementModal } from './BookingManagementModal';
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { Booking } from "@/types/booking";
-import { DispatcherBookingManager } from "./DispatcherBookingManager";
-import { BookingManagementModal } from "./BookingManagementModal";
-import { ReopenModalButton } from "../dashboard/ReopenModalButton";
-import { WriteUnderlinedStatus } from "../ride/WriteUnderlinedStatus";
-import { mapToSimpleStatus } from "@/utils/bookingHelpers";
 
 interface DispatcherBookingListProps {
-  onManageBooking?: () => void;
+  onManageBooking: () => void;
 }
 
-export const DispatcherBookingList = ({ onManageBooking }: DispatcherBookingListProps) => {
+export const DispatcherBookingList: React.FC<DispatcherBookingListProps> = ({
+  onManageBooking
+}) => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [showModal, setShowModal] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -28,46 +26,22 @@ export const DispatcherBookingList = ({ onManageBooking }: DispatcherBookingList
     setupRealtimeSubscription();
   }, []);
 
-  const mapToSimpleStatus = (booking: any): Booking['simple_status'] => {
-    console.log('🔍 Dispatcher mapping booking status:', { 
-      status: booking.status,
-      ride_status: booking.ride_status, 
-      payment_confirmation_status: booking.payment_confirmation_status,
-      final_price: booking.final_price,
-      driver_id: booking.driver_id
-    });
-    
-    if (booking.status === 'completed' || booking.ride_status === 'completed') return 'completed';
-    if (booking.status === 'cancelled') return 'cancelled';
-    
-    if (booking.payment_confirmation_status === 'all_set' || booking.ride_status === 'all_set') return 'all_set';
-    
-    const hasOfferSent = booking.status === 'offer_sent' || 
-                        booking.ride_status === 'offer_sent' || 
-                        booking.payment_confirmation_status === 'price_awaiting_acceptance' ||
-                        (booking.final_price && booking.final_price > 0 && booking.driver_id);
-    
-    if (hasOfferSent) {
-      return 'payment_pending';
-    }
-    
-    return 'booking_requested';
-  };
-
   const loadBookings = async () => {
     try {
-      console.log('🔄 Loading all bookings for dispatcher...');
+      setLoading(true);
+      console.log('🔒 Loading bookings with secure access control');
       
       const { data, error } = await supabase
         .from('bookings')
         .select(`
           *,
-          passengers:passenger_id (
+          passengers!inner(
+            id,
             full_name,
             phone,
             profile_photo_url
           ),
-          drivers:driver_id (
+          drivers(
             full_name,
             phone,
             profile_photo_url,
@@ -79,36 +53,26 @@ export const DispatcherBookingList = ({ onManageBooking }: DispatcherBookingList
         `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error loading bookings:', error);
+        throw error;
+      }
 
-      const processedBookings: Booking[] = (data || []).map(booking => ({
-        id: booking.id,
-        pickup_location: booking.pickup_location || '',
-        dropoff_location: booking.dropoff_location || '',
-        pickup_time: booking.pickup_time || '',
-        passenger_count: booking.passenger_count || 1,
-        vehicle_type: booking.vehicle_type,
-        status: booking.status || 'pending',
-        ride_status: booking.ride_status,
-        payment_confirmation_status: booking.payment_confirmation_status,
-        status_passenger: booking.status_passenger,
-        status_driver: booking.status_driver,
-        simple_status: mapToSimpleStatus(booking),
-        estimated_price: booking.estimated_price,
-        final_price: booking.final_price,
-        created_at: booking.created_at,
-        updated_at: booking.updated_at,
-        passenger_id: booking.passenger_id || '',
-        driver_id: booking.driver_id,
-        vehicle_id: booking.vehicle_id,
-        passengers: booking.passengers,
-        drivers: booking.drivers
+      // Transform the data to match Booking interface
+      const transformedBookings: Booking[] = (data || []).map(booking => ({
+        ...booking,
+        passengers: booking.passengers ? {
+          id: booking.passengers.id,
+          full_name: booking.passengers.full_name,
+          phone: booking.passengers.phone,
+          profile_photo_url: booking.passengers.profile_photo_url
+        } : undefined
       }));
 
-      setBookings(processedBookings);
-      console.log('📊 Dispatcher bookings loaded:', processedBookings.length);
+      setBookings(transformedBookings);
+      console.log('✅ Loaded bookings:', transformedBookings.length);
     } catch (error) {
-      console.error('❌ Error loading bookings:', error);
+      console.error('❌ Error in loadBookings:', error);
       toast({
         title: "Error",
         description: "Failed to load bookings",
@@ -121,7 +85,7 @@ export const DispatcherBookingList = ({ onManageBooking }: DispatcherBookingList
 
   const setupRealtimeSubscription = () => {
     const channel = supabase
-      .channel('dispatcher-booking-list')
+      .channel('dispatcher-bookings')
       .on(
         'postgres_changes',
         {
@@ -129,8 +93,8 @@ export const DispatcherBookingList = ({ onManageBooking }: DispatcherBookingList
           schema: 'public',
           table: 'bookings'
         },
-        (payload) => {
-          console.log('📡 Dispatcher real-time booking update:', payload);
+        () => {
+          console.log('🔄 Real-time booking update detected');
           loadBookings();
         }
       )
@@ -141,175 +105,101 @@ export const DispatcherBookingList = ({ onManageBooking }: DispatcherBookingList
     };
   };
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-
-  const handleManageBooking = (booking: Booking) => {
-    setSelectedBooking(booking);
-    setIsModalOpen(true);
-  };
-
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-    setSelectedBooking(null);
-  };
-
-  const handleBookingUpdate = () => {
-    loadBookings();
-    if (onManageBooking) {
-      onManageBooking();
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'offer_sent': return 'bg-blue-100 text-blue-800';
+      case 'accepted': return 'bg-green-100 text-green-800';
+      case 'completed': return 'bg-purple-100 text-purple-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const [forceModalStep, setForceModalStep] = useState<string | null>(null);
-
-  const handleReopenModal = (step: string) => {
-    setForceModalStep(step);
-    setIsModalOpen(true);
+  const handleManageBooking = (booking: Booking) => {
+    setSelectedBooking(booking);
+    setShowModal(true);
   };
 
+  const handleModalClose = () => {
+    setShowModal(false);
+    setSelectedBooking(null);
+    loadBookings();
+    onManageBooking();
+  };
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center">Loading secure bookings...</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <div>
+    <>
       <Card>
         <CardHeader>
-          <CardTitle>All Bookings</CardTitle>
+          <CardTitle>All Bookings ({bookings.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="text-center py-4">Loading bookings...</div>
+          {bookings.length === 0 ? (
+            <div className="text-center text-gray-500 py-8">
+              No bookings found
+            </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-4">
               {bookings.map((booking) => (
-                <Card key={booking.id} className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm font-medium text-gray-900">Booking ID</span>
-                        <WriteUnderlinedStatus booking={booking} userType="dispatcher" />
-                      </div>
-                      <Clock className="w-4 h-4 text-gray-400" />
+                <div key={booking.id} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="font-medium">
+                        {booking.passengers?.full_name || 'Unknown Passenger'}
+                      </h4>
+                      <p className="text-sm text-gray-600">
+                        From: {booking.pickup_location}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        To: {booking.dropoff_location}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {new Date(booking.pickup_time).toLocaleString()}
+                      </p>
                     </div>
-
-                    {/* Booking ID */}
-                    <div className="text-lg font-semibold text-gray-900 mb-4">
-                      #{booking.id.slice(-8).toUpperCase()}
+                    <Badge className={getStatusColor(booking.status)}>
+                      {booking.status}
+                    </Badge>
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <div className="text-sm text-gray-600">
+                      Driver: {booking.drivers?.full_name || 'Not assigned'}
                     </div>
-
-                    {/* Locations with vector icons */}
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-start space-x-3">
-                        <div className="w-3 h-3 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-                        <div>
-                          <p className="text-sm text-gray-500">Pickup</p>
-                          <p className="text-sm font-medium text-gray-900">{booking.pickup_location}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start space-x-3">
-                        <div className="w-3 h-3 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
-                        <div>
-                          <p className="text-sm text-gray-500">Drop-off</p>
-                          <p className="text-sm font-medium text-gray-900">{booking.dropoff_location}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Trip Details */}
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div className="flex items-center space-x-2">
-                        <Clock className="w-4 h-4 text-gray-400" />
-                        <span className="text-xs text-gray-600">
-                          {format(new Date(booking.pickup_time), 'MMM dd, yyyy - HH:mm')}
-                        </span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Users className="w-4 h-4 text-gray-400" />
-                        <span className="text-xs text-gray-600">
-                          {booking.passenger_count} passengers
-                        </span>
-                      </div>
-                      {booking.vehicle_type && (
-                        <div className="flex items-center space-x-2 col-span-2">
-                          <Car className="w-4 h-4 text-gray-400" />
-                          <span className="text-xs text-gray-600">{booking.vehicle_type}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Price Display */}
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-2xl font-bold text-green-600">
-                        ${booking.final_price || booking.estimated_price || 0}
-                      </span>
-                    </div>
-
-                    {/* Passenger Info */}
-                    {booking.passengers && (
-                      <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                        <p className="text-sm font-medium text-gray-900 mb-2">Passenger</p>
-                        <div className="flex items-center space-x-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={booking.passengers.profile_photo_url} />
-                            <AvatarFallback className="bg-gray-200 text-gray-600">
-                              {booking.passengers.full_name.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-900">{booking.passengers.full_name}</p>
-                            <p className="text-sm text-gray-500">{booking.passengers.phone}</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Driver Info */}
-                    {booking.drivers && (
-                      <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                        <p className="text-sm font-medium text-blue-900 mb-2">Assigned Driver</p>
-                        <div className="flex items-center space-x-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={booking.drivers.profile_photo_url} />
-                            <AvatarFallback className="bg-blue-200 text-blue-800">
-                              {booking.drivers.full_name.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <p className="font-medium text-blue-900">{booking.drivers.full_name}</p>
-                            <p className="text-sm text-blue-500">{booking.drivers.phone}</p>
-                            <p className="text-sm text-blue-500">
-                              {booking.drivers.car_make} {booking.drivers.car_model} ({booking.drivers.car_color})
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        className="flex-1 bg-red-500 hover:bg-red-600 text-white"
-                        onClick={() => handleManageBooking(booking)}
-                      >
-                        Manage
-                      </Button>
-                      <ReopenModalButton booking={booking} onReopenModal={handleReopenModal} />
-                    </div>
-                  </CardContent>
-                </Card>
+                    <Button
+                      size="sm"
+                      onClick={() => handleManageBooking(booking)}
+                    >
+                      Manage
+                    </Button>
+                  </div>
+                </div>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
 
-      <BookingManagementModal
-        isOpen={isModalOpen}
-        onClose={handleModalClose}
-        booking={selectedBooking || {}}
-        onUpdate={handleBookingUpdate}
-        forceOpenStep={forceModalStep}
-      />
-    </div>
+      {/* Booking Management Modal */}
+      {showModal && selectedBooking && (
+        <BookingManagementModal
+          isOpen={showModal}
+          onClose={handleModalClose}
+          booking={selectedBooking}
+          onUpdate={handleModalClose}
+        />
+      )}
+    </>
   );
 };

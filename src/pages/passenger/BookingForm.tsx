@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DateTimePicker } from "@/components/DateTimePicker";
-import { GoogleMapsAutocomplete } from "@/components/GoogleMapsAutocomplete";
+import { SecureGoogleMapsAutocomplete } from "@/components/SecureGoogleMapsAutocomplete";
 import { ArrowLeft, MapPin, Clock, Users, Car } from "lucide-react";
 
 interface VehicleType {
@@ -38,8 +38,12 @@ const BookingForm = () => {
     // Get pre-selected vehicle from URL params
     const vehicleParam = searchParams.get('vehicle');
     if (vehicleParam) {
-      const decodedVehicle = JSON.parse(decodeURIComponent(vehicleParam));
-      setSelectedVehicle(decodedVehicle);
+      try {
+        const decodedVehicle = JSON.parse(decodeURIComponent(vehicleParam));
+        setSelectedVehicle(decodedVehicle);
+      } catch (error) {
+        console.error('Error parsing vehicle param:', error);
+      }
     }
   }, [searchParams]);
 
@@ -72,10 +76,38 @@ const BookingForm = () => {
       return;
     }
 
+    // Input validation
+    if (pickupLocation.length < 5 || pickupLocation.length > 500) {
+      toast({
+        title: "Invalid Input",
+        description: "Pickup location must be between 5 and 500 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (dropoffLocation.length < 5 || dropoffLocation.length > 500) {
+      toast({
+        title: "Invalid Input", 
+        description: "Dropoff location must be between 5 and 500 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (passengerCount < 1 || passengerCount > 20) {
+      toast({
+        title: "Invalid Input",
+        description: "Passenger count must be between 1 and 20",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
-      console.log('📝 Creating booking request - dispatcher will assign driver manually');
+      console.log('📝 Creating secure booking request');
       
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -83,14 +115,13 @@ const BookingForm = () => {
         return;
       }
 
-      // Create booking WITHOUT automatic driver assignment
-      // The dispatcher will manually assign the driver regardless of vehicle selection
+      // Create booking with input validation trigger
       const { data, error } = await supabase
         .from('bookings')
         .insert({
           passenger_id: user.id,
-          pickup_location: pickupLocation,
-          dropoff_location: dropoffLocation,
+          pickup_location: pickupLocation.trim(),
+          dropoff_location: dropoffLocation.trim(),
           pickup_time: pickupTime.toISOString(),
           passenger_count: passengerCount,
           vehicle_type: `${selectedVehicle.make} ${selectedVehicle.model}`,
@@ -99,7 +130,6 @@ const BookingForm = () => {
           payment_confirmation_status: 'waiting_for_offer',
           status_passenger: 'passenger_requested',
           status_driver: 'new_request',
-          // NO driver_id - dispatcher will assign manually
           driver_id: null
         })
         .select()
@@ -107,11 +137,11 @@ const BookingForm = () => {
 
       if (error) throw error;
 
-      console.log('✅ Booking created successfully without auto-assignment:', data);
+      console.log('✅ Secure booking created:', data);
 
       toast({
         title: "Booking Requested!",
-        description: "Your ride request has been submitted. A dispatcher will assign a driver shortly.",
+        description: "Your ride request has been submitted securely.",
       });
 
       navigate(`/passenger/confirmation?booking=${data.id}`);
@@ -159,10 +189,11 @@ const BookingForm = () => {
                 <MapPin className="h-4 w-4 text-green-500" />
                 <span>Pickup Location</span>
               </Label>
-              <GoogleMapsAutocomplete
-                onPlaceSelected={(place) => setPickupLocation(place)}
+              <SecureGoogleMapsAutocomplete
+                onPlaceSelected={setPickupLocation}
                 placeholder="Enter pickup address"
                 className="mt-1"
+                value={pickupLocation}
               />
             </div>
 
@@ -172,10 +203,11 @@ const BookingForm = () => {
                 <MapPin className="h-4 w-4 text-red-500" />
                 <span>Drop-off Location</span>
               </Label>
-              <GoogleMapsAutocomplete
-                onPlaceSelected={(place) => setDropoffLocation(place)}
+              <SecureGoogleMapsAutocomplete
+                onPlaceSelected={setDropoffLocation}
                 placeholder="Enter destination address"
                 className="mt-1"
+                value={dropoffLocation}
               />
             </div>
 
@@ -202,7 +234,7 @@ const BookingForm = () => {
                 id="passengers"
                 type="number"
                 min="1"
-                max="8"
+                max="20"
                 value={passengerCount}
                 onChange={(e) => setPassengerCount(parseInt(e.target.value) || 1)}
                 className="mt-1"
@@ -236,12 +268,12 @@ const BookingForm = () => {
               disabled={isSubmitting || !pickupLocation || !dropoffLocation || !selectedVehicle}
               className="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-medium"
             >
-              {isSubmitting ? "Creating Booking..." : "Request Ride"}
+              {isSubmitting ? "Creating Secure Booking..." : "Request Ride"}
             </Button>
 
-            {/* Info Note */}
-            <div className="text-xs text-gray-500 bg-blue-50 p-3 rounded-lg">
-              <p><strong>Note:</strong> Your vehicle selection is a preference. Our dispatcher will assign the most suitable available driver for your trip.</p>
+            {/* Security Notice */}
+            <div className="text-xs text-gray-500 bg-green-50 p-3 rounded-lg border border-green-200">
+              <p><strong>🔒 Security:</strong> Your booking request is secured with input validation and role-based access controls.</p>
             </div>
           </CardContent>
         </Card>

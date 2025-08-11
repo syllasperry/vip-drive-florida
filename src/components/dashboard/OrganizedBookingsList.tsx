@@ -1,8 +1,11 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StandardDriverRideCard } from '../StandardDriverRideCard';
 import { BookingCard } from './BookingCard';
-import { Badge } from "@/components/ui/badge";
+import { MessagingInterface } from '../MessagingInterface';
+import { PaymentModal } from '../payment/PaymentModal';
+import { useRealtimeBookings } from '@/hooks/useRealtimeBookings';
 
 interface OrganizedBookingsListProps {
   bookings: any[];
@@ -23,9 +26,13 @@ const OrganizedBookingsList: React.FC<OrganizedBookingsListProps> = ({
   onCancelSuccess,
   onNavigate
 }) => {
+  const { refetch } = useRealtimeBookings();
+  const [showMessaging, setShowMessaging] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<any>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+
   // Sort all bookings by updated_at and pickup_time to prioritize most recent activity
   const sortedBookings = [...bookings].sort((a, b) => {
-    // First, prioritize by status importance (newer activity first)
     const statusPriority = {
       'price_proposed': 1,
       'pending': 2,
@@ -46,9 +53,8 @@ const OrganizedBookingsList: React.FC<OrganizedBookingsListProps> = ({
       return priorityA - priorityB;
     }
     
-    // Then sort by pickup time (most recent first)
-    const dateA = new Date(a.date + ' ' + a.time);
-    const dateB = new Date(b.date + ' ' + b.time);
+    const dateA = new Date(a.pickup_time);
+    const dateB = new Date(b.pickup_time);
     return dateB.getTime() - dateA.getTime();
   });
 
@@ -110,6 +116,16 @@ const OrganizedBookingsList: React.FC<OrganizedBookingsListProps> = ({
     }
   };
 
+  const handleMessage = (booking: any) => {
+    setSelectedBooking(booking);
+    setShowMessaging(true);
+  };
+
+  const handlePaymentModal = (booking: any) => {
+    setSelectedBooking(booking);
+    setShowPaymentModal(true);
+  };
+
   const hasAnyBookings = Object.values(statusGroups).some(group => group.length > 0);
 
   if (!hasAnyBookings) {
@@ -123,47 +139,69 @@ const OrganizedBookingsList: React.FC<OrganizedBookingsListProps> = ({
   }
 
   return (
-    <div className="space-y-6">
-      {Object.entries(statusGroups).map(([status, bookings]) => {
-        if (bookings.length === 0) return null;
-        
-        const config = getStatusConfig(status);
-        
-        return (
-          <div key={status} className="space-y-3">
-            {/* Status Header */}
-            <div className={`${config.bgColor} ${config.borderColor} border rounded-lg p-3`}>
-              <h3 className="font-semibold text-foreground">{config.title}</h3>
-              <p className="text-sm text-muted-foreground">{bookings.length} booking{bookings.length !== 1 ? 's' : ''}</p>
+    <>
+      <div className="space-y-6">
+        {Object.entries(statusGroups).map(([status, bookings]) => {
+          if (bookings.length === 0) return null;
+          
+          const config = getStatusConfig(status);
+          
+          return (
+            <div key={status} className="space-y-3">
+              {/* Status Header */}
+              <div className={`${config.bgColor} ${config.borderColor} border rounded-lg p-3`}>
+                <h3 className="font-semibold text-foreground">{config.title}</h3>
+                <p className="text-sm text-muted-foreground">{bookings.length} booking{bookings.length !== 1 ? 's' : ''}</p>
+              </div>
+              
+              {/* Bookings in this status */}
+              <div className="space-y-6">
+                {bookings.map((booking) => (
+                  <div key={booking.id} className="border-2 border-primary/20 rounded-xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.18)] transition-all duration-300 bg-gradient-to-br from-card via-card/95 to-primary/5 backdrop-blur-sm mb-6 p-1">
+                    {userType === 'driver' ? (
+                      <StandardDriverRideCard booking={booking} />
+                    ) : (
+                      <BookingCard
+                        booking={booking}
+                        userType={userType}
+                        onMessage={() => handleMessage(booking)}
+                        onReview={onReview ? () => onReview(booking.id) : undefined}
+                        onViewSummary={onViewSummary ? () => onViewSummary(booking) : undefined}
+                        onCancelSuccess={() => {
+                          refetch();
+                          if (onCancelSuccess) onCancelSuccess();
+                        }}
+                        onNavigate={onNavigate ? () => onNavigate(booking) : undefined}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
-            
-            {/* Bookings in this status */}
-            <div className="space-y-6">
-              {bookings.map((booking) => (
-                <div key={booking.id} className="border-2 border-primary/20 rounded-xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.18)] transition-all duration-300 bg-gradient-to-br from-card via-card/95 to-primary/5 backdrop-blur-sm mb-6 p-1">
-                  {userType === 'driver' ? (
-                    <StandardDriverRideCard
-                      booking={booking}
-                      onMessage={() => onMessage(booking)}
-                    />
-                  ) : (
-                    <BookingCard
-                      booking={booking}
-                      userType={userType}
-                      onMessage={() => onMessage(booking)}
-                      onReview={onReview ? () => onReview(booking.id) : undefined}
-                      onViewSummary={onViewSummary ? () => onViewSummary(booking) : undefined}
-                      onCancelSuccess={onCancelSuccess}
-                      onNavigate={onNavigate ? () => onNavigate(booking) : undefined}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+
+      {/* Messaging Interface */}
+      {showMessaging && selectedBooking && (
+        <MessagingInterface
+          bookingId={selectedBooking.id}
+          isOpen={showMessaging}
+          onClose={() => setShowMessaging(false)}
+          currentUserId="current-user-id"
+          currentUserName="Current User"
+        />
+      )}
+
+      {/* Payment Modal */}
+      {showPaymentModal && selectedBooking && (
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          booking={selectedBooking}
+        />
+      )}
+    </>
   );
 };
 
