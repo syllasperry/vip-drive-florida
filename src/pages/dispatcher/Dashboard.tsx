@@ -1,19 +1,21 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { DispatcherBookingList } from "@/components/dispatcher/DispatcherBookingList";
-import { DispatcherBookingManager } from "@/components/dispatcher/DispatcherBookingManager";
 import { DriverManagement } from "@/components/dispatcher/DriverManagement";
 import { FinancialReports } from "@/components/dispatcher/FinancialReports";
 import { DispatcherMessaging } from "@/components/dispatcher/DispatcherMessaging";
 import { DispatcherSettings } from "@/components/dispatcher/DispatcherSettings";
+import { BookingManagementModal } from "@/components/dispatcher/BookingManagementModal";
+import { PassengerPreferencesCard } from "@/components/passenger/PassengerPreferencesCard";
 import { BottomNavigation } from "@/components/dashboard/BottomNavigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, MapPin, Clock, Users, Car, DollarSign } from "lucide-react";
+import { LogOut, Clock, Users, Car, MapPin, Phone, Mail } from "lucide-react";
 
 const DispatcherDashboard = () => {
   const navigate = useNavigate();
@@ -21,11 +23,39 @@ const DispatcherDashboard = () => {
   const [dispatcherInfo, setDispatcherInfo] = useState(null);
   const [activeTab, setActiveTab] = useState("bookings");
   const [bookings, setBookings] = useState([]);
+  const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [showManagementModal, setShowManagementModal] = useState(false);
 
   useEffect(() => {
     checkAuth();
+    setupRealtimeSubscription();
   }, []);
+
+  const setupRealtimeSubscription = () => {
+    const channel = supabase
+      .channel('dispatcher-dashboard-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings'
+        },
+        (payload) => {
+          console.log('📡 Dispatcher dashboard real-time update:', payload);
+          loadBookings();
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 Dispatcher realtime subscription status:', status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
 
   const checkAuth = async () => {
     try {
@@ -50,6 +80,7 @@ const DispatcherDashboard = () => {
 
       loadDispatcherInfo(user.id);
       loadBookings();
+      loadDrivers();
     } catch (error) {
       console.error('🔒 Auth error:', error);
       navigate('/passenger/login');
@@ -100,7 +131,13 @@ const DispatcherDashboard = () => {
             id,
             full_name,
             phone,
-            profile_photo_url
+            email,
+            profile_photo_url,
+            preferred_temperature,
+            music_preference,
+            interaction_preference,
+            trip_purpose,
+            additional_notes
           ),
           drivers(
             full_name,
@@ -128,11 +165,23 @@ const DispatcherDashboard = () => {
     }
   };
 
+  const loadDrivers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('drivers')
+        .select('*')
+        .eq('status', 'active');
+
+      if (error) throw error;
+      setDrivers(data || []);
+    } catch (error) {
+      console.error('Error loading drivers:', error);
+    }
+  };
+
   const handleSignOut = async () => {
     try {
-      // Clean up auth state first
       const cleanupAuthState = () => {
-        // Remove all Supabase auth keys from localStorage
         Object.keys(localStorage).forEach((key) => {
           if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
             localStorage.removeItem(key);
@@ -141,11 +190,7 @@ const DispatcherDashboard = () => {
       };
 
       cleanupAuthState();
-      
-      // Sign out from Supabase
       await supabase.auth.signOut({ scope: 'global' });
-      
-      // Navigate to home page
       navigate('/');
       
       toast({
@@ -154,7 +199,6 @@ const DispatcherDashboard = () => {
       });
     } catch (error) {
       console.error('Error signing out:', error);
-      // Even if signOut fails, clear storage and redirect
       Object.keys(localStorage).forEach((key) => {
         if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
           localStorage.removeItem(key);
@@ -174,9 +218,10 @@ const DispatcherDashboard = () => {
     setActiveTab(tab);
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (booking: any) => {
+    const status = booking.status || booking.ride_status;
     switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'pending': return 'bg-orange-100 text-orange-800 border-orange-200';
       case 'offer_sent': return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'accepted': return 'bg-green-100 text-green-800 border-green-200';
       case 'completed': return 'bg-purple-100 text-purple-800 border-purple-200';
@@ -185,25 +230,79 @@ const DispatcherDashboard = () => {
     }
   };
 
+  const getStatusLabel = (booking: any) => {
+    const status = booking.status || booking.ride_status;
+    switch (status) {
+      case 'pending': return 'Booking Requested';
+      case 'offer_sent': return 'Offer Sent';
+      case 'accepted': return 'Accepted';
+      case 'completed': return 'Completed';
+      case 'cancelled': return 'Cancelled';
+      default: return status || 'Pending';
+    }
+  };
+
+  const handleManageBooking = (booking: any) => {
+    setSelectedBooking(booking);
+    setShowManagementModal(true);
+  };
+
+  const getCurrentPrice = (booking: any): number | null => {
+    if (booking.final_price && booking.final_price > 0) {
+      return booking.final_price;
+    }
+    return null;
+  };
+
+  const getPriceDisplay = (booking: any): string => {
+    const currentPrice = getCurrentPrice(booking);
+    if (currentPrice !== null) {
+      return `$${currentPrice}`;
+    }
+    return "Awaiting price";
+  };
+
   const renderBookingCard = (booking: any) => (
     <Card key={booking.id} className="mb-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
       <CardContent className="p-4">
+        {/* Header with Passenger Info and Status */}
         <div className="flex justify-between items-start mb-3">
           <div className="flex items-center space-x-3">
-            <div className="text-sm font-semibold text-gray-900">
-              Booking ID #{booking.id.slice(-8).toUpperCase()}
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={booking.passengers?.profile_photo_url} />
+              <AvatarFallback className="bg-gray-200 text-gray-600">
+                {booking.passengers?.full_name?.charAt(0) || 'P'}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <div className="font-semibold text-sm">
+                Booking ID #{booking.id.slice(-8).toUpperCase()}
+              </div>
+              <div className="text-sm text-gray-600">
+                {booking.passengers?.full_name}
+              </div>
+              <div className="flex items-center space-x-2 text-xs text-gray-500">
+                {booking.passengers?.phone && (
+                  <a href={`tel:${booking.passengers.phone}`} className="flex items-center hover:text-blue-600">
+                    <Phone className="h-3 w-3 mr-1" />
+                    {booking.passengers.phone}
+                  </a>
+                )}
+                {booking.passengers?.email && (
+                  <a href={`mailto:${booking.passengers.email}`} className="flex items-center hover:text-blue-600">
+                    <Mail className="h-3 w-3 mr-1" />
+                    {booking.passengers.email}
+                  </a>
+                )}
+              </div>
             </div>
-            <Badge className={`text-xs px-2 py-1 border ${getStatusColor(booking.status)}`}>
-              {booking.status === 'pending' ? 'New Request' : booking.status}
-            </Badge>
           </div>
-          <div className="text-right">
-            <div className="text-lg font-bold text-orange-500">
-              ${booking.final_price || booking.estimated_price || '0'}
-            </div>
-          </div>
+          <Badge className={`text-xs px-2 py-1 border ${getStatusColor(booking)}`}>
+            {getStatusLabel(booking)}
+          </Badge>
         </div>
 
+        {/* Trip Details */}
         <div className="space-y-2 mb-4">
           <div className="flex items-start space-x-2">
             <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
@@ -222,7 +321,8 @@ const DispatcherDashboard = () => {
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
+        {/* Trip Info Row */}
+        <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
           <div className="flex items-center space-x-1">
             <Clock className="h-3 w-3" />
             <span>{new Date(booking.pickup_time).toLocaleDateString()} - {new Date(booking.pickup_time).toLocaleTimeString()}</span>
@@ -237,6 +337,29 @@ const DispatcherDashboard = () => {
           </div>
         </div>
 
+        {/* Passenger Preferences */}
+        {booking.passenger_preferences && (
+          <div className="mb-3">
+            <PassengerPreferencesCard 
+              preferences={booking.passenger_preferences}
+              className="justify-start"
+            />
+          </div>
+        )}
+
+        {/* Price Display */}
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-2xl font-bold text-red-600">
+            {getPriceDisplay(booking)}
+          </span>
+          {booking.status === 'offer_sent' && (
+            <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200 text-blue-800">
+              Offer Sent
+            </Badge>
+          )}
+        </div>
+
+        {/* Driver Info (if assigned) */}
         {booking.drivers && (
           <div className="flex items-center space-x-3 mb-3 p-3 bg-gray-50 rounded-lg">
             <Avatar className="h-10 w-10">
@@ -252,30 +375,15 @@ const DispatcherDashboard = () => {
           </div>
         )}
 
-        {!booking.driver_id && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
-            <div className="flex items-center space-x-2">
-              <div className="text-yellow-600 text-xs">⚠️</div>
-              <div className="text-xs text-yellow-700 font-medium">
-                Driver requires manual assignment by dispatcher
-              </div>
-            </div>
-          </div>
-        )}
-
+        {/* Action Buttons */}
         <div className="flex space-x-2">
           <Button 
             size="sm" 
-            className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
-          >
-            🚗 Uber Price Estimate
-          </Button>
-          <Button 
-            size="sm" 
             variant="outline" 
-            className="px-4"
+            className="flex-1"
+            onClick={() => handleManageBooking(booking)}
           >
-            ⚙️ Manage
+            Manage
           </Button>
         </div>
       </CardContent>
@@ -295,35 +403,22 @@ const DispatcherDashboard = () => {
       case "bookings":
       default:
         return (
-          <>
-            {/* Driver Assignment Section */}
-            <Card className="mb-6 shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-semibold">Assign Driver to Booking</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <DispatcherBookingManager onUpdate={loadBookings} />
-              </CardContent>
-            </Card>
-
-            {/* All Bookings */}
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">All Bookings</h2>
-              <div className="text-sm text-gray-600 mb-4">
-                Manage ride requests and assignments
-              </div>
-              
-              {loading ? (
-                <div className="text-center py-8 text-gray-500">Loading bookings...</div>
-              ) : bookings.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">No bookings found</div>
-              ) : (
-                <div className="space-y-4">
-                  {bookings.map(renderBookingCard)}
-                </div>
-              )}
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">All Bookings</h2>
+            <div className="text-sm text-gray-600 mb-4">
+              Manage ride requests and assignments
             </div>
-          </>
+            
+            {loading ? (
+              <div className="text-center py-8 text-gray-500">Loading bookings...</div>
+            ) : bookings.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">No bookings found</div>
+            ) : (
+              <div className="space-y-4">
+                {bookings.map(renderBookingCard)}
+              </div>
+            )}
+          </div>
         );
     }
   };
@@ -352,6 +447,15 @@ const DispatcherDashboard = () => {
       <div className="max-w-md mx-auto px-4 py-4 pb-20">
         {renderContent()}
       </div>
+
+      {/* Management Modal */}
+      <BookingManagementModal
+        isOpen={showManagementModal}
+        onClose={() => setShowManagementModal(false)}
+        booking={selectedBooking}
+        drivers={drivers}
+        onUpdate={loadBookings}
+      />
 
       {/* Bottom Navigation */}
       <BottomNavigation
