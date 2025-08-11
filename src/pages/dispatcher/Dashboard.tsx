@@ -383,11 +383,11 @@ const DispatcherDashboard = () => {
           <div className="mb-3">
             <PassengerPreferencesCard 
               preferences={{
-                preferred_temperature: booking.passengers.preferred_temperature,
-                music_preference: booking.passengers.music_preference,
-                interaction_preference: booking.passengers.interaction_preference,
+                temperature: booking.passengers.preferred_temperature,
+                music: booking.passengers.music_preference,
+                interaction: booking.passengers.interaction_preference,
                 trip_purpose: booking.passengers.trip_purpose,
-                additional_notes: booking.passengers.additional_notes
+                notes: booking.passengers.additional_notes
               }}
               className="justify-start"
             />
