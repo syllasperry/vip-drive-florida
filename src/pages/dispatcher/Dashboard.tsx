@@ -15,7 +15,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, Clock, Users, Car, MapPin, Phone, Mail } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { LogOut, Clock, Users, Car, MapPin, Phone, Mail, Thermometer, Music, MessageSquare } from "lucide-react";
 
 const DispatcherDashboard = () => {
   const navigate = useNavigate();
@@ -65,17 +66,22 @@ const DispatcherDashboard = () => {
         return;
       }
 
-      const { data: userRole, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'dispatcher')
-        .single();
+      // Check if user has dispatcher role OR is the specific dispatcher email
+      const isDispatcherEmail = user.email === 'syllasperry@gmail.com';
+      
+      if (!isDispatcherEmail) {
+        const { data: userRole, error: roleError } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('role', 'dispatcher')
+          .single();
 
-      if (roleError || !userRole) {
-        console.log('🔒 Access denied: User does not have dispatcher role');
-        navigate('/passenger/dashboard');
-        return;
+        if (roleError || !userRole) {
+          console.log('🔒 Access denied: User does not have dispatcher role');
+          navigate('/passenger/dashboard');
+          return;
+        }
       }
 
       loadDispatcherInfo(user.id);
@@ -123,6 +129,9 @@ const DispatcherDashboard = () => {
   const loadBookings = async () => {
     try {
       setLoading(true);
+      console.log('🔍 Dispatcher loading ALL bookings (including unassigned)...');
+      
+      // Query ALL bookings regardless of driver assignment status
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -151,7 +160,14 @@ const DispatcherDashboard = () => {
         `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Dispatcher booking query error:', error);
+        throw error;
+      }
+
+      console.log('✅ Dispatcher loaded bookings:', data?.length || 0, 'total bookings');
+      console.log('📊 Booking statuses:', data?.map(b => ({ id: b.id.slice(-8), status: b.status, driver_id: b.driver_id })));
+      
       setBookings(data || []);
     } catch (error) {
       console.error('Error loading bookings:', error);
@@ -221,7 +237,8 @@ const DispatcherDashboard = () => {
   const getStatusColor = (booking: any) => {
     const status = booking.status || booking.ride_status;
     switch (status) {
-      case 'pending': return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'pending': 
+      case 'booking_requested': return 'bg-orange-100 text-orange-800 border-orange-200';
       case 'offer_sent': return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'accepted': return 'bg-green-100 text-green-800 border-green-200';
       case 'completed': return 'bg-purple-100 text-purple-800 border-purple-200';
@@ -233,7 +250,8 @@ const DispatcherDashboard = () => {
   const getStatusLabel = (booking: any) => {
     const status = booking.status || booking.ride_status;
     switch (status) {
-      case 'pending': return 'Booking Requested';
+      case 'pending': 
+      case 'booking_requested': return 'Booking Requested';
       case 'offer_sent': return 'Offer Sent';
       case 'accepted': return 'Accepted';
       case 'completed': return 'Completed';
@@ -263,131 +281,170 @@ const DispatcherDashboard = () => {
   };
 
   const renderBookingCard = (booking: any) => (
-    <Card key={booking.id} className="mb-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-      <CardContent className="p-4">
-        {/* Header with Passenger Info and Status */}
-        <div className="flex justify-between items-start mb-3">
-          <div className="flex items-center space-x-3">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={booking.passengers?.profile_photo_url} />
-              <AvatarFallback className="bg-gray-200 text-gray-600">
-                {booking.passengers?.full_name?.charAt(0) || 'P'}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <div className="font-semibold text-sm">
-                Booking ID #{booking.id.slice(-8).toUpperCase()}
-              </div>
-              <div className="text-sm text-gray-600">
-                {booking.passengers?.full_name}
-              </div>
-              <div className="flex items-center space-x-2 text-xs text-gray-500">
-                {booking.passengers?.phone && (
-                  <a href={`tel:${booking.passengers.phone}`} className="flex items-center hover:text-blue-600">
-                    <Phone className="h-3 w-3 mr-1" />
-                    {booking.passengers.phone}
-                  </a>
-                )}
-                {booking.passengers?.email && (
-                  <a href={`mailto:${booking.passengers.email}`} className="flex items-center hover:text-blue-600">
-                    <Mail className="h-3 w-3 mr-1" />
-                    {booking.passengers.email}
-                  </a>
-                )}
+    <TooltipProvider key={booking.id}>
+      <Card className="mb-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+        <CardContent className="p-4">
+          {/* Header with Passenger Info and Status */}
+          <div className="flex justify-between items-start mb-3">
+            <div className="flex items-center space-x-3">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={booking.passengers?.profile_photo_url} />
+                <AvatarFallback className="bg-gray-200 text-gray-600">
+                  {booking.passengers?.full_name?.charAt(0) || 'P'}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <div className="font-semibold text-sm">
+                  Booking ID #{booking.id.slice(-8).toUpperCase()}
+                </div>
+                <div className="text-sm text-gray-600">
+                  {booking.passengers?.full_name}
+                </div>
+                <div className="flex items-center space-x-2 text-xs text-gray-500">
+                  {booking.passengers?.phone && (
+                    <a href={`tel:${booking.passengers.phone}`} className="flex items-center hover:text-blue-600">
+                      <Phone className="h-3 w-3 mr-1" />
+                      {booking.passengers.phone}
+                    </a>
+                  )}
+                  {booking.passengers?.email && (
+                    <a href={`mailto:${booking.passengers.email}`} className="flex items-center hover:text-blue-600">
+                      <Mail className="h-3 w-3 mr-1" />
+                      {booking.passengers.email}
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-          <Badge className={`text-xs px-2 py-1 border ${getStatusColor(booking)}`}>
-            {getStatusLabel(booking)}
-          </Badge>
-        </div>
-
-        {/* Trip Details */}
-        <div className="space-y-2 mb-4">
-          <div className="flex items-start space-x-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-            <div className="text-sm">
-              <div className="font-medium text-gray-900">Pickup</div>
-              <div className="text-gray-600">{booking.pickup_location}</div>
-            </div>
-          </div>
-          
-          <div className="flex items-start space-x-2">
-            <div className="w-2 h-2 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
-            <div className="text-sm">
-              <div className="font-medium text-gray-900">Drop-off</div>
-              <div className="text-gray-600">{booking.dropoff_location}</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Trip Info Row */}
-        <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
-          <div className="flex items-center space-x-1">
-            <Clock className="h-3 w-3" />
-            <span>{new Date(booking.pickup_time).toLocaleDateString()} - {new Date(booking.pickup_time).toLocaleTimeString()}</span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <Users className="h-3 w-3" />
-            <span>{booking.passenger_count || 1} passengers</span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <Car className="h-3 w-3" />
-            <span>{booking.vehicle_type || 'Tesla Model Y'}</span>
-          </div>
-        </div>
-
-        {/* Passenger Preferences */}
-        {booking.passenger_preferences && (
-          <div className="mb-3">
-            <PassengerPreferencesCard 
-              preferences={booking.passenger_preferences}
-              className="justify-start"
-            />
-          </div>
-        )}
-
-        {/* Price Display */}
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-2xl font-bold text-red-600">
-            {getPriceDisplay(booking)}
-          </span>
-          {booking.status === 'offer_sent' && (
-            <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200 text-blue-800">
-              Offer Sent
+            <Badge className={`text-xs px-2 py-1 border ${getStatusColor(booking)}`}>
+              {getStatusLabel(booking)}
             </Badge>
-          )}
-        </div>
+          </div>
 
-        {/* Driver Info (if assigned) */}
-        {booking.drivers && (
-          <div className="flex items-center space-x-3 mb-3 p-3 bg-gray-50 rounded-lg">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={booking.drivers.profile_photo_url} />
-              <AvatarFallback>{booking.drivers.full_name?.charAt(0) || 'D'}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <div className="font-medium text-sm">{booking.drivers.full_name}</div>
-              <div className="text-xs text-gray-500">
-                {booking.drivers.car_make} {booking.drivers.car_model} • {booking.drivers.license_plate}
+          {/* Trip Details */}
+          <div className="space-y-2 mb-4">
+            <div className="flex items-start space-x-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+              <div className="text-sm">
+                <div className="font-medium text-gray-900">Pickup</div>
+                <div className="text-gray-600">{booking.pickup_location}</div>
+              </div>
+            </div>
+            
+            <div className="flex items-start space-x-2">
+              <div className="w-2 h-2 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
+              <div className="text-sm">
+                <div className="font-medium text-gray-900">Drop-off</div>
+                <div className="text-gray-600">{booking.dropoff_location}</div>
               </div>
             </div>
           </div>
-        )}
 
-        {/* Action Buttons */}
-        <div className="flex space-x-2">
-          <Button 
-            size="sm" 
-            variant="outline" 
-            className="flex-1"
-            onClick={() => handleManageBooking(booking)}
-          >
-            Manage
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+          {/* Trip Info Row */}
+          <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+            <div className="flex items-center space-x-1">
+              <Clock className="h-3 w-3" />
+              <span>{new Date(booking.pickup_time).toLocaleDateString()} - {new Date(booking.pickup_time).toLocaleTimeString()}</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <Users className="h-3 w-3" />
+              <span>{booking.passenger_count || 1} passengers</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <Car className="h-3 w-3" />
+              <span>{booking.vehicle_type || 'Tesla Model Y'}</span>
+            </div>
+          </div>
+
+          {/* Passenger Preferences */}
+          {booking.passengers && (
+            <div className="flex items-center space-x-2 mb-3">
+              {booking.passengers.preferred_temperature && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center space-x-1 px-2 py-1 bg-blue-50 rounded-full text-xs">
+                      <Thermometer className="h-3 w-3" />
+                      <span>{booking.passengers.preferred_temperature}°F</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Preferred temperature: {booking.passengers.preferred_temperature}°F</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              
+              {booking.passengers.music_preference && booking.passengers.music_preference !== 'none' && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center space-x-1 px-2 py-1 bg-purple-50 rounded-full text-xs">
+                      <Music className="h-3 w-3" />
+                      <span>Music</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Music preference: {booking.passengers.music_preference}</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              
+              {booking.passengers.interaction_preference && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center space-x-1 px-2 py-1 bg-green-50 rounded-full text-xs">
+                      <MessageSquare className="h-3 w-3" />
+                      <span>{booking.passengers.interaction_preference === 'chatty' ? 'Talkative' : 'Quiet'}</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Conversation: {booking.passengers.interaction_preference === 'chatty' ? 'Enjoys conversation' : 'Prefers quiet rides'}</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+          )}
+
+          {/* Price Display */}
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-2xl font-bold text-red-600">
+              {getPriceDisplay(booking)}
+            </span>
+            {booking.status === 'offer_sent' && (
+              <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200 text-blue-800">
+                Offer Sent
+              </Badge>
+            )}
+          </div>
+
+          {/* Driver Info (if assigned) */}
+          {booking.drivers && (
+            <div className="flex items-center space-x-3 mb-3 p-3 bg-gray-50 rounded-lg">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={booking.drivers.profile_photo_url} />
+                <AvatarFallback>{booking.drivers.full_name?.charAt(0) || 'D'}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <div className="font-medium text-sm">{booking.drivers.full_name}</div>
+                <div className="text-xs text-gray-500">
+                  {booking.drivers.car_make} {booking.drivers.car_model} • {booking.drivers.license_plate}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex space-x-2">
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="flex-1"
+              onClick={() => handleManageBooking(booking)}
+            >
+              Manage
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </TooltipProvider>
   );
 
   const renderContent = () => {
