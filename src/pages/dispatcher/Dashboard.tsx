@@ -5,6 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { DispatcherBookingList } from "@/components/dispatcher/DispatcherBookingList";
 import { DispatcherBookingManager } from "@/components/dispatcher/DispatcherBookingManager";
+import { DriverManagement } from "@/components/dispatcher/DriverManagement";
+import { FinancialReports } from "@/components/dispatcher/FinancialReports";
+import { DispatcherMessaging } from "@/components/dispatcher/DispatcherMessaging";
+import { DispatcherSettings } from "@/components/dispatcher/DispatcherSettings";
 import { BottomNavigation } from "@/components/dashboard/BottomNavigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -142,21 +146,25 @@ const DispatcherDashboard = () => {
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
-    
+    // Update top nav tab based on bottom nav selection
     switch (tab) {
+      case "bookings":
+        setTopNavTab("Bookings");
+        break;
       case "drivers":
-        navigate('/dispatcher/drivers');
+        setTopNavTab("Drivers");
         break;
       case "payments":
-        navigate('/dispatcher/payments');
+        setTopNavTab("Payments");
         break;
       case "messages":
-        navigate('/dispatcher/messages');
+        setTopNavTab("Messages");
         break;
       case "settings":
-        navigate('/dispatcher/settings');
+        setTopNavTab("Settings");
         break;
       default:
+        setTopNavTab("Bookings");
         break;
     }
   };
@@ -271,6 +279,79 @@ const DispatcherDashboard = () => {
     </Card>
   );
 
+  const renderContent = () => {
+    // Handle bottom navigation content
+    if (activeTab === "drivers") {
+      return <DriverManagement />;
+    }
+    
+    if (activeTab === "payments") {
+      return <FinancialReports />;
+    }
+    
+    if (activeTab === "messages") {
+      return <DispatcherMessaging />;
+    }
+    
+    if (activeTab === "settings") {
+      return <DispatcherSettings />;
+    }
+
+    // Handle top navigation content (only for bookings tab)
+    if (activeTab === "bookings") {
+      if (topNavTab === "Drivers") {
+        return <DriverManagement />;
+      }
+      
+      if (topNavTab === "Payments") {
+        return <FinancialReports />;
+      }
+      
+      if (topNavTab === "Messages") {
+        return <DispatcherMessaging />;
+      }
+      
+      if (topNavTab === "Reports") {
+        return <FinancialReports />;
+      }
+
+      // Default bookings content
+      return (
+        <>
+          {/* Driver Assignment Section */}
+          <Card className="mb-6 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg font-semibold">Assign Driver to Booking</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DispatcherBookingManager onUpdate={loadBookings} />
+            </CardContent>
+          </Card>
+
+          {/* All Bookings */}
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">All Bookings</h2>
+            <div className="text-sm text-gray-600 mb-4">
+              Manage ride requests and assignments
+            </div>
+            
+            {loading ? (
+              <div className="text-center py-8 text-gray-500">Loading bookings...</div>
+            ) : bookings.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">No bookings found</div>
+            ) : (
+              <div className="space-y-4">
+                {bookings.map(renderBookingCard)}
+              </div>
+            )}
+          </div>
+        </>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -289,94 +370,30 @@ const DispatcherDashboard = () => {
             </Button>
           </div>
 
-          {/* Top Navigation Tabs */}
-          <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
-            {topNavTabs.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setTopNavTab(tab)}
-                className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  topNavTab === tab
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
+          {/* Top Navigation Tabs - Only show for bookings */}
+          {activeTab === "bookings" && (
+            <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
+              {topNavTabs.map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setTopNavTab(tab)}
+                  className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    topNavTab === tab
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Main Content */}
       <div className="max-w-md mx-auto px-4 py-4 pb-20">
-        {topNavTab === "Bookings" && (
-          <>
-            {/* Driver Assignment Section */}
-            <Card className="mb-6 shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-semibold">Assign Driver to Booking</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <DispatcherBookingManager onUpdate={loadBookings} />
-              </CardContent>
-            </Card>
-
-            {/* All Bookings */}
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">All Bookings</h2>
-              <div className="text-sm text-gray-600 mb-4">
-                Manage ride requests and assignments
-              </div>
-              
-              {loading ? (
-                <div className="text-center py-8 text-gray-500">Loading bookings...</div>
-              ) : bookings.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">No bookings found</div>
-              ) : (
-                <div className="space-y-4">
-                  {bookings.map(renderBookingCard)}
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        {topNavTab === "Drivers" && (
-          <Card>
-            <CardContent className="p-6 text-center">
-              <h3 className="text-lg font-semibold mb-2">Driver Management</h3>
-              <p className="text-gray-600">Manage driver profiles and availability</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {topNavTab === "Payments" && (
-          <Card>
-            <CardContent className="p-6 text-center">
-              <h3 className="text-lg font-semibold mb-2">Payment Overview</h3>
-              <p className="text-gray-600">Track payments and financial reports</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {topNavTab === "Messages" && (
-          <Card>
-            <CardContent className="p-6 text-center">
-              <h3 className="text-lg font-semibold mb-2">Messages</h3>
-              <p className="text-gray-600">Communicate with drivers and passengers</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {topNavTab === "Reports" && (
-          <Card>
-            <CardContent className="p-6 text-center">
-              <h3 className="text-lg font-semibold mb-2">Reports</h3>
-              <p className="text-gray-600">View analytics and performance reports</p>
-            </CardContent>
-          </Card>
-        )}
+        {renderContent()}
       </div>
 
       {/* Bottom Navigation */}
