@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -144,11 +143,7 @@ const BookingForm = () => {
         flightInfoString = `${flightType}: ${flightNumber}`;
       }
 
-      // Extract numeric price from the estimated price
-      const numericPrice = extractNumericPrice(estimatedPrice);
-      console.log('💰 Original price:', estimatedPrice, 'Extracted numeric price:', numericPrice);
-
-      // Prepare booking data with all required fields
+      // Prepare booking data with all required fields - NO automatic price setting
       const bookingData = {
         passenger_id: user.id,
         pickup_location: pickup || 'Not specified',
@@ -156,7 +151,8 @@ const BookingForm = () => {
         pickup_time: pickupTime.toISOString(),
         passenger_count: parseInt(passengerCount),
         vehicle_type: selectedVehicle?.name || 'Standard Vehicle',
-        estimated_price: numericPrice, // Now using the extracted numeric value
+        estimated_price: null, // No automatic price - awaiting dispatcher
+        final_price: null, // No automatic price - awaiting dispatcher offer
         status: 'pending',
         ride_status: 'pending_driver',
         payment_confirmation_status: 'waiting_for_offer',
@@ -169,6 +165,8 @@ const BookingForm = () => {
           luggage_count: parseInt(luggageCount),
           flight_info: flightInfoString,
           special_requests: specialRequests,
+          // Store original price estimate as reference only (not used for payment)
+          original_estimate_display: estimatedPrice,
           ...(isThirdPartyBooking && {
             third_party_booking: {
               name: thirdPartyName,
@@ -179,7 +177,7 @@ const BookingForm = () => {
         }
       };
 
-      console.log('📝 Booking data prepared:', {
+      console.log('📝 Booking data prepared (no automatic pricing):', {
         ...bookingData,
         passenger_preferences: JSON.stringify(bookingData.passenger_preferences, null, 2)
       });
@@ -202,12 +200,12 @@ const BookingForm = () => {
         throw new Error('No booking data returned from database');
       }
 
-      console.log('✅ Booking created successfully:', booking);
+      console.log('✅ Booking created successfully (awaiting dispatcher pricing):', booking);
 
       // Success - navigate to confirmation page with booking data
       toast({
         title: "Booking Created!",
-        description: "Your booking request has been submitted successfully.",
+        description: "Your booking request has been submitted successfully. Awaiting price from our team.",
       });
 
       console.log('🧭 Navigating to confirmation page...');
@@ -216,7 +214,7 @@ const BookingForm = () => {
           selectedVehicle,
           pickup,
           dropoff,
-          estimatedPrice,
+          estimatedPrice: null, // No price until dispatcher sets it
           pickupTime: pickupTime.toISOString(),
           passengerCount: parseInt(passengerCount),
           luggageSize,

@@ -234,14 +234,30 @@ const PassengerDashboard = () => {
     return format(new Date(dateString), 'MMM dd, yyyy - HH:mm');
   };
 
-  const getCurrentPrice = (booking: Booking): number => {
-    // Enhanced price display: Show final_price if offer sent, otherwise show estimated_price
+  const getCurrentPrice = (booking: Booking): number | null => {
+    // Enhanced price display: Show final_price if offer sent by dispatcher, otherwise null (awaiting price)
     if (booking.final_price && booking.final_price > 0) {
-      console.log('💰 Showing final price from dispatcher offer:', booking.final_price);
+      console.log('💰 Showing dispatcher offer price:', booking.final_price);
       return booking.final_price;
     }
-    console.log('💰 Showing estimated price:', booking.estimated_price);
-    return booking.estimated_price || 0;
+    console.log('💰 No dispatcher price set yet - awaiting price');
+    return null;
+  };
+
+  const getPriceDisplay = (booking: Booking): string => {
+    const currentPrice = getCurrentPrice(booking);
+    if (currentPrice !== null) {
+      return `$${currentPrice}`;
+    }
+    return "Awaiting price";
+  };
+
+  const getPriceColor = (booking: Booking): string => {
+    const currentPrice = getCurrentPrice(booking);
+    if (currentPrice !== null) {
+      return "text-red-600"; // Show price in red when set by dispatcher
+    }
+    return "text-gray-500"; // Show "Awaiting price" in gray
   };
 
   if (loading) {
@@ -369,20 +385,25 @@ const PassengerDashboard = () => {
                       )}
                     </div>
 
-                    {/* Enhanced Price Display - Show correct price with status indication */}
+                    {/* Enhanced Price Display - Show dispatcher price or "Awaiting price" */}
                     <div className="flex items-center justify-between mb-4">
-                      <span className="text-2xl font-bold text-red-600">
-                        ${getCurrentPrice(booking)}
+                      <span className={`text-2xl font-bold ${getPriceColor(booking)}`}>
+                        {getPriceDisplay(booking)}
                       </span>
-                      {booking.simple_status === 'payment_pending' && (
+                      {booking.simple_status === 'payment_pending' && getCurrentPrice(booking) !== null && (
                         <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200 text-blue-800">
                           Offer Received
+                        </Badge>
+                      )}
+                      {getCurrentPrice(booking) === null && (
+                        <Badge variant="outline" className="text-xs bg-gray-50 border-gray-200 text-gray-600">
+                          Pending Quote
                         </Badge>
                       )}
                     </div>
 
                     {/* Enhanced Driver Information - show when offer is sent by dispatcher */}
-                    {booking.simple_status === 'payment_pending' && booking.driver_profiles && (
+                    {booking.simple_status === 'payment_pending' && booking.driver_profiles && getCurrentPrice(booking) !== null && (
                       <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                         <p className="text-sm font-medium text-blue-900 mb-2">Your Assigned Driver</p>
                         <div className="flex items-center space-x-3">
@@ -468,13 +489,13 @@ const PassengerDashboard = () => {
                       </Button>
                     </div>
 
-                    {/* Enhanced Payment Button for payment_pending status */}
-                    {booking.simple_status === 'payment_pending' && booking.final_price && (
+                    {/* Enhanced Payment Button for payment_pending status - only show when price is set */}
+                    {booking.simple_status === 'payment_pending' && getCurrentPrice(booking) !== null && (
                       <Button 
                         className="w-full mt-3 bg-red-500 hover:bg-red-600 text-white"
                         onClick={() => handlePayment(booking)}
                       >
-                        Pay ${booking.final_price} - Complete Booking
+                        Pay ${getCurrentPrice(booking)} - Complete Booking
                       </Button>
                     )}
                   </CardContent>
