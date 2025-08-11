@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -148,24 +149,8 @@ const DispatcherDashboard = () => {
       setLoading(true);
       console.log('🔄 DISPATCHER: Loading ALL bookings for visibility...');
       
-      // CRITICAL: Query ALL bookings - the RLS policies should handle access control
-      // First, let's try a simple query to see what we get
-      const { data: allBookings, error: allBookingsError } = await supabase
-        .from('bookings')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      console.log('🔍 RAW BOOKINGS QUERY RESULT:', {
-        count: allBookings?.length || 0,
-        error: allBookingsError,
-        sampleBooking: allBookings?.[0]
-      });
-
-      if (allBookingsError) {
-        console.error('❌ Error in raw bookings query:', allBookingsError);
-      }
-
-      // Now try the full query with joins
+      // CRITICAL FIX: Query ALL bookings without any restrictive filters
+      // The new RLS policies will handle access control
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -196,12 +181,6 @@ const DispatcherDashboard = () => {
 
       if (error) {
         console.error('❌ CRITICAL ERROR loading bookings for dispatcher:', error);
-        console.log('❌ Error details:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        });
         throw error;
       }
 
@@ -235,24 +214,6 @@ const DispatcherDashboard = () => {
       }));
 
       setBookings(transformedBookings);
-      
-      if (transformedBookings.length === 0) {
-        console.log('⚠️ No bookings found - this could indicate RLS policy issues');
-        console.log('🔍 Checking current user auth status...');
-        const { data: { user } } = await supabase.auth.getUser();
-        console.log('👤 Current user:', { id: user?.id, email: user?.email });
-        
-        // Try to query passengers table to check if we can access data
-        const { data: passengers, error: passengersError } = await supabase
-          .from('passengers')
-          .select('id, full_name')
-          .limit(5);
-          
-        console.log('🔍 Passengers test query:', { 
-          count: passengers?.length || 0, 
-          error: passengersError 
-        });
-      }
     } catch (error) {
       console.error('❌ CRITICAL ERROR in loadBookings:', error);
       toast({
@@ -528,7 +489,6 @@ const DispatcherDashboard = () => {
               <div className="text-center py-8 text-gray-500">
                 <div className="mb-2">No bookings found</div>
                 <div className="text-xs">Create a test booking as a passenger to see it appear here</div>
-                <div className="text-xs mt-2 text-orange-600">Check browser console for debugging information</div>
               </div>
             ) : (
               <div className="space-y-4">
