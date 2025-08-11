@@ -13,6 +13,7 @@ interface BookingCardProps {
   onClick?: () => void;
   className?: string;
   onMessage?: () => void;
+  onUpdate?: () => void;
   onReview?: () => void;
   onViewSummary?: () => void;
   onCancelSuccess?: () => void;
@@ -25,6 +26,7 @@ export const BookingCard = ({
   onClick,
   className = "",
   onMessage,
+  onUpdate,
   onReview,
   onViewSummary,
   onCancelSuccess,

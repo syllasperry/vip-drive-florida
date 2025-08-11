@@ -5,12 +5,14 @@ import { RotateCcw } from "lucide-react";
 
 export interface ReopenModalButtonProps {
   booking: any;
+  userType?: 'passenger' | 'driver';
   onReopenModal?: (status: string) => void;
   className?: string;
 }
 
 export const ReopenModalButton: React.FC<ReopenModalButtonProps> = ({ 
   booking, 
+  userType,
   onReopenModal,
   className = ""
 }) => {
