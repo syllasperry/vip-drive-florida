@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,23 @@ const BookingForm = () => {
   const [thirdPartyEmail, setThirdPartyEmail] = useState('');
   
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Helper function to extract numeric price from price string
+  const extractNumericPrice = (priceString: any): number => {
+    if (!priceString) return 0;
+    
+    // Convert to string if it's not already
+    const str = String(priceString);
+    
+    // Extract all numbers from the string
+    const numbers = str.match(/\d+/g);
+    
+    if (!numbers || numbers.length === 0) return 0;
+    
+    // If it's a range like "$137 - $187", take the first number (base price)
+    // If it's a single price like "$150", take that number
+    return parseInt(numbers[0], 10);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,6 +144,10 @@ const BookingForm = () => {
         flightInfoString = `${flightType}: ${flightNumber}`;
       }
 
+      // Extract numeric price from the estimated price
+      const numericPrice = extractNumericPrice(estimatedPrice);
+      console.log('💰 Original price:', estimatedPrice, 'Extracted numeric price:', numericPrice);
+
       // Prepare booking data with all required fields
       const bookingData = {
         passenger_id: user.id,
@@ -134,14 +156,14 @@ const BookingForm = () => {
         pickup_time: pickupTime.toISOString(),
         passenger_count: parseInt(passengerCount),
         vehicle_type: selectedVehicle?.name || 'Standard Vehicle',
-        estimated_price: estimatedPrice || 0,
+        estimated_price: numericPrice, // Now using the extracted numeric value
         status: 'pending',
         ride_status: 'pending_driver',
         payment_confirmation_status: 'waiting_for_offer',
         status_passenger: 'passenger_requested',
         status_driver: 'new_request',
         payment_status: 'pending',
-        // Store additional booking details in passenger_preferences
+        // Store additional booking details in passenger_preferences as JSON
         passenger_preferences: {
           luggage_size: luggageSize,
           luggage_count: parseInt(luggageCount),
