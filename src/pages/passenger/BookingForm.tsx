@@ -1,25 +1,47 @@
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Calendar, Users, MessageSquare } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { ArrowLeft, Plane, Calendar, Users, Luggage, MessageSquare, User } from 'lucide-react';
 import { DateTimePicker } from '@/components/DateTimePicker';
 import { validatePassengerCount, validatePickupTime } from '@/utils/inputValidation';
 import { useToast } from '@/hooks/use-toast';
 
 const BookingForm = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   
+  // Get data from previous page (vehicle selection)
+  const { selectedVehicle, pickup, dropoff, estimatedPrice } = location.state || {};
+  
+  // Flight information
+  const [flightType, setFlightType] = useState('');
+  const [flightNumber, setFlightNumber] = useState('');
+  const [showFlightInfo, setShowFlightInfo] = useState(false);
+  
+  // Date and time
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
+  
+  // Booking details
   const [passengerCount, setPassengerCount] = useState('1');
-  const [luggage, setLuggage] = useState('none');
+  const [luggageSize, setLuggageSize] = useState('medium');
+  const [luggageCount, setLuggageCount] = useState('1');
   const [specialRequests, setSpecialRequests] = useState('');
+  
+  // Third-party booking
+  const [isThirdPartyBooking, setIsThirdPartyBooking] = useState(false);
+  const [thirdPartyName, setThirdPartyName] = useState('');
+  const [thirdPartyPhone, setThirdPartyPhone] = useState('');
+  const [thirdPartyEmail, setThirdPartyEmail] = useState('');
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,29 +73,65 @@ const BookingForm = () => {
     const [hours, minutes] = selectedTime.split(':').map(Number);
     const pickupTime = new Date(year, month - 1, day, hours, minutes);
 
-    // Validate pickup time
-    const timeValidation = validatePickupTime(pickupTime);
-    if (!timeValidation.isValid) {
+    // Validate pickup time (6-hour minimum rule)
+    const now = new Date();
+    const sixHoursFromNow = new Date(now.getTime() + 6 * 60 * 60 * 1000);
+    
+    if (pickupTime < sixHoursFromNow) {
       toast({
         title: "Invalid Pickup Time",
-        description: timeValidation.error,
+        description: "Bookings must be made at least 6 hours in advance.",
         variant: "destructive",
       });
       return;
     }
 
+    // Validate third-party booking fields if enabled
+    if (isThirdPartyBooking) {
+      if (!thirdPartyName.trim() || !thirdPartyPhone.trim() || !thirdPartyEmail.trim()) {
+        toast({
+          title: "Missing Information",
+          description: "Please fill in all fields for the third-party booking.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     
     try {
-      console.log('Submitting booking:', {
+      const bookingData = {
+        selectedVehicle,
+        pickup,
+        dropoff,
+        estimatedPrice,
         pickupTime,
         passengerCount: parseInt(passengerCount),
-        luggage,
-        specialRequests
-      });
+        luggageSize,
+        luggageCount: parseInt(luggageCount),
+        specialRequests,
+        flightInfo: showFlightInfo ? { type: flightType, number: flightNumber } : null,
+        thirdPartyBooking: isThirdPartyBooking ? {
+          name: thirdPartyName,
+          phone: thirdPartyPhone,
+          email: thirdPartyEmail
+        } : null
+      };
       
-      // Navigate to vehicle selection
-      navigate('/passenger/choose-vehicle');
+      console.log('Submitting booking:', bookingData);
+      
+      // Navigate to confirmation page
+      navigate('/passenger/confirmation', { 
+        state: { 
+          ...bookingData,
+          bookingDetails: {
+            date: selectedDate,
+            time: selectedTime,
+            passengers: passengerCount
+          }
+        } 
+      });
     } catch (error) {
       console.error('Error submitting booking:', error);
       toast({
@@ -99,100 +157,223 @@ const BookingForm = () => {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-lg font-semibold">Book Your Ride</h1>
+          <h1 className="text-lg font-semibold">Complete Your Booking</h1>
           <div className="w-10" />
         </div>
 
         {/* Booking Form */}
-        <div className="p-4">
-          <Card className="border-0 shadow-none">
-            <CardHeader className="px-0 pb-4">
-              <CardTitle className="text-xl font-semibold text-card-foreground">
-                Trip Details
-              </CardTitle>
+        <div className="p-4 space-y-6">
+          {/* Flight Information Section */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg font-semibold text-card-foreground flex items-center">
+                  <Plane className="mr-2 h-5 w-5 text-primary" />
+                  Flight Information
+                </CardTitle>
+                <Switch
+                  checked={showFlightInfo}
+                  onCheckedChange={setShowFlightInfo}
+                />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Optional: Help us coordinate your pickup with real-time flight data
+              </p>
             </CardHeader>
-            <CardContent className="px-0 space-y-6">
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Date and Time Selection */}
+            {showFlightInfo && (
+              <CardContent className="pt-0 space-y-4">
                 <div className="space-y-2">
-                  <Label className="text-base font-medium text-card-foreground">
-                    When do you need the ride?
-                  </Label>
-                  <DateTimePicker
-                    selectedDate={selectedDate}
-                    selectedTime={selectedTime}
-                    onDateChange={setSelectedDate}
-                    onTimeChange={setSelectedTime}
-                  />
-                </div>
-
-                {/* Passenger Count */}
-                <div className="space-y-3">
-                  <Label htmlFor="passengers" className="text-base font-medium text-card-foreground flex items-center">
-                    <Users className="mr-2 h-5 w-5" />
-                    Number of Passengers
-                  </Label>
-                  <Select value={passengerCount} onValueChange={setPassengerCount}>
-                    <SelectTrigger className="h-12">
-                      <SelectValue placeholder="Select passenger count" />
+                  <Label className="text-sm font-medium">Flight Type</Label>
+                  <Select value={flightType} onValueChange={setFlightType}>
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="Select flight type" />
                     </SelectTrigger>
                     <SelectContent>
-                      {[1, 2, 3, 4, 5, 6, 7, 8].map((count) => (
-                        <SelectItem key={count} value={count.toString()}>
-                          {count} passenger{count !== 1 ? 's' : ''}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="arrival">Arrival (picking up from airport)</SelectItem>
+                      <SelectItem value="departure">Departure (dropping off at airport)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-
-                {/* Luggage */}
-                <div className="space-y-3">
-                  <Label htmlFor="luggage" className="text-base font-medium text-card-foreground">
-                    Luggage Requirements
-                  </Label>
-                  <Select value={luggage} onValueChange={setLuggage}>
-                    <SelectTrigger className="h-12">
-                      <SelectValue placeholder="Select luggage amount" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No luggage</SelectItem>
-                      <SelectItem value="light">Light luggage (1-2 bags)</SelectItem>
-                      <SelectItem value="medium">Medium luggage (3-4 bags)</SelectItem>
-                      <SelectItem value="heavy">Heavy luggage (5+ bags)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Special Requests */}
-                <div className="space-y-3">
-                  <Label htmlFor="special-requests" className="text-base font-medium text-card-foreground flex items-center">
-                    <MessageSquare className="mr-2 h-5 w-5" />
-                    Special Requests
-                  </Label>
-                  <Textarea
-                    id="special-requests"
-                    value={specialRequests}
-                    onChange={(e) => setSpecialRequests(e.target.value)}
-                    placeholder="Any special requirements or requests..."
-                    className="resize-none min-h-[100px]"
-                    rows={4}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Flight Number</Label>
+                  <Input
+                    value={flightNumber}
+                    onChange={(e) => setFlightNumber(e.target.value)}
+                    placeholder="e.g., AA123, UA456"
+                    className="h-11"
                   />
                 </div>
+              </CardContent>
+            )}
+          </Card>
 
-                {/* Submit Button */}
-                <div className="pt-4">
-                  <Button
-                    type="submit"
-                    className="w-full h-12 text-base font-medium"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? 'Processing...' : 'Continue to Vehicle Selection'}
-                  </Button>
-                </div>
-              </form>
+          {/* Date and Time Selection */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-semibold text-card-foreground flex items-center">
+                <Calendar className="mr-2 h-5 w-5 text-primary" />
+                When do you need the ride?
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Bookings must be made at least 6 hours in advance
+              </p>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <DateTimePicker
+                selectedDate={selectedDate}
+                selectedTime={selectedTime}
+                onDateChange={setSelectedDate}
+                onTimeChange={setSelectedTime}
+              />
             </CardContent>
           </Card>
+
+          {/* Passenger Count */}
+          <Card className="border-0 shadow-sm">
+            <CardContent className="pt-6">
+              <div className="space-y-3">
+                <Label htmlFor="passengers" className="text-base font-medium text-card-foreground flex items-center">
+                  <Users className="mr-2 h-5 w-5 text-primary" />
+                  Number of Passengers
+                </Label>
+                <Select value={passengerCount} onValueChange={setPassengerCount}>
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="Select passenger count" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((count) => (
+                      <SelectItem key={count} value={count.toString()}>
+                        {count} passenger{count !== 1 ? 's' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Luggage Selection */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-semibold text-card-foreground flex items-center">
+                <Luggage className="mr-2 h-5 w-5 text-primary" />
+                Luggage Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-4">
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Luggage Size</Label>
+                <Select value={luggageSize} onValueChange={setLuggageSize}>
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="Select luggage size" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="carry-on">Carry-on only</SelectItem>
+                    <SelectItem value="medium">Medium (standard suitcase)</SelectItem>
+                    <SelectItem value="large">Large (oversized luggage)</SelectItem>
+                    <SelectItem value="extra-large">Extra Large (multiple large bags)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Number of Bags</Label>
+                <Select value={luggageCount} onValueChange={setLuggageCount}>
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="Select number of bags" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((count) => (
+                      <SelectItem key={count} value={count.toString()}>
+                        {count} bag{count !== 1 ? 's' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Third-Party Booking */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg font-semibold text-card-foreground flex items-center">
+                  <User className="mr-2 h-5 w-5 text-primary" />
+                  Booking for someone else?
+                </CardTitle>
+                <Switch
+                  checked={isThirdPartyBooking}
+                  onCheckedChange={setIsThirdPartyBooking}
+                />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Enable this if you're booking a ride for another person
+              </p>
+            </CardHeader>
+            {isThirdPartyBooking && (
+              <CardContent className="pt-0 space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Passenger's Full Name</Label>
+                  <Input
+                    value={thirdPartyName}
+                    onChange={(e) => setThirdPartyName(e.target.value)}
+                    placeholder="Enter full name"
+                    className="h-11"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Contact Phone</Label>
+                  <Input
+                    value={thirdPartyPhone}
+                    onChange={(e) => setThirdPartyPhone(e.target.value)}
+                    placeholder="Enter phone number"
+                    className="h-11"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Contact Email</Label>
+                  <Input
+                    value={thirdPartyEmail}
+                    onChange={(e) => setThirdPartyEmail(e.target.value)}
+                    placeholder="Enter email address"
+                    type="email"
+                    className="h-11"
+                  />
+                </div>
+              </CardContent>
+            )}
+          </Card>
+
+          {/* Special Requests */}
+          <Card className="border-0 shadow-sm">
+            <CardContent className="pt-6">
+              <div className="space-y-3">
+                <Label htmlFor="special-requests" className="text-base font-medium text-card-foreground flex items-center">
+                  <MessageSquare className="mr-2 h-5 w-5 text-primary" />
+                  Special Requests
+                </Label>
+                <Textarea
+                  id="special-requests"
+                  value={specialRequests}
+                  onChange={(e) => setSpecialRequests(e.target.value)}
+                  placeholder="Any special requirements, child seats, accessibility needs, etc..."
+                  className="resize-none min-h-[100px]"
+                  rows={4}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Confirm Booking Button */}
+          <div className="pt-4 pb-8">
+            <Button
+              onClick={handleSubmit}
+              className="w-full h-12 text-base font-medium"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Processing...' : 'Confirm Booking'}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
