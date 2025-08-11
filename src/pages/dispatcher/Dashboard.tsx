@@ -31,7 +31,7 @@ const DispatcherDashboard = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        navigate('/dispatcher/login');
+        navigate('/passenger/login');
         return;
       }
 
@@ -52,7 +52,7 @@ const DispatcherDashboard = () => {
       loadBookings();
     } catch (error) {
       console.error('🔒 Auth error:', error);
-      navigate('/dispatcher/login');
+      navigate('/passenger/login');
     }
   };
 
@@ -130,13 +130,41 @@ const DispatcherDashboard = () => {
 
   const handleSignOut = async () => {
     try {
-      await supabase.auth.signOut();
-      navigate('/dispatcher/login');
+      // Clean up auth state first
+      const cleanupAuthState = () => {
+        // Remove all Supabase auth keys from localStorage
+        Object.keys(localStorage).forEach((key) => {
+          if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+            localStorage.removeItem(key);
+          }
+        });
+      };
+
+      cleanupAuthState();
+      
+      // Sign out from Supabase
+      await supabase.auth.signOut({ scope: 'global' });
+      
+      // Navigate to home page
+      navigate('/');
+      
+      toast({
+        title: "Logged out successfully",
+        description: "You have been signed out of your account",
+      });
     } catch (error) {
       console.error('Error signing out:', error);
+      // Even if signOut fails, clear storage and redirect
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+          localStorage.removeItem(key);
+        }
+      });
+      navigate('/');
+      
       toast({
-        title: "Error",
-        description: "Failed to sign out",
+        title: "Signed out",
+        description: "Session cleared",
         variant: "destructive",
       });
     }
@@ -328,7 +356,7 @@ const DispatcherDashboard = () => {
       {/* Bottom Navigation */}
       <BottomNavigation
         activeTab={activeTab}
-        onTabChange={handleTabChange}
+        onTabChange={setActiveTab}
         userType="dispatcher"
         pendingActionsCount={bookings.filter(b => !b.driver_id).length}
         hasActiveRide={false}
