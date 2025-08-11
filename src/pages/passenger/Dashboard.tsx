@@ -40,7 +40,7 @@ const PassengerDashboard = () => {
       } catch (error) {
         console.error('❌ Error in auto-refresh:', error);
       }
-    }, 3000); // Increased to 3 seconds for better performance
+    }, 2000); // Reduced to 2 seconds for better real-time feel
 
     return () => {
       clearInterval(refreshInterval);
@@ -48,9 +48,8 @@ const PassengerDashboard = () => {
   }, []);
 
   const setupRealtimeSubscription = () => {
-    console.log('🔄 Setting up CRITICAL passenger real-time subscription...');
     const channel = supabase
-      .channel('passenger-critical-realtime')
+      .channel('passenger-bookings-realtime-enhanced')
       .on(
         'postgres_changes',
         {
@@ -59,27 +58,20 @@ const PassengerDashboard = () => {
           table: 'bookings'
         },
         async (payload) => {
-          console.log('📡 CRITICAL: Passenger real-time update detected:', payload);
-          console.log('📋 Event type:', payload.eventType);
-          console.log('📋 Updated booking data:', payload.new);
-          
-          // Force immediate refresh when any booking changes
+          console.log('📡 Enhanced real-time booking update for passenger:', payload);
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
+            // Force immediate refresh with full reload
             console.log('🔄 Force refreshing passenger dashboard due to real-time update');
             loadBookings(user.id);
           }
         }
       )
       .subscribe((status) => {
-        console.log('📡 CRITICAL: Passenger realtime subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ PASSENGER REALTIME ACTIVE - Will detect dispatcher updates');
-        }
+        console.log('📡 Enhanced passenger realtime subscription status:', status);
       });
 
     return () => {
-      console.log('🧹 Cleaning up passenger real-time subscription');
       supabase.removeChannel(channel);
     };
   };
@@ -123,7 +115,7 @@ const PassengerDashboard = () => {
 
   const loadBookings = async (userId: string) => {
     try {
-      console.log('🔄 CRITICAL: Loading bookings for passenger with enhanced sync:', userId);
+      console.log('🔄 Loading bookings for passenger with enhanced sync:', userId);
       
       const { data, error } = await supabase
         .from('bookings')
@@ -145,8 +137,8 @@ const PassengerDashboard = () => {
       if (error) throw error;
 
       const mappedBookings: Booking[] = (data || []).map(booking => {
-        console.log('📋 CRITICAL: Processing passenger booking for sync:', {
-          id: booking.id.slice(-8),
+        console.log('📋 Processing passenger booking with enhanced status detection:', {
+          id: booking.id,
           status: booking.status,
           ride_status: booking.ride_status,
           payment_confirmation_status: booking.payment_confirmation_status,
@@ -184,7 +176,7 @@ const PassengerDashboard = () => {
         };
       });
 
-      console.log('📊 CRITICAL: Passenger bookings loaded for sync:', mappedBookings.length);
+      console.log('📊 Passenger bookings loaded with enhanced sync:', mappedBookings.length);
       setBookings(mappedBookings);
     } catch (error) {
       console.error('❌ Error loading bookings:', error);

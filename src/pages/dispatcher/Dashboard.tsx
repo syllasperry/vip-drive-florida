@@ -34,9 +34,9 @@ const DispatcherDashboard = () => {
   }, []);
 
   const setupRealtimeSubscription = () => {
-    console.log('🔄 Setting up CRITICAL dispatcher real-time subscription...');
+    console.log('🔄 Setting up enhanced real-time subscription for dispatcher...');
     const channel = supabase
-      .channel('dispatcher-critical-realtime')
+      .channel('dispatcher-dashboard-realtime-enhanced')
       .on(
         'postgres_changes',
         {
@@ -45,19 +45,13 @@ const DispatcherDashboard = () => {
           table: 'bookings'
         },
         (payload) => {
-          console.log('📡 CRITICAL: Dispatcher real-time update detected:', payload);
-          console.log('📋 Event type:', payload.eventType);
-          console.log('📋 New booking data:', payload.new);
-          
-          // Force immediate refresh on any booking change
+          console.log('📡 Enhanced dispatcher real-time update:', payload);
+          // Force immediate refresh when any booking changes
           loadBookings();
         }
       )
       .subscribe((status) => {
-        console.log('📡 CRITICAL: Dispatcher realtime subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ DISPATCHER REALTIME ACTIVE - Will detect new passenger bookings');
-        }
+        console.log('📡 Enhanced dispatcher realtime subscription status:', status);
       });
 
     return () => {
@@ -147,10 +141,10 @@ const DispatcherDashboard = () => {
   const loadBookings = async () => {
     try {
       setLoading(true);
-      console.log('🔄 CRITICAL FIX: Loading ALL bookings for dispatcher visibility...');
+      console.log('🔄 Loading ALL bookings for dispatcher (CRITICAL FIX)...');
       
-      // CRITICAL FIX: Query ALL bookings without any restrictive filters
-      // Dispatcher needs to see ALL bookings regardless of status or driver assignment
+      // CRITICAL FIX: Remove all filters that could hide bookings from dispatcher
+      // Dispatcher needs to see ALL bookings, especially new unassigned ones
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -184,15 +178,13 @@ const DispatcherDashboard = () => {
         throw error;
       }
 
-      console.log('✅ DISPATCHER BOOKINGS LOADED (ALL):', data?.length || 0);
-      console.log('📋 RAW BOOKING DATA:', data?.map(b => ({
+      console.log('✅ DISPATCHER BOOKINGS LOADED:', data?.length || 0);
+      console.log('📋 BOOKING DETAILS:', data?.map(b => ({
         id: b.id.slice(-8),
         status: b.status,
         passenger: b.passengers?.full_name,
         driver_assigned: !!b.driver_id,
         final_price: b.final_price,
-        pickup: b.pickup_location,
-        dropoff: b.dropoff_location,
         created_at: b.created_at
       })));
 
