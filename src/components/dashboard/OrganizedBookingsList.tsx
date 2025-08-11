@@ -1,208 +1,172 @@
+import React, { useState, useEffect } from 'react';
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { BookingCard } from "@/components/dashboard/BookingCard";
+import { StandardDriverRideCard } from "@/components/StandardDriverRideCard";
+import { MessagingInterface } from "@/components/dashboard/MessagingInterface";
+import { PaymentModal } from "@/components/dashboard/PaymentModal";
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StandardDriverRideCard } from '../StandardDriverRideCard';
-import { BookingCard } from './BookingCard';
-import { MessagingInterface } from '../MessagingInterface';
-import { PaymentModal } from '../payment/PaymentModal';
-import { useRealtimeBookings } from '@/hooks/useRealtimeBookings';
-
-interface OrganizedBookingsListProps {
+export interface OrganizedBookingsListProps {
   bookings: any[];
+  currentUserId: string;
   userType: 'passenger' | 'driver';
-  onMessage: (booking: any) => void;
-  onReview?: (bookingId: string) => void;
-  onViewSummary?: (booking: any) => void;
-  onCancelSuccess?: () => void;
-  onNavigate?: (booking: any) => void;
+  onUpdate: () => void;
+  onMessageOtherParty?: (booking: any) => void;
 }
 
-const OrganizedBookingsList: React.FC<OrganizedBookingsListProps> = ({
+export const OrganizedBookingsList: React.FC<OrganizedBookingsListProps> = ({
   bookings,
+  currentUserId,
   userType,
-  onMessage,
-  onReview,
-  onViewSummary,
-  onCancelSuccess,
-  onNavigate
+  onUpdate,
+  onMessageOtherParty
 }) => {
-  const { refetch } = useRealtimeBookings();
-  const [showMessaging, setShowMessaging] = useState(false);
-  const [selectedBooking, setSelectedBooking] = useState<any>(null);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('all');
+  const [selectedBookingForMessage, setSelectedBookingForMessage] = useState<any>(null);
+  const [selectedBookingForPayment, setSelectedBookingForPayment] = useState<any>(null);
+  const [currentUserName, setCurrentUserName] = useState('');
 
-  // Sort all bookings by updated_at and pickup_time to prioritize most recent activity
-  const sortedBookings = [...bookings].sort((a, b) => {
-    const statusPriority = {
-      'price_proposed': 1,
-      'pending': 2,
-      'accepted': 3,
-      'confirmed': 3,
-      'payment_confirmed': 4,
-      'ready_to_go': 5,
-      'completed': 6,
-      'cancelled': 7,
-      'declined': 7,
-      'rejected_by_passenger': 7
+  useEffect(() => {
+    // Fetch current user's name (replace with your actual data fetching logic)
+    const fetchCurrentUserName = async () => {
+      // Example: Fetch user data from an API
+      // const userData = await fetch(`/api/users/${currentUserId}`);
+      // const user = await userData.json();
+      // setCurrentUserName(user.name);
+
+      // Placeholder: Set a default name for now
+      setCurrentUserName('You');
     };
-    
-    const priorityA = statusPriority[a.status as keyof typeof statusPriority] || 8;
-    const priorityB = statusPriority[b.status as keyof typeof statusPriority] || 8;
-    
-    if (priorityA !== priorityB) {
-      return priorityA - priorityB;
-    }
-    
-    const dateA = new Date(a.pickup_time);
-    const dateB = new Date(b.pickup_time);
-    return dateB.getTime() - dateA.getTime();
-  });
 
-  // Group bookings by status
-  const statusGroups = {
-    pending: sortedBookings.filter(b => b.status === 'pending'),
-    confirmed: sortedBookings.filter(b => b.status === 'accepted' || b.status === 'confirmed'),
-    payment_confirmed: sortedBookings.filter(b => 
-      b.status === 'payment_confirmed' || 
-      b.status === 'price_proposed' || 
-      b.status === 'ready_to_go'
-    ),
-    completed: sortedBookings.filter(b => b.status === 'completed'),
-    canceled: sortedBookings.filter(b => 
-      b.status === 'cancelled' || 
-      b.status === 'declined' || 
-      b.status === 'rejected_by_passenger'
-    )
-  };
-
-  const getStatusConfig = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return {
-          title: '🟡 ⏳ Pending',
-          bgColor: 'bg-yellow-50 dark:bg-yellow-950/20',
-          borderColor: 'border-yellow-200 dark:border-yellow-800'
-        };
-      case 'confirmed':
-        return {
-          title: '🟢 ✅ Confirmed',
-          bgColor: 'bg-green-50 dark:bg-green-950/20',
-          borderColor: 'border-green-200 dark:border-green-800'
-        };
-      case 'payment_confirmed':
-        return {
-          title: '🔵 💸 Payment Confirmed',
-          bgColor: 'bg-blue-50 dark:bg-blue-950/20',
-          borderColor: 'border-blue-200 dark:border-blue-800'
-        };
-      case 'completed':
-        return {
-          title: '🟤 ✅ Completed',
-          bgColor: 'bg-slate-50 dark:bg-slate-950/20',
-          borderColor: 'border-slate-200 dark:border-slate-800'
-        };
-      case 'canceled':
-        return {
-          title: '🔴 ❌ Canceled',
-          bgColor: 'bg-red-50 dark:bg-red-950/20',
-          borderColor: 'border-red-200 dark:border-red-800'
-        };
-      default:
-        return {
-          title: status,
-          bgColor: 'bg-muted/50',
-          borderColor: 'border-muted'
-        };
-    }
-  };
+    fetchCurrentUserName();
+  }, [currentUserId]);
 
   const handleMessage = (booking: any) => {
-    setSelectedBooking(booking);
-    setShowMessaging(true);
+    setSelectedBookingForMessage(booking);
+    onMessageOtherParty?.(booking);
   };
 
-  const handlePaymentModal = (booking: any) => {
-    setSelectedBooking(booking);
-    setShowPaymentModal(true);
+  const handlePayment = (booking: any) => {
+    setSelectedBookingForPayment(booking);
   };
 
-  const hasAnyBookings = Object.values(statusGroups).some(group => group.length > 0);
+  const handleStatusFilter = (status: string) => {
+    setSelectedStatus(status);
+  };
 
-  if (!hasAnyBookings) {
-    return (
-      <Card>
-        <CardContent className="p-8 text-center">
-          <p className="text-muted-foreground">No bookings found</p>
-        </CardContent>
-      </Card>
-    );
-  }
+  const filteredBookings = bookings.filter((booking) => {
+    const searchRegex = new RegExp(searchTerm, 'i');
+    const matchesSearch = searchRegex.test(booking.pickup_location) || searchRegex.test(booking.dropoff_location);
+
+    const matchesStatus = selectedStatus === 'all' || booking.status === selectedStatus;
+
+    return matchesSearch && matchesStatus;
+  });
 
   return (
-    <>
-      <div className="space-y-6">
-        {Object.entries(statusGroups).map(([status, bookings]) => {
-          if (bookings.length === 0) return null;
-          
-          const config = getStatusConfig(status);
-          
-          return (
-            <div key={status} className="space-y-3">
-              {/* Status Header */}
-              <div className={`${config.bgColor} ${config.borderColor} border rounded-lg p-3`}>
-                <h3 className="font-semibold text-foreground">{config.title}</h3>
-                <p className="text-sm text-muted-foreground">{bookings.length} booking{bookings.length !== 1 ? 's' : ''}</p>
-              </div>
-              
-              {/* Bookings in this status */}
-              <div className="space-y-6">
-                {bookings.map((booking) => (
-                  <div key={booking.id} className="border-2 border-primary/20 rounded-xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.18)] transition-all duration-300 bg-gradient-to-br from-card via-card/95 to-primary/5 backdrop-blur-sm mb-6 p-1">
-                    {userType === 'driver' ? (
-                      <StandardDriverRideCard booking={booking} />
-                    ) : (
-                      <BookingCard
-                        booking={booking}
-                        userType={userType}
-                        onMessage={() => handleMessage(booking)}
-                        onReview={onReview ? () => onReview(booking.id) : undefined}
-                        onViewSummary={onViewSummary ? () => onViewSummary(booking) : undefined}
-                        onCancelSuccess={() => {
-                          refetch();
-                          if (onCancelSuccess) onCancelSuccess();
-                        }}
-                        onNavigate={onNavigate ? () => onNavigate(booking) : undefined}
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
+    <div className="space-y-6">
+      {/* Filter and Search Controls */}
+      <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4">
+        <Input
+          type="text"
+          placeholder="Search bookings..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="flex-1"
+        />
+        <div className="flex items-center space-x-2">
+          <Button
+            variant={selectedStatus === 'all' ? 'default' : 'outline'}
+            onClick={() => handleStatusFilter('all')}
+            size="sm"
+          >
+            All
+          </Button>
+          <Button
+            variant={selectedStatus === 'pending' ? 'default' : 'outline'}
+            onClick={() => handleStatusFilter('pending')}
+            size="sm"
+          >
+            Pending
+          </Button>
+          <Button
+            variant={selectedStatus === 'confirmed' ? 'default' : 'outline'}
+            onClick={() => handleStatusFilter('confirmed')}
+            size="sm"
+          >
+            Confirmed
+          </Button>
+          <Button
+            variant={selectedStatus === 'in_progress' ? 'default' : 'outline'}
+            onClick={() => handleStatusFilter('in_progress')}
+            size="sm"
+          >
+            In Progress
+          </Button>
+          <Button
+            variant={selectedStatus === 'completed' ? 'default' : 'outline'}
+            onClick={() => handleStatusFilter('completed')}
+            size="sm"
+          >
+            Completed
+          </Button>
+          <Button
+            variant={selectedStatus === 'cancelled' ? 'default' : 'outline'}
+            onClick={() => handleStatusFilter('cancelled')}
+            size="sm"
+          >
+            Cancelled
+          </Button>
+        </div>
       </div>
 
-      {/* Messaging Interface */}
-      {showMessaging && selectedBooking && (
-        <MessagingInterface
-          bookingId={selectedBooking.id}
-          isOpen={showMessaging}
-          onClose={() => setShowMessaging(false)}
-          currentUserId="current-user-id"
-          currentUserName="Current User"
-        />
+      {filteredBookings.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          No bookings found matching your criteria.
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {filteredBookings.map((booking) => (
+            <div key={booking.id}>
+              {userType === 'driver' ? (
+                <StandardDriverRideCard
+                  booking={booking}
+                  onMessagePassenger={() => handleMessage(booking)}
+                />
+              ) : (
+                <BookingCard
+                  booking={booking}
+                  userType={userType}
+                  onUpdate={onUpdate}
+                  onMessage={() => handleMessage(booking)}
+                />
+              )}
+            </div>
+          ))}
+        </div>
       )}
+
+      {/* Messaging Interface Modal */}
+      <MessagingInterface
+        bookingId={selectedBookingForMessage?.id}
+        userType={userType}
+        isOpen={!!selectedBookingForMessage}
+        onClose={() => setSelectedBookingForMessage(null)}
+        currentUserId={currentUserId}
+        currentUserName={currentUserName}
+      />
 
       {/* Payment Modal */}
-      {showPaymentModal && selectedBooking && (
-        <PaymentModal
-          isOpen={showPaymentModal}
-          onClose={() => setShowPaymentModal(false)}
-          booking={selectedBooking}
-        />
-      )}
-    </>
+      <PaymentModal
+        isOpen={!!selectedBookingForPayment}
+        onClose={() => setSelectedBookingForPayment(null)}
+        booking={selectedBookingForPayment}
+        onPaymentConfirmed={() => {
+          setSelectedBookingForPayment(null);
+          onUpdate();
+        }}
+      />
+    </div>
   );
 };
-
-export default OrganizedBookingsList;

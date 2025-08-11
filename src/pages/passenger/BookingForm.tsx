@@ -1,104 +1,47 @@
 
-import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { DateTimePicker } from "@/components/DateTimePicker";
-import { SecureGoogleMapsAutocomplete } from "@/components/SecureGoogleMapsAutocomplete";
-import { ArrowLeft, MapPin, Clock, Users, Car } from "lucide-react";
-
-interface VehicleType {
-  id: string;
-  vehicle_name: string;
-  code_name: string;
-  make: string;
-  model: string;
-}
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ArrowLeft, MapPin, Calendar, Users, MessageSquare } from 'lucide-react';
+import { SecureGoogleMapsAutocomplete } from '@/components/SecureGoogleMapsAutocomplete';
+import { MinimalDateTimePicker } from '@/components/MinimalDateTimePicker';
+import { validateInput } from '@/utils/inputValidation';
+import { useToast } from '@/hooks/use-toast';
 
 const BookingForm = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   
-  const [pickupLocation, setPickupLocation] = useState("");
-  const [dropoffLocation, setDropoffLocation] = useState("");
-  const [pickupTime, setPickupTime] = useState<Date | undefined>(new Date());
-  const [passengerCount, setPassengerCount] = useState(1);
-  const [selectedVehicle, setSelectedVehicle] = useState<VehicleType | null>(null);
-  const [vehicleTypes, setVehicleTypes] = useState<VehicleType[]>([]);
+  const [pickupLocation, setPickupLocation] = useState('');
+  const [dropoffLocation, setDropoffLocation] = useState('');
+  const [pickupTime, setPickupTime] = useState(new Date());
+  const [passengerCount, setPassengerCount] = useState('1');
+  const [luggage, setLuggage] = useState('none');
+  const [specialRequests, setSpecialRequests] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    loadVehicleTypes();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    // Get pre-selected vehicle from URL params
-    const vehicleParam = searchParams.get('vehicle');
-    if (vehicleParam) {
-      try {
-        const decodedVehicle = JSON.parse(decodeURIComponent(vehicleParam));
-        setSelectedVehicle(decodedVehicle);
-      } catch (error) {
-        console.error('Error parsing vehicle param:', error);
-      }
-    }
-  }, [searchParams]);
-
-  const loadVehicleTypes = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('vehicle_types')
-        .select('*')
-        .order('vehicle_name');
-
-      if (error) throw error;
-      setVehicleTypes(data || []);
-    } catch (error) {
-      console.error('Error loading vehicle types:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load vehicle options",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!pickupLocation || !dropoffLocation || !pickupTime || !selectedVehicle) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Input validation
-    if (pickupLocation.length < 5 || pickupLocation.length > 500) {
+    // Validate inputs
+    if (!validateInput(pickupLocation, 'address') || !validateInput(dropoffLocation, 'address')) {
       toast({
         title: "Invalid Input",
-        description: "Pickup location must be between 5 and 500 characters",
+        description: "Please enter valid pickup and dropoff locations.",
         variant: "destructive",
       });
       return;
     }
 
-    if (dropoffLocation.length < 5 || dropoffLocation.length > 500) {
-      toast({
-        title: "Invalid Input", 
-        description: "Dropoff location must be between 5 and 500 characters",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (passengerCount < 1 || passengerCount > 20) {
+    if (!validateInput(specialRequests, 'text')) {
       toast({
         title: "Invalid Input",
-        description: "Passenger count must be between 1 and 20",
+        description: "Special requests contain invalid characters.",
         variant: "destructive",
       });
       return;
@@ -107,50 +50,23 @@ const BookingForm = () => {
     setIsSubmitting(true);
     
     try {
-      console.log('📝 Creating secure booking request');
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate('/passenger/login');
-        return;
-      }
-
-      // Create booking with input validation trigger
-      const { data, error } = await supabase
-        .from('bookings')
-        .insert({
-          passenger_id: user.id,
-          pickup_location: pickupLocation.trim(),
-          dropoff_location: dropoffLocation.trim(),
-          pickup_time: pickupTime.toISOString(),
-          passenger_count: passengerCount,
-          vehicle_type: `${selectedVehicle.make} ${selectedVehicle.model}`,
-          status: 'pending',
-          ride_status: 'pending_driver',
-          payment_confirmation_status: 'waiting_for_offer',
-          status_passenger: 'passenger_requested',
-          status_driver: 'new_request',
-          driver_id: null
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      console.log('✅ Secure booking created:', data);
-
-      toast({
-        title: "Booking Requested!",
-        description: "Your ride request has been submitted securely.",
+      // Here you would submit the booking data
+      console.log('Submitting booking:', {
+        pickupLocation,
+        dropoffLocation,
+        pickupTime,
+        passengerCount: parseInt(passengerCount),
+        luggage,
+        specialRequests
       });
-
-      navigate(`/passenger/confirmation?booking=${data.id}`);
       
+      // Navigate to vehicle selection
+      navigate('/passenger/choose-vehicle');
     } catch (error) {
-      console.error('❌ Error creating booking:', error);
+      console.error('Error submitting booking:', error);
       toast({
         title: "Error",
-        description: "Failed to create booking. Please try again.",
+        description: "Failed to submit booking. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -159,122 +75,119 @@ const BookingForm = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-md mx-auto px-6 py-4">
-          <div className="flex items-center">
-            <Button
-              variant="ghost"
-              onClick={() => navigate(-1)}
-              className="p-0 h-auto text-gray-600 mr-4"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <h1 className="text-xl font-semibold text-gray-900">Book Your Ride</h1>
-          </div>
+    <div className="min-h-screen bg-background p-4">
+      <div className="max-w-md mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center space-x-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/home')}
+          >
+            <ArrowLeft className="h-6 w-6" />
+          </Button>
+          <h1 className="text-2xl font-bold">Book Your Ride</h1>
         </div>
-      </div>
 
-      {/* Form */}
-      <div className="max-w-md mx-auto px-6 py-6">
+        {/* Booking Form */}
         <Card>
           <CardHeader>
-            <CardTitle>Trip Details</CardTitle>
+            <CardTitle className="flex items-center space-x-2">
+              <MapPin className="h-5 w-5" />
+              <span>Trip Details</span>
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Pickup Location */}
-            <div>
-              <Label htmlFor="pickup" className="flex items-center space-x-2">
-                <MapPin className="h-4 w-4 text-green-500" />
-                <span>Pickup Location</span>
-              </Label>
-              <SecureGoogleMapsAutocomplete
-                onPlaceSelected={setPickupLocation}
-                placeholder="Enter pickup address"
-                className="mt-1"
-                value={pickupLocation}
-              />
-            </div>
-
-            {/* Dropoff Location */}
-            <div>
-              <Label htmlFor="dropoff" className="flex items-center space-x-2">
-                <MapPin className="h-4 w-4 text-red-500" />
-                <span>Drop-off Location</span>
-              </Label>
-              <SecureGoogleMapsAutocomplete
-                onPlaceSelected={setDropoffLocation}
-                placeholder="Enter destination address"
-                className="mt-1"
-                value={dropoffLocation}
-              />
-            </div>
-
-            {/* Pickup Time */}
-            <div>
-              <Label className="flex items-center space-x-2">
-                <Clock className="h-4 w-4" />
-                <span>Pickup Time</span>
-              </Label>
-              <DateTimePicker 
-                date={pickupTime} 
-                setDate={setPickupTime}
-                className="mt-1"
-              />
-            </div>
-
-            {/* Passenger Count */}
-            <div>
-              <Label htmlFor="passengers" className="flex items-center space-x-2">
-                <Users className="h-4 w-4" />
-                <span>Number of Passengers</span>
-              </Label>
-              <Input
-                id="passengers"
-                type="number"
-                min="1"
-                max="20"
-                value={passengerCount}
-                onChange={(e) => setPassengerCount(parseInt(e.target.value) || 1)}
-                className="mt-1"
-              />
-            </div>
-
-            {/* Selected Vehicle */}
-            {selectedVehicle && (
-              <div>
-                <Label className="flex items-center space-x-2">
-                  <Car className="h-4 w-4" />
-                  <span>Selected Vehicle</span>
-                </Label>
-                <div className="mt-1 p-3 bg-gray-50 rounded-lg">
-                  <p className="font-medium">{selectedVehicle.vehicle_name}</p>
-                  <p className="text-sm text-gray-600">{selectedVehicle.make} {selectedVehicle.model}</p>
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={() => navigate('/passenger/choose-vehicle')}
-                  className="mt-2 w-full"
-                >
-                  Change Vehicle
-                </Button>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Pickup Location */}
+              <div className="space-y-2">
+                <Label htmlFor="pickup">Pickup Location</Label>
+                <SecureGoogleMapsAutocomplete
+                  value={pickupLocation}
+                  onChange={setPickupLocation}
+                  placeholder="Enter pickup address"
+                  id="pickup"
+                  required
+                />
               </div>
-            )}
 
-            {/* Submit Button */}
-            <Button
-              onClick={handleSubmit}
-              disabled={isSubmitting || !pickupLocation || !dropoffLocation || !selectedVehicle}
-              className="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-medium"
-            >
-              {isSubmitting ? "Creating Secure Booking..." : "Request Ride"}
-            </Button>
+              {/* Dropoff Location */}
+              <div className="space-y-2">
+                <Label htmlFor="dropoff">Dropoff Location</Label>
+                <SecureGoogleMapsAutocomplete
+                  value={dropoffLocation}
+                  onChange={setDropoffLocation}
+                  placeholder="Enter destination address"
+                  id="dropoff"
+                  required
+                />
+              </div>
 
-            {/* Security Notice */}
-            <div className="text-xs text-gray-500 bg-green-50 p-3 rounded-lg border border-green-200">
-              <p><strong>🔒 Security:</strong> Your booking request is secured with input validation and role-based access controls.</p>
-            </div>
+              {/* Date and Time Selection */}
+              <div className="space-y-2">
+                <Label htmlFor="pickup-time">Pickup Date & Time</Label>
+                <MinimalDateTimePicker
+                  value={pickupTime}
+                  onChange={setPickupTime}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Passenger Count */}
+              <div className="space-y-2">
+                <Label htmlFor="passengers">Number of Passengers</Label>
+                <Select value={passengerCount} onValueChange={setPassengerCount}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select passenger count" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((count) => (
+                      <SelectItem key={count} value={count.toString()}>
+                        {count} passenger{count !== 1 ? 's' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Luggage */}
+              <div className="space-y-2">
+                <Label htmlFor="luggage">Luggage</Label>
+                <Select value={luggage} onValueChange={setLuggage}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select luggage amount" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No luggage</SelectItem>
+                    <SelectItem value="light">Light luggage (1-2 bags)</SelectItem>
+                    <SelectItem value="medium">Medium luggage (3-4 bags)</SelectItem>
+                    <SelectItem value="heavy">Heavy luggage (5+ bags)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Special Requests */}
+              <div className="space-y-2">
+                <Label htmlFor="special-requests">Special Requests</Label>
+                <Textarea
+                  id="special-requests"
+                  value={specialRequests}
+                  onChange={(e) => setSpecialRequests(e.target.value)}
+                  placeholder="Any special requirements or requests..."
+                  className="resize-none"
+                  rows={3}
+                />
+              </div>
+
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Processing...' : 'Continue to Vehicle Selection'}
+              </Button>
+            </form>
           </CardContent>
         </Card>
       </div>
