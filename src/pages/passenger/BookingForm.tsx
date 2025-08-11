@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -48,9 +47,12 @@ const BookingForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('🚀 Starting booking submission process...');
+    
     // Validate passenger count
     const passengerValidation = validatePassengerCount(parseInt(passengerCount));
     if (!passengerValidation.isValid) {
+      console.error('❌ Passenger count validation failed:', passengerValidation.error);
       toast({
         title: "Invalid Passenger Count",
         description: passengerValidation.error,
@@ -61,6 +63,7 @@ const BookingForm = () => {
 
     // Validate date and time selection
     if (!selectedDate || !selectedTime) {
+      console.error('❌ Date/time validation failed:', { selectedDate, selectedTime });
       toast({
         title: "Invalid Date/Time",
         description: "Please select both date and time for your booking.",
@@ -74,11 +77,14 @@ const BookingForm = () => {
     const [hours, minutes] = selectedTime.split(':').map(Number);
     const pickupTime = new Date(year, month - 1, day, hours, minutes);
 
+    console.log('📅 Pickup time created:', pickupTime.toISOString());
+
     // Validate pickup time (6-hour minimum rule)
     const now = new Date();
     const sixHoursFromNow = new Date(now.getTime() + 6 * 60 * 60 * 1000);
     
     if (pickupTime < sixHoursFromNow) {
+      console.error('❌ Pickup time validation failed - not 6 hours in advance');
       toast({
         title: "Invalid Pickup Time",
         description: "Bookings must be made at least 6 hours in advance.",
@@ -90,6 +96,7 @@ const BookingForm = () => {
     // Validate third-party booking fields if enabled
     if (isThirdPartyBooking) {
       if (!thirdPartyName.trim() || !thirdPartyPhone.trim() || !thirdPartyEmail.trim()) {
+        console.error('❌ Third-party booking validation failed');
         toast({
           title: "Missing Information",
           description: "Please fill in all fields for the third-party booking.",
@@ -102,12 +109,16 @@ const BookingForm = () => {
     setIsSubmitting(true);
     
     try {
+      console.log('🔐 Getting current user...');
       // Get current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
       if (userError || !user) {
+        console.error('❌ User authentication failed:', userError);
         throw new Error('User not authenticated');
       }
+
+      console.log('✅ User authenticated:', user.id);
 
       // Create flight info string if provided
       let flightInfoString = '';
@@ -115,39 +126,44 @@ const BookingForm = () => {
         flightInfoString = `${flightType}: ${flightNumber}`;
       }
 
-      // Prepare booking data
+      // Prepare booking data with all required fields
       const bookingData = {
         passenger_id: user.id,
-        pickup_location: pickup,
-        dropoff_location: dropoff,
+        pickup_location: pickup || 'Not specified',
+        dropoff_location: dropoff || 'Not specified',
         pickup_time: pickupTime.toISOString(),
         passenger_count: parseInt(passengerCount),
         vehicle_type: selectedVehicle?.name || 'Standard Vehicle',
-        estimated_price: estimatedPrice,
-        luggage_size: luggageSize,
-        luggage_count: parseInt(luggageCount),
-        flight_info: flightInfoString,
+        estimated_price: estimatedPrice || 0,
         status: 'pending',
         ride_status: 'pending_driver',
+        payment_confirmation_status: 'waiting_for_offer',
         status_passenger: 'passenger_requested',
         status_driver: 'new_request',
-        payment_confirmation_status: 'waiting_for_offer',
-        // Add third-party booking info to passenger_preferences if applicable
-        passenger_preferences: isThirdPartyBooking ? {
-          third_party_booking: {
-            name: thirdPartyName,
-            phone: thirdPartyPhone,
-            email: thirdPartyEmail
-          },
-          special_requests: specialRequests
-        } : {
-          special_requests: specialRequests
+        payment_status: 'pending',
+        // Store additional booking details in passenger_preferences
+        passenger_preferences: {
+          luggage_size: luggageSize,
+          luggage_count: parseInt(luggageCount),
+          flight_info: flightInfoString,
+          special_requests: specialRequests,
+          ...(isThirdPartyBooking && {
+            third_party_booking: {
+              name: thirdPartyName,
+              phone: thirdPartyPhone,
+              email: thirdPartyEmail
+            }
+          })
         }
       };
 
-      console.log('🚀 Creating booking with data:', bookingData);
+      console.log('📝 Booking data prepared:', {
+        ...bookingData,
+        passenger_preferences: JSON.stringify(bookingData.passenger_preferences, null, 2)
+      });
 
       // Insert booking into database
+      console.log('💾 Inserting booking into database...');
       const { data: booking, error: bookingError } = await supabase
         .from('bookings')
         .insert(bookingData)
@@ -155,8 +171,13 @@ const BookingForm = () => {
         .single();
 
       if (bookingError) {
-        console.error('❌ Error creating booking:', bookingError);
-        throw bookingError;
+        console.error('❌ Database insertion error:', bookingError);
+        throw new Error(`Database error: ${bookingError.message}`);
+      }
+
+      if (!booking) {
+        console.error('❌ No booking data returned from database');
+        throw new Error('No booking data returned from database');
       }
 
       console.log('✅ Booking created successfully:', booking);
@@ -167,13 +188,14 @@ const BookingForm = () => {
         description: "Your booking request has been submitted successfully.",
       });
 
+      console.log('🧭 Navigating to confirmation page...');
       navigate('/passenger/confirmation', { 
         state: { 
           selectedVehicle,
           pickup,
           dropoff,
           estimatedPrice,
-          pickupTime,
+          pickupTime: pickupTime.toISOString(),
           passengerCount: parseInt(passengerCount),
           luggageSize,
           luggageCount: parseInt(luggageCount),
@@ -194,9 +216,16 @@ const BookingForm = () => {
       });
     } catch (error) {
       console.error('❌ Error submitting booking:', error);
+      let errorMessage = "Failed to submit booking. Please try again.";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        console.error('❌ Error details:', error.message);
+      }
+      
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to submit booking. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
