@@ -18,7 +18,7 @@ const BookingForm = () => {
   const [formData, setFormData] = useState({
     pickup_location: "",
     dropoff_location: "",
-    pickup_time: "",
+    pickup_time: new Date(), // Changed to Date object
     passenger_count: 1,
     vehicle_type: "Tesla Model Y",
     additional_notes: ""
@@ -87,7 +87,7 @@ const BookingForm = () => {
         passenger_id: user.id,
         pickup_location: formData.pickup_location,
         dropoff_location: formData.dropoff_location,
-        pickup_time: formData.pickup_time,
+        pickup_time: formData.pickup_time.toISOString(), // Convert Date to ISO string
         passenger_count: formData.passenger_count,
         vehicle_type: formData.vehicle_type,
         status: 'pending', // CRITICAL: Must match dispatcher query expectations
@@ -97,7 +97,8 @@ const BookingForm = () => {
         status_driver: 'new_request',
         driver_id: null, // CRITICAL: Start as null for dispatcher to see
         final_price: null, // CRITICAL: Start as null - "Awaiting price"
-        estimated_price: null
+        estimated_price: null,
+        additional_notes: formData.additional_notes
       };
 
       console.log('📋 BOOKING DATA BEING INSERTED:', bookingData);
@@ -169,7 +170,7 @@ const BookingForm = () => {
               <SecureGoogleMapsAutocomplete
                 placeholder="Enter pickup address"
                 value={formData.pickup_location}
-                onChange={(value) => handleInputChange('pickup_location', value)}
+                onSelect={(value) => handleInputChange('pickup_location', value)}
                 className="w-full"
               />
             </CardContent>
@@ -187,7 +188,7 @@ const BookingForm = () => {
               <SecureGoogleMapsAutocomplete
                 placeholder="Enter destination address"
                 value={formData.dropoff_location}
-                onChange={(value) => handleInputChange('dropoff_location', value)}
+                onSelect={(value) => handleInputChange('dropoff_location', value)}
                 className="w-full"
               />
             </CardContent>
