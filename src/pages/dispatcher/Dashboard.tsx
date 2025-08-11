@@ -16,7 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LogOut, Clock, Users, Car, MapPin, Phone, Mail } from "lucide-react";
-
+import { getAllBookings, listenForBookingChanges } from "../../data/bookings";
 const DispatcherDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -32,7 +32,24 @@ const DispatcherDashboard = () => {
     checkAuth();
     setupRealtimeSubscription();
   }, []);
+useEffect(() => {
+  // 1) Carrega a lista inicial de bookings para o despachante
+  getAllBookings().then((rows: any[]) => setBookings(rows));
 
+  // 2) Escuta atualizações em tempo real (insert/update/delete)
+  const unsub = listenForBookingChanges((payload: any) => {
+    const { eventType, new: n, old: o } = payload;
+    setBookings(prev => {
+      if (eventType === "INSERT" && n) return [n, ...prev];
+      if (eventType === "UPDATE" && n) return prev.map(b => (b.id === n.id ? n : b));
+      if (eventType === "DELETE" && o) return prev.filter(b => b.id !== o.id);
+      return prev;
+    });
+  });
+
+  // limpa o listener quando sair da página
+  return () => { if (unsub) unsub(); };
+}, []);
   const setupRealtimeSubscription = () => {
     console.log('🔄 Setting up enhanced real-time subscription for dispatcher...');
     const channel = supabase
