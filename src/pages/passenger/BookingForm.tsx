@@ -12,6 +12,7 @@ import { ArrowLeft, Plane, Calendar, Users, Luggage, MessageSquare, User } from 
 import { DateTimePicker } from '@/components/DateTimePicker';
 import { validatePassengerCount, validatePickupTime } from '@/utils/inputValidation';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const BookingForm = () => {
   const navigate = useNavigate();
@@ -101,42 +102,101 @@ const BookingForm = () => {
     setIsSubmitting(true);
     
     try {
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Create flight info string if provided
+      let flightInfoString = '';
+      if (showFlightInfo && flightType && flightNumber) {
+        flightInfoString = `${flightType}: ${flightNumber}`;
+      }
+
+      // Prepare booking data
       const bookingData = {
-        selectedVehicle,
-        pickup,
-        dropoff,
-        estimatedPrice,
-        pickupTime,
-        passengerCount: parseInt(passengerCount),
-        luggageSize,
-        luggageCount: parseInt(luggageCount),
-        specialRequests,
-        flightInfo: showFlightInfo ? { type: flightType, number: flightNumber } : null,
-        thirdPartyBooking: isThirdPartyBooking ? {
-          name: thirdPartyName,
-          phone: thirdPartyPhone,
-          email: thirdPartyEmail
-        } : null
+        passenger_id: user.id,
+        pickup_location: pickup,
+        dropoff_location: dropoff,
+        pickup_time: pickupTime.toISOString(),
+        passenger_count: parseInt(passengerCount),
+        vehicle_type: selectedVehicle?.name || 'Standard Vehicle',
+        estimated_price: estimatedPrice,
+        luggage_size: luggageSize,
+        luggage_count: parseInt(luggageCount),
+        flight_info: flightInfoString,
+        status: 'pending',
+        ride_status: 'pending_driver',
+        status_passenger: 'passenger_requested',
+        status_driver: 'new_request',
+        payment_confirmation_status: 'waiting_for_offer',
+        // Add third-party booking info to passenger_preferences if applicable
+        passenger_preferences: isThirdPartyBooking ? {
+          third_party_booking: {
+            name: thirdPartyName,
+            phone: thirdPartyPhone,
+            email: thirdPartyEmail
+          },
+          special_requests: specialRequests
+        } : {
+          special_requests: specialRequests
+        }
       };
-      
-      console.log('Submitting booking:', bookingData);
-      
-      // Navigate to confirmation page
+
+      console.log('🚀 Creating booking with data:', bookingData);
+
+      // Insert booking into database
+      const { data: booking, error: bookingError } = await supabase
+        .from('bookings')
+        .insert(bookingData)
+        .select()
+        .single();
+
+      if (bookingError) {
+        console.error('❌ Error creating booking:', bookingError);
+        throw bookingError;
+      }
+
+      console.log('✅ Booking created successfully:', booking);
+
+      // Success - navigate to confirmation page with booking data
+      toast({
+        title: "Booking Created!",
+        description: "Your booking request has been submitted successfully.",
+      });
+
       navigate('/passenger/confirmation', { 
         state: { 
-          ...bookingData,
+          selectedVehicle,
+          pickup,
+          dropoff,
+          estimatedPrice,
+          pickupTime,
+          passengerCount: parseInt(passengerCount),
+          luggageSize,
+          luggageCount: parseInt(luggageCount),
+          specialRequests,
+          flightInfo: showFlightInfo ? { type: flightType, number: flightNumber } : null,
+          thirdPartyBooking: isThirdPartyBooking ? {
+            name: thirdPartyName,
+            phone: thirdPartyPhone,
+            email: thirdPartyEmail
+          } : null,
           bookingDetails: {
             date: selectedDate,
             time: selectedTime,
-            passengers: passengerCount
+            passengers: passengerCount,
+            bookingId: booking.id
           }
         } 
       });
     } catch (error) {
-      console.error('Error submitting booking:', error);
+      console.error('❌ Error submitting booking:', error);
       toast({
         title: "Error",
-        description: "Failed to submit booking. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to submit booking. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -371,7 +431,7 @@ const BookingForm = () => {
               className="w-full h-12 text-base font-medium"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Processing...' : 'Confirm Booking'}
+              {isSubmitting ? 'Creating Booking...' : 'Confirm Booking'}
             </Button>
           </div>
         </div>

@@ -14,6 +14,8 @@ export const useRealtimeBookings = () => {
     const fetchBookings = async () => {
       try {
         setLoading(true);
+        console.log('🔄 Fetching bookings with real-time updates...');
+        
         const { data, error } = await supabase
           .from('bookings')
           .select(`
@@ -23,14 +25,18 @@ export const useRealtimeBookings = () => {
           `)
           .order('created_at', { ascending: false });
 
-        if (error) throw error;
+        if (error) {
+          console.error('❌ Error fetching bookings:', error);
+          throw error;
+        }
 
         if (mounted) {
+          console.log('✅ Bookings fetched successfully:', data?.length || 0, 'bookings');
           setBookings(data || []);
           setError(null);
         }
       } catch (err) {
-        console.error('Error fetching bookings:', err);
+        console.error('❌ Error in fetchBookings:', err);
         if (mounted) {
           setError(err instanceof Error ? err.message : 'Failed to fetch bookings');
         }
@@ -43,9 +49,9 @@ export const useRealtimeBookings = () => {
 
     fetchBookings();
 
-    // Set up real-time subscription
+    // Set up real-time subscription for all bookings changes
     const channel = supabase
-      .channel('bookings_changes')
+      .channel('bookings_realtime_updates')
       .on(
         'postgres_changes',
         {
@@ -54,17 +60,50 @@ export const useRealtimeBookings = () => {
           table: 'bookings'
         },
         (payload) => {
-          console.log('📡 Real-time booking update:', payload);
-          fetchBookings(); // Refresh the entire list for simplicity
+          console.log('📡 Real-time booking update received:', payload);
+          
+          // Immediately refresh the bookings list when any change occurs
+          fetchBookings();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('📡 Real-time subscription status:', status);
+      });
 
     return () => {
       mounted = false;
+      console.log('🧹 Cleaning up real-time subscription');
       supabase.removeChannel(channel);
     };
   }, []);
 
-  return { bookings, loading, error, refetch: () => window.location.reload() };
+  // Manual refresh function
+  const refetch = async () => {
+    console.log('🔄 Manual refresh triggered');
+    setLoading(true);
+    
+    try {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          passengers:passenger_id(*),
+          drivers:driver_id(*)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setBookings(data || []);
+      setError(null);
+      console.log('✅ Manual refresh completed');
+    } catch (err) {
+      console.error('❌ Error in manual refresh:', err);
+      setError(err instanceof Error ? err.message : 'Failed to refresh bookings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { bookings, loading, error, refetch };
 };
