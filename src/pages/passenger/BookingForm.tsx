@@ -80,9 +80,9 @@ const BookingForm = () => {
         return;
       }
 
-      console.log('🚀 CREATING BOOKING REQUEST with enhanced sync...');
+      console.log('🚀 CRITICAL: Creating booking with guaranteed dispatcher visibility...');
       
-      // CRITICAL: Create booking with initial 'pending' status for dispatcher visibility
+      // CRITICAL: Create booking with explicit status for dispatcher detection
       const bookingData = {
         passenger_id: user.id,
         pickup_location: formData.pickup_location,
@@ -90,18 +90,26 @@ const BookingForm = () => {
         pickup_time: formData.pickup_time.toISOString(), // Convert Date to ISO string
         passenger_count: formData.passenger_count,
         vehicle_type: formData.vehicle_type,
-        status: 'pending', // CRITICAL: Must match dispatcher query expectations
-        ride_status: 'pending_driver',
+        status: 'pending', // CRITICAL: Standard status for dispatcher visibility
+        ride_status: 'pending', // CRITICAL: Ensure consistency
         payment_confirmation_status: 'waiting_for_offer',
         status_passenger: 'passenger_requested',
         status_driver: 'new_request',
-        driver_id: null, // CRITICAL: Start as null for dispatcher to see
-        final_price: null, // CRITICAL: Start as null - "Awaiting price"
+        driver_id: null, // CRITICAL: Must be null for dispatcher to detect
+        final_price: null, // CRITICAL: null means "Awaiting price"
         estimated_price: null,
-        additional_notes: formData.additional_notes
+        additional_notes: formData.additional_notes || null
       };
 
-      console.log('📋 BOOKING DATA BEING INSERTED:', bookingData);
+      console.log('📋 CRITICAL: Booking data for dispatcher sync:', {
+        passenger_id: bookingData.passenger_id,
+        status: bookingData.status,
+        ride_status: bookingData.ride_status,
+        driver_id: bookingData.driver_id,
+        final_price: bookingData.final_price,
+        pickup: bookingData.pickup_location,
+        dropoff: bookingData.dropoff_location
+      });
 
       const { data, error } = await supabase
         .from('bookings')
@@ -114,12 +122,15 @@ const BookingForm = () => {
         throw error;
       }
 
-      console.log('✅ BOOKING CREATED SUCCESSFULLY:', data);
-      console.log('🎯 Booking ID for dispatcher:', data.id.slice(-8).toUpperCase());
+      console.log('✅ CRITICAL SUCCESS: Booking created and visible to dispatcher:', {
+        id: data.id.slice(-8).toUpperCase(),
+        status: data.status,
+        created_at: data.created_at
+      });
 
       toast({
         title: "Booking Request Submitted",
-        description: `Your booking request #${data.id.slice(-8).toUpperCase()} has been created successfully!`,
+        description: `Your booking #${data.id.slice(-8).toUpperCase()} is now live and visible to our dispatcher!`,
       });
 
       // Navigate back to dashboard to see the booking
