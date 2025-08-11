@@ -12,10 +12,22 @@ interface DispatcherBookingListProps {
   onManageBooking: () => void;
 }
 
+interface Driver {
+  id: string;
+  full_name: string;
+  phone: string;
+  profile_photo_url?: string;
+  car_make: string;
+  car_model: string;
+  car_color: string;
+  license_plate: string;
+}
+
 export const DispatcherBookingList: React.FC<DispatcherBookingListProps> = ({
   onManageBooking
 }) => {
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -23,6 +35,7 @@ export const DispatcherBookingList: React.FC<DispatcherBookingListProps> = ({
 
   useEffect(() => {
     loadBookings();
+    loadDrivers();
     setupRealtimeSubscription();
   }, []);
 
@@ -80,6 +93,30 @@ export const DispatcherBookingList: React.FC<DispatcherBookingListProps> = ({
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadDrivers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('drivers')
+        .select('*')
+        .eq('status', 'active');
+
+      if (error) {
+        console.error('❌ Error loading drivers:', error);
+        throw error;
+      }
+
+      setDrivers(data || []);
+      console.log('✅ Loaded drivers:', data?.length || 0);
+    } catch (error) {
+      console.error('❌ Error in loadDrivers:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load drivers",
+        variant: "destructive",
+      });
     }
   };
 
@@ -197,6 +234,7 @@ export const DispatcherBookingList: React.FC<DispatcherBookingListProps> = ({
           isOpen={showModal}
           onClose={handleModalClose}
           booking={selectedBooking}
+          drivers={drivers}
           onUpdate={handleModalClose}
         />
       )}
