@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,7 +20,6 @@ const DispatcherDashboard = () => {
   const { toast } = useToast();
   const [dispatcherInfo, setDispatcherInfo] = useState(null);
   const [activeTab, setActiveTab] = useState("bookings");
-  const [topNavTab, setTopNavTab] = useState("Bookings");
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -146,30 +144,7 @@ const DispatcherDashboard = () => {
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
-    // Update top nav tab based on bottom nav selection
-    switch (tab) {
-      case "bookings":
-        setTopNavTab("Bookings");
-        break;
-      case "drivers":
-        setTopNavTab("Drivers");
-        break;
-      case "payments":
-        setTopNavTab("Payments");
-        break;
-      case "messages":
-        setTopNavTab("Messages");
-        break;
-      case "settings":
-        setTopNavTab("Settings");
-        break;
-      default:
-        setTopNavTab("Bookings");
-        break;
-    }
   };
-
-  const topNavTabs = ["Bookings", "Drivers", "Payments", "Messages", "Reports"];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -280,76 +255,49 @@ const DispatcherDashboard = () => {
   );
 
   const renderContent = () => {
-    // Handle bottom navigation content
-    if (activeTab === "drivers") {
-      return <DriverManagement />;
-    }
-    
-    if (activeTab === "payments") {
-      return <FinancialReports />;
-    }
-    
-    if (activeTab === "messages") {
-      return <DispatcherMessaging />;
-    }
-    
-    if (activeTab === "settings") {
-      return <DispatcherSettings />;
-    }
-
-    // Handle top navigation content (only for bookings tab)
-    if (activeTab === "bookings") {
-      if (topNavTab === "Drivers") {
+    switch (activeTab) {
+      case "drivers":
         return <DriverManagement />;
-      }
-      
-      if (topNavTab === "Payments") {
+      case "payments":
         return <FinancialReports />;
-      }
-      
-      if (topNavTab === "Messages") {
+      case "messages":
         return <DispatcherMessaging />;
-      }
-      
-      if (topNavTab === "Reports") {
-        return <FinancialReports />;
-      }
+      case "settings":
+        return <DispatcherSettings />;
+      case "bookings":
+      default:
+        return (
+          <>
+            {/* Driver Assignment Section */}
+            <Card className="mb-6 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-semibold">Assign Driver to Booking</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <DispatcherBookingManager onUpdate={loadBookings} />
+              </CardContent>
+            </Card>
 
-      // Default bookings content
-      return (
-        <>
-          {/* Driver Assignment Section */}
-          <Card className="mb-6 shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-semibold">Assign Driver to Booking</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <DispatcherBookingManager onUpdate={loadBookings} />
-            </CardContent>
-          </Card>
-
-          {/* All Bookings */}
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">All Bookings</h2>
-            <div className="text-sm text-gray-600 mb-4">
-              Manage ride requests and assignments
-            </div>
-            
-            {loading ? (
-              <div className="text-center py-8 text-gray-500">Loading bookings...</div>
-            ) : bookings.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">No bookings found</div>
-            ) : (
-              <div className="space-y-4">
-                {bookings.map(renderBookingCard)}
+            {/* All Bookings */}
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">All Bookings</h2>
+              <div className="text-sm text-gray-600 mb-4">
+                Manage ride requests and assignments
               </div>
-            )}
-          </div>
-        </>
-      );
+              
+              {loading ? (
+                <div className="text-center py-8 text-gray-500">Loading bookings...</div>
+              ) : bookings.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">No bookings found</div>
+              ) : (
+                <div className="space-y-4">
+                  {bookings.map(renderBookingCard)}
+                </div>
+              )}
+            </div>
+          </>
+        );
     }
-
-    return null;
   };
 
   return (
@@ -357,7 +305,7 @@ const DispatcherDashboard = () => {
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-md mx-auto px-4 py-3">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between">
             <h1 className="text-xl font-semibold text-gray-900">VIP Dispatcher Dashboard</h1>
             <Button
               onClick={handleSignOut}
@@ -369,25 +317,6 @@ const DispatcherDashboard = () => {
               Logout
             </Button>
           </div>
-
-          {/* Top Navigation Tabs - Only show for bookings */}
-          {activeTab === "bookings" && (
-            <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
-              {topNavTabs.map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setTopNavTab(tab)}
-                  className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    topNavTab === tab
-                      ? "bg-white text-gray-900 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 
