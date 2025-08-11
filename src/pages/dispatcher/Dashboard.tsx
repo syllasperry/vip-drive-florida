@@ -141,14 +141,15 @@ const DispatcherDashboard = () => {
   const loadBookings = async () => {
     try {
       setLoading(true);
-      console.log('🔄 Loading ALL bookings for dispatcher (including unassigned)...');
+      console.log('🔄 Loading ALL bookings for dispatcher (CRITICAL FIX)...');
       
-      // Load ALL bookings regardless of driver assignment status
+      // CRITICAL FIX: Remove all filters that could hide bookings from dispatcher
+      // Dispatcher needs to see ALL bookings, especially new unassigned ones
       const { data, error } = await supabase
         .from('bookings')
         .select(`
           *,
-          passengers!inner(
+          passengers(
             id,
             full_name,
             phone,
@@ -173,22 +174,23 @@ const DispatcherDashboard = () => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ Error loading bookings:', error);
+        console.error('❌ CRITICAL ERROR loading bookings:', error);
         throw error;
       }
 
-      console.log('✅ Loaded bookings for dispatcher:', data?.length || 0);
-      console.log('📋 Booking details:', data?.map(b => ({
+      console.log('✅ DISPATCHER BOOKINGS LOADED:', data?.length || 0);
+      console.log('📋 BOOKING DETAILS:', data?.map(b => ({
         id: b.id.slice(-8),
         status: b.status,
         passenger: b.passengers?.full_name,
         driver_assigned: !!b.driver_id,
-        final_price: b.final_price
+        final_price: b.final_price,
+        created_at: b.created_at
       })));
 
       setBookings(data || []);
     } catch (error) {
-      console.error('❌ Error loading bookings:', error);
+      console.error('❌ CRITICAL ERROR in loadBookings:', error);
       toast({
         title: "Error",
         description: "Failed to load bookings",
@@ -451,7 +453,7 @@ const DispatcherDashboard = () => {
       default:
         return (
           <div className="mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">All Bookings</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">All Bookings ({bookings.length})</h2>
             <div className="text-sm text-gray-600 mb-4">
               Manage ride requests and assignments
             </div>
@@ -459,7 +461,10 @@ const DispatcherDashboard = () => {
             {loading ? (
               <div className="text-center py-8 text-gray-500">Loading bookings...</div>
             ) : bookings.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">No bookings found</div>
+              <div className="text-center py-8 text-gray-500">
+                <div className="mb-2">No bookings found</div>
+                <div className="text-xs">Check console for debugging info</div>
+              </div>
             ) : (
               <div className="space-y-4">
                 {bookings.map(renderBookingCard)}
