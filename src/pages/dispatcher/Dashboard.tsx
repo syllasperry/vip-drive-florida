@@ -34,8 +34,9 @@ const DispatcherDashboard = () => {
   }, []);
 
   const setupRealtimeSubscription = () => {
+    console.log('🔄 Setting up enhanced real-time subscription for dispatcher...');
     const channel = supabase
-      .channel('dispatcher-dashboard-realtime')
+      .channel('dispatcher-dashboard-realtime-enhanced')
       .on(
         'postgres_changes',
         {
@@ -44,43 +45,60 @@ const DispatcherDashboard = () => {
           table: 'bookings'
         },
         (payload) => {
-          console.log('📡 Dispatcher dashboard real-time update:', payload);
+          console.log('📡 Enhanced dispatcher real-time update:', payload);
+          // Force immediate refresh when any booking changes
           loadBookings();
         }
       )
       .subscribe((status) => {
-        console.log('📡 Dispatcher realtime subscription status:', status);
+        console.log('📡 Enhanced dispatcher realtime subscription status:', status);
       });
 
     return () => {
+      console.log('🧹 Cleaning up dispatcher real-time subscription');
       supabase.removeChannel(channel);
     };
   };
 
   const checkAuth = async () => {
     try {
+      console.log('🔐 Checking dispatcher authentication...');
       const { data: { user } } = await supabase.auth.getUser();
+      
       if (!user) {
+        console.log('❌ No user found, redirecting to login');
         navigate('/passenger/login');
         return;
       }
 
-      const { data: userRole, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'dispatcher')
-        .single();
+      console.log('✅ User authenticated:', user.email);
 
-      if (roleError || !userRole) {
-        console.log('🔒 Access denied: User does not have dispatcher role');
-        navigate('/passenger/dashboard');
-        return;
+      // Check if user is dispatcher (syllasperry@gmail.com)
+      if (user.email === 'syllasperry@gmail.com') {
+        console.log('✅ Dispatcher access confirmed');
+        loadDispatcherInfo(user.id);
+        loadBookings();
+        loadDrivers();
+      } else {
+        // Check user_roles table for dispatcher role
+        const { data: userRole, error: roleError } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('role', 'dispatcher')
+          .single();
+
+        if (roleError || !userRole) {
+          console.log('🔒 Access denied: User does not have dispatcher role');
+          navigate('/passenger/dashboard');
+          return;
+        }
+
+        console.log('✅ Dispatcher role confirmed via user_roles');
+        loadDispatcherInfo(user.id);
+        loadBookings();
+        loadDrivers();
       }
-
-      loadDispatcherInfo(user.id);
-      loadBookings();
-      loadDrivers();
     } catch (error) {
       console.error('🔒 Auth error:', error);
       navigate('/passenger/login');
@@ -123,6 +141,9 @@ const DispatcherDashboard = () => {
   const loadBookings = async () => {
     try {
       setLoading(true);
+      console.log('🔄 Loading ALL bookings for dispatcher (including unassigned)...');
+      
+      // Load ALL bookings regardless of driver assignment status
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -151,10 +172,23 @@ const DispatcherDashboard = () => {
         `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error loading bookings:', error);
+        throw error;
+      }
+
+      console.log('✅ Loaded bookings for dispatcher:', data?.length || 0);
+      console.log('📋 Booking details:', data?.map(b => ({
+        id: b.id.slice(-8),
+        status: b.status,
+        passenger: b.passengers?.full_name,
+        driver_assigned: !!b.driver_id,
+        final_price: b.final_price
+      })));
+
       setBookings(data || []);
     } catch (error) {
-      console.error('Error loading bookings:', error);
+      console.error('❌ Error loading bookings:', error);
       toast({
         title: "Error",
         description: "Failed to load bookings",
@@ -167,15 +201,21 @@ const DispatcherDashboard = () => {
 
   const loadDrivers = async () => {
     try {
+      console.log('🔄 Loading available drivers...');
       const { data, error } = await supabase
         .from('drivers')
         .select('*')
         .eq('status', 'active');
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error loading drivers:', error);
+        throw error;
+      }
+
+      console.log('✅ Loaded drivers:', data?.length || 0);
       setDrivers(data || []);
     } catch (error) {
-      console.error('Error loading drivers:', error);
+      console.error('❌ Error loading drivers:', error);
     }
   };
 
@@ -243,6 +283,7 @@ const DispatcherDashboard = () => {
   };
 
   const handleManageBooking = (booking: any) => {
+    console.log('🎯 Opening management modal for booking:', booking.id);
     setSelectedBooking(booking);
     setShowManagementModal(true);
   };
@@ -338,10 +379,16 @@ const DispatcherDashboard = () => {
         </div>
 
         {/* Passenger Preferences */}
-        {booking.passenger_preferences && (
+        {booking.passengers && (
           <div className="mb-3">
             <PassengerPreferencesCard 
-              preferences={booking.passenger_preferences}
+              preferences={{
+                preferred_temperature: booking.passengers.preferred_temperature,
+                music_preference: booking.passengers.music_preference,
+                interaction_preference: booking.passengers.interaction_preference,
+                trip_purpose: booking.passengers.trip_purpose,
+                additional_notes: booking.passengers.additional_notes
+              }}
               className="justify-start"
             />
           </div>

@@ -64,7 +64,7 @@ const BookingForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log('🚀 Starting booking submission process...');
+    console.log('🚀 Starting passenger booking submission process...');
     
     // Validate passenger count
     const passengerValidation = validatePassengerCount(parseInt(passengerCount));
@@ -143,7 +143,7 @@ const BookingForm = () => {
         flightInfoString = `${flightType}: ${flightNumber}`;
       }
 
-      // Prepare booking data with all required fields - NO automatic price setting
+      // Prepare booking data with correct initial status for dispatcher sync
       const bookingData = {
         passenger_id: user.id,
         pickup_location: pickup || 'Not specified',
@@ -153,12 +153,13 @@ const BookingForm = () => {
         vehicle_type: selectedVehicle?.name || 'Standard Vehicle',
         estimated_price: null, // No automatic price - awaiting dispatcher
         final_price: null, // No automatic price - awaiting dispatcher offer
-        status: 'pending',
+        status: 'pending', // Ensure dispatcher can see this booking
         ride_status: 'pending_driver',
         payment_confirmation_status: 'waiting_for_offer',
         status_passenger: 'passenger_requested',
         status_driver: 'new_request',
         payment_status: 'pending',
+        driver_id: null, // Explicitly set to null for new bookings
         // Store additional booking details in passenger_preferences as JSON
         passenger_preferences: {
           luggage_size: luggageSize,
@@ -177,13 +178,13 @@ const BookingForm = () => {
         }
       };
 
-      console.log('📝 Booking data prepared (no automatic pricing):', {
+      console.log('📝 Passenger booking data prepared:', {
         ...bookingData,
         passenger_preferences: JSON.stringify(bookingData.passenger_preferences, null, 2)
       });
 
       // Insert booking into database
-      console.log('💾 Inserting booking into database...');
+      console.log('💾 Inserting passenger booking into database...');
       const { data: booking, error: bookingError } = await supabase
         .from('bookings')
         .insert(bookingData)
@@ -200,7 +201,7 @@ const BookingForm = () => {
         throw new Error('No booking data returned from database');
       }
 
-      console.log('✅ Booking created successfully (awaiting dispatcher pricing):', booking);
+      console.log('✅ Passenger booking created successfully:', booking);
 
       // Success - navigate to confirmation page with booking data
       toast({
@@ -235,7 +236,7 @@ const BookingForm = () => {
         } 
       });
     } catch (error) {
-      console.error('❌ Error submitting booking:', error);
+      console.error('❌ Error submitting passenger booking:', error);
       let errorMessage = "Failed to submit booking. Please try again.";
       
       if (error instanceof Error) {
