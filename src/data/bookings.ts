@@ -1,5 +1,5 @@
-
 import { supabase } from './supabaseClient';
+import { normalizeBookingStatus } from '@/utils/statusHelpers';
 
 /**
  * Carrega TODOS os bookings já com os dados do passageiro (foto, nome e preferências)
@@ -150,6 +150,46 @@ export const getBookingById = async (bookingId: string) => {
 };
 
 /**
+ * Helper function to create status history entry
+ */
+export const createStatusHistoryEntry = async (params: {
+  bookingId: string;
+  status: string;
+  updatedBy?: string;
+  role?: string;
+  metadata?: any;
+}) => {
+  const { bookingId, status, updatedBy, role, metadata } = params;
+
+  console.log('📝 Creating status history entry:', { bookingId, status, role });
+
+  try {
+    const { data, error } = await supabase
+      .from('booking_status_history')
+      .insert({
+        booking_id: bookingId,
+        status: normalizeBookingStatus(status),
+        updated_by: updatedBy,
+        role: role || 'system',
+        metadata: metadata || {}
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Error creating status history:', error);
+      throw error;
+    }
+
+    console.log('✅ Status history entry created:', data);
+    return data;
+  } catch (error) {
+    console.error('❌ Failed to create status history entry:', error);
+    throw error;
+  }
+};
+
+/**
  * Atomic function to send offer with proper validation and status normalization
  */
 export const sendOfferAtomic = async (params: {
@@ -192,6 +232,23 @@ export const sendOfferAtomic = async (params: {
     // Pode acontecer se RLS impedir o retorno da linha.
     console.warn('[SEND_OFFER] update returned no row (RLS?)');
     return { data: null, error: { message: 'Update executed but no row returned (RLS?)' } };
+  }
+
+  // 3) Create status history entry
+  try {
+    await createStatusHistoryEntry({
+      bookingId,
+      status: 'payment_pending',
+      updatedBy: driverId,
+      role: 'driver',
+      metadata: {
+        final_price: price,
+        previous_status: existing.status
+      }
+    });
+  } catch (historyError) {
+    console.warn('⚠️ Status history creation failed:', historyError);
+    // Don't fail the entire operation for history logging
   }
 
   console.log('[SEND_OFFER] success', updatedBooking);
