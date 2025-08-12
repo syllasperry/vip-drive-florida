@@ -28,11 +28,34 @@ const PassengerDashboard = () => {
   const [activeTab, setActiveTab] = useState<"bookings" | "messages" | "payments" | "settings">("bookings");
   const [passengerProfile, setPassengerProfile] = useState<any | null>(null);
 
-  // Controle do toast de erro (não repetir / permitir fechar)
+  // Controle unificado do toast de erro
   const errorToastIdRef = useRef<string | null>(null);
-  const hasLoadedBookingsRef = useRef(false);
+  const hasDataRef = useRef(false);
+  const isMountedRef = useRef(true);
 
-  // Carrega perfil completo do passageiro (foto/nome/prefs)
+  // Função unificada para limpar toast de erro
+  const clearErrorToast = () => {
+    if (errorToastIdRef.current) {
+      toast.dismiss(errorToastIdRef.current);
+      errorToastIdRef.current = null;
+    }
+  };
+
+  // Função unificada para mostrar toast de erro (com proteção contra duplicação)
+  const showErrorToast = () => {
+    // Só mostrar se não há dados e não há toast já ativo
+    if (!hasDataRef.current && !errorToastIdRef.current) {
+      const result = toast({
+        title: "Error",
+        description: "Failed to load your bookings",
+        variant: "destructive",
+        duration: 4000,
+      });
+      errorToastIdRef.current = result.id;
+    }
+  };
+
+  // Carrega perfil completo do passageiro
   async function loadPassengerProfile(userId: string) {
     try {
       const { data, error } = await supabase
@@ -44,148 +67,21 @@ const PassengerDashboard = () => {
         .single();
 
       if (error) throw error;
-      setPassengerProfile(data);
+      if (isMountedRef.current) {
+        setPassengerProfile(data);
+      }
     } catch (err) {
       console.error("Error loading passenger profile:", err);
     }
   }
 
-  // Primeira carga + listener em tempo real (com cleanup)
-  useEffect(() => {
-    let isMounted = true;
-
-    async function fetchBookings() {
-      setLoading(true);
-      
-      // 1) limpar erro/fechar toast anterior
-      if (errorToastIdRef.current) {
-        // Note: The toast function returns an object with dismiss method
-        errorToastIdRef.current = null;
-      }
-
-      try {
-        const allBookings = await getAllBookings();
-        if (!isMounted) return;
-
-        setBookings(allBookings);
-        hasLoadedBookingsRef.current = true;
-
-        // Se havia toast de erro aberto, marca como resolvido
-        if (errorToastIdRef.current) {
-          errorToastIdRef.current = null;
-        }
-      } catch (err) {
-        if (isMounted && !hasLoadedBookingsRef.current && !errorToastIdRef.current) {
-          // Só mostrar erro se realmente falhou E não há dados renderizados E não há toast já aberto
-          const toastResult = toast({
-            title: "Error",
-            description: "Failed to load your bookings",
-            variant: "destructive",
-            duration: 4000, // auto‑hide
-          });
-          // Armazenar referência se o toast retornar um ID
-          errorToastIdRef.current = "error-shown";
-        }
-        console.error("Failed to load bookings:", err);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    }
-
-    // 1) primeira carga
-    fetchBookings();
-
-    // 2) real‑time updates (se já existirem no projeto)
-    const sub = listenForBookingChanges(() => {
-      fetchBookings();
-    });
-
-    // cleanup ao desmontar
-    return () => {
-      isMounted = false;
-      try {
-        sub?.unsubscribe?.();
-      } catch (_) {}
-      // Limpar referência do toast ao desmontar
-      errorToastIdRef.current = null;
-    };
-  }, [toast]);
-
-  // Auth + auto-refresh + assinatura realtime com cleanup
-  useEffect(() => {
-    checkAuth();
-    const cleanupRealtime = setupRealtimeSubscription();
-
-    const refreshInterval = setInterval(async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await loadBookings(user.id);
-        }
-      } catch (error) {
-        console.error("❌ Error in auto-refresh:", error);
-      }
-    }, 2000);
-
-    return () => {
-      clearInterval(refreshInterval);
-      if (cleanupRealtime) cleanupRealtime();
-    };
-  }, []);
-
-  const setupRealtimeSubscription = () => {
-    const channel = supabase
-      .channel("passenger-bookings-realtime-enhanced")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "bookings" },
-        async () => {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            await loadBookings(user.id);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => supabase.removeChannel(channel);
-  };
-
-  const checkAuth = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) {
-        navigate("/passenger/login");
-        return;
-      }
-
-      // Admin/dispatcher desvia para dashboard do dispatcher
-      if (user.email === "syllasperry@gmail.com") {
-        navigate("/dispatcher/dashboard");
-        return;
-      }
-
-      await loadPassengerProfile(user.id);
-      await loadBookings(user.id);
-      await loadPassengerInfo(user.id);
-    } catch (error) {
-      console.error("Auth error:", error);
-      navigate("/passenger/login");
-    }
-  };
-
-  const loadPassengerInfo = async (userId: string) => {
-    try {
-      const { data, error } = await supabase.from("passengers").select("*").eq("id", userId).single();
-      if (error) throw error;
-      setPassengerInfo(data);
-    } catch (error) {
-      console.error("Error loading passenger info:", error);
-    }
-  };
-
+  // Função unificada para carregar bookings
   const loadBookings = async (userId: string) => {
+    setLoading(true);
+    
+    // Limpar toast de erro antes de tentar carregar
+    clearErrorToast();
+
     try {
       const { data, error } = await supabase
         .from("bookings")
@@ -208,52 +104,147 @@ const PassengerDashboard = () => {
 
       if (error) throw error;
 
-      const mapped: Booking[] = (data || []).map((b: any) => ({
-        id: b.id,
-        pickup_location: b.pickup_location,
-        dropoff_location: b.dropoff_location,
-        pickup_time: b.pickup_time,
-        passenger_count: b.passenger_count,
-        vehicle_type: b.vehicle_type,
-        simple_status: mapToSimpleStatus(b),
-        estimated_price: b.estimated_price,
-        final_negotiated_price: b.final_price,
-        final_price: b.final_price,
-        created_at: b.created_at,
-        passenger_id: b.passenger_id,
-        driver_id: b.driver_id,
-        status: b.status,
-        ride_status: b.ride_status,
-        payment_confirmation_status: b.payment_confirmation_status,
-        driver_profiles: b.drivers
-          ? {
-              full_name: b.drivers.full_name,
-              phone: b.drivers.phone,
-              profile_photo_url: b.drivers.profile_photo_url,
-              car_make: b.drivers.car_make,
-              car_model: b.drivers.car_model,
-              car_color: b.drivers.car_color,
-              license_plate: b.drivers.license_plate
-            }
-          : undefined
-      }));
+      if (isMountedRef.current) {
+        const mapped: Booking[] = (data || []).map((b: any) => ({
+          id: b.id,
+          pickup_location: b.pickup_location,
+          dropoff_location: b.dropoff_location,
+          pickup_time: b.pickup_time,
+          passenger_count: b.passenger_count,
+          vehicle_type: b.vehicle_type,
+          simple_status: mapToSimpleStatus(b),
+          estimated_price: b.estimated_price,
+          final_negotiated_price: b.final_price,
+          final_price: b.final_price,
+          created_at: b.created_at,
+          passenger_id: b.passenger_id,
+          driver_id: b.driver_id,
+          status: b.status,
+          ride_status: b.ride_status,
+          payment_confirmation_status: b.payment_confirmation_status,
+          driver_profiles: b.drivers
+            ? {
+                full_name: b.drivers.full_name,
+                phone: b.drivers.phone,
+                profile_photo_url: b.drivers.profile_photo_url,
+                car_make: b.drivers.car_make,
+                car_model: b.drivers.car_model,
+                car_color: b.drivers.car_color,
+                license_plate: b.drivers.license_plate
+              }
+            : undefined
+        }));
 
-      setBookings(mapped);
+        setBookings(mapped);
+        hasDataRef.current = true;
+        
+        // Garantir que qualquer toast de erro seja removido em caso de sucesso
+        clearErrorToast();
+      }
     } catch (error) {
       console.error("❌ Error loading bookings:", error);
-      // Só mostrar toast de erro se não há dados existentes para mostrar
-      if (bookings.length === 0) {
-        toast({
-          title: "Error",
-          description: "Failed to load your bookings",
-          variant: "destructive",
-          duration: 4000
-        });
+      if (isMountedRef.current) {
+        showErrorToast();
       }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
   };
+
+  // Função para carregar info do passageiro
+  const loadPassengerInfo = async (userId: string) => {
+    try {
+      const { data, error } = await supabase.from("passengers").select("*").eq("id", userId).single();
+      if (error) throw error;
+      if (isMountedRef.current) {
+        setPassengerInfo(data);
+      }
+    } catch (error) {
+      console.error("Error loading passenger info:", error);
+    }
+  };
+
+  // Setup de autenticação e carregamento inicial
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    const checkAuth = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+          navigate("/passenger/login");
+          return;
+        }
+
+        if (user.email === "syllasperry@gmail.com") {
+          navigate("/dispatcher/dashboard");
+          return;
+        }
+
+        await Promise.all([
+          loadPassengerProfile(user.id),
+          loadBookings(user.id),
+          loadPassengerInfo(user.id)
+        ]);
+      } catch (error) {
+        console.error("Auth error:", error);
+        navigate("/passenger/login");
+      }
+    };
+
+    checkAuth();
+
+    return () => {
+      isMountedRef.current = false;
+      clearErrorToast();
+    };
+  }, [navigate]);
+
+  // Real-time subscription
+  useEffect(() => {
+    const setupRealtimeSubscription = () => {
+      const channel = supabase
+        .channel("passenger-bookings-realtime-enhanced")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "bookings" },
+          async () => {
+            if (isMountedRef.current) {
+              const { data: { user } } = await supabase.auth.getUser();
+              if (user) {
+                await loadBookings(user.id);
+              }
+            }
+          }
+        )
+        .subscribe();
+
+      return () => supabase.removeChannel(channel);
+    };
+
+    const cleanup = setupRealtimeSubscription();
+
+    const refreshInterval = setInterval(async () => {
+      if (isMountedRef.current) {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await loadBookings(user.id);
+          }
+        } catch (error) {
+          console.error("❌ Error in auto-refresh:", error);
+        }
+      }
+    }, 2000);
+
+    return () => {
+      cleanup();
+      clearInterval(refreshInterval);
+    };
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -360,7 +351,6 @@ const PassengerDashboard = () => {
       default:
         return (
           <div className="space-y-4">
-            {/* Resumo do passageiro no topo da lista (sempre que houver perfil) */}
             {passengerProfile && (
               <div className="bg-white rounded-lg shadow p-4 mb-2">
                 <h2 className="text-lg font-semibold text-gray-800 mb-2">Passenger</h2>
@@ -407,7 +397,6 @@ const PassengerDashboard = () => {
               bookings.map(booking => (
                 <Card key={booking.id} className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                   <CardContent className="p-4">
-                    {/* Header */}
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-2">
                         <span className="text-sm font-medium text-gray-900">Booking ID</span>
@@ -418,10 +407,8 @@ const PassengerDashboard = () => {
                       <Clock className="w-4 h-4 text-gray-400" />
                     </div>
 
-                    {/* Booking ID */}
                     <div className="text-lg font-semibold text-gray-900 mb-4">#{booking.id.slice(-8).toUpperCase()}</div>
 
-                    {/* Locations */}
                     <div className="space-y-2 mb-4">
                       <div className="flex items-start space-x-3">
                         <div className="w-3 h-3 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
@@ -439,7 +426,6 @@ const PassengerDashboard = () => {
                       </div>
                     </div>
 
-                    {/* Trip details */}
                     <div className="grid grid-cols-2 gap-4 mb-4">
                       <div className="flex items-center space-x-2">
                         <Clock className="w-4 h-4 text-gray-400" />
@@ -457,7 +443,6 @@ const PassengerDashboard = () => {
                       )}
                     </div>
 
-                    {/* Price */}
                     <div className="flex items-center justify-between mb-4">
                       <span className={`text-2xl font-bold ${getPriceColor(booking)}`}>{getPriceDisplay(booking)}</span>
                       {booking.simple_status === "payment_pending" && getCurrentPrice(booking) !== null && (
@@ -472,7 +457,6 @@ const PassengerDashboard = () => {
                       )}
                     </div>
 
-                    {/* Driver (quando há oferta) */}
                     {booking.simple_status === "payment_pending" && booking.driver_profiles && getCurrentPrice(booking) !== null && (
                       <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                         <p className="text-sm font-medium text-blue-900 mb-2">Your Assigned Driver</p>
@@ -496,7 +480,6 @@ const PassengerDashboard = () => {
                       </div>
                     )}
 
-                    {/* Driver (all_set) */}
                     {booking.simple_status === "all_set" && booking.driver_profiles && (
                       <div className="mb-4 p-3 bg-green-50 rounded-lg">
                         <p className="text-sm font-medium text-gray-900 mb-2">Your Driver</p>
@@ -519,7 +502,6 @@ const PassengerDashboard = () => {
                       </div>
                     )}
 
-                    {/* Actions */}
                     <div className="flex space-x-2">
                       <Button
                         variant="outline"
@@ -553,7 +535,6 @@ const PassengerDashboard = () => {
                       </Button>
                     </div>
 
-                    {/* Botão de pagamento (quando há preço) */}
                     {booking.simple_status === "payment_pending" && getCurrentPrice(booking) !== null && (
                       <Button className="w-full mt-3 bg-red-500 hover:bg-red-600 text-white" onClick={() => handlePayment(booking)}>
                         Pay ${getCurrentPrice(booking)} - Complete Booking
@@ -570,7 +551,6 @@ const PassengerDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-md mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -592,10 +572,8 @@ const PassengerDashboard = () => {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="max-w-md mx-auto px-6 py-6 pb-24">{renderTabContent()}</div>
 
-      {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
         <div className="max-w-md mx-auto">
           <div className="grid grid-cols-4 py-2">
