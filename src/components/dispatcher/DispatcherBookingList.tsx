@@ -326,6 +326,7 @@ export const DispatcherBookingList = ({ bookings, onUpdate }: DispatcherBookingL
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         booking={selectedBooking}
+        bookingId={selectedBooking?.id || ""}
         drivers={drivers}
         onUpdate={onUpdate}
         onSendOffer={handleSendOffer}

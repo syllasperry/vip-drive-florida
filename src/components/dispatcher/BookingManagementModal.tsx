@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,22 +7,27 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { fetchDriversForBooking } from "@/lib/api/drivers";
 
 interface Driver {
   id: string;
   full_name: string;
-  phone: string;
+  phone?: string;
   profile_photo_url?: string;
-  car_make: string;
-  car_model: string;
-  car_color: string;
-  license_plate: string;
+  car_make?: string;
+  car_model?: string;
+  car_color?: string;
+  license_plate?: string;
+  vehicle_type?: string;
+  vehicle_category?: string;
 }
 
 interface BookingManagementModalProps {
   isOpen: boolean;
   onClose: () => void;
   booking: any;
+  bookingId: string;
   drivers: Driver[];
   onUpdate: () => void;
   onSendOffer: (bookingId: string, driverId: string, price: number) => Promise<void>;
@@ -32,20 +37,62 @@ export const BookingManagementModal = ({
   isOpen, 
   onClose, 
   booking, 
-  drivers, 
+  bookingId,
+  drivers: _unusedDrivers, // Keep for compatibility but don't use
   onUpdate,
   onSendOffer
 }: BookingManagementModalProps) => {
   const [selectedDriver, setSelectedDriver] = useState("");
   const [offerPrice, setOfferPrice] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [loadingDrivers, setLoadingDrivers] = useState(false);
   const { toast } = useToast();
 
+  useEffect(() => {
+    if (!isOpen || !bookingId) return;
+    (async () => {
+      try {
+        setLoadingDrivers(true);
+        const result = await fetchDriversForBooking(supabase, bookingId);
+        setDrivers(result);
+      } catch (e) {
+        toast({
+          title: "Error",
+          description: `Failed to load drivers: ${String(e)}`,
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingDrivers(false);
+      }
+    })();
+  }, [isOpen, bookingId, toast]);
+
   const handleSendOffer = async () => {
-    if (!selectedDriver || !offerPrice) {
+    console.log('[SEND_OFFER][CLICK]', { bookingId, selectedDriverId: selectedDriver, offerPrice });
+    
+    if (!selectedDriver) {
       toast({
         title: "Error",
-        description: "Please select a driver and enter an offer price.",
+        description: "Select a driver first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!drivers.some(d => d.id === selectedDriver)) {
+      toast({
+        title: "Error",
+        description: "Selected driver is not eligible for this vehicle category.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!offerPrice) {
+      toast({
+        title: "Error",
+        description: "Please enter an offer price.",
         variant: "destructive",
       });
       return;
@@ -92,9 +139,9 @@ export const BookingManagementModal = ({
           {/* Driver Selection */}
           <div>
             <Label htmlFor="driver">Select Driver</Label>
-            <Select value={selectedDriver} onValueChange={setSelectedDriver}>
+            <Select value={selectedDriver} onValueChange={setSelectedDriver} disabled={loadingDrivers || drivers.length === 0}>
               <SelectTrigger>
-                <SelectValue placeholder="Choose a driver" />
+                <SelectValue placeholder={loadingDrivers ? "Loading drivers..." : drivers.length === 0 ? "No eligible drivers" : "Choose a driver"} />
               </SelectTrigger>
               <SelectContent>
                 {drivers.map((driver) => (
@@ -135,7 +182,7 @@ export const BookingManagementModal = ({
           <div className="flex gap-2 pt-4">
             <Button
               onClick={handleSendOffer}
-              disabled={!selectedDriver || !offerPrice || isSubmitting}
+              disabled={!selectedDriver || !offerPrice || isSubmitting || drivers.length === 0}
               className="flex-1"
             >
               {isSubmitting ? "Sending..." : "Send Offer to Passenger"}
