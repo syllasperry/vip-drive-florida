@@ -276,7 +276,7 @@ export const DriverManagement = ({ drivers, onDriverUpdate }: DriverManagementPr
       </div>
 
       {/* Driver List */}
-      <div className="space-y-4">
+      <div className="space-y-4 pb-24">
         {filteredDrivers.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-500">No drivers found. Click '+ Add Driver' to get started.</p>
@@ -346,8 +346,8 @@ export const DriverManagement = ({ drivers, onDriverUpdate }: DriverManagementPr
         )}
       </div>
 
-      {/* Floating Add Button */}
-      <div className="fixed bottom-6 right-6">
+      {/* Floating Add Button - Repositioned to be above bottom navigation */}
+      <div className="fixed bottom-20 right-6 z-40">
         <Button
           onClick={openAddModal}
           className="h-14 w-14 rounded-full bg-black hover:bg-gray-800 text-white shadow-lg border-2 border-yellow-400"
