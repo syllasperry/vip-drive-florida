@@ -1,3 +1,4 @@
+
 import { supabase } from './supabaseClient';
 
 export const getAllBookings = async () => {
@@ -14,7 +15,7 @@ export const getAllBookings = async () => {
 };
 
 export const listenForBookingChanges = (callback: (payload: any) => void) => {
-  return supabase
+  const channel = supabase
     .channel('bookings-changes')
     .on(
       'postgres_changes',
@@ -25,4 +26,9 @@ export const listenForBookingChanges = (callback: (payload: any) => void) => {
       }
     )
     .subscribe();
+
+  // Return a cleanup function that properly unsubscribes
+  return () => {
+    supabase.removeChannel(channel);
+  };
 };
