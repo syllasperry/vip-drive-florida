@@ -1,3 +1,8 @@
+// === NEW IMPORTS (add these) ===
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { PassengerPreferencesCard } from "@/components/passenger/PassengerPreferencesCard";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,7 +20,8 @@ import { MessagesTab } from "@/components/passenger/MessagesTab";
 import { PaymentsTab } from "@/components/passenger/PaymentsTab";
 import { SettingsTab } from "@/components/passenger/SettingsTab";
 import { mapToSimpleStatus } from "@/utils/bookingHelpers";
-
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { PassengerPreferencesCard } from "@/components/passenger/PassengerPreferencesCard";
 const PassengerDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -532,7 +538,38 @@ const PassengerDashboard = () => {
         );
     }
   };
-
+{/* Passenger Booking Summary */}
+<div className="bg-white rounded-lg shadow p-4 mb-4">
+  <h2 className="text-lg font-semibold text-gray-800 mb-2">
+    Booking Summary
+  </h2>
+  {selectedBooking ? (
+    <div className="space-y-2">
+      <div className="flex items-center">
+        <img
+          src={selectedBooking.passenger_photo || "/default-avatar.png"}
+          alt="Passenger"
+          className="w-10 h-10 rounded-full mr-3"
+        />
+        <div>
+          <p className="font-medium text-gray-900">
+            {selectedBooking.passenger_name || "Unknown Passenger"}
+          </p>
+          <p className="text-sm text-gray-500">
+            {selectedBooking.passenger_phone || "No phone available"}
+          </p>
+        </div>
+      </div>
+      <div className="text-sm text-gray-700">
+        <p><strong>Pickup:</strong> {selectedBooking.pickup_location}</p>
+        <p><strong>Drop-off:</strong> {selectedBooking.dropoff_location}</p>
+        <p><strong>Status:</strong> {selectedBooking.simple_status}</p>
+      </div>
+    </div>
+  ) : (
+    <p className="text-sm text-gray-500">No booking selected</p>
+  )}
+</div>
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
