@@ -335,6 +335,45 @@ export type Database = {
         }
         Relationships: []
       }
+      driver_vehicles: {
+        Row: {
+          active: boolean
+          created_at: string
+          driver_id: string
+          id: string
+          vehicle_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          driver_id: string
+          id?: string
+          vehicle_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          driver_id?: string
+          id?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_vehicles_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_vehicles_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drivers: {
         Row: {
           account_name: string | null
@@ -366,6 +405,7 @@ export type Database = {
           registration_link_token: string | null
           self_registered: boolean | null
           status: string | null
+          vehicle_category: string | null
           venmo_info: string | null
           zelle_info: string | null
         }
@@ -399,6 +439,7 @@ export type Database = {
           registration_link_token?: string | null
           self_registered?: boolean | null
           status?: string | null
+          vehicle_category?: string | null
           venmo_info?: string | null
           zelle_info?: string | null
         }
@@ -432,6 +473,7 @@ export type Database = {
           registration_link_token?: string | null
           self_registered?: boolean | null
           status?: string | null
+          vehicle_category?: string | null
           venmo_info?: string | null
           zelle_info?: string | null
         }
@@ -1055,6 +1097,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      drivers_for_booking: {
+        Args: { bookingid: string }
+        Returns: {
+          id: string
+          full_name: string
+          email: string
+          phone: string
+          profile_photo_url: string
+        }[]
+      }
       find_matching_drivers: {
         Args: { p_vehicle_make: string; p_vehicle_model: string }
         Returns: {
@@ -1101,6 +1153,10 @@ export type Database = {
           _user_id: string
           _role: Database["public"]["Enums"]["app_role"]
         }
+        Returns: boolean
+      }
+      is_dispatcher: {
+        Args: Record<PropertyKey, never> | { u: string }
         Returns: boolean
       }
       user_owns_booking: {
