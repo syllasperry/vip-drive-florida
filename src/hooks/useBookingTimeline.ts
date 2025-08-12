@@ -1,50 +1,26 @@
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
+import { getBookingStatusHistory } from '@/utils/bookingHelpers';
 
-interface TimelineEvent {
-  id: string;
-  status: string;
-  timestamp: string;
-  actor_role: string;
-  system_message?: string;
-}
-
-export const useBookingTimeline = (bookingId: string) => {
-  const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchTimeline = async () => {
-      if (!bookingId) return;
+export const useBookingTimeline = (bookingId: string | undefined) => {
+  return useQuery({
+    queryKey: ['booking-timeline', bookingId],
+    queryFn: async () => {
+      if (!bookingId) return [];
       
-      try {
-        const { data, error } = await supabase
-          .from('timeline_events')
-          .select('*')
-          .eq('booking_id', bookingId)
-          .order('created_at', { ascending: true });
-
-        if (error) throw error;
-        
-        const mappedTimeline = (data || []).map(item => ({
-          id: item.id.toString(),
-          status: item.status,
-          timestamp: item.created_at,
-          actor_role: 'system',
-          system_message: item.system_message
-        }));
-        
-        setTimeline(mappedTimeline);
-      } catch (error) {
-        console.error('Error fetching booking timeline:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTimeline();
-  }, [bookingId]);
-
-  return { timeline, loading };
+      const history = await getBookingStatusHistory(bookingId);
+      
+      // Transform history to timeline format
+      return history.map(entry => ({
+        status_code: entry.status,
+        status_label: entry.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        actor_role: entry.role || 'system',
+        status_timestamp: entry.created_at || entry.updated_at,
+        metadata: entry.metadata || {}
+      }));
+    },
+    enabled: !!bookingId,
+    staleTime: 30000,
+    refetchOnWindowFocus: false
+  });
 };
