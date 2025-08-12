@@ -23,35 +23,3 @@ export const getBookingStatusHistory = async (bookingId: string) => {
     throw error;
   }
 };
-
-export const updateBookingStatus = async (bookingId: string, updates: any) => {
-  console.log('🔄 Updating booking status for:', bookingId, updates);
-  
-  try {
-    const { data, error } = await supabase
-      .from('bookings')
-      .update(updates)
-      .eq('id', bookingId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('❌ Error updating booking status:', error);
-      throw error;
-    }
-
-    console.log('✅ Booking status updated successfully');
-    return data;
-  } catch (error) {
-    console.error('❌ Failed to update booking status:', error);
-    throw error;
-  }
-};
-
-export const mapToSimpleStatus = (booking: any) => {
-  if (booking.ride_status === 'completed') return 'completed';
-  if (booking.status === 'cancelled') return 'cancelled';
-  if (booking.payment_confirmation_status === 'all_set') return 'all_set';
-  if (booking.payment_confirmation_status === 'passenger_paid') return 'payment_pending';
-  return 'booking_requested';
-};
