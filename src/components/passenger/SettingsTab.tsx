@@ -8,10 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
-import { User, Phone, Mail, LogOut, Bell, Shield, HelpCircle, Camera, Upload } from "lucide-react";
+import { User, Phone, Mail, LogOut, Bell, Shield, HelpCircle, Camera, Thermometer, Music, MessageCircle } from "lucide-react";
 import { NotificationSettingsCard } from "./NotificationSettingsCard";
 import { PrivacySecurityCard } from "./PrivacySecurityCard";
 import { HelpSupportCard } from "./HelpSupportCard";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 interface SettingsTabProps {
   passengerInfo: any;
@@ -31,6 +34,16 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
+  // Passenger preferences state
+  const [preferences, setPreferences] = useState({
+    air_conditioning_temperature: 72,
+    radio_enabled: false,
+    preferred_music: '',
+    conversation_preference: 'No Preference' as 'Conversative' | 'Quiet' | 'No Preference',
+    trip_purpose: 'Leisure' as 'Leisure' | 'Business' | 'Other',
+    trip_purpose_notes: ''
+  });
+
   useEffect(() => {
     if (passengerInfo) {
       setFormData({
@@ -38,8 +51,40 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
         phone: passengerInfo.phone || '',
         email: passengerInfo.email || ''
       });
+      loadPreferences();
     }
   }, [passengerInfo]);
+
+  const loadPreferences = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('passenger_preferences')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading preferences:', error);
+        return;
+      }
+
+      if (data) {
+        setPreferences({
+          air_conditioning_temperature: data.air_conditioning_temperature || 72,
+          radio_enabled: data.radio_enabled || false,
+          preferred_music: data.preferred_music || '',
+          conversation_preference: data.conversation_preference || 'No Preference',
+          trip_purpose: data.trip_purpose || 'Leisure',
+          trip_purpose_notes: data.trip_purpose_notes || ''
+        });
+      }
+    } catch (error) {
+      console.error('Error loading preferences:', error);
+    }
+  };
 
   const handlePhotoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -91,6 +136,34 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
     return publicUrl;
   };
 
+  const savePreferences = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('passenger_preferences')
+        .upsert({
+          user_id: user.id,
+          ...preferences
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Preferences saved successfully",
+      });
+    } catch (error) {
+      console.error('Error saving preferences:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save preferences",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSave = async () => {
     try {
       setIsUploading(true);
@@ -119,9 +192,12 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
 
       if (error) throw error;
 
+      // Save preferences
+      await savePreferences();
+
       toast({
         title: "Success",
-        description: "Profile updated successfully",
+        description: "Profile and preferences updated successfully",
       });
       
       setEditing(false);
@@ -272,6 +348,133 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
                   New photo selected: {photoFile.name}
                 </div>
               )}
+
+              {/* Passenger Preferences Section */}
+              <div className="border-t pt-4 mt-6">
+                <h4 className="font-medium text-gray-900 mb-4">Passenger Preferences</h4>
+                
+                {/* Temperature Control */}
+                <div className="space-y-3 mb-4">
+                  <div className="flex items-center gap-2">
+                    <Thermometer className="w-4 h-4 text-gray-600" />
+                    <Label>Air Conditioning Temperature</Label>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPreferences(prev => ({ 
+                        ...prev, 
+                        air_conditioning_temperature: Math.max(60, prev.air_conditioning_temperature - 1)
+                      }))}
+                    >
+                      -
+                    </Button>
+                    <span className="font-medium min-w-[60px] text-center">
+                      {preferences.air_conditioning_temperature}°F
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPreferences(prev => ({ 
+                        ...prev, 
+                        air_conditioning_temperature: Math.min(80, prev.air_conditioning_temperature + 1)
+                      }))}
+                    >
+                      +
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Radio */}
+                <div className="space-y-3 mb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Music className="w-4 h-4 text-gray-600" />
+                      <Label>Radio</Label>
+                    </div>
+                    <Switch
+                      checked={preferences.radio_enabled}
+                      onCheckedChange={(checked) => 
+                        setPreferences(prev => ({ ...prev, radio_enabled: checked }))
+                      }
+                    />
+                  </div>
+                  {preferences.radio_enabled && (
+                    <div>
+                      <Label htmlFor="preferred_music">Preferred Music/Playlist</Label>
+                      <Input
+                        id="preferred_music"
+                        placeholder="e.g., Jazz, Classical, Spotify playlist..."
+                        value={preferences.preferred_music}
+                        onChange={(e) => 
+                          setPreferences(prev => ({ ...prev, preferred_music: e.target.value }))
+                        }
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Conversation */}
+                <div className="space-y-3 mb-4">
+                  <div className="flex items-center gap-2">
+                    <MessageCircle className="w-4 h-4 text-gray-600" />
+                    <Label>Conversation Preference</Label>
+                  </div>
+                  <Select 
+                    value={preferences.conversation_preference} 
+                    onValueChange={(value: 'Conversative' | 'Quiet' | 'No Preference') => 
+                      setPreferences(prev => ({ ...prev, conversation_preference: value }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Conversative">Conversative</SelectItem>
+                      <SelectItem value="Quiet">Quiet</SelectItem>
+                      <SelectItem value="No Preference">No Preference</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Trip Purpose */}
+                <div className="space-y-3 mb-4">
+                  <Label>Trip Purpose</Label>
+                  <Select 
+                    value={preferences.trip_purpose} 
+                    onValueChange={(value: 'Leisure' | 'Business' | 'Other') => 
+                      setPreferences(prev => ({ ...prev, trip_purpose: value }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Leisure">Leisure</SelectItem>
+                      <SelectItem value="Business">Business</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {preferences.trip_purpose === 'Other' && (
+                    <div className="mt-2">
+                      <Label htmlFor="trip_purpose_notes">Notes</Label>
+                      <Textarea
+                        id="trip_purpose_notes"
+                        placeholder="Please specify..."
+                        value={preferences.trip_purpose_notes}
+                        onChange={(e) => 
+                          setPreferences(prev => ({ ...prev, trip_purpose_notes: e.target.value }))
+                        }
+                        rows={2}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div className="flex gap-2">
                 <Button 
                   onClick={handleSave} 

@@ -71,3 +71,21 @@ export const sendOfferAtomic = async (bookingId: string, driverId: string, price
     throw error;
   }
 };
+
+export const sendOffer = sendOfferAtomic;
+
+export const getDispatcherBookings = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching dispatcher bookings:', error);
+    throw error;
+  }
+};

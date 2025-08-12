@@ -628,6 +628,51 @@ export type Database = {
         }
         Relationships: []
       }
+      passenger_preferences: {
+        Row: {
+          air_conditioning: boolean | null
+          conversation_preference: string | null
+          created_at: string
+          id: string
+          preferred_music: string | null
+          preferred_temperature: number | null
+          radio_on: boolean | null
+          temperature_unit: string | null
+          trip_notes: string | null
+          trip_purpose: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          air_conditioning?: boolean | null
+          conversation_preference?: string | null
+          created_at?: string
+          id?: string
+          preferred_music?: string | null
+          preferred_temperature?: number | null
+          radio_on?: boolean | null
+          temperature_unit?: string | null
+          trip_notes?: string | null
+          trip_purpose?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          air_conditioning?: boolean | null
+          conversation_preference?: string | null
+          created_at?: string
+          id?: string
+          preferred_music?: string | null
+          preferred_temperature?: number | null
+          radio_on?: boolean | null
+          temperature_unit?: string | null
+          trip_notes?: string | null
+          trip_purpose?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       passengers: {
         Row: {
           account_name: string | null
