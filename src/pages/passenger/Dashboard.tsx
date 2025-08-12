@@ -36,9 +36,25 @@ useEffect(() => {
     const allBookings = await getAllBookings();
     setBookings(allBookings);
   }
-
+const [passengerProfile, setPassengerProfile] = useState<any | null>(null);
   fetchBookings();
+const [passengerProfile, setPassengerProfile] = useState<any | null>(null);
 
+async function loadPassengerProfile(userId: string) {
+  try {
+    const { data, error } = await supabase
+      .from("passengers")
+      .select("*")
+      .eq("id", userId)
+      .single();
+
+    if (error) throw error;
+
+    setPassengerProfile(data);
+  } catch (err) {
+    console.error("Error loading passenger profile:", err);
+  }
+}
   // Escuta em tempo real alterações nos bookings
   const unsubscribe = listenForBookingChanges((updatedBooking) => {
     setBookings((prevBookings) => {
@@ -116,7 +132,8 @@ useEffect(() => {
         navigate('/passenger/login');
         return;
       }
-
+// Carrega foto/nome/preferências do passageiro autenticado
+await loadPassengerProfile(user.id);
       if (user.email === 'syllasperry@gmail.com') {
         navigate('/dispatcher/dashboard');
         return;
