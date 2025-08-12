@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,7 +42,11 @@ const DispatcherDashboard = () => {
       });
     });
 
-    return cleanup;
+    return () => {
+      if (cleanup && typeof cleanup === 'function') {
+        cleanup();
+      }
+    };
   }, []);
 
   const checkAuth = async () => {
@@ -162,7 +167,6 @@ const DispatcherDashboard = () => {
     setShowManagementModal(true);
   };
 
-  // Fix: Create a proper tab change handler
   const handleTabChange = (tab: string) => {
     setActiveTab(tab as "bookings" | "drivers" | "messages" | "settings" | "payments");
   };
@@ -383,7 +387,7 @@ const DispatcherDashboard = () => {
             setShowManagementModal(false);
             setSelectedBooking(null);
           }}
-          onBookingUpdate={loadBookings}
+          onUpdate={loadBookings}
         />
       )}
     </div>
