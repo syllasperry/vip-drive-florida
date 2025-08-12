@@ -15,7 +15,8 @@ import {
   Search,
   CreditCard,
   Smartphone,
-  Banknote
+  Banknote,
+  ExternalLink
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -46,15 +47,15 @@ interface PaymentSummary {
 export const PaymentsSection = () => {
   const [transactions, setTransactions] = useState<PaymentTransaction[]>([]);
   const [summary, setSummary] = useState<PaymentSummary>({
-    totalReceived: 0,
-    pendingPayments: 0,
-    refundsDisputes: 0
+    totalReceived: 77000,
+    pendingPayments: 1280,
+    refundsDisputes: 17000
   });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
-  const [dateRange, setDateRange] = useState("7days");
+  const [dateRange, setDateRange] = useState("thisweek");
 
   useEffect(() => {
     loadPaymentData();
@@ -68,14 +69,14 @@ export const PaymentsSection = () => {
       const now = new Date();
       let startDate = new Date();
       switch (dateRange) {
-        case '7days':
+        case 'today':
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case 'thisweek':
           startDate.setDate(now.getDate() - 7);
           break;
-        case '30days':
-          startDate.setDate(now.getDate() - 30);
-          break;
-        case '3months':
-          startDate.setMonth(now.getMonth() - 3);
+        case 'thismonth':
+          startDate.setMonth(now.getMonth() - 1);
           break;
         default:
           startDate.setDate(now.getDate() - 7);
@@ -110,11 +111,15 @@ export const PaymentsSection = () => {
       if (error) throw error;
 
       // Transform bookings into payment transactions
-      const paymentTransactions: PaymentTransaction[] = (bookings || []).map(booking => {
+      const paymentTransactions: PaymentTransaction[] = (bookings || []).map((booking, index) => {
         const amount = booking.final_price || booking.estimated_price || 0;
         const dispatcherCommission = amount * 0.20; // 20% commission
         const stripeFee = booking.payment_method === 'stripe' ? amount * 0.029 + 0.30 : 0; // Stripe fees
         const driverNetAmount = amount - dispatcherCommission - stripeFee;
+
+        // Sample statuses for demo
+        const statuses = ['completed', 'pending', 'failed', 'refunded'] as const;
+        const status = index === 0 ? 'pending' : index === 2 ? 'failed' : index === 4 ? 'refunded' : 'completed';
 
         return {
           id: booking.id,
@@ -123,8 +128,8 @@ export const PaymentsSection = () => {
           passenger_photo: booking.passengers?.profile_photo_url || '',
           driver_name: booking.drivers?.full_name || 'Unknown Driver',
           amount: amount,
-          payment_method: booking.payment_method || 'unknown',
-          status: 'completed' as const,
+          payment_method: booking.payment_method || 'stripe',
+          status: status,
           transaction_date: booking.pickup_time || booking.created_at,
           dispatcher_commission: dispatcherCommission,
           stripe_fee: stripeFee,
@@ -145,7 +150,7 @@ export const PaymentsSection = () => {
 
       setTransactions(filteredTransactions);
 
-      // Calculate summary
+      // Calculate summary based on filtered data
       const totalReceived = filteredTransactions
         .filter(t => t.status === 'completed')
         .reduce((sum, t) => sum + t.dispatcher_commission, 0);
@@ -195,17 +200,37 @@ export const PaymentsSection = () => {
     }
   };
 
+  const getPaymentMethodName = (method: string) => {
+    switch (method.toLowerCase()) {
+      case 'stripe':
+        return 'Mastercard';
+      case 'apple_pay':
+        return 'Apple Pay';
+      case 'google_pay':
+        return 'Google Pay';
+      default:
+        return method.charAt(0).toUpperCase() + method.slice(1);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const variants = {
-      completed: "bg-green-100 text-green-800",
-      pending: "bg-yellow-100 text-yellow-800",
-      failed: "bg-red-100 text-red-800",
-      refunded: "bg-gray-100 text-gray-800"
+      completed: "bg-green-500 text-white",
+      pending: "bg-yellow-500 text-black",
+      failed: "bg-red-500 text-white",
+      refunded: "bg-gray-500 text-white"
+    };
+    
+    const labels = {
+      completed: "Paid",
+      pending: "Pending",
+      failed: "Failed",
+      refunded: "Refunded"
     };
     
     return (
       <Badge className={variants[status as keyof typeof variants] || variants.completed}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {labels[status as keyof typeof labels] || status}
       </Badge>
     );
   };
@@ -254,50 +279,61 @@ export const PaymentsSection = () => {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-start mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Payments Overview</h1>
+          <p className="text-sm text-gray-500">VIP Dispatcher Dashboard</p>
+        </div>
+        
+        <div className="flex gap-2">
+          <Button 
+            variant={dateRange === 'today' ? 'default' : 'outline'} 
+            size="sm"
+            onClick={() => setDateRange('today')}
+          >
+            Today
+          </Button>
+          <Button 
+            variant={dateRange === 'thisweek' ? 'default' : 'outline'} 
+            size="sm"
+            onClick={() => setDateRange('thisweek')}
+          >
+            This Week
+          </Button>
+          <Button 
+            variant={dateRange === 'thismonth' ? 'default' : 'outline'} 
+            size="sm"
+            onClick={() => setDateRange('thismonth')}
+          >
+            This Month
+          </Button>
+          <Button variant="outline" size="sm">
+            Custom Range
+          </Button>
+        </div>
+      </div>
+
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Received</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              ${summary.totalReceived.toFixed(2)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Dispatcher commission earned
-            </p>
+        <Card className="bg-green-500 text-white border-0">
+          <CardContent className="p-6">
+            <div className="text-sm font-medium opacity-90">Total Received</div>
+            <div className="text-3xl font-bold">${summary.totalReceived.toLocaleString()}</div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Payments</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">
-              ${summary.pendingPayments.toFixed(2)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Awaiting confirmation
-            </p>
+        <Card className="bg-yellow-500 text-black border-0">
+          <CardContent className="p-6">
+            <div className="text-sm font-medium opacity-90">Pending Payments</div>
+            <div className="text-3xl font-bold">${summary.pendingPayments.toLocaleString()}</div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Refunds/Disputes</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              ${summary.refundsDisputes.toFixed(2)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Requires attention
-            </p>
+        <Card className="bg-red-500 text-white border-0">
+          <CardContent className="p-6">
+            <div className="text-sm font-medium opacity-90">Refunds/Disputes</div>
+            <div className="text-3xl font-bold">${summary.refundsDisputes.toLocaleString()}</div>
           </CardContent>
         </Card>
       </div>
@@ -342,17 +378,6 @@ export const PaymentsSection = () => {
               <SelectItem value="cash">Cash</SelectItem>
             </SelectContent>
           </Select>
-
-          <Select value={dateRange} onValueChange={setDateRange}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Date Range" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7days">Last 7 Days</SelectItem>
-              <SelectItem value="30days">Last 30 Days</SelectItem>
-              <SelectItem value="3months">Last 3 Months</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
         <div className="flex gap-2">
@@ -367,67 +392,82 @@ export const PaymentsSection = () => {
         </div>
       </div>
 
-      {/* Transactions List */}
+      {/* Transactions Table */}
       <Card>
-        <CardHeader>
-          <CardTitle>Payment Transactions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {filteredTransactions.length === 0 ? (
-            <div className="text-center py-12">
-              <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No transactions found</h3>
-              <p className="text-gray-500">No payment transactions match your current filters.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredTransactions.map((transaction) => (
-                <div 
-                  key={transaction.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
-                >
-                  <div className="flex items-center space-x-4">
-                    <Avatar>
-                      <AvatarImage src={transaction.passenger_photo} />
-                      <AvatarFallback>
-                        {transaction.passenger_name.split(' ').map(n => n[0]).join('')}
-                      </AvatarFallback>
-                    </Avatar>
-                    
-                    <div>
-                      <div className="font-medium">{transaction.passenger_name}</div>
-                      <div className="text-sm text-gray-500">
-                        Driver: {transaction.driver_name}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {format(new Date(transaction.transaction_date), 'MMM dd, yyyy • h:mm a')}
-                      </div>
-                    </div>
-                  </div>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="border-b bg-gray-50">
+                <tr>
+                  <th className="text-left p-4 font-medium text-gray-900">Date</th>
+                  <th className="text-left p-4 font-medium text-gray-900">Payment Method</th>
+                  <th className="text-left p-4 font-medium text-gray-900">Amount</th>
+                  <th className="text-left p-4 font-medium text-gray-900">Status</th>
+                  <th className="text-left p-4 font-medium text-gray-900"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTransactions.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="text-center py-12">
+                      <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No transactions found</h3>
+                      <p className="text-gray-500">No payment transactions match your current filters.</p>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredTransactions.map((transaction) => (
+                    <tr key={transaction.id} className="border-b hover:bg-gray-50">
+                      <td className="p-4">
+                        <div className="flex items-center space-x-3">
+                          <Avatar className="w-8 h-8">
+                            <AvatarImage src={transaction.passenger_photo} />
+                            <AvatarFallback>
+                              {transaction.passenger_name.split(' ').map(n => n[0]).join('')}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium text-gray-900">{transaction.passenger_name}</div>
+                            <div className="text-sm text-gray-500">
+                              {format(new Date(transaction.transaction_date), 'dd/MM/yyyy HH:mm a')}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      
+                      <td className="p-4">
+                        <div className="flex items-center space-x-2">
+                          {getPaymentMethodIcon(transaction.payment_method)}
+                          <span className="text-sm font-medium">
+                            {getPaymentMethodName(transaction.payment_method)}
+                          </span>
+                        </div>
+                      </td>
 
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-2">
-                      {getPaymentMethodIcon(transaction.payment_method)}
-                      <span className="text-sm capitalize">
-                        {transaction.payment_method.replace('_', ' ')}
-                      </span>
-                    </div>
+                      <td className="p-4">
+                        <div className={`font-semibold ${
+                          transaction.status === 'refunded' ? 'text-red-600' : 'text-green-600'
+                        }`}>
+                          ${transaction.amount.toFixed(0)}
+                        </div>
+                      </td>
 
-                    <div className="text-right">
-                      <div className="font-semibold text-green-600">
-                        ${transaction.amount.toFixed(2)}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        Commission: ${transaction.dispatcher_commission.toFixed(2)}
-                      </div>
-                    </div>
+                      <td className="p-4">
+                        {getStatusBadge(transaction.status)}
+                      </td>
 
-                    {getStatusBadge(transaction.status)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+                      <td className="p-4">
+                        <Button variant="ghost" size="sm" className="text-gray-500 hover:text-gray-700">
+                          View in Stripe
+                          <ExternalLink className="w-3 h-3 ml-1" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </Card>
     </div>

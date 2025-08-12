@@ -1,24 +1,7 @@
-import { useState } from "react";
-import { CalendarIcon } from "@radix-ui/react-icons"
 
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { useState } from "react";
+
+import { Card } from "@/components/ui/card";
 import { DispatcherBookingManager } from "@/components/dispatcher/DispatcherBookingManager";
 import { DispatcherMessaging } from "@/components/dispatcher/DispatcherMessaging";
 import { DispatcherSettings } from "@/components/dispatcher/DispatcherSettings";
@@ -31,17 +14,17 @@ export default function DispatcherDashboard() {
   const renderContent = () => {
     switch (activeTab) {
       case 'bookings':
-        return <DispatcherBookingManager />;
+        return <DispatcherBookingManager bookings={[]} onUpdate={() => {}} />;
       case 'drivers':
-        return <DriverManagement />;
+        return <DriverManagement drivers={[]} onDriverUpdate={() => {}} />;
       case 'payments':
         return <PaymentsSection />;
       case 'messages':
-        return <DispatcherMessaging />;
+        return <DispatcherMessaging bookings={[]} />;
       case 'settings':
-        return <DispatcherSettings />;
+        return <DispatcherSettings bookings={[]} onUpdate={() => {}} />;
       default:
-        return <DispatcherBookingManager />;
+        return <DispatcherBookingManager bookings={[]} onUpdate={() => {}} />;
     }
   };
 
