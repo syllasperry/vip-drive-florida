@@ -1,592 +1,248 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { getAllBookings, listenForBookingChanges } from "../../data/bookings";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Clock, Users, MessageCircle, Phone, ArrowLeft, Car, CreditCard, Settings } from "lucide-react";
-import { MessagingInterface } from "@/components/MessagingInterface";
-import { format } from "date-fns";
-import { Booking } from "@/types/booking";
+import { Plus, MapPin, Clock, DollarSign, MessageCircle, User } from "lucide-react";
 import { MessagesTab } from "@/components/passenger/MessagesTab";
 import { PaymentsTab } from "@/components/passenger/PaymentsTab";
 import { SettingsTab } from "@/components/passenger/SettingsTab";
-import { mapToSimpleStatus } from "@/utils/bookingHelpers";
 
-const PassengerDashboard = () => {
+const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState('bookings');
+  const toastIdRef = useRef<string | null>(null);
 
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const [showMessaging, setShowMessaging] = useState(false);
-  const [passengerInfo, setPassengerInfo] = useState<any | null>(null);
-  const [activeTab, setActiveTab] = useState<"bookings" | "messages" | "payments" | "settings">("bookings");
-  const [passengerProfile, setPassengerProfile] = useState<any | null>(null);
+  const fetchUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setUser(user);
+  };
 
-  // Carrega perfil completo do passageiro (foto/nome/prefs)
-  async function loadPassengerProfile(userId: string) {
+  const fetchBookings = async () => {
+    if (!user?.id) return;
+    
+    setLoading(true);
+    
+    // 1) Clear any existing error toast before fetching
+    if (toastIdRef.current) {
+      toast.dismiss();
+      toastIdRef.current = null;
+    }
+
     try {
       const { data, error } = await supabase
-        .from("passengers")
-        .select(
-          "id, full_name, profile_photo_url, preferred_temperature, music_preference, interaction_preference, trip_purpose, additional_notes"
-        )
-        .eq("id", userId)
-        .single();
-
-      if (error) throw error;
-      setPassengerProfile(data);
-    } catch (err) {
-      console.error("Error loading passenger profile:", err);
-    }
-  }
-
-  // Primeira carga + listener em tempo real (com cleanup)
-  useEffect(() => {
-    async function fetchBookings() {
-      const allBookings = await getAllBookings();
-      setBookings(allBookings);
-    }
-
-    fetchBookings();
-
-    const cleanup = listenForBookingChanges((updatedBooking: any) => {
-      setBookings(prev => {
-        const index = prev.findIndex(b => b.id === updatedBooking.id);
-        if (index !== -1) {
-          const next = [...prev];
-          next[index] = updatedBooking;
-          return next;
-        }
-        return [updatedBooking, ...prev];
-      });
-    });
-
-    return cleanup;
-  }, []);
-
-  // Auth + auto-refresh + assinatura realtime com cleanup
-  useEffect(() => {
-    checkAuth();
-    const cleanupRealtime = setupRealtimeSubscription();
-
-    const refreshInterval = setInterval(async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await loadBookings(user.id);
-        }
-      } catch (error) {
-        console.error("❌ Error in auto-refresh:", error);
-      }
-    }, 2000);
-
-    return () => {
-      clearInterval(refreshInterval);
-      if (cleanupRealtime) cleanupRealtime();
-    };
-  }, []);
-
-  const setupRealtimeSubscription = () => {
-    const channel = supabase
-      .channel("passenger-bookings-realtime-enhanced")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "bookings" },
-        async () => {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            await loadBookings(user.id);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => supabase.removeChannel(channel);
-  };
-
-  const checkAuth = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) {
-        navigate("/passenger/login");
-        return;
-      }
-
-      // Admin/dispatcher desvia para dashboard do dispatcher
-      if (user.email === "syllasperry@gmail.com") {
-        navigate("/dispatcher/dashboard");
-        return;
-      }
-
-      await loadPassengerProfile(user.id);
-      await loadBookings(user.id);
-      await loadPassengerInfo(user.id);
-    } catch (error) {
-      console.error("Auth error:", error);
-      navigate("/passenger/login");
-    }
-  };
-
-  const loadPassengerInfo = async (userId: string) => {
-    try {
-      const { data, error } = await supabase.from("passengers").select("*").eq("id", userId).single();
-      if (error) throw error;
-      setPassengerInfo(data);
-    } catch (error) {
-      console.error("Error loading passenger info:", error);
-    }
-  };
-
-  const loadBookings = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("bookings")
-        .select(
-          `
+        .from('bookings')
+        .select(`
           *,
-          drivers (
-            full_name,
-            phone,
-            profile_photo_url,
-            car_make,
-            car_model,
-            car_color,
-            license_plate
-          )
-        `
-        )
-        .eq("passenger_id", userId)
-        .order("created_at", { ascending: false });
+          driver_profiles:driver_id(*)
+        `)
+        .eq('passenger_id', user.id)
+        .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching bookings:', error);
+        // 2) Only show error if we don't already have data displayed
+        if (!bookings.length) {
+          const toastResult = toast({
+            title: "Error",
+            description: "Failed to load your bookings",
+            variant: "destructive",
+            duration: 4000, // Auto-dismiss after 4 seconds
+          });
+          toastIdRef.current = toastResult.id;
+        }
+        return; // Don't overwrite existing data on error
+      }
 
-      const mapped: Booking[] = (data || []).map((b: any) => ({
-        id: b.id,
-        pickup_location: b.pickup_location,
-        dropoff_location: b.dropoff_location,
-        pickup_time: b.pickup_time,
-        passenger_count: b.passenger_count,
-        vehicle_type: b.vehicle_type,
-        simple_status: mapToSimpleStatus(b),
-        estimated_price: b.estimated_price,
-        final_negotiated_price: b.final_price,
-        final_price: b.final_price,
-        created_at: b.created_at,
-        passenger_id: b.passenger_id,
-        driver_id: b.driver_id,
-        status: b.status,
-        ride_status: b.ride_status,
-        payment_confirmation_status: b.payment_confirmation_status,
-        driver_profiles: b.drivers
-          ? {
-              full_name: b.drivers.full_name,
-              phone: b.drivers.phone,
-              profile_photo_url: b.drivers.profile_photo_url,
-              car_make: b.drivers.car_make,
-              car_model: b.drivers.car_model,
-              car_color: b.drivers.car_color,
-              license_plate: b.drivers.license_plate
-            }
-          : undefined
-      }));
-
-      setBookings(mapped);
+      // 3) Success: update data and ensure no error toast remains
+      setBookings(data || []);
+      if (toastIdRef.current) {
+        toast.dismiss();
+        toastIdRef.current = null;
+      }
     } catch (error) {
-      console.error("❌ Error loading bookings:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load your bookings",
-        variant: "destructive"
-      });
+      console.error('Unexpected error:', error);
+      // Only show error if we don't have existing data
+      if (!bookings.length) {
+        const toastResult = toast({
+          title: "Error",
+          description: "Failed to load your bookings",
+          variant: "destructive",
+          duration: 4000,
+        });
+        toastIdRef.current = toastResult.id;
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "booking_requested":
-        return "bg-orange-100 text-orange-800 border-orange-200";
-      case "payment_pending":
-        return "bg-blue-100 text-blue-800 border-blue-200";
-      case "all_set":
-        return "bg-green-100 text-green-800 border-green-200";
-      case "completed":
-        return "bg-gray-100 text-gray-800 border-gray-200";
-      case "cancelled":
-        return "bg-red-100 text-red-800 border-red-200";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+    getUser();
+  }, []);
+
+  // 4) Protect against stale results and cleanup on unmount
+  useEffect(() => {
+    let mounted = true;
+    
+    if (user?.id && mounted) {
+      fetchBookings();
     }
-  };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "booking_requested":
-        return "Booking Requested";
-      case "payment_pending":
-        return "Offer Received - Review & Pay";
-      case "all_set":
-        return "All Set";
-      case "completed":
-        return "Completed";
-      case "cancelled":
-        return "Cancelled";
-      default:
-        return status;
-    }
-  };
+    return () => {
+      mounted = false;
+      // Clean up any pending toast on unmount
+      if (toastIdRef.current) {
+        toast.dismiss();
+        toastIdRef.current = null;
+      }
+    };
+  }, [user?.id]);
 
-  const handlePayment = (booking: Booking) => {
-    toast({
-      title: "Payment Processing",
-      description: `Processing payment of $${booking.final_price || booking.estimated_price}`
-    });
-
-    setTimeout(() => {
-      toast({ title: "Payment Successful", description: "Your booking is now confirmed!" });
-    }, 2000);
-  };
-
-  const handleCall = () => window.open("tel:+1234567890", "_blank");
-
-  const formatDateTime = (s: string) => format(new Date(s), "MMM dd, yyyy - HH:mm");
-
-  const getCurrentPrice = (b: Booking): number | null => (b.final_price && b.final_price > 0 ? b.final_price : null);
-
-  const getPriceDisplay = (b: Booking): string => {
-    const p = getCurrentPrice(b);
-    return p !== null ? `$${p}` : "Awaiting price";
-  };
-
-  const getPriceColor = (b: Booking): string => (getCurrentPrice(b) !== null ? "text-red-600" : "text-gray-500");
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
+  const renderBookingsTab = () => {
+    if (loading && bookings.length === 0) {
+      return (
+        <div className="text-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading your bookings...</p>
+          <p className="text-gray-500 mt-2">Loading your bookings...</p>
         </div>
-      </div>
-    );
-  }
-
-  if (showMessaging && selectedBooking) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-md mx-auto">
-          <div className="bg-white border-b border-gray-200 px-6 py-4">
-            <Button variant="ghost" onClick={() => setShowMessaging(false)} className="p-0 h-auto text-gray-600">
-              <ArrowLeft className="h-5 w-5 mr-2" />
-              Back to Bookings
-            </Button>
-          </div>
-          <MessagingInterface
-            bookingId={selectedBooking.id}
-            userType="passenger"
-            isOpen={true}
-            onClose={() => setShowMessaging(false)}
-            currentUserId={selectedBooking.passenger_id}
-            currentUserName="Passenger"
-          />
-        </div>
-      </div>
-    );
-  }
-
-  const renderTabContent = () => {
-    const currentUser = passengerInfo || { id: "", full_name: "Passenger" };
-
-    switch (activeTab) {
-      case "messages":
-        return <MessagesTab bookings={bookings} currentUserId={currentUser.id} currentUserName={currentUser.full_name} />;
-      case "payments":
-        return <PaymentsTab bookings={bookings} />;
-      case "settings":
-        return <SettingsTab passengerInfo={passengerInfo} />;
-      default:
-        return (
-          <div className="space-y-4">
-            {/* Resumo do passageiro no topo da lista (sempre que houver perfil) */}
-            {passengerProfile && (
-              <div className="bg-white rounded-lg shadow p-4 mb-2">
-                <h2 className="text-lg font-semibold text-gray-800 mb-2">Passenger</h2>
-                <div className="flex items-center">
-                  <Avatar className="h-10 w-10 mr-3">
-                    <AvatarImage src={passengerProfile.profile_photo_url || ""} />
-                    <AvatarFallback>{(passengerProfile.full_name?.[0] || "P").toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <div className="font-semibold text-gray-900">{passengerProfile.full_name || "Passenger"}</div>
-                    {(passengerProfile.music_preference ||
-                      passengerProfile.interaction_preference ||
-                      passengerProfile.preferred_temperature) && (
-                      <p className="text-xs text-gray-600">
-                        {[
-                          passengerProfile.music_preference,
-                          passengerProfile.interaction_preference,
-                          passengerProfile.preferred_temperature ? `Temp: ${passengerProfile.preferred_temperature}°` : null
-                        ]
-                          .filter(Boolean)
-                          .join(" • ")}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {bookings.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Car className="w-8 h-8 text-gray-400" />
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings yet</h3>
-                <p className="text-gray-500 mb-6">Ready to book your first luxury ride?</p>
-                <Button
-                  onClick={() => navigate("/passenger/price-estimate")}
-                  className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-medium"
-                >
-                  Book Your First Ride
-                </Button>
-              </div>
-            ) : (
-              bookings.map(booking => (
-                <Card key={booking.id} className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm font-medium text-gray-900">Booking ID</span>
-                        <Badge className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(booking.simple_status)}`}>
-                          {getStatusLabel(booking.simple_status)}
-                        </Badge>
-                      </div>
-                      <Clock className="w-4 h-4 text-gray-400" />
-                    </div>
-
-                    {/* Booking ID */}
-                    <div className="text-lg font-semibold text-gray-900 mb-4">#{booking.id.slice(-8).toUpperCase()}</div>
-
-                    {/* Locations */}
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-start space-x-3">
-                        <div className="w-3 h-3 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-                        <div>
-                          <p className="text-sm text-gray-500">Pickup</p>
-                          <p className="text-sm font-medium text-gray-900">{booking.pickup_location}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start space-x-3">
-                        <div className="w-3 h-3 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
-                        <div>
-                          <p className="text-sm text-gray-500">Drop-off</p>
-                          <p className="text-sm font-medium text-gray-900">{booking.dropoff_location}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Trip details */}
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div className="flex items-center space-x-2">
-                        <Clock className="w-4 h-4 text-gray-400" />
-                        <span className="text-xs text-gray-600">{formatDateTime(booking.pickup_time)}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Users className="w-4 h-4 text-gray-400" />
-                        <span className="text-xs text-gray-600">{booking.passenger_count} passengers</span>
-                      </div>
-                      {booking.vehicle_type && (
-                        <div className="flex items-center space-x-2 col-span-2">
-                          <Car className="w-4 h-4 text-gray-400" />
-                          <span className="text-xs text-gray-600">{booking.vehicle_type}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Price */}
-                    <div className="flex items-center justify-between mb-4">
-                      <span className={`text-2xl font-bold ${getPriceColor(booking)}`}>{getPriceDisplay(booking)}</span>
-                      {booking.simple_status === "payment_pending" && getCurrentPrice(booking) !== null && (
-                        <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200 text-blue-800">
-                          Offer Received
-                        </Badge>
-                      )}
-                      {getCurrentPrice(booking) === null && (
-                        <Badge variant="outline" className="text-xs bg-gray-50 border-gray-200 text-gray-600">
-                          Pending Quote
-                        </Badge>
-                      )}
-                    </div>
-
-                    {/* Driver (quando há oferta) */}
-                    {booking.simple_status === "payment_pending" && booking.driver_profiles && getCurrentPrice(booking) !== null && (
-                      <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                        <p className="text-sm font-medium text-blue-900 mb-2">Your Assigned Driver</p>
-                        <div className="flex items-center space-x-3">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={booking.driver_profiles.profile_photo_url} />
-                            <AvatarFallback className="bg-blue-200 text-blue-800">
-                              {booking.driver_profiles.full_name.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <p className="font-medium text-blue-900">{booking.driver_profiles.full_name}</p>
-                            <p className="text-sm text-blue-700">
-                              {booking.driver_profiles.car_make} {booking.driver_profiles.car_model}
-                            </p>
-                            <p className="text-sm text-blue-600">
-                              {booking.driver_profiles.car_color} • {booking.driver_profiles.license_plate}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Driver (all_set) */}
-                    {booking.simple_status === "all_set" && booking.driver_profiles && (
-                      <div className="mb-4 p-3 bg-green-50 rounded-lg">
-                        <p className="text-sm font-medium text-gray-900 mb-2">Your Driver</p>
-                        <div className="flex items-center space-x-3">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={booking.driver_profiles.profile_photo_url} />
-                            <AvatarFallback className="bg-gray-200 text-gray-600">
-                              {booking.driver_profiles.full_name.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-900">{booking.driver_profiles.full_name}</p>
-                            <p className="text-sm text-gray-500">{booking.driver_profiles.phone}</p>
-                            <p className="text-sm text-gray-500">
-                              {booking.driver_profiles.car_make} {booking.driver_profiles.car_model} ({booking.driver_profiles.car_color})
-                            </p>
-                            <p className="text-sm text-gray-500">License: {booking.driver_profiles.license_plate}</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Actions */}
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedBooking(booking);
-                          setShowMessaging(true);
-                        }}
-                        className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
-                      >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        Message
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleCall}
-                        className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
-                      >
-                        <Phone className="w-4 h-4 mr-2" />
-                        Call
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="flex-1 bg-red-500 hover:bg-red-600 text-white"
-                        onClick={() =>
-                          toast({ title: "View Details", description: "Detailed view coming soon" })
-                        }
-                      >
-                        View Details
-                      </Button>
-                    </div>
-
-                    {/* Botão de pagamento (quando há preço) */}
-                    {booking.simple_status === "payment_pending" && getCurrentPrice(booking) !== null && (
-                      <Button className="w-full mt-3 bg-red-500 hover:bg-red-600 text-white" onClick={() => handlePayment(booking)}>
-                        Pay ${getCurrentPrice(booking)} - Complete Booking
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
-        );
+      );
     }
+
+    // 3) Don't treat "no bookings" as an error - show empty state
+    if (bookings.length === 0) {
+      return (
+        <div className="text-center py-12">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <MapPin className="w-8 h-8 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings yet</h3>
+          <p className="text-gray-500 mb-4">Book your first ride to get started!</p>
+          <Button onClick={() => navigate('/passenger/booking-form')} className="bg-red-500 hover:bg-red-600">
+            <Plus className="w-4 h-4 mr-2" />
+            Book a Ride
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {bookings.map((booking) => (
+          <Card key={booking.id} className="border border-gray-200">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Booking #{booking.id.slice(-8).toUpperCase()}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {new Date(booking.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-xl font-bold text-red-500">
+                    ${booking.final_price || booking.estimated_price || 'TBD'}
+                  </span>
+                </div>
+              </div>
+              <div className="mt-2">
+                <p className="text-gray-700">
+                  {booking.pickup_location} → {booking.dropoff_location}
+                </p>
+              </div>
+              <div className="mt-4 flex justify-between">
+                <div className="flex items-center text-gray-500">
+                  <Clock className="w-4 h-4 mr-2" />
+                  {booking.status}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-md mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-semibold text-gray-900">
-              {activeTab === "bookings" && "My Bookings"}
-              {activeTab === "messages" && "Messages"}
-              {activeTab === "payments" && "Payments"}
-              {activeTab === "settings" && "Settings"}
-            </h1>
-            {activeTab === "bookings" && (
-              <Button
-                onClick={() => navigate("/passenger/price-estimate")}
-                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-medium"
-              >
-                New Booking
-              </Button>
-            )}
+      <div className="max-w-md mx-auto bg-white min-h-screen">
+        {/* Profile Header */}
+        <div className="bg-white p-4 border-b border-gray-200">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+              <User className="w-6 h-6 text-red-600" />
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold text-gray-900">Passenger</h1>
+              <p className="text-sm text-gray-500">{user?.email}</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="max-w-md mx-auto px-6 py-6 pb-24">{renderTabContent()}</div>
-
-      {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
-        <div className="max-w-md mx-auto">
-          <div className="grid grid-cols-4 py-2">
-            <button
-              onClick={() => setActiveTab("bookings")}
-              className={`flex flex-col items-center py-2 px-1 ${activeTab === "bookings" ? "text-red-600" : "text-gray-400"}`}
-            >
-              <Car className="w-5 h-5 mb-1" />
-              <span className="text-xs">Bookings</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("messages")}
-              className={`flex flex-col items-center py-2 px-1 ${activeTab === "messages" ? "text-red-600" : "text-gray-400"}`}
-            >
-              <MessageCircle className="w-5 h-5 mb-1" />
-              <span className="text-xs">Messages</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("payments")}
-              className={`flex flex-col items-center py-2 px-1 ${activeTab === "payments" ? "text-red-600" : "text-gray-400"}`}
-            >
-              <CreditCard className="w-5 h-5 mb-1" />
-              <span className="text-xs">Payments</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("settings")}
-              className={`flex flex-col items-center py-2 px-1 ${activeTab === "settings" ? "text-red-600" : "text-gray-400"}`}
-            >
-              <Settings className="w-5 h-5 mb-1" />
-              <span className="text-xs">Settings</span>
-            </button>
+        {/* Tab Navigation */}
+        <div className="bg-white border-b border-gray-200">
+          <div className="flex">
+            {[
+              { id: 'bookings', label: 'Bookings', icon: MapPin },
+              { id: 'messages', label: 'Messages', icon: MessageCircle },
+              { id: 'payments', label: 'Payments', icon: DollarSign },
+              { id: 'settings', label: 'Settings', icon: User }
+            ].map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex-1 py-3 px-2 text-center border-b-2 ${
+                    activeTab === tab.id
+                      ? 'border-red-500 text-red-600'
+                      : 'border-transparent text-gray-500'
+                  }`}
+                >
+                  <Icon className="w-5 h-5 mx-auto mb-1" />
+                  <span className="text-xs font-medium">{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
+        </div>
+
+        {/* Tab Content */}
+        <div className="p-4">
+          {activeTab === 'bookings' && renderBookingsTab()}
+          {activeTab === 'messages' && (
+            <MessagesTab 
+              bookings={bookings} 
+              currentUserId={user?.id || ''} 
+              currentUserName={user?.email || 'You'}
+            />
+          )}
+          {activeTab === 'payments' && <PaymentsTab bookings={bookings} />}
+          {activeTab === 'settings' && <SettingsTab />}
+        </div>
+
+        {/* Floating Action Button */}
+        <div className="fixed bottom-6 right-6">
+          <Button
+            onClick={() => navigate('/passenger/booking-form')}
+            className="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 shadow-lg"
+          >
+            <Plus className="w-6 h-6" />
+          </Button>
         </div>
       </div>
     </div>
   );
 };
 
-export default PassengerDashboard;
+export default Dashboard;

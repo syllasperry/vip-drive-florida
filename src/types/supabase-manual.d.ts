@@ -1,5 +1,12 @@
 
+// Manual type declarations to fix build errors with Supabase imports
 declare module '@supabase/supabase-js' {
-  // Manual type declarations to avoid conflicts with generated types
-  // for passenger_preferences table which may not be in generated types yet
+  export function createClient(url: string, key: string, options?: any): any;
+  export interface SupabaseClient {
+    from(table: string): any;
+    auth: any;
+    rpc(fn: string, params?: any): any;
+    channel(name: string): any;
+    removeChannel(channel: any): void;
+  }
 }
