@@ -46,37 +46,3 @@ export const fetchBookings = async (): Promise<Booking[]> => {
     simple_status: normalizeBookingStatusLocal(booking.status) as any
   }));
 };
-
-// Re-export the functions that other components need
-export const getAllBookings = fetchBookings;
-
-export const listenForBookingChanges = (callback: (bookings: Booking[]) => void) => {
-  const channel = supabase
-    .channel('bookings_changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
-      fetchBookings().then(callback);
-    })
-    .subscribe();
-
-  return () => {
-    supabase.removeChannel(channel);
-  };
-};
-
-export const sendOffer = async (bookingId: string, driverId: string, offer: any) => {
-  const { data, error } = await supabase
-    .from('bookings')
-    .update({
-      driver_id: driverId,
-      final_price: offer.price,
-      status: 'offer_sent',
-      ride_status: 'offer_sent',
-      payment_confirmation_status: 'price_awaiting_acceptance'
-    })
-    .eq('id', bookingId)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-};
