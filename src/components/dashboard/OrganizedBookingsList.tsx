@@ -1,156 +1,172 @@
-
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState, useEffect } from 'react';
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { RefreshCw, Calendar, Clock, MapPin, DollarSign } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { BookingCard } from "@/components/dashboard/BookingCard";
+import { StandardDriverRideCard } from "@/components/StandardDriverRideCard";
+import { MessagingInterface } from "@/components/dashboard/MessagingInterface";
+import { PaymentModal } from "@/components/dashboard/PaymentModal";
 
-interface OrganizedBookingsListProps {
+export interface OrganizedBookingsListProps {
   bookings: any[];
-  onRefresh: () => void;
+  currentUserId: string;
+  userType: 'passenger' | 'driver';
+  onUpdate: () => void;
+  onMessageOtherParty?: (booking: any) => void;
 }
 
-export const OrganizedBookingsList = ({ bookings, onRefresh }: OrganizedBookingsListProps) => {
-  const [isRefreshing, setIsRefreshing] = useState(false);
+export const OrganizedBookingsList: React.FC<OrganizedBookingsListProps> = ({
+  bookings,
+  currentUserId,
+  userType,
+  onUpdate,
+  onMessageOtherParty
+}) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('all');
+  const [selectedBookingForMessage, setSelectedBookingForMessage] = useState<any>(null);
+  const [selectedBookingForPayment, setSelectedBookingForPayment] = useState<any>(null);
+  const [currentUserName, setCurrentUserName] = useState('');
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await onRefresh();
-    setIsRefreshing(false);
+  useEffect(() => {
+    // Fetch current user's name (replace with your actual data fetching logic)
+    const fetchCurrentUserName = async () => {
+      // Example: Fetch user data from an API
+      // const userData = await fetch(`/api/users/${currentUserId}`);
+      // const user = await userData.json();
+      // setCurrentUserName(user.name);
+
+      // Placeholder: Set a default name for now
+      setCurrentUserName('You');
+    };
+
+    fetchCurrentUserName();
+  }, [currentUserId]);
+
+  const handleMessage = (booking: any) => {
+    setSelectedBookingForMessage(booking);
+    onMessageOtherParty?.(booking);
   };
 
-  // Organize bookings by status
-  const upcomingBookings = bookings.filter(booking => 
-    ['pending', 'confirmed', 'driver_assigned', 'all_set'].includes(booking.simple_status)
-  );
-  
-  const activeBookings = bookings.filter(booking => 
-    ['in_progress', 'driver_en_route', 'driver_arrived'].includes(booking.simple_status)
-  );
-  
-  const completedBookings = bookings.filter(booking => 
-    booking.simple_status === 'completed'
-  );
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'confirmed': return 'bg-green-100 text-green-800';
-      case 'in_progress': return 'bg-blue-100 text-blue-800';
-      case 'completed': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+  const handlePayment = (booking: any) => {
+    setSelectedBookingForPayment(booking);
   };
 
-  const BookingCard = ({ booking }: { booking: any }) => (
-    <Card className="mb-4">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <MapPin className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium">{booking.pickup_location}</span>
-            </div>
-            <div className="flex items-center gap-2 mb-2">
-              <MapPin className="w-4 h-4 text-gray-500" />
-              <span className="text-sm text-gray-600">{booking.dropoff_location}</span>
-            </div>
-          </div>
-          <Badge className={getStatusColor(booking.simple_status)}>
-            {booking.simple_status}
-          </Badge>
-        </div>
-        
-        <div className="flex items-center gap-4 text-sm text-gray-500">
-          <div className="flex items-center gap-1">
-            <Calendar className="w-4 h-4" />
-            <span>{new Date(booking.pickup_time).toLocaleDateString()}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Clock className="w-4 h-4" />
-            <span>{new Date(booking.pickup_time).toLocaleTimeString()}</span>
-          </div>
-          {booking.final_price && (
-            <div className="flex items-center gap-1">
-              <DollarSign className="w-4 h-4" />
-              <span>${booking.final_price}</span>
-            </div>
-          )}
-        </div>
-        
-        <p className="text-xs text-gray-400 mt-2">
-          Created {formatDistanceToNow(new Date(booking.created_at))} ago
-        </p>
-      </CardContent>
-    </Card>
-  );
+  const handleStatusFilter = (status: string) => {
+    setSelectedStatus(status);
+  };
+
+  const filteredBookings = bookings.filter((booking) => {
+    const searchRegex = new RegExp(searchTerm, 'i');
+    const matchesSearch = searchRegex.test(booking.pickup_location) || searchRegex.test(booking.dropoff_location);
+
+    const matchesStatus = selectedStatus === 'all' || booking.status === selectedStatus;
+
+    return matchesSearch && matchesStatus;
+  });
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">My Bookings</h2>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-        >
-          <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+    <div className="space-y-6">
+      {/* Filter and Search Controls */}
+      <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4">
+        <Input
+          type="text"
+          placeholder="Search bookings..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="flex-1"
+        />
+        <div className="flex items-center space-x-2">
+          <Button
+            variant={selectedStatus === 'all' ? 'default' : 'outline'}
+            onClick={() => handleStatusFilter('all')}
+            size="sm"
+          >
+            All
+          </Button>
+          <Button
+            variant={selectedStatus === 'pending' ? 'default' : 'outline'}
+            onClick={() => handleStatusFilter('pending')}
+            size="sm"
+          >
+            Pending
+          </Button>
+          <Button
+            variant={selectedStatus === 'confirmed' ? 'default' : 'outline'}
+            onClick={() => handleStatusFilter('confirmed')}
+            size="sm"
+          >
+            Confirmed
+          </Button>
+          <Button
+            variant={selectedStatus === 'in_progress' ? 'default' : 'outline'}
+            onClick={() => handleStatusFilter('in_progress')}
+            size="sm"
+          >
+            In Progress
+          </Button>
+          <Button
+            variant={selectedStatus === 'completed' ? 'default' : 'outline'}
+            onClick={() => handleStatusFilter('completed')}
+            size="sm"
+          >
+            Completed
+          </Button>
+          <Button
+            variant={selectedStatus === 'cancelled' ? 'default' : 'outline'}
+            onClick={() => handleStatusFilter('cancelled')}
+            size="sm"
+          >
+            Cancelled
+          </Button>
+        </div>
       </div>
 
-      <Tabs defaultValue="upcoming" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="upcoming">Upcoming ({upcomingBookings.length})</TabsTrigger>
-          <TabsTrigger value="active">Active ({activeBookings.length})</TabsTrigger>
-          <TabsTrigger value="completed">Completed ({completedBookings.length})</TabsTrigger>
-        </TabsList>
+      {filteredBookings.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          No bookings found matching your criteria.
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {filteredBookings.map((booking) => (
+            <div key={booking.id}>
+              {userType === 'driver' ? (
+                <StandardDriverRideCard
+                  booking={booking}
+                  onMessagePassenger={() => handleMessage(booking)}
+                />
+              ) : (
+                <BookingCard
+                  booking={booking}
+                  userType={userType}
+                  onUpdate={onUpdate}
+                  onMessage={() => handleMessage(booking)}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
-        <TabsContent value="upcoming" className="space-y-4">
-          {upcomingBookings.length > 0 ? (
-            upcomingBookings.map(booking => (
-              <BookingCard key={booking.id} booking={booking} />
-            ))
-          ) : (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <p className="text-gray-500">No upcoming bookings</p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
+      {/* Messaging Interface Modal */}
+      <MessagingInterface
+        bookingId={selectedBookingForMessage?.id}
+        userType={userType}
+        isOpen={!!selectedBookingForMessage}
+        onClose={() => setSelectedBookingForMessage(null)}
+        currentUserId={currentUserId}
+        currentUserName={currentUserName}
+      />
 
-        <TabsContent value="active" className="space-y-4">
-          {activeBookings.length > 0 ? (
-            activeBookings.map(booking => (
-              <BookingCard key={booking.id} booking={booking} />
-            ))
-          ) : (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <p className="text-gray-500">No active rides</p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        <TabsContent value="completed" className="space-y-4">
-          {completedBookings.length > 0 ? (
-            completedBookings.map(booking => (
-              <BookingCard key={booking.id} booking={booking} />
-            ))
-          ) : (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <p className="text-gray-500">No completed rides</p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-      </Tabs>
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={!!selectedBookingForPayment}
+        onClose={() => setSelectedBookingForPayment(null)}
+        booking={selectedBookingForPayment}
+        onPaymentConfirmed={() => {
+          setSelectedBookingForPayment(null);
+          onUpdate();
+        }}
+      />
     </div>
   );
 };

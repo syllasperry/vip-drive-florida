@@ -1,132 +1,73 @@
-import { supabase } from "@/integrations/supabase/client";
 
-export const getBookings = async () => {
-  const { data, error } = await supabase
-    .from('bookings')
-    .select('*')
-    .order('created_at', { ascending: false });
+import { supabase } from '@/integrations/supabase/client';
+import { normalizeBookingStatus } from '@/utils/statusHelpers';
 
-  if (error) throw error;
-  return data;
-};
+export const sendOfferAtomic = async (bookingId: string, driverId: string, price: number) => {
+  console.log('🚀 sendOfferAtomic:', { bookingId, driverId, price });
 
-export const getDispatcherBookings = async () => {
-  const { data, error } = await supabase
-    .from('bookings')
-    .select(`
-      *,
-      passengers:passenger_id(*),
-      drivers:driver_id(*)
-    `)
-    .order('created_at', { ascending: false });
+  try {
+    // Normalize status before insertion
+    const normalizedStatus = normalizeBookingStatus('offer_sent');
+    
+    // Insert into driver_offers table
+    const { data: offerData, error: offerError } = await supabase
+      .from('driver_offers')
+      .insert({
+        booking_id: bookingId,
+        driver_id: driverId,
+        offer_price: price,
+        status: normalizedStatus
+      })
+      .select()
+      .single();
 
-  if (error) throw error;
-  return data;
-};
+    if (offerError) {
+      console.error('❌ Error inserting offer:', offerError);
+      throw offerError;
+    }
 
-export const sendOffer = async (bookingId: string, driverId: string, price: number) => {
-  const { data, error } = await supabase
-    .from('bookings')
-    .update({
-      driver_id: driverId,
-      final_price: price,
-      status: 'offer_sent',
-      ride_status: 'offer_sent',
-      payment_confirmation_status: 'price_awaiting_acceptance'
-    })
-    .eq('id', bookingId)
-    .select()
-    .single();
+    console.log('✅ Offer inserted successfully:', offerData);
 
-  if (error) throw error;
-  return data;
-};
+    // Update booking with normalized status
+    const { data: bookingData, error: bookingError } = await supabase
+      .from('bookings')
+      .update({
+        status: normalizedStatus,
+        final_price: price,
+        driver_id: driverId,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', bookingId)
+      .select()
+      .single();
 
-export const confirmPayment = async (bookingId: string) => {
-  const { data, error } = await supabase
-    .from('bookings')
-    .update({
-      payment_confirmation_status: 'payment_confirmed',
-      status: 'confirmed',
-      ride_status: 'confirmed'
-    })
-    .eq('id', bookingId)
-    .select()
-    .single();
+    if (bookingError) {
+      console.error('❌ Error updating booking:', bookingError);
+      throw bookingError;
+    }
 
-  if (error) throw error;
-  return data;
-};
+    console.log('✅ Booking updated successfully:', bookingData);
 
-export const startRide = async (bookingId: string) => {
-  const { data, error } = await supabase
-    .from('bookings')
-    .update({
-      status: 'in_progress',
-      ride_status: 'driver_en_route'
-    })
-    .eq('id', bookingId)
-    .select()
-    .single();
+    // Insert status history with normalized status
+    const { error: historyError } = await supabase
+      .from('ride_status_history')
+      .insert({
+        booking_id: bookingId,
+        new_status: normalizedStatus,
+        previous_status: 'pending',
+        changed_by: driverId
+      });
 
-  if (error) throw error;
-  return data;
-};
+    if (historyError) {
+      console.error('❌ Error inserting status history:', historyError);
+      throw historyError;
+    }
 
-export const arrivedAtPickup = async (bookingId: string) => {
-  const { data, error } = await supabase
-    .from('bookings')
-    .update({
-      ride_status: 'driver_arrived'
-    })
-    .eq('id', bookingId)
-    .select()
-    .single();
+    console.log('✅ Status history inserted successfully');
 
-  if (error) throw error;
-  return data;
-};
-
-export const beginTrip = async (bookingId: string) => {
-  const { data, error } = await supabase
-    .from('bookings')
-    .update({
-      ride_status: 'in_progress'
-    })
-    .eq('id', bookingId)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-};
-
-export const completeTrip = async (bookingId: string) => {
-  const { data, error } = await supabase
-    .from('bookings')
-    .update({
-      status: 'completed',
-      ride_status: 'completed'
-    })
-    .eq('id', bookingId)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-};
-
-export const cancelBooking = async (bookingId: string) => {
-  const { data, error } = await supabase
-    .from('bookings')
-    .update({
-      status: 'cancelled',
-      ride_status: 'cancelled'
-    })
-    .eq('id', bookingId)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
+    return { offer: offerData, booking: bookingData };
+  } catch (error) {
+    console.error('❌ sendOfferAtomic failed:', error);
+    throw error;
+  }
 };

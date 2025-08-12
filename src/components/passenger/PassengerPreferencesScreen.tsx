@@ -54,7 +54,7 @@ export const PassengerPreferencesScreen = ({ onBack, userId }: PassengerPreferen
           preferredMusic: data.music_playlist_link || '',
           conversationLevel: data.interaction_preference === 'chatty' ? 'chatty' : 
                            data.interaction_preference === 'quiet' ? 'quiet' : 'neutral',
-          tripPurpose: (data.trip_purpose || 'leisure') as 'leisure' | 'business' | 'event' | 'other',
+          tripPurpose: data.trip_purpose || 'leisure',
           notes: data.additional_notes || ''
         });
       }
