@@ -116,9 +116,13 @@ export const DispatcherBookingList = ({ bookings, onUpdate }: DispatcherBookingL
 
     } catch (error) {
       console.log('[SEND_OFFER] result', { data: null, error });
+      
+      // Show the actual error message from Supabase
+      const errorMessage = error instanceof Error ? error.message : "Failed to send offer. Please try again.";
+      
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to send offer. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     }

@@ -1,3 +1,4 @@
+
 import { supabase } from './supabaseClient';
 
 /**
@@ -98,7 +99,74 @@ export const createBooking = async (bookingData: any) => {
 };
 
 /**
- * Send offer with driver assignment - NOVO FLUXO TRANSACIONAL
+ * Helper function to get booking by ID with debug logging
+ */
+export const getBookingById = async (bookingId: string) => {
+  console.log('[DEBUG_BOOKING_ID]', bookingId);
+  
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('*')
+    .eq('id', bookingId)
+    .maybeSingle(); // não explode se não achar
+
+  if (error) {
+    console.error('[SEND_OFFER] select by id failed:', error);
+    throw error;
+  }
+
+  return data; // pode ser null
+};
+
+/**
+ * Atomic function to send offer with proper validation
+ */
+export const sendOfferAtomic = async (params: {
+  bookingId: string;
+  driverId: string;
+  price: number;
+}) => {
+  const { bookingId, driverId, price } = params;
+
+  console.log('[SEND_OFFER] start', { bookingId, driverId, price });
+
+  // 1) Confirma existência
+  const existing = await getBookingById(bookingId);
+  if (!existing) {
+    console.warn('[BOOKING_NOT_FOUND_IN_DB]', bookingId);
+    return { data: null, error: { message: 'Booking not found in database' } };
+  }
+
+  // 2) Update atômico (uma operação)
+  const { data: updatedBooking, error: updateError } = await supabase
+    .from('bookings')
+    .update({
+      driver_id: driverId,
+      final_price: price,
+      status: 'payment_pending',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', bookingId)
+    .select('*')
+    .maybeSingle(); // se políticas retornarem 0 linhas, não explode
+
+  if (updateError) {
+    console.error('[RLS_BLOCK or UPDATE_ERROR]', updateError);
+    return { data: null, error: updateError };
+  }
+
+  if (!updatedBooking) {
+    // Pode acontecer se RLS impedir o retorno da linha.
+    console.warn('[SEND_OFFER] update returned no row (RLS?)');
+    return { data: null, error: { message: 'Update executed but no row returned (RLS?)' } };
+  }
+
+  console.log('[SEND_OFFER] success', updatedBooking);
+  return { data: updatedBooking, error: null };
+};
+
+/**
+ * Send offer with driver assignment - UPDATED TO USE ATOMIC FUNCTION
  * Atualiza booking e registra no histórico em uma operação atômica
  */
 export const sendOffer = async (
@@ -115,39 +183,20 @@ export const sendOffer = async (
   }
 
   try {
-    // Atualizar booking com oferta - usar maybeSingle() para evitar erro de múltiplas linhas
-    const { data: updatedBooking, error: updateError } = await supabase
-      .from('bookings')
-      .update({
-        driver_id: driverId,
-        final_price: price,
-        status: 'payment_pending',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', bookingId)
-      .select(`
-        *,
-        passengers (
-          id, full_name, profile_photo_url, email, phone
-        ),
-        drivers (
-          id, full_name, profile_photo_url, car_make, car_model, car_color, license_plate, phone
-        )
-      `)
-      .maybeSingle();
+    // Usar função atômica com validação
+    const result = await sendOfferAtomic({
+      bookingId,
+      driverId,
+      price
+    });
 
-    if (updateError) {
-      console.error('[SEND_OFFER] Update error:', updateError);
-      throw new Error(updateError.message || 'Failed to update booking');
+    if (result.error) {
+      console.log('[SEND_OFFER] result', { data: null, error: result.error });
+      throw new Error(result.error.message || 'Failed to send offer');
     }
 
-    if (!updatedBooking) {
-      console.error('[SEND_OFFER] No booking found with id:', bookingId);
-      throw new Error('Booking not found');
-    }
-
-    console.log('[SEND_OFFER] result', { data: updatedBooking, error: null });
-    return updatedBooking;
+    console.log('[SEND_OFFER] result', { data: result.data, error: null });
+    return result.data;
 
   } catch (error) {
     console.error('[SEND_OFFER] Transaction failed:', error);
