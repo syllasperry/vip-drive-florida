@@ -183,13 +183,15 @@ const BookingForm = () => {
         passenger_preferences: JSON.stringify(bookingData.passenger_preferences, null, 2)
       });
 
-      // Insert booking into database (driver_id remains null initially)
-      console.log('💾 Inserting booking into database (driver_id omitted)...');
-      const { data: booking, error: bookingError } = await supabase
-        .from('bookings')
-        .insert(bookingData)
-        .select()
-        .single();
+      // Garantia extra: remove driver_id caso tenha vindo de bookingData
+const { driver_id: _ignore, ...cleanBooking } = bookingData as any;
+
+console.log('🚀 Inserting booking into database (driver_id omitted)...');
+const { data: booking, error: bookingError } = await supabase
+  .from('bookings')
+  .insert(cleanBooking) // usa sem driver_id
+  .select()
+  .single();
 
       if (bookingError) {
         console.error('❌ Database insertion error:', bookingError);
