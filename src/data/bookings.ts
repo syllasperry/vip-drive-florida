@@ -37,7 +37,7 @@ export const getDispatcherBookings = async () => {
     .from('bookings')
     .select(`
       *,
-      passengers (
+      passengers!inner (
         id, full_name, profile_photo_url, email, phone
       ),
       drivers (
@@ -50,6 +50,10 @@ export const getDispatcherBookings = async () => {
     console.error('Error fetching dispatcher bookings:', error); 
     return []; 
   }
+  
+  console.log('📊 Dispatcher bookings with passenger data:', data?.length || 0);
+  console.log('📋 Sample booking data:', data?.[0]);
+  
   return data || [];
 };
 
