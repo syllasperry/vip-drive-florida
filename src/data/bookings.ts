@@ -115,7 +115,7 @@ export const sendOffer = async (
   }
 
   try {
-    // Atualizar booking com oferta
+    // Atualizar booking com oferta - usar maybeSingle() para evitar erro de múltiplas linhas
     const { data: updatedBooking, error: updateError } = await supabase
       .from('bookings')
       .update({
@@ -134,11 +134,16 @@ export const sendOffer = async (
           id, full_name, profile_photo_url, car_make, car_model, car_color, license_plate, phone
         )
       `)
-      .single();
+      .maybeSingle();
 
     if (updateError) {
       console.error('[SEND_OFFER] Update error:', updateError);
       throw new Error(updateError.message || 'Failed to update booking');
+    }
+
+    if (!updatedBooking) {
+      console.error('[SEND_OFFER] No booking found with id:', bookingId);
+      throw new Error('Booking not found');
     }
 
     console.log('[SEND_OFFER] result', { data: updatedBooking, error: null });
