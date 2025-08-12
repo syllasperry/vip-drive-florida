@@ -1,151 +1,94 @@
-// src/pages/dispatcher/Dashboard.tsx
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { getAllBookings, listenForBookingChanges } from "../../data/bookings";
 import { useToast } from "@/hooks/use-toast";
-
-import { DispatcherBookingList } from "@/components/dispatcher/DispatcherBookingList";
-import { DriverManagement } from "@/components/dispatcher/DriverManagement";
-import { FinancialReports } from "@/components/dispatcher/FinancialReports";
-import { DispatcherMessaging } from "@/components/dispatcher/DispatcherMessaging";
-import { DispatcherSettings } from "@/components/dispatcher/DispatcherSettings";
-import { BookingManagementModal } from "@/components/dispatcher/BookingManagementModal";
-import { PassengerPreferencesCard } from "@/components/passenger/PassengerPreferencesCard";
-import { BottomNavigation } from "@/components/dashboard/BottomNavigation";
-
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, Clock, Users, Car, Phone, Mail } from "lucide-react";
-
-// helpers que criamos em src/data/bookings.ts
-import { getAllBookings, listenForBookingChanges } from "../../data/bookings";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Clock, Users, DollarSign, MessageCircle, Phone, Car, LogOut } from 'lucide-react';
+import { DispatcherBookingList } from "@/components/dispatcher/DispatcherBookingList";
+import { DispatcherMessaging } from "@/components/dispatcher/DispatcherMessaging";
+import { DriverManagement } from "@/components/dispatcher/DriverManagement";
+import { DispatcherSettings } from "@/components/dispatcher/DispatcherSettings";
+import { BottomNavigation } from "@/components/dashboard/BottomNavigation";
+import { BookingManagementModal } from "@/components/dispatcher/BookingManagementModal";
+import { format } from 'date-fns';
 
 const DispatcherDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  const [dispatcherInfo, setDispatcherInfo] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<"bookings" | "drivers" | "payments" | "messages" | "settings">("bookings");
   const [bookings, setBookings] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"bookings" | "drivers" | "messages" | "settings" | "payments">("bookings");
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
-  const [showManagementModal, setShowManagementModal] = useState<boolean>(false);
+  const [showManagementModal, setShowManagementModal] = useState(false);
 
-  // 1) Autenticação/roles
   useEffect(() => {
     checkAuth();
-  }, []);
+    loadInitialData();
 
-  // 2) Carga inicial + realtime (via helpers)
-  useEffect(() => {
-    let unsubscribe: (() => void) | null = null;
-
-    (async () => {
-      await loadBookings();
-      unsubscribe = listenForBookingChanges((payload: any) => {
-        const { eventType, new: n, old: o } = payload;
-        setBookings((prev) => {
-          if (eventType === "INSERT" && n) return [n, ...prev];
-          if (eventType === "UPDATE" && n) return prev.map((b) => (b.id === n.id ? n : b));
-          if (eventType === "DELETE" && o) return prev.filter((b) => b.id !== o.id);
-          return prev;
-        });
+    // Setup realtime subscription with proper cleanup
+    const cleanup = listenForBookingChanges((payload: any) => {
+      const { eventType, new: n, old: o } = payload;
+      setBookings((prev) => {
+        if (eventType === "INSERT" && n) return [n, ...prev];
+        if (eventType === "UPDATE" && n) return prev.map(b => b.id === n.id ? n : b);
+        if (eventType === "DELETE" && o) return prev.filter(b => b.id !== o.id);
+        return prev;
       });
-    })();
+    });
 
     return () => {
-      if (unsubscribe) unsubscribe();
+      if (cleanup && typeof cleanup === 'function') {
+        cleanup();
+      }
     };
   }, []);
 
-  // ---------- Auth / Roles ----------
   const checkAuth = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-
+      
       if (!user) {
-        navigate("/passenger/login");
+        navigate('/passenger/login');
         return;
       }
 
-      // atalho: seu email principal tem acesso
-      if (user.email === "syllasperry@gmail.com") {
-        await loadDispatcherInfo(user.id);
-        await loadDrivers();
+      if (user.email !== 'syllasperry@gmail.com') {
+        navigate('/passenger/dashboard');
         return;
       }
-
-      // checa user_roles para "dispatcher"
-      const { data: userRole, error: roleError } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "dispatcher")
-        .maybeSingle();
-
-      if (roleError || !userRole) {
-        navigate("/passenger/dashboard");
-        return;
-      }
-
-      await loadDispatcherInfo(user.id);
-      await loadDrivers();
     } catch (error) {
-      console.error("Auth error:", error);
-      navigate("/passenger/login");
+      console.error('Auth error:', error);
+      navigate('/passenger/login');
     }
   };
 
-  const loadDispatcherInfo = async (userId: string) => {
+  const handleLogout = async () => {
     try {
-      const { data: dispatcherData } = await supabase
-        .from("dispatchers")
-        .select("*")
-        .eq("id", userId)
-        .maybeSingle();
-
-      if (dispatcherData) {
-        setDispatcherInfo(dispatcherData);
-        return;
-      }
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setDispatcherInfo({
-          id: user.id,
-          full_name: user.user_metadata?.full_name || "Dispatcher",
-          email: user.email,
-          phone: user.user_metadata?.phone,
-          profile_photo_url: user.user_metadata?.avatar_url,
-        });
-      }
+      await supabase.auth.signOut();
+      navigate('/passenger/login');
     } catch (error) {
-      console.error("Error loading dispatcher info:", error);
+      console.error('Logout error:', error);
       toast({
         title: "Error",
-        description: "Failed to load your profile information",
+        description: "Failed to logout",
         variant: "destructive",
       });
     }
   };
 
-  // ---------- Dados ----------
-  const loadBookings = async () => {
+  const loadInitialData = async () => {
     try {
-      setLoading(true);
-
-      // usamos o helper, que já faz LEFT JOIN e ordenação
-      const rows = await getAllBookings();
-      setBookings(rows || []);
+      await Promise.all([loadBookings(), loadDrivers()]);
     } catch (error) {
-      console.error("Error loading bookings:", error);
+      console.error('Error loading initial data:', error);
       toast({
         title: "Error",
-        description: "Failed to load bookings",
+        description: "Failed to load dashboard data",
         variant: "destructive",
       });
     } finally {
@@ -153,70 +96,83 @@ const DispatcherDashboard = () => {
     }
   };
 
+  const loadBookings = async () => {
+    try {
+      console.log('🔄 Loading all bookings for dispatcher...');
+      
+      const { data, error } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          drivers (
+            full_name,
+            phone,
+            profile_photo_url,
+            car_make,
+            car_model,
+            car_color,
+            license_plate
+          ),
+          passengers (
+            full_name,
+            phone,
+            profile_photo_url
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Error loading bookings:', error);
+        throw error;
+      }
+
+      console.log('📊 Dispatcher bookings loaded:', data?.length || 0);
+      setBookings(data || []);
+    } catch (error) {
+      console.error('❌ Error in loadBookings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load bookings",
+        variant: "destructive",
+      });
+    }
+  };
+
   const loadDrivers = async () => {
     try {
       const { data, error } = await supabase
-        .from("drivers")
-        .select("*")
-        .eq("status", "active");
+        .from('drivers')
+        .select('*')
+        .order('full_name');
 
       if (error) throw error;
       setDrivers(data || []);
     } catch (error) {
-      console.error("Error loading drivers:", error);
+      console.error('Error loading drivers:', error);
     }
   };
 
-  // ---------- UI helpers ----------
-  const handleSignOut = async () => {
-    try {
-      // limpa localStorage e faz signOut global
-      Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith("supabase.auth.") || key.includes("sb-")) {
-          localStorage.removeItem(key);
-        }
-      });
-      await supabase.auth.signOut({ scope: "global" });
-      navigate("/");
-      toast({ title: "Logged out successfully" });
-    } catch (error) {
-      console.error("Error signing out:", error);
-      navigate("/");
-    }
-  };
-
-  const getStatusColor = (booking: any) => {
-    const status = booking.status || booking.ride_status;
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case "pending": return "bg-orange-100 text-orange-800 border-orange-200";
-      case "offer_sent": return "bg-blue-100 text-blue-800 border-blue-200";
-      case "accepted": return "bg-green-100 text-green-800 border-green-200";
-      case "completed": return "bg-purple-100 text-purple-800 border-purple-200";
-      case "cancelled": return "bg-red-100 text-red-800 border-red-200";
-      default: return "bg-gray-100 text-gray-800 border-gray-200";
-    }
-  };
-
-  const getStatusLabel = (booking: any) => {
-    const status = booking.status || booking.ride_status;
-    switch (status) {
-      case "pending": return "Booking Requested";
-      case "offer_sent": return "Offer Sent";
-      case "accepted": return "Accepted";
-      case "completed": return "Completed";
-      case "cancelled": return "Cancelled";
-      default: return status || "Pending";
+      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'assigned': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'offer_sent': return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'offer_accepted': return 'bg-green-100 text-green-800 border-green-200';
+      case 'completed': return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
   const getCurrentPrice = (booking: any): number | null => {
     if (booking.final_price && booking.final_price > 0) return booking.final_price;
     return null;
-    };
+  };
 
   const getPriceDisplay = (booking: any): string => {
     const currentPrice = getCurrentPrice(booking);
-    return currentPrice !== null ? `$${currentPrice}` : "Awaiting price";
+    if (currentPrice !== null) return `$${currentPrice}`;
+    return booking.estimated_price ? `~$${booking.estimated_price}` : "Price pending";
   };
 
   const handleManageBooking = (booking: any) => {
@@ -224,123 +180,132 @@ const DispatcherDashboard = () => {
     setShowManagementModal(true);
   };
 
-  // ---------- Render ----------
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab as "bookings" | "drivers" | "messages" | "settings" | "payments");
+  };
+
   const renderBookingCard = (booking: any) => (
     <Card key={booking.id} className="mb-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
       <CardContent className="p-4">
         {/* Header */}
-        <div className="flex justify-between items-start mb-3">
-          <div className="flex items-center space-x-3">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium text-gray-900">#{booking.id.slice(-8).toUpperCase()}</span>
+            <Badge className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(booking.status)}`}>
+              {booking.status}
+            </Badge>
+          </div>
+          <Clock className="w-4 h-4 text-gray-400" />
+        </div>
+
+        {/* Passenger Info */}
+        {booking.passengers && (
+          <div className="flex items-center space-x-3 mb-3">
             <Avatar className="h-10 w-10">
-              <AvatarImage src={booking.passengers?.profile_photo_url || undefined} />
+              <AvatarImage src={booking.passengers.profile_photo_url} />
               <AvatarFallback className="bg-gray-200 text-gray-600">
-                {booking.passengers?.full_name?.charAt(0) || "P"}
+                {booking.passengers.full_name?.charAt(0) || 'P'}
               </AvatarFallback>
             </Avatar>
             <div>
-              <div className="font-semibold text-sm">Booking ID #{booking.id.slice(-8).toUpperCase()}</div>
-              <div className="text-sm text-gray-600">{booking.passengers?.full_name}</div>
-              <div className="flex items-center space-x-2 text-xs text-gray-500">
-                {booking.passengers?.phone && (
-                  <a href={`tel:${booking.passengers.phone}`} className="flex items-center hover:text-blue-600">
-                    <Phone className="h-3 w-3 mr-1" />
-                    {booking.passengers.phone}
-                  </a>
-                )}
-                {booking.passengers?.email && (
-                  <a href={`mailto:${booking.passengers.email}`} className="flex items-center hover:text-blue-600">
-                    <Mail className="h-3 w-3 mr-1" />
-                    {booking.passengers.email}
-                  </a>
-                )}
-              </div>
+              <p className="font-medium text-gray-900">{booking.passengers.full_name || 'Passenger'}</p>
+              <p className="text-sm text-gray-500">{booking.passengers.phone}</p>
             </div>
-          </div>
-          <Badge className={`text-xs px-2 py-1 border ${getStatusColor(booking)}`}>
-            {getStatusLabel(booking)}
-          </Badge>
-        </div>
-
-        {/* Trip details */}
-        <div className="space-y-2 mb-4">
-          <div className="flex items-start space-x-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0" />
-            <div className="text-sm">
-              <div className="font-medium text-gray-900">Pickup</div>
-              <div className="text-gray-600">{booking.pickup_location}</div>
-            </div>
-          </div>
-          <div className="flex items-start space-x-2">
-            <div className="w-2 h-2 bg-red-500 rounded-full mt-2 flex-shrink-0" />
-            <div className="text-sm">
-              <div className="font-medium text-gray-900">Drop-off</div>
-              <div className="text-gray-600">{booking.dropoff_location}</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Row infos */}
-        <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
-          <div className="flex items-center space-x-1">
-            <Clock className="h-3 w-3" />
-            <span>
-              {new Date(booking.pickup_time).toLocaleDateString()} -{" "}
-              {new Date(booking.pickup_time).toLocaleTimeString()}
-            </span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <Users className="h-3 w-3" />
-            <span>{booking.passenger_count || 1} passengers</span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <Car className="h-3 w-3" />
-            <span>{booking.vehicle_type || "Tesla Model Y"}</span>
-          </div>
-        </div>
-
-        {/* Preferences */}
-        {booking.passengers && (
-          <div className="mb-3">
-            <PassengerPreferencesCard
-              preferences={{
-                temperature: booking.passengers.preferred_temperature,
-                music: booking.passengers.music_preference,
-                interaction: booking.passengers.interaction_preference,
-                trip_purpose: booking.passengers.trip_purpose,
-                notes: booking.passengers.additional_notes,
-              }}
-              className="justify-start"
-            />
           </div>
         )}
 
-        {/* Price + actions */}
+        {/* Locations */}
+        <div className="space-y-2 mb-4">
+          <div className="flex items-start space-x-3">
+            <div className="w-3 h-3 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+            <div>
+              <p className="text-sm text-gray-500">Pickup</p>
+              <p className="text-sm font-medium text-gray-900">{booking.pickup_location}</p>
+            </div>
+          </div>
+          <div className="flex items-start space-x-3">
+            <div className="w-3 h-3 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
+            <div>
+              <p className="text-sm text-gray-500">Drop-off</p>
+              <p className="text-sm font-medium text-gray-900">{booking.dropoff_location}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Trip Details */}
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="flex items-center space-x-2">
+            <Clock className="w-4 h-4 text-gray-400" />
+            <span className="text-xs text-gray-600">
+              {format(new Date(booking.pickup_time), 'MMM dd, yyyy - HH:mm')}
+            </span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Users className="w-4 h-4 text-gray-400" />
+            <span className="text-xs text-gray-600">
+              {booking.passenger_count} passengers
+            </span>
+          </div>
+          {booking.vehicle_type && (
+            <div className="flex items-center space-x-2 col-span-2">
+              <Car className="w-4 h-4 text-gray-400" />
+              <span className="text-xs text-gray-600">{booking.vehicle_type}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Price */}
         <div className="flex items-center justify-between mb-4">
-          <span className="text-2xl font-bold text-red-600">{getPriceDisplay(booking)}</span>
-          {booking.status === "offer_sent" && (
-            <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200 text-blue-800">
-              Offer Sent
+          <span className="text-lg font-bold text-gray-900">{getPriceDisplay(booking)}</span>
+          {!booking.driver_id && (
+            <Badge variant="outline" className="text-xs bg-orange-50 border-orange-200 text-orange-800">
+              Needs Driver
             </Badge>
           )}
         </div>
 
+        {/* Driver Info */}
         {booking.drivers && (
-          <div className="flex items-center space-x-3 mb-3 p-3 bg-gray-50 rounded-lg">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={booking.drivers.profile_photo_url || undefined} />
-              <AvatarFallback>{booking.drivers.full_name?.charAt(0) || "D"}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <div className="font-medium text-sm">{booking.drivers.full_name}</div>
-              <div className="text-xs text-gray-500">
-                {booking.drivers.car_make} {booking.drivers.car_model} • {booking.drivers.license_plate}
+          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+            <p className="text-sm font-medium text-gray-900 mb-2">Assigned Driver</p>
+            <div className="flex items-center space-x-3">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={booking.drivers.profile_photo_url} />
+                <AvatarFallback className="bg-gray-200 text-gray-600">
+                  {booking.drivers.full_name?.charAt(0) || 'D'}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-900">{booking.drivers.full_name}</p>
+                <p className="text-xs text-gray-500">{booking.drivers.phone}</p>
               </div>
             </div>
           </div>
         )}
 
+        {/* Actions */}
         <div className="flex space-x-2">
-          <Button size="sm" variant="outline" className="flex-1" onClick={() => handleManageBooking(booking)}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
+          >
+            <MessageCircle className="w-4 h-4 mr-2" />
+            Message
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
+          >
+            <Phone className="w-4 h-4 mr-2" />
+            Call
+          </Button>
+          <Button
+            size="sm"
+            className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+            onClick={() => handleManageBooking(booking)}
+          >
             Manage
           </Button>
         </div>
@@ -348,75 +313,91 @@ const DispatcherDashboard = () => {
     </Card>
   );
 
-  const renderContent = () => {
+  const renderTabContent = () => {
     switch (activeTab) {
       case "drivers":
-        return <DriverManagement />;
-      case "payments":
-        return <FinancialReports />;
+        return <DriverManagement drivers={drivers} onDriverUpdate={loadDrivers} />;
       case "messages":
-        return <DispatcherMessaging />;
+        return <DispatcherMessaging bookings={bookings} />;
       case "settings":
         return <DispatcherSettings />;
-      case "bookings":
       default:
         return (
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">All Bookings</h2>
-            <div className="text-sm text-gray-600 mb-4">Manage ride requests and assignments</div>
-
-            {loading ? (
-              <div className="text-center py-8 text-gray-500">Loading bookings...</div>
-            ) : bookings.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">No bookings found</div>
+          <div className="space-y-4">
+            {bookings.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Car className="w-8 h-8 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings yet</h3>
+                <p className="text-gray-500">Bookings will appear here when passengers make requests.</p>
+              </div>
             ) : (
-              <div className="space-y-4">{bookings.map(renderBookingCard)}</div>
+              bookings.map(renderBookingCard)
             )}
           </div>
         );
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading dispatcher dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="max-w-md mx-auto px-4 py-3">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div className="max-w-md mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-semibold text-gray-900">VIP Dispatcher Dashboard</h1>
+            <h1 className="text-xl font-semibold text-gray-900">
+              VIP Dispatcher Dashboard
+            </h1>
             <Button
-              onClick={handleSignOut}
-              variant="destructive"
-              size="sm"
-              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2"
+              onClick={handleLogout}
+              className="bg-red-500 hover:bg-red-600 text-white font-bold px-4 py-2 rounded-lg flex items-center space-x-2"
             >
-              <LogOut className="h-4 w-4 mr-1" />
-              Logout
+              <LogOut className="w-4 h-4" />
+              <span>Logout</span>
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Main */}
-      <div className="max-w-md mx-auto px-4 py-4 pb-20">{renderContent()}</div>
-
-      {/* Modal */}
-      <BookingManagementModal
-        isOpen={showManagementModal}
-        onClose={() => setShowManagementModal(false)}
-        booking={selectedBooking}
-        drivers={drivers}
-        onUpdate={loadBookings}
-      />
+      {/* Main Content */}
+      <div className="max-w-md mx-auto px-6 py-6 pb-24">
+        {renderTabContent()}
+      </div>
 
       {/* Bottom Nav */}
       <BottomNavigation
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
         userType="dispatcher"
         pendingActionsCount={bookings.filter((b) => !b.driver_id).length}
         hasActiveRide={false}
       />
+
+      {/* Management Modal */}
+      {showManagementModal && selectedBooking && (
+        <BookingManagementModal
+          booking={selectedBooking}
+          drivers={drivers}
+          isOpen={showManagementModal}
+          onClose={() => {
+            setShowManagementModal(false);
+            setSelectedBooking(null);
+          }}
+          onUpdate={loadBookings}
+        />
+      )}
     </div>
   );
 };

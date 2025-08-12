@@ -1,3 +1,4 @@
+
 import { supabase } from './supabaseClient';
 
 /**
@@ -33,7 +34,7 @@ export const getAllBookings = async () => {
  * Para INSERT/UPDATE, buscamos o registro completo (com join de passengers) antes de disparar o callback.
  */
 export const listenForBookingChanges = (callback: (payload: any) => void) => {
-  return supabase
+  const channel = supabase
     .channel('bookings-changes')
     .on(
       'postgres_changes',
@@ -85,4 +86,9 @@ export const listenForBookingChanges = (callback: (payload: any) => void) => {
       }
     )
     .subscribe();
+
+  // Return a cleanup function that properly unsubscribes
+  return () => {
+    supabase.removeChannel(channel);
+  };
 };
