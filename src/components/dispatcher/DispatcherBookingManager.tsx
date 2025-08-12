@@ -8,6 +8,7 @@ import { Clock, MapPin, Users, Calendar, Phone, Mail, Car } from "lucide-react";
 import { BookingManagementModal } from "./BookingManagementModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { sendOffer } from "@/data/bookings";
 
 interface Driver {
   id: string;
@@ -97,6 +98,39 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
     }
   };
 
+  const handleSendOffer = async (bookingId: string, driverId: string, price: number) => {
+    try {
+      console.log('[OFFER] Dispatcher sending offer via manager:', {
+        booking_id: bookingId,
+        driver_id: driverId,
+        price: price
+      });
+
+      // Use the new sendOffer function
+      const updatedBooking = await sendOffer(bookingId, driverId, price);
+
+      console.log('[OFFER] Offer sent successfully via manager:', updatedBooking);
+
+      toast({
+        title: "Offer Sent Successfully",
+        description: `Driver assigned and price offer of $${price} sent to passenger.`,
+      });
+
+      // Trigger update and close modal
+      onUpdate();
+      setIsModalOpen(false);
+      setSelectedBooking(null);
+
+    } catch (error) {
+      console.error('[OFFER] Error in manager offer sending:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send offer. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const openManageModal = (booking: any) => {
     console.log('📝 Opening booking management modal for:', booking.id);
     setSelectedBooking(booking);
@@ -112,13 +146,22 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
   };
 
   const getStatusBadge = (booking: any) => {
-    if (booking.driver_id && booking.final_price) {
+    if (booking.status === 'payment_pending' || booking.payment_confirmation_status === 'pending') {
+      return <Badge variant="default" className="bg-blue-100 text-blue-800">Offer Sent</Badge>;
+    } else if (booking.driver_id && booking.final_price) {
       return <Badge variant="default" className="bg-green-100 text-green-800">Offer Sent</Badge>;
     } else if (booking.driver_id) {
       return <Badge variant="secondary">Driver Assigned</Badge>;
     } else {
       return <Badge variant="outline">Pending Assignment</Badge>;
     }
+  };
+
+  const getPriceDisplay = (booking: any) => {
+    if (booking.final_price && booking.final_price > 0) {
+      return `Price: $${booking.final_price}`;
+    }
+    return "Price pending";
   };
 
   return (
@@ -272,7 +315,7 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
                       Edit Booking
                     </Button>
                     <Badge variant="secondary" className="px-3 py-1">
-                      Price: ${booking.final_price}
+                      {getPriceDisplay(booking)}
                     </Badge>
                   </div>
                 )}
@@ -288,6 +331,7 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
         booking={selectedBooking}
         drivers={drivers}
         onUpdate={onUpdate}
+        onSendOffer={handleSendOffer}
       />
     </div>
   );

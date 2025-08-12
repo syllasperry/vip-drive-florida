@@ -99,6 +99,81 @@ export const createBooking = async (bookingData: any) => {
 };
 
 /**
+ * Send offer with driver assignment - NOVO FLUXO TRANSACIONAL
+ * Atualiza booking e registra no histórico em uma operação atômica
+ */
+export const sendOffer = async (
+  bookingId: string, 
+  driverId: string, 
+  price: number, 
+  dispatcherId?: string
+) => {
+  console.log('[OFFER] sending', { bookingId, driverId, price });
+
+  // Validação básica
+  if (!bookingId || !driverId || !Number.isFinite(price) || price <= 0) {
+    throw new Error('Invalid offer parameters');
+  }
+
+  try {
+    // 1. Atualizar booking
+    const { data: updatedBooking, error: updateError } = await supabase
+      .from('bookings')
+      .update({
+        driver_id: driverId,
+        final_price: price,
+        status: 'payment_pending',
+        payment_confirmation_status: 'pending',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', bookingId)
+      .select(`
+        *,
+        passengers (
+          id, full_name, profile_photo_url, email, phone
+        ),
+        drivers (
+          id, full_name, profile_photo_url, car_make, car_model, car_color, license_plate, phone
+        )
+      `)
+      .single();
+
+    if (updateError) {
+      console.error('[OFFER] Error updating booking:', updateError);
+      throw updateError;
+    }
+
+    // 2. Inserir histórico
+    const { error: historyError } = await supabase
+      .from('booking_status_history')
+      .insert({
+        booking_id: bookingId,
+        status: 'payment_pending',
+        metadata: {
+          message: `Offer $${price} sent to passenger`,
+          previous_status: 'pending',
+          final_price: price,
+          driver_id: driverId
+        },
+        updated_by: dispatcherId || null,
+        role: 'dispatcher'
+      });
+
+    if (historyError) {
+      console.error('[OFFER] Error creating history record:', historyError);
+      // Não falhar por erro no histórico, mas logar
+    }
+
+    console.log('[OFFER] ok', updatedBooking);
+    return updatedBooking;
+
+  } catch (error) {
+    console.error('[OFFER] Transaction failed:', error);
+    throw error;
+  }
+};
+
+/**
  * Escuta INSERT/UPDATE/DELETE em bookings.
  * Para INSERT/UPDATE, buscamos o registro completo (com join de passengers) antes de disparar o callback.
  * IMPORTANTE: ZERO auto-assign aqui - apenas notificação de mudanças

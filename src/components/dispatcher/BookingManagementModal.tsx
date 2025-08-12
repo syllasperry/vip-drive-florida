@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 
 interface Driver {
   id: string;
@@ -26,6 +25,7 @@ interface BookingManagementModalProps {
   booking: any;
   drivers: Driver[];
   onUpdate: () => void;
+  onSendOffer: (bookingId: string, driverId: string, price: number) => Promise<void>;
 }
 
 export const BookingManagementModal = ({ 
@@ -33,7 +33,8 @@ export const BookingManagementModal = ({
   onClose, 
   booking, 
   drivers, 
-  onUpdate 
+  onUpdate,
+  onSendOffer
 }: BookingManagementModalProps) => {
   const [selectedDriver, setSelectedDriver] = useState("");
   const [offerPrice, setOfferPrice] = useState("");
@@ -62,45 +63,12 @@ export const BookingManagementModal = ({
 
     setIsSubmitting(true);
     try {
-      console.log('💰 Dispatcher sending offer via modal:', {
-        booking_id: booking.id,
-        driver_id: selectedDriver,
-        offer_price: numericPrice
-      });
-
-      // IMPORTANT: Only include driver_id when sending offer (after acceptance stage)
-      // This respects the driver_id_only_after_accept constraint
-      const { error } = await supabase
-        .from('bookings')
-        .update({
-          driver_id: selectedDriver,
-          final_price: numericPrice,
-          estimated_price: numericPrice,
-          status: 'offer_sent',
-          ride_status: 'offer_sent',
-          payment_confirmation_status: 'price_awaiting_acceptance',
-          status_driver: 'offer_sent',
-          status_passenger: 'review_offer',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', booking.id);
-
-      if (error) {
-        console.error('❌ Error sending offer via modal:', error);
-        throw error;
-      }
-
-      console.log('✅ Offer sent successfully via modal');
-
-      toast({
-        title: "Offer Sent Successfully",
-        description: `Driver assigned and price offer of $${offerPrice} sent to passenger.`,
-      });
-
-      onUpdate();
-      onClose();
+      await onSendOffer(booking.id, selectedDriver, numericPrice);
+      
+      // Reset form and close modal
       setSelectedDriver("");
       setOfferPrice("");
+      onClose();
     } catch (error) {
       console.error('❌ Error in modal offer sending:', error);
       toast({
