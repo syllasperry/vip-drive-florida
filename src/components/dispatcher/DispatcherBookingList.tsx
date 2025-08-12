@@ -1,16 +1,13 @@
-
-import React, { useState, useEffect } from 'react';
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BookingManagementModal } from './BookingManagementModal';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Clock, MapPin, Users, Calendar, Phone, Mail, Car } from "lucide-react";
+import { BookingManagementModal } from "./BookingManagementModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Booking } from "@/types/booking";
-
-interface DispatcherBookingListProps {
-  onManageBooking: () => void;
-}
+import { sendOffer } from "@/data/bookings";
 
 interface Driver {
   id: string;
@@ -23,221 +20,312 @@ interface Driver {
   license_plate: string;
 }
 
-export const DispatcherBookingList: React.FC<DispatcherBookingListProps> = ({
-  onManageBooking
-}) => {
-  const [bookings, setBookings] = useState<Booking[]>([]);
+interface DispatcherBookingListProps {
+  bookings: any[];
+  onUpdate: () => void;
+}
+
+export const DispatcherBookingList = ({ bookings, onUpdate }: DispatcherBookingListProps) => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const [showModal, setShowModal] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    loadBookings();
-    loadDrivers();
-    setupRealtimeSubscription();
-  }, []);
-
-  const loadBookings = async () => {
-    try {
-      setLoading(true);
-      console.log('🔒 Loading bookings with secure access control');
-      
-      const { data, error } = await supabase
-        .from('bookings')
-        .select(`
-          *,
-          passengers!inner(
-            id,
-            full_name,
-            phone,
-            profile_photo_url
-          ),
-          drivers(
-            full_name,
-            phone,
-            profile_photo_url,
-            car_make,
-            car_model,
-            car_color,
-            license_plate
-          )
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('❌ Error loading bookings:', error);
-        throw error;
-      }
-
-      // Transform the data to match Booking interface
-      const transformedBookings: Booking[] = (data || []).map(booking => ({
-        ...booking,
-        passengers: booking.passengers ? {
-          id: booking.passengers.id,
-          full_name: booking.passengers.full_name,
-          phone: booking.passengers.phone,
-          profile_photo_url: booking.passengers.profile_photo_url
-        } : undefined
-      }));
-
-      setBookings(transformedBookings);
-      console.log('✅ Loaded bookings:', transformedBookings.length);
-    } catch (error) {
-      console.error('❌ Error in loadBookings:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load bookings",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadDrivers = async () => {
-    try {
+    const loadDrivers = async () => {
+      console.log('[DISPATCHER LOAD] fetching drivers...');
       const { data, error } = await supabase
         .from('drivers')
         .select('*')
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .order('full_name');
+      
+      if (error) {
+        console.error('Error loading drivers:', error);
+        return;
+      }
+      
+      console.log('[DISPATCHER LOAD] drivers loaded:', data?.length || 0);
+      setDrivers(data || []);
+    };
+
+    loadDrivers();
+  }, []);
+
+  const handleQuickAssign = async (booking: any, driverId: string) => {
+    try {
+      console.log('🚀 Quick assigning driver to booking:', { booking_id: booking.id, driver_id: driverId });
+      
+      // GUARD: Verificar payload antes de enviar
+      const updatePayload = {
+        driver_id: driverId,
+        status: 'assigned',
+        ride_status: 'assigned_by_dispatcher',
+        status_driver: 'assigned',
+        status_passenger: 'driver_assigned',
+        updated_at: new Date().toISOString()
+      };
+      
+      console.log('[GUARD] payload to bookings update:', updatePayload);
+      
+      // IMPORTANT: Only include driver_id when manually assigning (respecting constraint)
+      const { error } = await supabase
+        .from('bookings')
+        .update(updatePayload)
+        .eq('id', booking.id);
 
       if (error) {
-        console.error('❌ Error loading drivers:', error);
+        console.error('❌ Error in quick assign:', error);
         throw error;
       }
 
-      setDrivers(data || []);
-      console.log('✅ Loaded drivers:', data?.length || 0);
+      console.log('✅ Driver assigned successfully via quick assign');
+      
+      toast({
+        title: "Driver Assigned",
+        description: "Driver has been successfully assigned to this booking.",
+      });
+
+      onUpdate();
     } catch (error) {
-      console.error('❌ Error in loadDrivers:', error);
+      console.error('❌ Error assigning driver:', error);
       toast({
         title: "Error",
-        description: "Failed to load drivers",
+        description: "Failed to assign driver. Please try again.",
         variant: "destructive",
       });
     }
   };
 
-  const setupRealtimeSubscription = () => {
-    const channel = supabase
-      .channel('dispatcher-bookings')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'bookings'
-        },
-        () => {
-          console.log('🔄 Real-time booking update detected');
-          loadBookings();
-        }
-      )
-      .subscribe();
+  const handleSendOffer = async (bookingId: string, driverId: string, price: number) => {
+    try {
+      console.log('[SEND_OFFER] payload', { bookingId, driverId, finalPrice: price });
+      
+      const updatedBooking = await sendOffer(bookingId, driverId, price);
+      
+      console.log('[SEND_OFFER] result', { data: updatedBooking, error: null });
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  };
+      toast({
+        title: "Offer Sent Successfully",
+        description: `Driver assigned and price offer of $${price} sent to passenger.`,
+      });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'offer_sent': return 'bg-blue-100 text-blue-800';
-      case 'accepted': return 'bg-green-100 text-green-800';
-      case 'completed': return 'bg-purple-100 text-purple-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      onUpdate();
+      setIsModalOpen(false);
+      setSelectedBooking(null);
+
+    } catch (error) {
+      console.log('[SEND_OFFER] result', { data: null, error });
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to send offer. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
-  const handleManageBooking = (booking: Booking) => {
+  const openManageModal = (booking: any) => {
+    console.log('📝 Opening booking management modal for:', booking.id);
     setSelectedBooking(booking);
-    setShowModal(true);
+    setIsModalOpen(true);
   };
 
-  const handleModalClose = () => {
-    setShowModal(false);
-    setSelectedBooking(null);
-    loadBookings();
-    onManageBooking();
+  const formatDateTime = (dateTimeString: string) => {
+    const date = new Date(dateTimeString);
+    return {
+      date: date.toLocaleDateString(),
+      time: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
   };
 
-  if (loading) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="text-center">Loading secure bookings...</div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const getStatusBadge = (booking: any) => {
+    if (booking.status === 'payment_pending' || booking.payment_confirmation_status === 'pending') {
+      return <Badge variant="default" className="bg-blue-100 text-blue-800">Offer Sent</Badge>;
+    } else if (booking.driver_id && booking.final_price) {
+      return <Badge variant="default" className="bg-green-100 text-green-800">Offer Sent</Badge>;
+    } else if (booking.driver_id) {
+      return <Badge variant="secondary">Driver Assigned</Badge>;
+    } else {
+      return <Badge variant="outline">Pending Assignment</Badge>;
+    }
+  };
+
+  const getPriceDisplay = (booking: any) => {
+    if (booking.final_price && booking.final_price > 0) {
+      return `Price: $${booking.final_price}`;
+    }
+    return "Price pending";
+  };
 
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <CardTitle>All Bookings ({bookings.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {bookings.length === 0 ? (
-            <div className="text-center text-gray-500 py-8">
-              No bookings found
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {bookings.map((booking) => (
-                <div key={booking.id} className="border rounded-lg p-4 space-y-3">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-medium">
-                        {booking.passengers?.full_name || 'Unknown Passenger'}
-                      </h4>
-                      <p className="text-sm text-gray-600">
-                        From: {booking.pickup_location}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        To: {booking.dropoff_location}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {new Date(booking.pickup_time).toLocaleString()}
-                      </p>
-                    </div>
-                    <Badge className={getStatusColor(booking.status)}>
-                      {booking.status}
-                    </Badge>
+    <div className="space-y-4">
+      {bookings.map((booking) => {
+        const { date, time } = formatDateTime(booking.pickup_time);
+        
+        return (
+          <Card key={booking.id} className="hover:shadow-md transition-shadow">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">
+                  Booking #{booking.id.slice(-8).toUpperCase()}
+                </CardTitle>
+                {getStatusBadge(booking)}
+              </div>
+              
+              {/* Passenger Information */}
+              {booking.passengers && (
+                <div className="flex items-center mt-2">
+                  <Avatar className="h-8 w-8 mr-2">
+                    <AvatarImage src={booking.passengers.profile_photo_url || '/default-avatar.png'} />
+                    <AvatarFallback>{booking.passengers.full_name?.[0] || 'P'}</AvatarFallback>
+                  </Avatar>
+                  <div className="text-sm font-medium text-gray-900">
+                    {booking.passengers.full_name}
                   </div>
-                  
-                  <div className="flex justify-between items-center">
-                    <div className="text-sm text-gray-600">
-                      Driver: {booking.drivers?.full_name || 'Not assigned'}
+                  {booking.passengers.phone && (
+                    <div className="ml-4 flex items-center text-sm text-gray-600">
+                      <Phone className="h-3 w-3 mr-1" />
+                      {booking.passengers.phone}
                     </div>
-                    <Button
-                      size="sm"
-                      onClick={() => handleManageBooking(booking)}
-                    >
-                      Manage
-                    </Button>
+                  )}
+                  {booking.passengers.email && (
+                    <div className="ml-4 flex items-center text-sm text-gray-600">
+                      <Mail className="h-3 w-3 mr-1" />
+                      {booking.passengers.email}
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardHeader>
+            
+            <CardContent className="space-y-4">
+              {/* Trip Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="flex items-start space-x-2">
+                    <MapPin className="h-4 w-4 text-green-600 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium">Pickup</p>
+                      <p className="text-sm text-gray-600">{booking.pickup_location}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <MapPin className="h-4 w-4 text-red-600 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium">Drop-off</p>
+                      <p className="text-sm text-gray-600">{booking.dropoff_location}</p>
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Calendar className="h-4 w-4 text-blue-600" />
+                    <div>
+                      <p className="text-sm font-medium">Date & Time</p>
+                      <p className="text-sm text-gray-600">{date} at {time}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Users className="h-4 w-4 text-purple-600" />
+                    <div>
+                      <p className="text-sm font-medium">Passengers</p>
+                      <p className="text-sm text-gray-600">{booking.passenger_count} passenger{booking.passenger_count !== 1 ? 's' : ''}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-      {/* Booking Management Modal */}
-      {showModal && selectedBooking && (
-        <BookingManagementModal
-          isOpen={showModal}
-          onClose={handleModalClose}
-          booking={selectedBooking}
-          drivers={drivers}
-          onUpdate={handleModalClose}
-        />
-      )}
-    </>
+              {/* Vehicle Type */}
+              {booking.vehicle_type && (
+                <div className="flex items-center space-x-2">
+                  <Car className="h-4 w-4 text-gray-600" />
+                  <span className="text-sm text-gray-600">Vehicle: {booking.vehicle_type}</span>
+                </div>
+              )}
+
+              {booking.drivers && (
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <p className="text-sm font-medium mb-2">Assigned Driver:</p>
+                  <div className="flex items-center space-x-2">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={booking.drivers.profile_photo_url} />
+                      <AvatarFallback>{booking.drivers.full_name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="text-sm font-medium">{booking.drivers.full_name}</p>
+                      <p className="text-xs text-gray-600">
+                        {booking.drivers.car_make} {booking.drivers.car_model} - {booking.drivers.license_plate}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                {!booking.driver_id ? (
+                  <>
+                    <Button
+                      onClick={() => openManageModal(booking)}
+                      variant="default"
+                      size="sm"
+                      className="flex-1"
+                    >
+                      Assign Driver & Set Price
+                    </Button>
+                    
+                    <div className="flex gap-1">
+                      {drivers.slice(0, 2).map((driver) => (
+                        <Button
+                          key={driver.id}
+                          onClick={() => handleQuickAssign(booking, driver.id)}
+                          variant="outline"
+                          size="sm"
+                          className="text-xs px-2"
+                        >
+                          Quick: {driver.full_name.split(' ')[0]}
+                        </Button>
+                      ))}
+                    </div>
+                  </>
+                ) : !booking.final_price ? (
+                  <Button
+                    onClick={() => openManageModal(booking)}
+                    variant="default"
+                    size="sm"
+                    className="flex-1"
+                  >
+                    Set Price & Send Offer
+                  </Button>
+                ) : (
+                  <div className="flex gap-2 w-full">
+                    <Button
+                      onClick={() => openManageModal(booking)}
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                    >
+                      Edit Booking
+                    </Button>
+                    <Badge variant="secondary" className="px-3 py-1">
+                      {getPriceDisplay(booking)}
+                    </Badge>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
+
+      <BookingManagementModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        booking={selectedBooking}
+        drivers={drivers}
+        onUpdate={onUpdate}
+        onSendOffer={handleSendOffer}
+      />
+    </div>
   );
 };

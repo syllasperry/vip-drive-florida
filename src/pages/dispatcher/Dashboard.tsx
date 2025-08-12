@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { getDispatcherBookings } from "../../data/bookings";
+import { getDispatcherBookings, sendOffer } from "../../data/bookings";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -143,6 +143,33 @@ const DispatcherDashboard = () => {
       setDrivers(data || []);
     } catch (error) {
       console.error('Error loading drivers:', error);
+    }
+  };
+
+  const handleSendOffer = async (bookingId: string, driverId: string, price: number) => {
+    try {
+      console.log('[SEND_OFFER] payload', { bookingId, driverId, finalPrice: price });
+      
+      const updatedBooking = await sendOffer(bookingId, driverId, price);
+      
+      console.log('[SEND_OFFER] result', { data: updatedBooking, error: null });
+
+      toast({
+        title: "Offer Sent Successfully",
+        description: `Driver assigned and price offer of $${price} sent to passenger.`,
+      });
+
+      await loadBookings();
+      setShowManagementModal(false);
+      setSelectedBooking(null);
+
+    } catch (error) {
+      console.log('[SEND_OFFER] result', { data: null, error });
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to send offer. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -387,6 +414,7 @@ const DispatcherDashboard = () => {
             setSelectedBooking(null);
           }}
           onUpdate={loadBookings}
+          onSendOffer={handleSendOffer}
         />
       )}
     </div>

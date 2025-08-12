@@ -1,4 +1,3 @@
-
 import { supabase } from './supabaseClient';
 
 /**
@@ -108,7 +107,7 @@ export const sendOffer = async (
   price: number, 
   dispatcherId?: string
 ) => {
-  console.log('[OFFER] sending', { bookingId, driverId, price });
+  console.log('[SEND_OFFER] payload', { bookingId, driverId, finalPrice: price });
 
   // Validação básica
   if (!bookingId || !driverId || !Number.isFinite(price) || price <= 0) {
@@ -116,14 +115,13 @@ export const sendOffer = async (
   }
 
   try {
-    // 1. Atualizar booking
+    // Atualizar booking com oferta
     const { data: updatedBooking, error: updateError } = await supabase
       .from('bookings')
       .update({
         driver_id: driverId,
         final_price: price,
         status: 'payment_pending',
-        payment_confirmation_status: 'pending',
         updated_at: new Date().toISOString()
       })
       .eq('id', bookingId)
@@ -139,36 +137,15 @@ export const sendOffer = async (
       .single();
 
     if (updateError) {
-      console.error('[OFFER] Error updating booking:', updateError);
-      throw updateError;
+      console.error('[SEND_OFFER] Update error:', updateError);
+      throw new Error(updateError.message || 'Failed to update booking');
     }
 
-    // 2. Inserir histórico
-    const { error: historyError } = await supabase
-      .from('booking_status_history')
-      .insert({
-        booking_id: bookingId,
-        status: 'payment_pending',
-        metadata: {
-          message: `Offer $${price} sent to passenger`,
-          previous_status: 'pending',
-          final_price: price,
-          driver_id: driverId
-        },
-        updated_by: dispatcherId || null,
-        role: 'dispatcher'
-      });
-
-    if (historyError) {
-      console.error('[OFFER] Error creating history record:', historyError);
-      // Não falhar por erro no histórico, mas logar
-    }
-
-    console.log('[OFFER] ok', updatedBooking);
+    console.log('[SEND_OFFER] result', { data: updatedBooking, error: null });
     return updatedBooking;
 
   } catch (error) {
-    console.error('[OFFER] Transaction failed:', error);
+    console.error('[SEND_OFFER] Transaction failed:', error);
     throw error;
   }
 };
