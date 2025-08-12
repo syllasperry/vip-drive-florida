@@ -26,7 +26,16 @@ export const useBookingTimeline = (bookingId: string) => {
           .order('created_at', { ascending: true });
 
         if (error) throw error;
-        setTimeline(data || []);
+        
+        const mappedTimeline = (data || []).map(item => ({
+          id: item.id.toString(),
+          status: item.status,
+          timestamp: item.created_at,
+          actor_role: 'system',
+          system_message: item.system_message
+        }));
+        
+        setTimeline(mappedTimeline);
       } catch (error) {
         console.error('Error fetching booking timeline:', error);
       } finally {

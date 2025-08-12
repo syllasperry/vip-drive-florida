@@ -81,7 +81,7 @@ export const PaymentsSection = () => {
           startDate.setDate(now.getDate() - 7);
       }
 
-      // Fetch completed bookings with payment data
+      // Fetch ONLY completed bookings with payment data (not all bookings)
       let query = supabase
         .from('bookings')
         .select(`
@@ -109,7 +109,7 @@ export const PaymentsSection = () => {
       
       if (error) throw error;
 
-      // Transform bookings into payment transactions
+      // Transform ONLY payment-related bookings into payment transactions
       const paymentTransactions: PaymentTransaction[] = (bookings || []).map(booking => {
         const amount = booking.final_price || booking.estimated_price || 0;
         const dispatcherCommission = amount * 0.20; // 20% commission

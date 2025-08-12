@@ -46,3 +46,32 @@ export const fetchBookings = async (): Promise<Booking[]> => {
     simple_status: normalizeBookingStatusLocal(booking.status) as any
   }));
 };
+
+export const getAllBookings = fetchBookings;
+
+export const listenForBookingChanges = (callback: (bookings: Booking[]) => void) => {
+  const channel = supabase
+    .channel('booking_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
+      fetchBookings().then(callback);
+    })
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+};
+
+export const sendOffer = async (bookingId: string, driverId: string, price: number) => {
+  const { error } = await supabase
+    .from('bookings')
+    .update({
+      driver_id: driverId,
+      estimated_price: price,
+      status: 'offer_sent',
+      payment_confirmation_status: 'payment_pending'
+    })
+    .eq('id', bookingId);
+
+  if (error) throw error;
+};
