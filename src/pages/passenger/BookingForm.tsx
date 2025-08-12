@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -143,7 +144,7 @@ const BookingForm = () => {
         flightInfoString = `${flightType}: ${flightNumber}`;
       }
 
-      // Prepare booking data with correct initial status for dispatcher sync
+      // Prepare booking data WITHOUT driver_id (will be null until manually assigned)
       const bookingData = {
         passenger_id: user.id,
         pickup_location: pickup || 'Not specified',
@@ -153,14 +154,14 @@ const BookingForm = () => {
         vehicle_type: selectedVehicle?.name || 'Standard Vehicle',
         estimated_price: null, // No automatic price - awaiting dispatcher
         final_price: null, // No automatic price - awaiting dispatcher offer
-        status: 'pending', // Ensure dispatcher can see this booking
+        status: 'pending', // Initial status - awaiting dispatcher review
         ride_status: 'pending_driver',
         payment_confirmation_status: 'waiting_for_offer',
         status_passenger: 'passenger_requested',
         status_driver: 'new_request',
         payment_status: 'pending',
-        driver_id: null, // Explicitly set to null for new bookings
-        // Store additional booking details in passenger_preferences as JSON
+        // IMPORTANT: driver_id is intentionally omitted - will be null in database
+        // This ensures the driver_id_only_after_accept constraint is respected
         passenger_preferences: {
           luggage_size: luggageSize,
           luggage_count: parseInt(luggageCount),
@@ -178,13 +179,13 @@ const BookingForm = () => {
         }
       };
 
-      console.log('📝 Passenger booking data prepared:', {
+      console.log('📝 Passenger booking data prepared (NO driver_id):', {
         ...bookingData,
         passenger_preferences: JSON.stringify(bookingData.passenger_preferences, null, 2)
       });
 
-      // Insert booking into database
-      console.log('💾 Inserting passenger booking into database...');
+      // Insert booking into database WITHOUT driver_id
+      console.log('💾 Inserting passenger booking into database (driver_id will be null)...');
       const { data: booking, error: bookingError } = await supabase
         .from('bookings')
         .insert(bookingData)
@@ -201,12 +202,12 @@ const BookingForm = () => {
         throw new Error('No booking data returned from database');
       }
 
-      console.log('✅ Passenger booking created successfully:', booking);
+      console.log('✅ Passenger booking created successfully (driver_id is null):', booking);
 
       // Success - navigate to confirmation page with booking data
       toast({
         title: "Booking Created!",
-        description: "Your booking request has been submitted successfully. Awaiting price from our team.",
+        description: "Your booking request has been submitted successfully. Awaiting assignment from our team.",
       });
 
       console.log('🧭 Navigating to confirmation page...');

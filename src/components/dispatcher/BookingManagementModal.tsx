@@ -68,7 +68,8 @@ export const BookingManagementModal = ({
         offer_price: numericPrice
       });
 
-      // Update booking with dispatcher's offer price, driver assignment, and status
+      // IMPORTANT: Only include driver_id when sending offer (after acceptance stage)
+      // This respects the driver_id_only_after_accept constraint
       const { error } = await supabase
         .from('bookings')
         .update({
