@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -8,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
-import { User, Phone, Mail, LogOut, Bell, Shield, HelpCircle, Camera, Upload } from "lucide-react";
+import { User, Phone, Mail, LogOut, Bell, Shield, HelpCircle, Camera } from "lucide-react";
 import { NotificationSettingsCard } from "./NotificationSettingsCard";
 import { PrivacySecurityCard } from "./PrivacySecurityCard";
 import { HelpSupportCard } from "./HelpSupportCard";
+import { getMyPassengerPreferences, type PassengerPreferences } from "@/lib/api/passengerPreferences";
 
 interface SettingsTabProps {
   passengerInfo: any;
@@ -30,6 +30,7 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [prefs, setPrefs] = useState<PassengerPreferences | null>(null);
 
   useEffect(() => {
     if (passengerInfo) {
@@ -40,6 +41,20 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
       });
     }
   }, [passengerInfo]);
+
+  useEffect(() => {
+    const loadPreferences = async () => {
+      try {
+        const preferences = await getMyPassengerPreferences();
+        console.log('Loaded passenger preferences:', preferences);
+        setPrefs(preferences);
+      } catch (error) {
+        console.error('Failed to load passenger preferences:', error);
+      }
+    };
+
+    loadPreferences();
+  }, []);
 
   const handlePhotoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
