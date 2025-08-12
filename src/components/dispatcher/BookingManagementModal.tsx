@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchDriversForBooking } from "@/lib/api/drivers";
 
 interface Driver {
   id: string;
@@ -50,22 +49,29 @@ export const BookingManagementModal = ({
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!isOpen || !bookingId) return;
+    if (!isOpen) return;
     
-    console.log('[MODAL][LOADING_DRIVERS]', { isOpen, bookingId, bookingObject: booking });
+    console.log('[MODAL][LOADING_ALL_DRIVERS]', { isOpen });
     
     (async () => {
       try {
         setLoadingDrivers(true);
         setDrivers([]); // Clear previous drivers
         
-        // Use the actual booking.id (UUID) instead of any short code
-        const actualBookingId = booking?.id || bookingId;
-        console.log('[MODAL][USING_BOOKING_ID]', { actualBookingId, providedBookingId: bookingId });
+        // Fetch all active drivers from the system
+        const { data, error } = await supabase
+          .from('drivers')
+          .select('*')
+          .eq('status', 'active')
+          .order('full_name');
         
-        const result = await fetchDriversForBooking(supabase, actualBookingId);
-        console.log('[MODAL][DRIVERS_LOADED]', { result, count: result?.length });
-        setDrivers(result);
+        if (error) {
+          console.error('[MODAL][ALL_DRIVERS_LOAD_ERROR]', error);
+          throw error;
+        }
+        
+        console.log('[MODAL][ALL_DRIVERS_LOADED]', { result: data, count: data?.length });
+        setDrivers(data || []);
       } catch (e) {
         console.error('[MODAL][DRIVERS_LOAD_ERROR]', e);
         toast({
@@ -77,7 +83,7 @@ export const BookingManagementModal = ({
         setLoadingDrivers(false);
       }
     })();
-  }, [isOpen, bookingId, booking?.id, toast]);
+  }, [isOpen, toast]);
 
   const handleSendOffer = async () => {
     console.log('[SEND_OFFER][CLICK]', { bookingId: booking?.id || bookingId, selectedDriverId: selectedDriver, offerPrice });
@@ -94,7 +100,7 @@ export const BookingManagementModal = ({
     if (!drivers.some(d => d.id === selectedDriver)) {
       toast({
         title: "Error",
-        description: "Selected driver is not eligible for this vehicle category.",
+        description: "Selected driver is not available.",
         variant: "destructive",
       });
       return;
