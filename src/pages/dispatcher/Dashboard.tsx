@@ -12,6 +12,7 @@ import { DispatcherBookingList } from "@/components/dispatcher/DispatcherBooking
 import { DispatcherMessaging } from "@/components/dispatcher/DispatcherMessaging";
 import { DriverManagement } from "@/components/dispatcher/DriverManagement";
 import { DispatcherSettings } from "@/components/dispatcher/DispatcherSettings";
+import { PaymentsSection } from "@/components/dispatcher/PaymentsSection";
 import { BottomNavigation } from "@/components/dashboard/BottomNavigation";
 import { BookingManagementModal } from "@/components/dispatcher/BookingManagementModal";
 import { format } from 'date-fns';
@@ -339,6 +340,8 @@ const DispatcherDashboard = () => {
         return <DispatcherMessaging bookings={bookings} />;
       case "settings":
         return <DispatcherSettings />;
+      case "payments":
+        return <PaymentsSection />;
       default:
         return (
           <div className="space-y-4">
