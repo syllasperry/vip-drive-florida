@@ -51,12 +51,23 @@ export const BookingManagementModal = ({
 
   useEffect(() => {
     if (!isOpen || !bookingId) return;
+    
+    console.log('[MODAL][LOADING_DRIVERS]', { isOpen, bookingId, bookingObject: booking });
+    
     (async () => {
       try {
         setLoadingDrivers(true);
-        const result = await fetchDriversForBooking(supabase, bookingId);
+        setDrivers([]); // Clear previous drivers
+        
+        // Use the actual booking.id (UUID) instead of any short code
+        const actualBookingId = booking?.id || bookingId;
+        console.log('[MODAL][USING_BOOKING_ID]', { actualBookingId, providedBookingId: bookingId });
+        
+        const result = await fetchDriversForBooking(supabase, actualBookingId);
+        console.log('[MODAL][DRIVERS_LOADED]', { result, count: result?.length });
         setDrivers(result);
       } catch (e) {
+        console.error('[MODAL][DRIVERS_LOAD_ERROR]', e);
         toast({
           title: "Error",
           description: `Failed to load drivers: ${String(e)}`,
@@ -66,10 +77,10 @@ export const BookingManagementModal = ({
         setLoadingDrivers(false);
       }
     })();
-  }, [isOpen, bookingId, toast]);
+  }, [isOpen, bookingId, booking?.id, toast]);
 
   const handleSendOffer = async () => {
-    console.log('[SEND_OFFER][CLICK]', { bookingId, selectedDriverId: selectedDriver, offerPrice });
+    console.log('[SEND_OFFER][CLICK]', { bookingId: booking?.id || bookingId, selectedDriverId: selectedDriver, offerPrice });
     
     if (!selectedDriver) {
       toast({
