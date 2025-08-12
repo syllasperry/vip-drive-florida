@@ -17,6 +17,9 @@ interface PassengerPreferencesScreenProps {
   userId: string;
 }
 
+type ConversationLevel = 'quiet' | 'neutral' | 'chatty';
+type TripPurpose = 'leisure' | 'business' | 'event' | 'other';
+
 export const PassengerPreferencesScreen = ({ onBack, userId }: PassengerPreferencesScreenProps) => {
   const [preferences, setPreferences] = useState({
     airConditioning: true,
@@ -24,8 +27,8 @@ export const PassengerPreferencesScreen = ({ onBack, userId }: PassengerPreferen
     temperatureUnit: 'F' as 'F' | 'C',
     radioOn: false,
     preferredMusic: '',
-    conversationLevel: 'neutral' as 'quiet' | 'neutral' | 'chatty',
-    tripPurpose: 'leisure' as 'leisure' | 'business' | 'event' | 'other',
+    conversationLevel: 'neutral' as ConversationLevel,
+    tripPurpose: 'leisure' as TripPurpose,
     notes: ''
   });
 
@@ -54,7 +57,7 @@ export const PassengerPreferencesScreen = ({ onBack, userId }: PassengerPreferen
           preferredMusic: data.music_playlist_link || '',
           conversationLevel: data.interaction_preference === 'chatty' ? 'chatty' : 
                            data.interaction_preference === 'quiet' ? 'quiet' : 'neutral',
-          tripPurpose: data.trip_purpose || 'leisure',
+          tripPurpose: (data.trip_purpose as TripPurpose) || 'leisure',
           notes: data.additional_notes || ''
         });
       }
@@ -229,7 +232,7 @@ export const PassengerPreferencesScreen = ({ onBack, userId }: PassengerPreferen
               <Label>Conversation Preference</Label>
               <Select 
                 value={preferences.conversationLevel} 
-                onValueChange={(value: 'quiet' | 'neutral' | 'chatty') => 
+                onValueChange={(value: ConversationLevel) => 
                   setPreferences(prev => ({ ...prev, conversationLevel: value }))
                 }
               >
@@ -259,7 +262,7 @@ export const PassengerPreferencesScreen = ({ onBack, userId }: PassengerPreferen
               <Label>Typical Trip Purpose</Label>
               <Select 
                 value={preferences.tripPurpose} 
-                onValueChange={(value: 'leisure' | 'business' | 'event' | 'other') => 
+                onValueChange={(value: TripPurpose) => 
                   setPreferences(prev => ({ ...prev, tripPurpose: value }))
                 }
               >

@@ -20,6 +20,9 @@ interface SettingsTabProps {
   passengerInfo: any;
 }
 
+type ConversationPreference = 'Conversative' | 'Quiet' | 'No Preference';
+type TripPurpose = 'Leisure' | 'Business' | 'Other';
+
 export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -39,8 +42,8 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
     air_conditioning_temperature: 72,
     radio_enabled: false,
     preferred_music: '',
-    conversation_preference: 'No Preference' as 'Conversative' | 'Quiet' | 'No Preference',
-    trip_purpose: 'Leisure' as 'Leisure' | 'Business' | 'Other',
+    conversation_preference: 'No Preference' as ConversationPreference,
+    trip_purpose: 'Leisure' as TripPurpose,
     trip_purpose_notes: ''
   });
 
@@ -76,8 +79,8 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
           air_conditioning_temperature: data.air_conditioning_temperature || 72,
           radio_enabled: data.radio_enabled || false,
           preferred_music: data.preferred_music || '',
-          conversation_preference: data.conversation_preference || 'No Preference',
-          trip_purpose: data.trip_purpose || 'Leisure',
+          conversation_preference: (data.conversation_preference || 'No Preference') as ConversationPreference,
+          trip_purpose: (data.trip_purpose || 'Leisure') as TripPurpose,
           trip_purpose_notes: data.trip_purpose_notes || ''
         });
       }
@@ -425,7 +428,7 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
                   </div>
                   <Select 
                     value={preferences.conversation_preference} 
-                    onValueChange={(value: 'Conversative' | 'Quiet' | 'No Preference') => 
+                    onValueChange={(value: ConversationPreference) => 
                       setPreferences(prev => ({ ...prev, conversation_preference: value }))
                     }
                   >
@@ -445,7 +448,7 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
                   <Label>Trip Purpose</Label>
                   <Select 
                     value={preferences.trip_purpose} 
-                    onValueChange={(value: 'Leisure' | 'Business' | 'Other') => 
+                    onValueChange={(value: TripPurpose) => 
                       setPreferences(prev => ({ ...prev, trip_purpose: value }))
                     }
                   >
