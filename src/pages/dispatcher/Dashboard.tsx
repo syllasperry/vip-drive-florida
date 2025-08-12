@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,6 +48,7 @@ const DispatcherDashboard = () => {
         { event: '*', schema: 'public', table: 'bookings' },
         async (payload: any) => {
           console.log('🔄 Dispatcher realtime update:', payload);
+          console.log('[AUTO-ASSIGN GUARD] real-time update - reloading data only, NO auto-assignment');
           // Reload all bookings to get fresh data with joins
           await loadBookings();
         }
@@ -111,11 +111,14 @@ const DispatcherDashboard = () => {
   const loadBookings = async () => {
     try {
       console.log('🔄 Loading dispatcher bookings...');
+      console.log('[AUTO-ASSIGN GUARD] loadBookings - ONLY selecting data, NO auto-assignment logic');
       
-      // Use the new dispatcher-specific function that includes passenger data
+      // Use the dispatcher-specific function that includes passenger data
+      // IMPORTANT: This function ONLY does SELECT queries, no auto-assignment
       const data = await getDispatcherBookings();
       
       console.log('📊 Dispatcher bookings loaded:', data?.length || 0);
+      console.log('[AUTO-ASSIGN GUARD] booking load completed - NO automatic driver assignment performed');
       setBookings(data || []);
     } catch (error) {
       console.error('❌ Error in loadBookings:', error);
@@ -129,6 +132,8 @@ const DispatcherDashboard = () => {
 
   const loadDrivers = async () => {
     try {
+      console.log('[AUTO-ASSIGN GUARD] loadDrivers - ONLY selecting driver data, NO auto-assignment');
+      
       const { data, error } = await supabase
         .from('drivers')
         .select('*')

@@ -57,6 +57,7 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
         },
         (payload) => {
           console.log('📡 Dispatcher booking manager real-time update:', payload);
+          console.log('[AUTO-ASSIGN GUARD] real-time update - reloading data only, NO auto-assignment');
           loadBookings();
         }
       )
@@ -70,6 +71,7 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
   const loadBookings = async () => {
     try {
       console.log('🔄 Loading bookings for dispatcher assignment...');
+      console.log('[AUTO-ASSIGN GUARD] loadBookings - ONLY selecting data, NO auto-assignment logic');
       
       const { data, error } = await supabase
         .from('bookings')
@@ -111,6 +113,7 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
 
       setBookings(processedBookings);
       console.log('📊 Bookings loaded for dispatcher assignment:', processedBookings.length);
+      console.log('[AUTO-ASSIGN GUARD] booking load completed - NO automatic driver assignment performed');
     } catch (error) {
       console.error('❌ Error loading bookings:', error);
       toast({
@@ -132,6 +135,7 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
   const loadDrivers = async () => {
     try {
       console.log('🚗 Loading active drivers...');
+      console.log('[AUTO-ASSIGN GUARD] loadDrivers - ONLY selecting driver data, NO auto-assignment');
       
       const { data, error } = await supabase
         .from('drivers')
@@ -173,7 +177,7 @@ export const DispatcherBookingManager = ({ onUpdate }: DispatcherBookingManagerP
 
     setIsAssigning(true);
     try {
-      console.log('👨‍💼 Dispatcher manually assigning driver:', {
+      console.log('👨‍💼 Dispatcher manually assigning driver (MANUAL ASSIGNMENT):', {
         booking_id: selectedBooking,
         driver_id: selectedDriver
       });

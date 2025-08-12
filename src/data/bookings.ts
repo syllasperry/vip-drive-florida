@@ -5,6 +5,8 @@ import { supabase } from './supabaseClient';
  * Carrega TODOS os bookings já com os dados do passageiro (foto, nome e preferências)
  */
 export const getAllBookings = async () => {
+  console.log('[DISPATCHER LOAD] fetching all bookings...');
+  
   const { data, error } = await supabase
     .from('bookings')
     .select(`
@@ -26,13 +28,18 @@ export const getAllBookings = async () => {
     console.error('Error fetching bookings:', error);
     return [];
   }
+  
+  console.log('[DISPATCHER LOAD] bookings', data?.length || 0);
   return data ?? [];
 };
 
 /**
  * Carrega bookings para o dispatcher com dados completos de passageiro e driver
+ * SOMENTE SELECT - ZERO auto-assign
  */
 export const getDispatcherBookings = async () => {
+  console.log('[DISPATCHER LOAD] fetching dispatcher bookings...');
+  
   const { data, error } = await supabase
     .from('bookings')
     .select(`
@@ -50,12 +57,17 @@ export const getDispatcherBookings = async () => {
     console.error('Error fetching dispatcher bookings:', error); 
     return []; 
   }
+  
+  console.log('[DISPATCHER LOAD] bookings', data?.length || 0);
+  console.log('[AUTO-ASSIGN GUARD] dispatcher load completed - NO auto-assignment performed');
+  
   return data || [];
 };
 
 /**
  * Escuta INSERT/UPDATE/DELETE em bookings.
  * Para INSERT/UPDATE, buscamos o registro completo (com join de passengers) antes de disparar o callback.
+ * IMPORTANTE: ZERO auto-assign aqui - apenas notificação
  */
 export const listenForBookingChanges = (callback: (payload: any) => void) => {
   const channel = supabase
@@ -65,6 +77,8 @@ export const listenForBookingChanges = (callback: (payload: any) => void) => {
       { event: '*', schema: 'public', table: 'bookings' },
       async (payload) => {
         try {
+          console.log('[AUTO-ASSIGN GUARD] booking change detected - listening only, NO auto-assignment');
+          
           const id =
             (payload as any)?.new?.id ??
             (payload as any)?.old?.id;
