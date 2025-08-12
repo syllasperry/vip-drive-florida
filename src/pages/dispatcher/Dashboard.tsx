@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { getAllBookings, listenForBookingChanges } from "../../data/bookings";
+import { getDispatcherBookings } from "../../data/bookings";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,15 +32,7 @@ const DispatcherDashboard = () => {
     loadInitialData();
 
     // Setup realtime subscription with proper cleanup
-    const cleanup = listenForBookingChanges((payload: any) => {
-      const { eventType, new: n, old: o } = payload;
-      setBookings((prev) => {
-        if (eventType === "INSERT" && n) return [n, ...prev];
-        if (eventType === "UPDATE" && n) return prev.map(b => b.id === n.id ? n : b);
-        if (eventType === "DELETE" && o) return prev.filter(b => b.id !== o.id);
-        return prev;
-      });
-    });
+    const cleanup = setupRealtimeSubscription();
 
     return () => {
       if (cleanup && typeof cleanup === 'function') {
@@ -47,6 +40,25 @@ const DispatcherDashboard = () => {
       }
     };
   }, []);
+
+  const setupRealtimeSubscription = () => {
+    const channel = supabase
+      .channel('dispatcher-bookings-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'bookings' },
+        async (payload: any) => {
+          console.log('🔄 Dispatcher realtime update:', payload);
+          // Reload all bookings to get fresh data with joins
+          await loadBookings();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
 
   const checkAuth = async () => {
     try {
@@ -98,34 +110,11 @@ const DispatcherDashboard = () => {
 
   const loadBookings = async () => {
     try {
-      console.log('🔄 Loading all bookings for dispatcher...');
+      console.log('🔄 Loading dispatcher bookings...');
       
-      const { data, error } = await supabase
-        .from('bookings')
-        .select(`
-          *,
-          drivers (
-            full_name,
-            phone,
-            profile_photo_url,
-            car_make,
-            car_model,
-            car_color,
-            license_plate
-          ),
-          passengers (
-            full_name,
-            phone,
-            profile_photo_url
-          )
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('❌ Error loading bookings:', error);
-        throw error;
-      }
-
+      // Use the new dispatcher-specific function that includes passenger data
+      const data = await getDispatcherBookings();
+      
       console.log('📊 Dispatcher bookings loaded:', data?.length || 0);
       setBookings(data || []);
     } catch (error) {
@@ -200,16 +189,13 @@ const DispatcherDashboard = () => {
 
         {/* Passenger Info */}
         {booking.passengers && (
-          <div className="flex items-center space-x-3 mb-3">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={booking.passengers.profile_photo_url} />
-              <AvatarFallback className="bg-gray-200 text-gray-600">
-                {booking.passengers.full_name?.charAt(0) || 'P'}
-              </AvatarFallback>
+          <div className="flex items-center mb-2">
+            <Avatar className="h-8 w-8 mr-2">
+              <AvatarImage src={booking.passengers.profile_photo_url || '/default-avatar.png'} />
+              <AvatarFallback>{booking.passengers.full_name?.[0] || 'P'}</AvatarFallback>
             </Avatar>
-            <div>
-              <p className="font-medium text-gray-900">{booking.passengers.full_name || 'Passenger'}</p>
-              <p className="text-sm text-gray-500">{booking.passengers.phone}</p>
+            <div className="text-sm font-medium text-gray-900">
+              {booking.passengers.full_name}
             </div>
           </div>
         )}

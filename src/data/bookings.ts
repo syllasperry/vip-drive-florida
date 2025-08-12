@@ -30,6 +30,30 @@ export const getAllBookings = async () => {
 };
 
 /**
+ * Carrega bookings para o dispatcher com dados completos de passageiro e driver
+ */
+export const getDispatcherBookings = async () => {
+  const { data, error } = await supabase
+    .from('bookings')
+    .select(`
+      *,
+      passengers (
+        id, full_name, profile_photo_url, email, phone
+      ),
+      drivers (
+        id, full_name, profile_photo_url, car_make, car_model, car_color, license_plate, phone
+      )
+    `)
+    .order('created_at', { ascending: false });
+  
+  if (error) { 
+    console.error('Error fetching dispatcher bookings:', error); 
+    return []; 
+  }
+  return data || [];
+};
+
+/**
  * Escuta INSERT/UPDATE/DELETE em bookings.
  * Para INSERT/UPDATE, buscamos o registro completo (com join de passengers) antes de disparar o callback.
  */
