@@ -1,12 +1,12 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SettingsTab } from "@/components/passenger/SettingsTab";
 import { MessagesTab } from "@/components/passenger/MessagesTab";
 import { PaymentsTab } from "@/components/passenger/PaymentsTab";
-import { PreferencesTab } from "@/components/passenger/PreferencesTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Plus, Calendar, MessageSquare, CreditCard, Settings, UserCog } from "lucide-react";
+import { Plus, Calendar, MessageSquare, CreditCard, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { OrganizedBookingsList } from "@/components/dashboard/OrganizedBookingsList";
@@ -103,7 +103,7 @@ export default function Dashboard() {
 
       <div className="px-4 py-6">
         <Tabs defaultValue="bookings" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="bookings" className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
               <span className="hidden sm:inline">Bookings</span>
@@ -116,10 +116,6 @@ export default function Dashboard() {
               <CreditCard className="w-4 h-4" />
               <span className="hidden sm:inline">Payments</span>
             </TabsTrigger>
-            <TabsTrigger value="preferences" className="flex items-center gap-2">
-              <UserCog className="w-4 h-4" />
-              <span className="hidden sm:inline">Preferences</span>
-            </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="w-4 h-4" />
               <span className="hidden sm:inline">Settings</span>
@@ -129,7 +125,6 @@ export default function Dashboard() {
           <TabsContent value="bookings" className="mt-6">
             <OrganizedBookingsList 
               bookings={bookings} 
-              loading={loading}
               onRefresh={() => {
                 setLoading(true);
                 loadBookings();
@@ -138,15 +133,11 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="messages" className="mt-6">
-            <MessagesTab passengerInfo={passengerInfo} />
+            <MessagesTab />
           </TabsContent>
 
           <TabsContent value="payments" className="mt-6">
-            <PaymentsTab passengerInfo={passengerInfo} />
-          </TabsContent>
-
-          <TabsContent value="preferences" className="mt-6">
-            <PreferencesTab passengerInfo={passengerInfo} />
+            <PaymentsTab />
           </TabsContent>
 
           <TabsContent value="settings" className="mt-6">

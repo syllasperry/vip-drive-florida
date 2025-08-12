@@ -12,12 +12,12 @@ import { ArrowLeft, Thermometer, Music, MessageCircle, MapPin } from "lucide-rea
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-interface PassengerPreferencesScreenProps {
+interface NewPassengerPreferencesScreenProps {
   onBack: () => void;
   userId: string;
 }
 
-export const PassengerPreferencesScreen = ({ onBack, userId }: PassengerPreferencesScreenProps) => {
+export const NewPassengerPreferencesScreen = ({ onBack, userId }: NewPassengerPreferencesScreenProps) => {
   const [preferences, setPreferences] = useState({
     airConditioning: true,
     temperature: [72],
@@ -38,24 +38,23 @@ export const PassengerPreferencesScreen = ({ onBack, userId }: PassengerPreferen
   const loadPreferences = async () => {
     try {
       const { data, error } = await supabase
-        .from('passengers')
+        .from('passenger_preferences')
         .select('*')
-        .eq('id', userId)
+        .eq('user_id', userId)
         .single();
 
-      if (error) throw error;
+      if (error && error.code !== 'PGRST116') throw error;
 
       if (data) {
         setPreferences({
-          airConditioning: data.preferred_temperature ? true : false,
+          airConditioning: data.air_conditioning ?? true,
           temperature: [data.preferred_temperature || 72],
-          temperatureUnit: 'F',
-          radioOn: data.music_preference !== 'no_sound' && data.music_preference !== 'none',
-          preferredMusic: data.music_playlist_link || '',
-          conversationLevel: data.interaction_preference === 'chatty' ? 'chatty' : 
-                           data.interaction_preference === 'quiet' ? 'quiet' : 'neutral',
-          tripPurpose: (data.trip_purpose || 'leisure') as 'leisure' | 'business' | 'event' | 'other',
-          notes: data.additional_notes || ''
+          temperatureUnit: data.temperature_unit as 'F' | 'C' || 'F',
+          radioOn: data.radio_on ?? false,
+          preferredMusic: data.preferred_music || '',
+          conversationLevel: data.conversation_preference as 'quiet' | 'neutral' | 'chatty' || 'neutral',
+          tripPurpose: data.trip_purpose as 'leisure' | 'business' | 'event' | 'other' || 'leisure',
+          notes: data.trip_notes || ''
         });
       }
     } catch (error) {
@@ -68,18 +67,20 @@ export const PassengerPreferencesScreen = ({ onBack, userId }: PassengerPreferen
       setLoading(true);
       
       const updateData = {
-        preferred_temperature: preferences.airConditioning ? preferences.temperature[0] : null,
-        music_preference: preferences.radioOn ? 'ambient' : 'no_sound',
-        music_playlist_link: preferences.preferredMusic || null,
-        interaction_preference: preferences.conversationLevel,
+        user_id: userId,
+        air_conditioning: preferences.airConditioning,
+        preferred_temperature: preferences.temperature[0],
+        temperature_unit: preferences.temperatureUnit,
+        radio_on: preferences.radioOn,
+        preferred_music: preferences.preferredMusic || null,
+        conversation_preference: preferences.conversationLevel,
         trip_purpose: preferences.tripPurpose,
-        additional_notes: preferences.notes || null
+        trip_notes: preferences.notes || null
       };
 
       const { error } = await supabase
-        .from('passengers')
-        .update(updateData)
-        .eq('id', userId);
+        .from('passenger_preferences')
+        .upsert(updateData);
 
       if (error) throw error;
 
@@ -162,7 +163,7 @@ export const PassengerPreferencesScreen = ({ onBack, userId }: PassengerPreferen
                     onValueChange={(value) => 
                       setPreferences(prev => ({ ...prev, temperature: value }))
                     }
-                    max={preferences.temperatureUnit === 'F' ? 85 : 29}
+                    max={preferences.temperatureUnit === 'F' ? 80 : 27}
                     min={preferences.temperatureUnit === 'F' ? 60 : 15}
                     step={1}
                     className="w-full"
@@ -172,7 +173,7 @@ export const PassengerPreferencesScreen = ({ onBack, userId }: PassengerPreferen
                     <span className="font-medium text-primary">
                       {preferences.temperature[0]}°{preferences.temperatureUnit}
                     </span>
-                    <span>{preferences.temperatureUnit === 'F' ? '85°F' : '29°C'}</span>
+                    <span>{preferences.temperatureUnit === 'F' ? '80°F' : '27°C'}</span>
                   </div>
                 </div>
               </div>
@@ -185,7 +186,7 @@ export const PassengerPreferencesScreen = ({ onBack, userId }: PassengerPreferen
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Music className="w-5 h-5 text-primary" />
-              Audio
+              Radio
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -221,7 +222,7 @@ export const PassengerPreferencesScreen = ({ onBack, userId }: PassengerPreferen
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MessageCircle className="w-5 h-5 text-primary" />
-              Conversation
+              Conversation Preference
             </CardTitle>
           </CardHeader>
           <CardContent>
