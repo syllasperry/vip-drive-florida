@@ -1,4 +1,3 @@
-
 export interface Booking {
   id: string;
   pickup_location: string;
