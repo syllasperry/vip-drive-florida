@@ -1,3 +1,8 @@
+// === NEW IMPORTS (add these) ===
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { PassengerPreferencesCard } from "@/components/passenger/PassengerPreferencesCard";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,7 +20,8 @@ import { MessagesTab } from "@/components/passenger/MessagesTab";
 import { PaymentsTab } from "@/components/passenger/PaymentsTab";
 import { SettingsTab } from "@/components/passenger/SettingsTab";
 import { mapToSimpleStatus } from "@/utils/bookingHelpers";
-
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { PassengerPreferencesCard } from "@/components/passenger/PassengerPreferencesCard";
 const PassengerDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
