@@ -407,6 +407,7 @@ const DispatcherDashboard = () => {
       {showManagementModal && selectedBooking && (
         <BookingManagementModal
           booking={selectedBooking}
+          bookingId={selectedBooking.id}
           drivers={drivers}
           isOpen={showManagementModal}
           onClose={() => {

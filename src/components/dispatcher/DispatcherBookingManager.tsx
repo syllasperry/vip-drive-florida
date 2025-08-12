@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -329,6 +328,7 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         booking={selectedBooking}
+        bookingId={selectedBooking?.id || ""}
         drivers={drivers}
         onUpdate={onUpdate}
         onSendOffer={handleSendOffer}
