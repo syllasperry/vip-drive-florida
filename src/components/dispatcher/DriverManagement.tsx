@@ -286,7 +286,7 @@ export const DriverManagement = ({ drivers, onDriverUpdate }: DriverManagementPr
             <Card key={driver.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-4 flex-1">
                     <Avatar className="h-12 w-12">
                       <AvatarImage src={driver.profile_photo_url} alt={driver.full_name} />
                       <AvatarFallback className="bg-gray-200 text-gray-600">
@@ -320,7 +320,7 @@ export const DriverManagement = ({ drivers, onDriverUpdate }: DriverManagementPr
                     </div>
                   </div>
                   
-                  <div className="flex items-center space-x-2">
+                  <div className="flex flex-col space-y-2 ml-4">
                     <Button
                       variant="outline"
                       size="sm"

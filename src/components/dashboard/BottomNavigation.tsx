@@ -1,5 +1,4 @@
-
-import { Car, Calendar, MessageCircle, CreditCard, Settings, DollarSign, AlertCircle, Navigation, Users, BarChart3 } from "lucide-react";
+import { Car, Calendar, MessageCircle, CreditCard, Settings, DollarSign, Users } from "lucide-react";
 
 interface BottomNavigationProps {
   activeTab: string;
