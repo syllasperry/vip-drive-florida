@@ -1,58 +1,48 @@
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from "@/integrations/supabase/client";
+import { updateBookingStatus, mapToSimpleStatus } from "@/utils/bookingHelpers";
 
-export interface Booking {
-  id: string;
-  pickup_location: string;
-  dropoff_location: string;
-  pickup_time: string;
-  passenger_count: number;
-  vehicle_type: string;
-  simple_status: 'completed' | 'cancelled' | 'payment_pending' | 'all_set' | 'booking_requested';
-  estimated_price: number;
-  final_negotiated_price: number;
-  final_price: number;
-  driver_id?: string;
-  passenger_id: string;
-  payment_status: string;
-  status: string;
-  driver_profiles?: any;
-}
+// Re-export functions that other components expect
+export { updateBookingStatus, mapToSimpleStatus };
 
-export const mockBookings: Booking[] = [
-  {
-    id: "1",
-    pickup_location: "Downtown Hotel",
-    dropoff_location: "Airport Terminal",
-    pickup_time: "2024-01-15T10:00:00Z",
-    passenger_count: 2,
-    vehicle_type: "Sedan",
-    simple_status: "completed",
-    estimated_price: 45,
-    final_negotiated_price: 42,
-    final_price: 42,
-    driver_id: "driver-1",
-    passenger_id: "passenger-1",
-    payment_status: "paid",
-    status: "completed"
-  }
-];
+export const sendOffer = async (bookingId: string, driverId: string, price: number) => {
+  const { error } = await supabase
+    .from('bookings')
+    .update({ 
+      driver_id: driverId,
+      final_price: price,
+      status: 'driver_offered'
+    })
+    .eq('id', bookingId);
+  
+  if (error) throw error;
+};
 
-export const getBookings = async () => {
-  try {
-    const { data, error } = await supabase
-      .from('bookings')
-      .select('*')
-      .order('created_at', { ascending: false });
+export const getDispatcherBookings = async () => {
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('*')
+    .order('created_at', { ascending: false });
+  
+  if (error) throw error;
+  return data;
+};
 
-    if (error) {
-      console.error('Error fetching bookings:', error);
-      return mockBookings;
-    }
+export const getAllBookings = async () => {
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('*')
+    .order('created_at', { ascending: false });
+  
+  if (error) throw error;
+  return data;
+};
 
-    return data || mockBookings;
-  } catch (error) {
-    console.error('Failed to fetch bookings:', error);
-    return mockBookings;
-  }
+export const getBookings = getAllBookings;
+
+export const listenForBookingChanges = (callback: (payload: any) => void) => {
+  return supabase
+    .channel('bookings')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, callback)
+    .subscribe();
 };

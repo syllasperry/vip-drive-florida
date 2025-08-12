@@ -14,31 +14,36 @@ export type PassengerPreferences = {
 
 export async function getMyPassengerPreferences(): Promise<PassengerPreferences | null> {
   try {
-    // First try the RPC function
-    const { data, error } = await supabase.rpc('get_my_passenger_preferences');
+    // Direct table query since RPC might not be available
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user?.id) {
+      throw new Error('User not authenticated');
+    }
+
+    const { data, error } = await supabase
+      .from('passenger_preferences')
+      .select('*')
+      .eq('user_id', user.user.id)
+      .single();
     
     if (error) {
-      console.warn('RPC get_my_passenger_preferences not available, falling back to direct query');
-      
-      // Fallback to direct table query
-      const { data: directData, error: directError } = await supabase
-        .from('passenger_preferences')
-        .select('*')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
-        .single();
-      
-      if (directError) {
-        if (directError.code === 'PGRST116') {
-          // No rows returned - user has no preferences yet
-          return null;
-        }
-        throw new Error(directError.message);
+      if (error.code === 'PGRST116') {
+        // No rows returned - user has no preferences yet
+        return null;
       }
-      
-      return directData as PassengerPreferences;
+      throw new Error(error.message);
     }
     
-    return data as PassengerPreferences;
+    return {
+      air_conditioning: data.air_conditioning,
+      preferred_temperature: data.preferred_temperature,
+      temperature_unit: data.temperature_unit,
+      radio_on: data.radio_on,
+      preferred_music: data.preferred_music,
+      conversation_preference: data.conversation_preference,
+      trip_purpose: data.trip_purpose,
+      trip_notes: data.trip_notes
+    };
   } catch (error) {
     console.error('Error fetching passenger preferences:', error);
     return null;
@@ -47,44 +52,27 @@ export async function getMyPassengerPreferences(): Promise<PassengerPreferences 
 
 export async function upsertMyPassengerPreferences(input: PassengerPreferences): Promise<void> {
   try {
-    // First try the RPC function
-    const { error } = await supabase.rpc('upsert_my_passenger_preferences', {
-      _air_conditioning: input.air_conditioning,
-      _preferred_temperature: input.preferred_temperature,
-      _temperature_unit: input.temperature_unit,
-      _radio_on: input.radio_on,
-      _preferred_music: input.preferred_music,
-      _conversation_preference: input.conversation_preference,
-      _trip_purpose: input.trip_purpose,
-      _trip_notes: input.trip_notes
-    });
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user?.id) {
+      throw new Error('User not authenticated');
+    }
+    
+    const { error } = await supabase
+      .from('passenger_preferences')
+      .upsert({
+        user_id: user.user.id,
+        air_conditioning: input.air_conditioning,
+        preferred_temperature: input.preferred_temperature,
+        temperature_unit: input.temperature_unit,
+        radio_on: input.radio_on,
+        preferred_music: input.preferred_music,
+        conversation_preference: input.conversation_preference,
+        trip_purpose: input.trip_purpose,
+        trip_notes: input.trip_notes
+      });
     
     if (error) {
-      console.warn('RPC upsert_my_passenger_preferences not available, falling back to direct upsert');
-      
-      // Fallback to direct table upsert
-      const user = await supabase.auth.getUser();
-      if (!user.data.user?.id) {
-        throw new Error('User not authenticated');
-      }
-      
-      const { error: directError } = await supabase
-        .from('passenger_preferences')
-        .upsert({
-          user_id: user.data.user.id,
-          air_conditioning: input.air_conditioning,
-          preferred_temperature: input.preferred_temperature,
-          temperature_unit: input.temperature_unit,
-          radio_on: input.radio_on,
-          preferred_music: input.preferred_music,
-          conversation_preference: input.conversation_preference,
-          trip_purpose: input.trip_purpose,
-          trip_notes: input.trip_notes
-        });
-      
-      if (directError) {
-        throw new Error(directError.message);
-      }
+      throw new Error(error.message);
     }
   } catch (error) {
     console.error('Error upserting passenger preferences:', error);
