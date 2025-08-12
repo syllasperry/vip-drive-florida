@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { getAllBookings, listenForBookingChanges } from "../../data/bookings";
@@ -29,6 +29,10 @@ const PassengerDashboard = () => {
   const [passengerProfile, setPassengerProfile] = useState<any | null>(null);
 
   // Carrega perfil completo do passageiro (foto/nome/prefs)
+// Controle do toast de erro (não repetir / permitir fechar)
+const errorShownRef = useRef(false);
+const errorToastIdRef = useRef<string | number | null>(null);
+const hasLoadedBookingsRef = useRef(false);
   async function loadPassengerProfile(userId: string) {
     try {
       const { data, error } = await supabase
@@ -48,29 +52,63 @@ const PassengerDashboard = () => {
 
   // Primeira carga + listener em tempo real (com cleanup)
   useEffect(() => {
-    async function fetchBookings() {
+  let isMounted = true;
+
+  async function fetchBookings() {
+    try {
       const allBookings = await getAllBookings();
+      if (!isMounted) return;
+
       setBookings(allBookings);
+      hasLoadedBookingsRef.current = true;
+
+      // Se havia toast de erro aberto, fecha ao recuperar com sucesso
+      if (errorToastIdRef.current) {
+        toast.dismiss(errorToastIdRef.current);
+        errorToastIdRef.current = null;
+        errorShownRef.current = false;
+      }
+    } catch (err) {
+      if (!errorShownRef.current) {
+        const t = toast({
+          title: "Error",
+          description: "Failed to load your bookings",
+          variant: "destructive",
+          duration: 4000, // auto‑hide
+        });
+        // guarda o id pra poder fechar depois
+        // (algumas libs retornam { id }, outras só void; por isso o cast defensivo)
+        errorToastIdRef.current = (t as any)?.id ?? null;
+        errorShownRef.current = true;
+      }
+      console.error("Failed to load bookings:", err);
+    } finally {
+      if (isMounted) setLoading(false);
     }
+  }
 
+  // 1) primeira carga
+  fetchBookings();
+
+  // 2) real‑time updates (se já existirem no projeto)
+  const sub = listenForBookingChanges(() => {
     fetchBookings();
+  });
 
-    const cleanup = listenForBookingChanges((updatedBooking: any) => {
-      setBookings(prev => {
-        const index = prev.findIndex(b => b.id === updatedBooking.id);
-        if (index !== -1) {
-          const next = [...prev];
-          next[index] = updatedBooking;
-          return next;
-        }
-        return [updatedBooking, ...prev];
-      });
-    });
-
-    return cleanup;
-  }, []);
-
-  // Auth + auto-refresh + assinatura realtime com cleanup
+  // cleanup ao desmontar
+  return () => {
+    isMounted = false;
+    try {
+      sub?.unsubscribe?.();
+    } catch (_) {}
+    // Se já carregou com sucesso e ainda existe um toast antigo, garante fechar
+    if (hasLoadedBookingsRef.current && errorToastIdRef.current) {
+      toast.dismiss(errorToastIdRef.current);
+      errorToastIdRef.current = null;
+      errorShownRef.current = false;
+    }
+  };
+}, []);  // Auth + auto-refresh + assinatura realtime com cleanup
   useEffect(() => {
     checkAuth();
     const cleanupRealtime = setupRealtimeSubscription();
