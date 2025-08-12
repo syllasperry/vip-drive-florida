@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -115,7 +116,6 @@ const DispatcherDashboard = () => {
       const data = await getDispatcherBookings();
       
       console.log('📊 Dispatcher bookings loaded:', data?.length || 0);
-      console.log('🔍 First booking data:', data?.[0]);
       setBookings(data || []);
     } catch (error) {
       console.error('❌ Error in loadBookings:', error);

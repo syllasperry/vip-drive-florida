@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -31,7 +30,7 @@ serve(async (req) => {
       );
     }
 
-    console.log('🔄 Starting manual reassignment for booking:', bookingId);
+    console.log('🔄 Starting auto-reassignment for booking:', bookingId);
 
     // Get the current booking details
     const { data: booking, error: bookingError } = await supabase
@@ -63,11 +62,13 @@ serve(async (req) => {
       );
     }
 
-    // Find all available drivers (dispatcher will choose manually)
+    // Find matching drivers who haven't rejected this ride yet
     const { data: availableDrivers, error: driversError } = await supabase
       .from('drivers')
       .select('id, full_name, car_make, car_model')
-      .eq('status', 'active');
+      .neq('id', booking.driver_id || 'none') // Exclude current driver
+      .ilike('car_make', `%${booking.vehicle_type?.split(' ')[0] || ''}%`)
+      .ilike('car_model', `%${booking.vehicle_type?.split(' ')[1] || ''}%`);
 
     if (driversError || !availableDrivers || availableDrivers.length === 0) {
       console.log('❌ No available drivers found for reassignment');
@@ -101,16 +102,18 @@ serve(async (req) => {
       );
     }
 
-    // DO NOT AUTO-ASSIGN - Let dispatcher choose manually
-    console.log('✅ Available drivers found, awaiting manual dispatcher assignment');
+    // Select a random available driver (in a real system, you might use a more sophisticated algorithm)
+    const randomDriver = availableDrivers[Math.floor(Math.random() * availableDrivers.length)];
+    
+    console.log('🔄 Reassigning to driver:', randomDriver.id, randomDriver.full_name);
 
-    // Update booking to show it needs manual assignment
+    // Update booking with new driver
     const { error: updateError } = await supabase
       .from('bookings')
       .update({ 
-        ride_status: 'awaiting_dispatcher_assignment',
-        driver_id: null, // Keep null until dispatcher manually assigns
-        payment_confirmation_status: 'waiting_for_dispatcher',
+        driver_id: randomDriver.id,
+        ride_status: 'pending_driver',
+        payment_confirmation_status: 'waiting_for_offer',
         updated_at: new Date().toISOString()
       })
       .eq('id', bookingId);
@@ -118,7 +121,7 @@ serve(async (req) => {
     if (updateError) {
       console.error('❌ Error updating booking:', updateError);
       return new Response(
-        JSON.stringify({ error: 'Failed to update booking status' }), 
+        JSON.stringify({ error: 'Failed to reassign booking' }), 
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -126,23 +129,24 @@ serve(async (req) => {
       );
     }
 
-    // Send notification to dispatcher (system message)
+    // Send notification message to the new driver
     await supabase
       .from('messages')
       .insert({
         booking_id: bookingId,
-        sender_id: booking.passenger_id,
+        sender_id: randomDriver.id,
         sender_type: 'system',
-        message_text: `New ride request requires dispatcher assignment. From: ${booking.pickup_location} To: ${booking.dropoff_location}. ${availableDrivers.length} drivers available.`
+        message_text: `New ride request assigned to you! From: ${booking.pickup_location} To: ${booking.dropoff_location}. Please review and respond within 10 minutes.`
       });
 
-    console.log('✅ Booking marked for manual dispatcher assignment');
+    // Log the reassignment
+    console.log('✅ Successfully reassigned booking', bookingId, 'to driver', randomDriver.id);
 
     return new Response(
       JSON.stringify({ 
-        message: 'Booking awaiting manual dispatcher assignment',
-        availableDriversCount: availableDrivers.length,
-        status: 'awaiting_dispatcher_assignment'
+        message: 'Ride successfully reassigned',
+        newDriverId: randomDriver.id,
+        driverName: randomDriver.full_name
       }), 
       { 
         status: 200, 
