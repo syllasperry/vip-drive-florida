@@ -1,5 +1,4 @@
-
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { getAllBookings, listenForBookingChanges } from "../../data/bookings";
@@ -29,9 +28,6 @@ const PassengerDashboard = () => {
   const [activeTab, setActiveTab] = useState<"bookings" | "messages" | "payments" | "settings">("bookings");
   const [passengerProfile, setPassengerProfile] = useState<any | null>(null);
 
-  // Controle do toast de erro - impedindo múltiplos toasts
-  const errorToastShownRef = useRef(false);
-
   // Carrega perfil completo do passageiro (foto/nome/prefs)
   async function loadPassengerProfile(userId: string) {
     try {
@@ -49,6 +45,30 @@ const PassengerDashboard = () => {
       console.error("Error loading passenger profile:", err);
     }
   }
+
+  // Primeira carga + listener em tempo real (com cleanup)
+  useEffect(() => {
+    async function fetchBookings() {
+      const allBookings = await getAllBookings();
+      setBookings(allBookings);
+    }
+
+    fetchBookings();
+
+    const cleanup = listenForBookingChanges((updatedBooking: any) => {
+      setBookings(prev => {
+        const index = prev.findIndex(b => b.id === updatedBooking.id);
+        if (index !== -1) {
+          const next = [...prev];
+          next[index] = updatedBooking;
+          return next;
+        }
+        return [updatedBooking, ...prev];
+      });
+    });
+
+    return cleanup;
+  }, []);
 
   // Auth + auto-refresh + assinatura realtime com cleanup
   useEffect(() => {
@@ -126,9 +146,6 @@ const PassengerDashboard = () => {
 
   const loadBookings = async (userId: string) => {
     try {
-      // Reset error state when starting a new load
-      errorToastShownRef.current = false;
-      
       const { data, error } = await supabase
         .from("bookings")
         .select(
@@ -183,16 +200,11 @@ const PassengerDashboard = () => {
       setBookings(mapped);
     } catch (error) {
       console.error("❌ Error loading bookings:", error);
-      // Só mostrar toast de erro se não há dados existentes para mostrar E ainda não foi mostrado
-      if (bookings.length === 0 && !errorToastShownRef.current) {
-        toast({
-          title: "Error",
-          description: "Failed to load your bookings",
-          variant: "destructive",
-          duration: 4000
-        });
-        errorToastShownRef.current = true;
-      }
+      toast({
+        title: "Error",
+        description: "Failed to load your bookings",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }

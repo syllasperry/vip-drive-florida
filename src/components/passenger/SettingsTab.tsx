@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -6,15 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
-import { User, Phone, Mail, LogOut, Bell, Shield, HelpCircle, Camera } from "lucide-react";
+import { User, Phone, Mail, LogOut, Bell, Shield, HelpCircle, Camera, Upload } from "lucide-react";
 import { NotificationSettingsCard } from "./NotificationSettingsCard";
 import { PrivacySecurityCard } from "./PrivacySecurityCard";
 import { HelpSupportCard } from "./HelpSupportCard";
-import { getMyPassengerPreferences, upsertMyPassengerPreferences, type PassengerPreferences } from "@/lib/api/passengerPreferences";
 
 interface SettingsTabProps {
   passengerInfo: any;
@@ -33,19 +30,6 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [loadedPrefs, setLoadedPrefs] = useState<PassengerPreferences | null>(null);
-  
-  // Passenger preferences state
-  const [prefs, setPrefs] = useState<PassengerPreferences>({
-    air_conditioning: true,
-    preferred_temperature: 72,
-    temperature_unit: 'F',
-    radio_on: false,
-    preferred_music: '',
-    conversation_preference: 'No Preference',
-    trip_purpose: 'Leisure',
-    trip_notes: ''
-  });
 
   useEffect(() => {
     if (passengerInfo) {
@@ -56,33 +40,6 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
       });
     }
   }, [passengerInfo]);
-
-  useEffect(() => {
-    const loadPreferences = async () => {
-      try {
-        const preferences = await getMyPassengerPreferences();
-        console.log('Loaded passenger preferences:', preferences);
-        setLoadedPrefs(preferences);
-        
-        if (preferences) {
-          setPrefs({
-            air_conditioning: preferences.air_conditioning ?? true,
-            preferred_temperature: preferences.preferred_temperature ?? 72,
-            temperature_unit: preferences.temperature_unit ?? 'F',
-            radio_on: preferences.radio_on ?? false,
-            preferred_music: preferences.preferred_music ?? '',
-            conversation_preference: preferences.conversation_preference ?? 'No Preference',
-            trip_purpose: preferences.trip_purpose ?? 'Leisure',
-            trip_notes: preferences.trip_notes ?? ''
-          });
-        }
-      } catch (error) {
-        console.error('Failed to load passenger preferences:', error);
-      }
-    };
-
-    loadPreferences();
-  }, []);
 
   const handlePhotoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -155,20 +112,16 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
         updateData.profile_photo_url = photoUrl;
       }
 
-      // Update passenger profile
-      const { error: profileError } = await supabase
+      const { error } = await supabase
         .from('passengers')
         .update(updateData)
         .eq('id', user.id);
 
-      if (profileError) throw profileError;
-
-      // Save passenger preferences
-      await upsertMyPassengerPreferences(prefs);
+      if (error) throw error;
 
       toast({
         title: "Success",
-        description: "Profile and preferences updated successfully",
+        description: "Profile updated successfully",
       });
       
       setEditing(false);
@@ -319,100 +272,6 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
                   New photo selected: {photoFile.name}
                 </div>
               )}
-
-              {/* Passenger Preferences Section */}
-              <section aria-labelledby="passenger-prefs" className="mt-6">
-                <h3 id="passenger-prefs" className="text-lg font-semibold">Passenger Preferences</h3>
-
-                {/* Temperature row with +/- stepper */}
-                <div className="mt-4">
-                  <Label>Air Conditioning Temperature</Label>
-                  <div className="flex items-center gap-3">
-                    <Button 
-                      type="button" 
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPrefs(p => ({...p, preferred_temperature: Math.max(60,(p.preferred_temperature ?? 72)-1)}))}
-                    >
-                      -
-                    </Button>
-                    <div className="min-w-[60px] text-center">{prefs.preferred_temperature}°{prefs.temperature_unit}</div>
-                    <Button 
-                      type="button" 
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPrefs(p => ({...p, preferred_temperature: Math.min(80,(p.preferred_temperature ?? 72)+1)}))}
-                    >
-                      +
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Radio toggle */}
-                <div className="mt-4 flex items-center justify-between">
-                  <Label>Radio</Label>
-                  <Switch 
-                    checked={!!prefs.radio_on} 
-                    onCheckedChange={(v) => setPrefs(p => ({...p, radio_on: v}))} 
-                  />
-                </div>
-
-                {/* Conversation preference */}
-                <div className="mt-4">
-                  <Label>Conversation Preference</Label>
-                  <Select 
-                    value={prefs.conversation_preference ?? 'No Preference'} 
-                    onValueChange={(v) => setPrefs(p => ({...p, conversation_preference: v as any}))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="No Preference">No Preference</SelectItem>
-                      <SelectItem value="Quiet">Quiet</SelectItem>
-                      <SelectItem value="Chatty">Chatty</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Trip purpose */}
-                <div className="mt-4">
-                  <Label>Trip Purpose</Label>
-                  <Select 
-                    value={prefs.trip_purpose ?? 'Leisure'} 
-                    onValueChange={(v) => setPrefs(p => ({...p, trip_purpose: v as any}))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Leisure">Leisure</SelectItem>
-                      <SelectItem value="Business">Business</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Preferred music */}
-                <div className="mt-4">
-                  <Label>Preferred Music</Label>
-                  <Input 
-                    value={prefs.preferred_music ?? ''} 
-                    onChange={(e) => setPrefs(p => ({...p, preferred_music: e.target.value}))} 
-                    placeholder="e.g., Jazz" 
-                  />
-                </div>
-
-                {/* Notes */}
-                <div className="mt-4">
-                  <Label>Notes</Label>
-                  <Textarea 
-                    value={prefs.trip_notes ?? ''} 
-                    onChange={(e) => setPrefs(p => ({...p, trip_notes: e.target.value}))} 
-                    placeholder="Any other preference (optional)" 
-                  />
-                </div>
-              </section>
-
               <div className="flex gap-2">
                 <Button 
                   onClick={handleSave} 
