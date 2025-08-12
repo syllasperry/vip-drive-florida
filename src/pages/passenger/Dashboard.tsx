@@ -556,27 +556,72 @@ await loadPassengerProfile(user.id);
     }
   };
 {/* Passenger Booking Summary */}
-<div className="bg-white rounded-lg shadow p-4 mb-4">
-  <h2 className="text-lg font-semibold text-gray-800 mb-2">
-    Booking Summary
-  </h2>
-  {selectedBooking ? (
-    <div className="space-y-2">
-      <div className="flex items-center">
-        <img
-          src={selectedBooking.passenger_photo || "/default-avatar.png"}
-          alt="Passenger"
-          className="w-10 h-10 rounded-full mr-3"
-        />
-        <div>
-          <p className="font-medium text-gray-900">
-            {selectedBooking.passenger_name || "Unknown Passenger"}
-          </p>
-          <p className="text-sm text-gray-500">
-            {selectedBooking.passenger_phone || "No phone available"}
-          </p>
+{selectedBooking && (
+  <div className="bg-white rounded-lg shadow p-4 mb-4">
+    <h2 className="text-lg font-semibold text-gray-800 mb-2">Booking Summary</h2>
+
+    <div className="flex items-center">
+      <img
+        src={
+          selectedBooking.passenger_photo ||
+          selectedBooking.passengers?.profile_photo_url ||
+          "/default-avatar.png"
+        }
+        alt="Passenger"
+        className="w-10 h-10 rounded-full mr-3"
+      />
+      <div>
+        <div className="font-semibold text-gray-900">
+          {selectedBooking.passenger_name ||
+            selectedBooking.passengers?.full_name ||
+            "Passenger"}
+        </div>
+
+        {/* Preferências (chips) */}
+        <div className="mt-1 flex flex-wrap gap-2 text-xs text-gray-600">
+          {selectedBooking.preferred_temperature && (
+            <span className="px-2 py-1 bg-gray-100 rounded">
+              Temp: {selectedBooking.preferred_temperature}
+            </span>
+          )}
+          {selectedBooking.music_preference && (
+            <span className="px-2 py-1 bg-gray-100 rounded">
+              Music: {selectedBooking.music_preference}
+            </span>
+          )}
+          {selectedBooking.interaction_preference && (
+            <span className="px-2 py-1 bg-gray-100 rounded">
+              Interaction: {selectedBooking.interaction_preference}
+            </span>
+          )}
+          {!selectedBooking.preferred_temperature &&
+            !selectedBooking.music_preference &&
+            !selectedBooking.interaction_preference && (
+              <span className="text-gray-500">No saved preferences</span>
+            )}
         </div>
       </div>
+    </div>
+
+    {/* Propósito / observações (mostra só se existir) */}
+    {(selectedBooking.trip_purpose || selectedBooking.additional_notes) && (
+      <div className="mt-3 text-sm text-gray-700 space-y-1">
+        {selectedBooking.trip_purpose && (
+          <div>
+            <span className="font-medium">Purpose:</span>{" "}
+            {selectedBooking.trip_purpose}
+          </div>
+        )}
+        {selectedBooking.additional_notes && (
+          <div>
+            <span className="font-medium">Notes:</span>{" "}
+            {selectedBooking.additional_notes}
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+)}
       <div className="text-sm text-gray-700">
         <p><strong>Pickup:</strong> {selectedBooking.pickup_location}</p>
         <p><strong>Drop-off:</strong> {selectedBooking.dropoff_location}</p>
