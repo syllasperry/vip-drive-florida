@@ -52,18 +52,23 @@ serve(async (req) => {
       );
     }
 
-    // AUTO-ASSIGN DISABLED: Do not automatically reassign drivers
+    // CRITICAL GUARD: Do not automatically reassign drivers
     // The dispatcher must manually assign drivers through the dashboard
     console.log('[AUTO-ASSIGN GUARD] Auto-reassignment blocked - manual assignment required');
+    
+    // SECURITY GUARD: Verificar payload antes de atualizar
+    const updatePayload = { 
+      ride_status: 'pending_dispatcher_assignment',
+      driver_id: null, // CRITICAL: Never auto-assign driver_id
+      payment_confirmation_status: 'awaiting_manual_assignment'
+    };
+    
+    console.log('[GUARD] payload to bookings update:', updatePayload);
     
     // Update booking status to indicate manual assignment needed
     await supabase
       .from('bookings')
-      .update({ 
-        ride_status: 'pending_dispatcher_assignment',
-        driver_id: null,
-        payment_confirmation_status: 'awaiting_manual_assignment'
-      })
+      .update(updatePayload)
       .eq('id', bookingId);
 
     // Notify dispatcher that manual assignment is needed

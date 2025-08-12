@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient';
 
 /**
  * Carrega TODOS os bookings já com os dados do passageiro (foto, nome e preferências)
+ * GUARD: Esta função é APENAS para leitura - nunca atribui driver_id
  */
 export const getAllBookings = async () => {
   console.log('[DISPATCHER LOAD] fetching all bookings...');
@@ -29,13 +30,14 @@ export const getAllBookings = async () => {
     return [];
   }
   
-  console.log('[DISPATCHER LOAD] bookings', data?.length || 0);
+  console.log('[DISPATCHER LOAD] bookings loaded:', data?.length || 0);
+  console.log('[AUTO-ASSIGN GUARD] getAllBookings completed - NO auto-assignment performed');
   return data ?? [];
 };
 
 /**
  * Carrega bookings para o dispatcher com dados completos de passageiro e driver
- * SOMENTE SELECT - ZERO auto-assign
+ * CRÍTICO: SOMENTE SELECT - ZERO auto-assign - NUNCA toca em driver_id
  */
 export const getDispatcherBookings = async () => {
   console.log('[DISPATCHER LOAD] fetching dispatcher bookings...');
@@ -58,16 +60,48 @@ export const getDispatcherBookings = async () => {
     return []; 
   }
   
-  console.log('[DISPATCHER LOAD] bookings', data?.length || 0);
+  console.log('[DISPATCHER LOAD] bookings loaded:', data?.length || 0);
   console.log('[AUTO-ASSIGN GUARD] dispatcher load completed - NO auto-assignment performed');
   
   return data || [];
 };
 
 /**
+ * Função para criar booking - CRÍTICO: driver_id NUNCA é incluído na criação
+ */
+export const createBooking = async (bookingData: any) => {
+  console.log('[GUARD] createBooking called with payload:', bookingData);
+  
+  // SECURITY GUARD: Verificar se driver_id está sendo enviado na criação
+  if ('driver_id' in bookingData && bookingData.driver_id) {
+    console.error('[GUARD] BLOCKED: driver_id found in create payload:', bookingData.driver_id);
+    throw new Error('GUARD: driver_id must be null on create');
+  }
+  
+  // Garantir que driver_id está ausente do payload
+  const { driver_id: _ignore, ...cleanPayload } = bookingData;
+  
+  console.log('[GUARD] Clean payload for booking creation (driver_id removed):', cleanPayload);
+  
+  const { data, error } = await supabase
+    .from('bookings')
+    .insert(cleanPayload)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[GUARD] Error creating booking:', error);
+    throw error;
+  }
+
+  console.log('[GUARD] Booking created successfully without driver_id:', data);
+  return data;
+};
+
+/**
  * Escuta INSERT/UPDATE/DELETE em bookings.
  * Para INSERT/UPDATE, buscamos o registro completo (com join de passengers) antes de disparar o callback.
- * IMPORTANTE: ZERO auto-assign aqui - apenas notificação
+ * IMPORTANTE: ZERO auto-assign aqui - apenas notificação de mudanças
  */
 export const listenForBookingChanges = (callback: (payload: any) => void) => {
   const channel = supabase

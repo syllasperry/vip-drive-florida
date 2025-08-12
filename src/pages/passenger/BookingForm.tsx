@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -22,7 +21,7 @@ const BookingForm = () => {
   // Get data from previous page (vehicle selection)
   const { selectedVehicle, pickup, dropoff, estimatedPrice } = location.state || {};
   
-  // Flight information
+
   const [flightType, setFlightType] = useState('');
   const [flightNumber, setFlightNumber] = useState('');
   const [showFlightInfo, setShowFlightInfo] = useState(false);
@@ -144,7 +143,7 @@ const BookingForm = () => {
         flightInfoString = `${flightType}: ${flightNumber}`;
       }
 
-      // Prepare booking data WITHOUT driver_id (respects constraint driver_id_only_after_accept)
+      // Prepare booking data WITHOUT driver_id - CRITICAL GUARD
       const bookingData = {
         passenger_id: user.id,
         pickup_location: pickup || 'Not specified',
@@ -152,16 +151,15 @@ const BookingForm = () => {
         pickup_time: pickupTime.toISOString(),
         passenger_count: parseInt(passengerCount),
         vehicle_type: selectedVehicle?.name || 'Standard Vehicle',
-        estimated_price: null, // No price until dispatcher sets it
-        final_price: null, // No price until dispatcher offers
-        status: 'pending', // Initial status - awaiting dispatcher review
+        estimated_price: null,
+        final_price: null,
+        status: 'pending',
         ride_status: 'pending_driver',
         payment_confirmation_status: 'waiting_for_offer',
         status_passenger: 'passenger_requested',
         status_driver: 'new_request',
         payment_status: 'pending',
-        // CRITICAL: driver_id is completely omitted to respect constraint
-        // driver_id will only be set when driver accepts or offer is sent
+        // CRITICAL GUARD: driver_id is NEVER included in creation
         passenger_preferences: {
           luggage_size: luggageSize,
           luggage_count: parseInt(luggageCount),
@@ -178,20 +176,18 @@ const BookingForm = () => {
         }
       };
 
-      console.log('📝 Booking data prepared (NO driver_id to respect constraint):', {
-        ...bookingData,
-        passenger_preferences: JSON.stringify(bookingData.passenger_preferences, null, 2)
-      });
+      // SECURITY GUARD: Check payload before sending
+      console.log('[GUARD] payload to bookings:', bookingData);
+      if ('driver_id' in bookingData && (bookingData as any).driver_id) {
+        throw new Error('GUARD: driver_id must be null on create');
+      }
 
-      // Garantia extra: remove driver_id caso tenha vindo de bookingData
-const { driver_id: _ignore, ...cleanBooking } = bookingData as any;
-
-console.log('🚀 Inserting booking into database (driver_id omitted)...');
-const { data: booking, error: bookingError } = await supabase
-  .from('bookings')
-  .insert(cleanBooking) // usa sem driver_id
-  .select()
-  .single();
+      console.log('🚀 Inserting booking into database (driver_id completely omitted)...');
+      const { data: booking, error: bookingError } = await supabase
+        .from('bookings')
+        .insert(bookingData)
+        .select()
+        .single();
 
       if (bookingError) {
         console.error('❌ Database insertion error:', bookingError);
@@ -217,7 +213,7 @@ const { data: booking, error: bookingError } = await supabase
           selectedVehicle,
           pickup,
           dropoff,
-          estimatedPrice: null, // No price until dispatcher sets it
+          estimatedPrice: null,
           pickupTime: pickupTime.toISOString(),
           passengerCount: parseInt(passengerCount),
           luggageSize,
@@ -273,7 +269,8 @@ const { data: booking, error: bookingError } = await supabase
           <div className="w-10" />
         </div>
 
-        {/* Booking Form */}
+        
+        
         <div className="p-4 space-y-6">
           {/* Flight Information Section */}
           <Card className="border-0 shadow-sm">

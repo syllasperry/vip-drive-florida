@@ -56,17 +56,22 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
     try {
       console.log('🚀 Quick assigning driver to booking:', { booking_id: booking.id, driver_id: driverId });
       
+      // GUARD: Verificar payload antes de enviar
+      const updatePayload = {
+        driver_id: driverId,
+        status: 'assigned',
+        ride_status: 'assigned_by_dispatcher',
+        status_driver: 'assigned',
+        status_passenger: 'driver_assigned',
+        updated_at: new Date().toISOString()
+      };
+      
+      console.log('[GUARD] payload to bookings update:', updatePayload);
+      
       // IMPORTANT: Only include driver_id when manually assigning (respecting constraint)
       const { error } = await supabase
         .from('bookings')
-        .update({
-          driver_id: driverId,
-          status: 'assigned',
-          ride_status: 'assigned_by_dispatcher',
-          status_driver: 'assigned',
-          status_passenger: 'driver_assigned',
-          updated_at: new Date().toISOString()
-        })
+        .update(updatePayload)
         .eq('id', booking.id);
 
       if (error) {
@@ -203,7 +208,6 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
                 </div>
               )}
 
-              {/* Driver Information */}
               {booking.drivers && (
                 <div className="bg-gray-50 p-3 rounded-lg">
                   <p className="text-sm font-medium mb-2">Assigned Driver:</p>
@@ -222,7 +226,6 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
                 </div>
               )}
 
-              {/* Action Buttons */}
               <div className="flex gap-2 pt-2">
                 {!booking.driver_id ? (
                   <>
@@ -235,7 +238,6 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
                       Assign Driver & Set Price
                     </Button>
                     
-                    {/* Quick Assign Buttons for Available Drivers */}
                     <div className="flex gap-1">
                       {drivers.slice(0, 2).map((driver) => (
                         <Button
