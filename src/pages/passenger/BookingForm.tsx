@@ -144,7 +144,7 @@ const BookingForm = () => {
         flightInfoString = `${flightType}: ${flightNumber}`;
       }
 
-      // Prepare booking data WITHOUT driver_id (will be null until manually assigned)
+      // Prepare booking data WITHOUT driver_id (respects constraint driver_id_only_after_accept)
       const bookingData = {
         passenger_id: user.id,
         pickup_location: pickup || 'Not specified',
@@ -152,22 +152,21 @@ const BookingForm = () => {
         pickup_time: pickupTime.toISOString(),
         passenger_count: parseInt(passengerCount),
         vehicle_type: selectedVehicle?.name || 'Standard Vehicle',
-        estimated_price: null, // No automatic price - awaiting dispatcher
-        final_price: null, // No automatic price - awaiting dispatcher offer
+        estimated_price: null, // No price until dispatcher sets it
+        final_price: null, // No price until dispatcher offers
         status: 'pending', // Initial status - awaiting dispatcher review
         ride_status: 'pending_driver',
         payment_confirmation_status: 'waiting_for_offer',
         status_passenger: 'passenger_requested',
         status_driver: 'new_request',
         payment_status: 'pending',
-        // IMPORTANT: driver_id is intentionally omitted - will be null in database
-        // This ensures the driver_id_only_after_accept constraint is respected
+        // CRITICAL: driver_id is completely omitted to respect constraint
+        // driver_id will only be set when driver accepts or offer is sent
         passenger_preferences: {
           luggage_size: luggageSize,
           luggage_count: parseInt(luggageCount),
           flight_info: flightInfoString,
           special_requests: specialRequests,
-          // Store original price estimate as reference only (not used for payment)
           original_estimate_display: estimatedPrice,
           ...(isThirdPartyBooking && {
             third_party_booking: {
@@ -179,13 +178,13 @@ const BookingForm = () => {
         }
       };
 
-      console.log('📝 Passenger booking data prepared (NO driver_id):', {
+      console.log('📝 Booking data prepared (NO driver_id to respect constraint):', {
         ...bookingData,
         passenger_preferences: JSON.stringify(bookingData.passenger_preferences, null, 2)
       });
 
-      // Insert booking into database WITHOUT driver_id
-      console.log('💾 Inserting passenger booking into database (driver_id will be null)...');
+      // Insert booking into database (driver_id remains null initially)
+      console.log('💾 Inserting booking into database (driver_id omitted)...');
       const { data: booking, error: bookingError } = await supabase
         .from('bookings')
         .insert(bookingData)
@@ -202,7 +201,7 @@ const BookingForm = () => {
         throw new Error('No booking data returned from database');
       }
 
-      console.log('✅ Passenger booking created successfully (driver_id is null):', booking);
+      console.log('✅ Booking created successfully (constraint respected):', booking);
 
       // Success - navigate to confirmation page with booking data
       toast({
@@ -237,7 +236,7 @@ const BookingForm = () => {
         } 
       });
     } catch (error) {
-      console.error('❌ Error submitting passenger booking:', error);
+      console.error('❌ Error submitting booking:', error);
       let errorMessage = "Failed to submit booking. Please try again.";
       
       if (error instanceof Error) {
