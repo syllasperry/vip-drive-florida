@@ -13,7 +13,7 @@ import { format } from "date-fns";
 import { Booking } from "@/types/booking";
 import { MessagesTab } from "@/components/passenger/MessagesTab";
 import { PaymentsTab } from "@/components/passenger/PaymentsTab";
-import { SettingsTab } from "@/components/passenger/SettingsTab";
+import { SettingsTab } from "@/components/SettingsTab";
 import { mapToSimpleStatus } from "@/utils/bookingHelpers";
 
 const PassengerDashboard = () => {
@@ -28,11 +28,11 @@ const PassengerDashboard = () => {
   const [activeTab, setActiveTab] = useState<"bookings" | "messages" | "payments" | "settings">("bookings");
   const [passengerProfile, setPassengerProfile] = useState<any | null>(null);
 
+  // Controle do toast de erro (não repetir / permitir fechar)
+  const errorToastIdRef = useRef<string | null>(null);
+  const hasLoadedBookingsRef = useRef(false);
+
   // Carrega perfil completo do passageiro (foto/nome/prefs)
-// Controle do toast de erro (não repetir / permitir fechar)
-const errorShownRef = useRef(false);
-const errorToastIdRef = useRef<string | number | null>(null);
-const hasLoadedBookingsRef = useRef(false);
   async function loadPassengerProfile(userId: string) {
     try {
       const { data, error } = await supabase
@@ -52,63 +52,66 @@ const hasLoadedBookingsRef = useRef(false);
 
   // Primeira carga + listener em tempo real (com cleanup)
   useEffect(() => {
-  let isMounted = true;
+    let isMounted = true;
 
-  async function fetchBookings() {
-    try {
-      const allBookings = await getAllBookings();
-      if (!isMounted) return;
-
-      setBookings(allBookings);
-      hasLoadedBookingsRef.current = true;
-
-      // Se havia toast de erro aberto, fecha ao recuperar com sucesso
+    async function fetchBookings() {
+      setLoading(true);
+      
+      // 1) limpar erro/fechar toast anterior
       if (errorToastIdRef.current) {
-        toast.dismiss(errorToastIdRef.current);
+        // Note: The toast function returns an object with dismiss method
         errorToastIdRef.current = null;
-        errorShownRef.current = false;
       }
-    } catch (err) {
-      if (!errorShownRef.current) {
-        const t = toast({
-          title: "Error",
-          description: "Failed to load your bookings",
-          variant: "destructive",
-          duration: 4000, // auto‑hide
-        });
-        // guarda o id pra poder fechar depois
-        // (algumas libs retornam { id }, outras só void; por isso o cast defensivo)
-        errorToastIdRef.current = (t as any)?.id ?? null;
-        errorShownRef.current = true;
+
+      try {
+        const allBookings = await getAllBookings();
+        if (!isMounted) return;
+
+        setBookings(allBookings);
+        hasLoadedBookingsRef.current = true;
+
+        // Se havia toast de erro aberto, marca como resolvido
+        if (errorToastIdRef.current) {
+          errorToastIdRef.current = null;
+        }
+      } catch (err) {
+        if (isMounted && !hasLoadedBookingsRef.current && !errorToastIdRef.current) {
+          // Só mostrar erro se realmente falhou E não há dados renderizados E não há toast já aberto
+          const toastResult = toast({
+            title: "Error",
+            description: "Failed to load your bookings",
+            variant: "destructive",
+            duration: 4000, // auto‑hide
+          });
+          // Armazenar referência se o toast retornar um ID
+          errorToastIdRef.current = "error-shown";
+        }
+        console.error("Failed to load bookings:", err);
+      } finally {
+        if (isMounted) setLoading(false);
       }
-      console.error("Failed to load bookings:", err);
-    } finally {
-      if (isMounted) setLoading(false);
     }
-  }
 
-  // 1) primeira carga
-  fetchBookings();
-
-  // 2) real‑time updates (se já existirem no projeto)
-  const sub = listenForBookingChanges(() => {
+    // 1) primeira carga
     fetchBookings();
-  });
 
-  // cleanup ao desmontar
-  return () => {
-    isMounted = false;
-    try {
-      sub?.unsubscribe?.();
-    } catch (_) {}
-    // Se já carregou com sucesso e ainda existe um toast antigo, garante fechar
-    if (hasLoadedBookingsRef.current && errorToastIdRef.current) {
-      toast.dismiss(errorToastIdRef.current);
+    // 2) real‑time updates (se já existirem no projeto)
+    const sub = listenForBookingChanges(() => {
+      fetchBookings();
+    });
+
+    // cleanup ao desmontar
+    return () => {
+      isMounted = false;
+      try {
+        sub?.unsubscribe?.();
+      } catch (_) {}
+      // Limpar referência do toast ao desmontar
       errorToastIdRef.current = null;
-      errorShownRef.current = false;
-    }
-  };
-}, []);  // Auth + auto-refresh + assinatura realtime com cleanup
+    };
+  }, [toast]);
+
+  // Auth + auto-refresh + assinatura realtime com cleanup
   useEffect(() => {
     checkAuth();
     const cleanupRealtime = setupRealtimeSubscription();
@@ -238,11 +241,15 @@ const hasLoadedBookingsRef = useRef(false);
       setBookings(mapped);
     } catch (error) {
       console.error("❌ Error loading bookings:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load your bookings",
-        variant: "destructive"
-      });
+      // Só mostrar toast de erro se não há dados existentes para mostrar
+      if (bookings.length === 0) {
+        toast({
+          title: "Error",
+          description: "Failed to load your bookings",
+          variant: "destructive",
+          duration: 4000
+        });
+      }
     } finally {
       setLoading(false);
     }
