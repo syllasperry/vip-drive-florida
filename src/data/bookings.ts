@@ -67,6 +67,32 @@ export const getDispatcherBookings = async () => {
 };
 
 /**
+ * Helper function to normalize status values to valid booking_status enum values
+ */
+const normalizeBookingStatus = (status: string | null | undefined): string => {
+  if (!status) return 'pending';
+  
+  // Map common status values to valid enum values
+  const statusMap: Record<string, string> = {
+    'booking_requested': 'pending',
+    'driver_assigned': 'pending',
+    'assigned': 'pending',
+    'assigned_by_dispatcher': 'pending',
+    'offer_sent': 'offer_sent',
+    'price_awaiting_acceptance': 'offer_sent',
+    'payment_pending': 'payment_pending',
+    'passenger_paid': 'payment_pending',
+    'all_set': 'all_set',
+    'completed': 'completed',
+    'cancelled': 'cancelled',
+    'cancelled_by_driver': 'cancelled',
+    'cancelled_by_passenger': 'cancelled'
+  };
+  
+  return statusMap[status] || status;
+};
+
+/**
  * Função para criar booking - CRÍTICO: driver_id NUNCA é incluído na criação
  */
 export const createBooking = async (bookingData: any) => {
@@ -78,8 +104,13 @@ export const createBooking = async (bookingData: any) => {
     throw new Error('GUARD: driver_id must be null on create');
   }
   
-  // Garantir que driver_id está ausente do payload
+  // Garantir que driver_id está ausente do payload e normalizar status
   const { driver_id: _ignore, ...cleanPayload } = bookingData;
+  
+  // Normalize status to valid enum value
+  if (cleanPayload.status) {
+    cleanPayload.status = normalizeBookingStatus(cleanPayload.status);
+  }
   
   console.log('[GUARD] Clean payload for booking creation (driver_id removed):', cleanPayload);
   
@@ -119,7 +150,7 @@ export const getBookingById = async (bookingId: string) => {
 };
 
 /**
- * Atomic function to send offer with proper validation
+ * Atomic function to send offer with proper validation and status normalization
  */
 export const sendOfferAtomic = async (params: {
   bookingId: string;
@@ -137,15 +168,17 @@ export const sendOfferAtomic = async (params: {
     return { data: null, error: { message: 'Booking not found in database' } };
   }
 
-  // 2) Update atômico (uma operação)
+  // 2) Update atômico (uma operação) with normalized status
+  const updateData = {
+    driver_id: driverId,
+    final_price: price,
+    status: normalizeBookingStatus('payment_pending'),
+    updated_at: new Date().toISOString(),
+  };
+
   const { data: updatedBooking, error: updateError } = await supabase
     .from('bookings')
-    .update({
-      driver_id: driverId,
-      final_price: price,
-      status: 'payment_pending',
-      updated_at: new Date().toISOString(),
-    })
+    .update(updateData)
     .eq('id', bookingId)
     .select('*')
     .maybeSingle(); // se políticas retornarem 0 linhas, não explode

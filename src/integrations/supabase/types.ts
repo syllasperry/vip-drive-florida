@@ -1174,6 +1174,9 @@ export type Database = {
         | "in_progress"
         | "completed"
         | "cancelled"
+        | "payment_pending"
+        | "price_awaiting_acceptance"
+        | "all_set"
       notification_type:
         | "offer_received"
         | "offer_accepted"
@@ -1318,6 +1321,9 @@ export const Constants = {
         "in_progress",
         "completed",
         "cancelled",
+        "payment_pending",
+        "price_awaiting_acceptance",
+        "all_set",
       ],
       notification_type: [
         "offer_received",
