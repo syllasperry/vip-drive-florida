@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Clock, Users, DollarSign, Settings, MessageCircle, Phone, Car } from 'lucide-react';
+import { Clock, Users, DollarSign, MessageCircle, Phone, Car, LogOut } from 'lucide-react';
 import { DispatcherBookingList } from "@/components/dispatcher/DispatcherBookingList";
 import { DispatcherMessaging } from "@/components/dispatcher/DispatcherMessaging";
 import { DriverManagement } from "@/components/dispatcher/DriverManagement";
@@ -65,6 +64,20 @@ const DispatcherDashboard = () => {
     } catch (error) {
       console.error('Auth error:', error);
       navigate('/passenger/login');
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate('/passenger/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to logout",
+        variant: "destructive",
+      });
     }
   };
 
@@ -345,19 +358,14 @@ const DispatcherDashboard = () => {
         <div className="max-w-md mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-semibold text-gray-900">
-              {activeTab === "bookings" && "All Bookings"}
-              {activeTab === "drivers" && "Drivers"}
-              {activeTab === "messages" && "Messages"}
-              {activeTab === "settings" && "Settings"}
+              VIP Dispatcher Dashboard
             </h1>
             <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setActiveTab("bookings")}
-              className="text-xs"
+              onClick={handleLogout}
+              className="bg-red-500 hover:bg-red-600 text-white font-bold px-4 py-2 rounded-lg flex items-center space-x-2"
             >
-              <Settings className="w-4 h-4 mr-1" />
-              Dispatcher
+              <LogOut className="w-4 h-4" />
+              <span>Logout</span>
             </Button>
           </div>
         </div>
