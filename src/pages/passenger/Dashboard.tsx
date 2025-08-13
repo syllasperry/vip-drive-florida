@@ -59,8 +59,8 @@ const Dashboard = () => {
               profile_photo_url: publicAvatarUrl(profile.photo_url),
               car_make: profile.car_make || 'Tesla',
               car_model: profile.car_model || 'Model Y',
-              car_year: profile.car_year || '2024',
-              car_color: profile.car_color || 'Black',
+              car_year: '2024',
+              car_color: 'Black',
               phone: profile.phone,
               email: profile.email
             };
@@ -256,7 +256,7 @@ const Dashboard = () => {
                         </Avatar>
                         <div className="flex-1">
                           <p className="font-medium text-gray-900">{driver.full_name}</p>
-                          <p className="text-sm text-gray-600">{driver.car_make} {driver.car_model} ({driver.car_year}) - {driver.car_color}</p>
+                          <p className="text-sm text-gray-600">{driver.car_make} {driver.car_model} ({driver.car_year}) • {driver.car_color}</p>
                           {statusAllowsContact && (
                             <>
                               <p className="text-xs text-gray-500">📞 {driver.phone}</p>
@@ -301,16 +301,6 @@ const Dashboard = () => {
                       </div>
                     </div>
 
-                    {/* Car Information */}
-                    {driver && (
-                      <div className="flex items-center space-x-2 mb-4">
-                        <Car className="h-4 w-4 text-gray-600" />
-                        <span className="text-gray-900 font-medium">
-                          {driver.car_make} {driver.car_model}
-                        </span>
-                      </div>
-                    )}
-
                     {/* Payment Button */}
                     {showPaymentButton && (
                       <div className="mb-4 flex justify-center">
@@ -338,6 +328,8 @@ const Dashboard = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleMessage(booking)}
+                          aria-disabled={!statusAllowsContact}
+                          tabIndex={!statusAllowsContact ? -1 : undefined}
                           className="flex items-center gap-2"
                         >
                           <MessageSquare className="h-4 w-4" />
@@ -348,21 +340,21 @@ const Dashboard = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleCall(booking)}
+                          aria-disabled={!statusAllowsContact}
+                          tabIndex={!statusAllowsContact ? -1 : undefined}
                           className="flex items-center gap-2"
                         >
                           <Phone className="h-4 w-4" />
                           Call
                         </Button>
                         
-                        <div className="flex justify-center">
-                          <Button
-                            size="sm"
-                            onClick={() => handleViewDetails(booking)}
-                            className="bg-red-500 hover:bg-red-600 text-white"
-                          >
-                            View Details
-                          </Button>
-                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => handleViewDetails(booking)}
+                          className="bg-red-500 hover:bg-red-600 text-white"
+                        >
+                          View Details
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -445,7 +437,7 @@ const Dashboard = () => {
                     <div>
                       <p className="font-medium">{driverProfiles[selectedBooking.id].full_name}</p>
                       <p className="text-sm text-gray-600">
-                        {driverProfiles[selectedBooking.id].car_make} {driverProfiles[selectedBooking.id].car_model} ({driverProfiles[selectedBooking.id].car_year}) - {driverProfiles[selectedBooking.id].car_color}
+                        {driverProfiles[selectedBooking.id].car_make} {driverProfiles[selectedBooking.id].car_model} ({driverProfiles[selectedBooking.id].car_year}) • {driverProfiles[selectedBooking.id].car_color}
                       </p>
                       <p className="text-xs text-gray-500">📞 {driverProfiles[selectedBooking.id].phone}</p>
                       <p className="text-xs text-gray-500">✉️ {driverProfiles[selectedBooking.id].email}</p>
