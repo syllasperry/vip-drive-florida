@@ -33,12 +33,15 @@ const Dashboard = () => {
   const loadBookings = async () => {
     try {
       setIsLoading(true);
-      const bookings = await getDispatcherBookings();
-      setBookings(bookings);
+      const bookingsData = await getDispatcherBookings();
+      
+      // Ensure bookingsData is always an array
+      const safeBookings = Array.isArray(bookingsData) ? bookingsData : [];
+      setBookings(safeBookings);
 
       // Fetch driver profiles in parallel for each booking
-      if (bookings.length > 0) {
-        const profilePromises = bookings.map(async (booking) => {
+      if (safeBookings.length > 0) {
+        const profilePromises = safeBookings.map(async (booking) => {
           try {
             const profile = await getPassengerDriverProfile(booking.id);
             return { bookingId: booking.id, profile };
@@ -73,6 +76,8 @@ const Dashboard = () => {
     } catch (error) {
       console.error('Error loading bookings:', error);
       toast.error('Failed to load bookings. Please try again.');
+      // Set empty array on error to prevent .map() issues
+      setBookings([]);
     } finally {
       setIsLoading(false);
     }
@@ -226,7 +231,8 @@ const Dashboard = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {bookings.map((booking) => {
+            {/* Add null-safety to the main bookings map */}
+            {(bookings ?? []).map((booking) => {
               const driver = driverProfiles[booking.id];
               const statusAllowsContact = booking.status === 'all_set' || booking.status === 'completed';
               const showDriverData = booking.status === 'offer_sent' || booking.status === 'payment_pending' || booking.status === 'all_set' || booking.status === 'completed';

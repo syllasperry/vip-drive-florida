@@ -42,13 +42,13 @@ export const getBookings = async () => {
 
     if (error) {
       console.error("Error fetching bookings:", error);
-      return null;
+      return [];
     }
 
-    return data;
+    return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error("Unexpected error fetching bookings:", error);
-    return null;
+    return [];
   }
 };
 
@@ -108,13 +108,13 @@ export const getPassengerBookings = async (passengerId: string) => {
 
     if (error) {
       console.error("Error fetching passenger bookings:", error);
-      return null;
+      return [];
     }
 
-    return data;
+    return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error("Unexpected error fetching passenger bookings:", error);
-    return null;
+    return [];
   }
 };
 
@@ -141,13 +141,13 @@ export const getDriverBookings = async (driverId: string) => {
 
     if (error) {
       console.error("Error fetching driver bookings:", error);
-      return null;
+      return [];
     }
 
-    return data;
+    return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error("Unexpected error fetching driver bookings:", error);
-    return null;
+    return [];
   }
 };
 
@@ -182,13 +182,13 @@ export const getDispatcherBookings = async () => {
 
     if (error) {
       console.error("Error fetching dispatcher bookings:", error);
-      return null;
+      return [];
     }
 
-    return data;
+    return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error("Unexpected error fetching dispatcher bookings:", error);
-    return null;
+    return [];
   }
 };
 

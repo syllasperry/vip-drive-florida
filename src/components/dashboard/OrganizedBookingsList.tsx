@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,7 @@ export interface OrganizedBookingsListProps {
 }
 
 export const OrganizedBookingsList: React.FC<OrganizedBookingsListProps> = ({
-  bookings,
+  bookings = [], // Add default empty array
   currentUserId,
   userType,
   onUpdate,
@@ -55,11 +56,14 @@ export const OrganizedBookingsList: React.FC<OrganizedBookingsListProps> = ({
     setSelectedStatus(status);
   };
 
-  const filteredBookings = bookings.filter((booking) => {
+  // Ensure bookings is always an array and add null-safety to filter
+  const safeBookings = Array.isArray(bookings) ? bookings : [];
+  
+  const filteredBookings = safeBookings.filter((booking) => {
     const searchRegex = new RegExp(searchTerm, 'i');
-    const matchesSearch = searchRegex.test(booking.pickup_location) || searchRegex.test(booking.dropoff_location);
+    const matchesSearch = searchRegex.test(booking?.pickup_location || '') || searchRegex.test(booking?.dropoff_location || '');
 
-    const matchesStatus = selectedStatus === 'all' || booking.status === selectedStatus;
+    const matchesStatus = selectedStatus === 'all' || booking?.status === selectedStatus;
 
     return matchesSearch && matchesStatus;
   });
@@ -127,8 +131,9 @@ export const OrganizedBookingsList: React.FC<OrganizedBookingsListProps> = ({
         </div>
       ) : (
         <div className="grid gap-4">
-          {filteredBookings.map((booking) => (
-            <div key={booking.id}>
+          {/* Add null-safety to the map */}
+          {(filteredBookings ?? []).map((booking) => (
+            <div key={booking?.id || Math.random()}>
               {userType === 'driver' ? (
                 <StandardDriverRideCard
                   booking={booking}

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -76,19 +77,22 @@ export const TodoTab = ({
 
       if (error) throw error;
 
+      // Ensure data is always an array and add null-safety
+      const safeData = Array.isArray(data) ? data : [];
+
       // Filter for bookings that need action or are ready for navigation
-      const actionableBookings = (data || []).filter(booking => {
+      const actionableBookings = safeData.filter(booking => {
         if (userType === "passenger") {
           return (
-            booking.payment_confirmation_status === 'price_awaiting_acceptance' ||
-            booking.payment_confirmation_status === 'waiting_for_payment' ||
-            booking.payment_confirmation_status === 'all_set'
+            booking?.payment_confirmation_status === 'price_awaiting_acceptance' ||
+            booking?.payment_confirmation_status === 'waiting_for_payment' ||
+            booking?.payment_confirmation_status === 'all_set'
           );
         } else {
           return (
-            booking.ride_status === 'pending_driver' ||
-            booking.payment_confirmation_status === 'passenger_paid' ||
-            booking.payment_confirmation_status === 'all_set'
+            booking?.ride_status === 'pending_driver' ||
+            booking?.payment_confirmation_status === 'passenger_paid' ||
+            booking?.payment_confirmation_status === 'all_set'
           );
         }
       });
@@ -96,6 +100,8 @@ export const TodoTab = ({
       setPendingActions(actionableBookings);
     } catch (error) {
       console.error('Error fetching pending actions:', error);
+      // Set empty array on error to prevent .map() issues
+      setPendingActions([]);
     } finally {
       setLoading(false);
     }
@@ -103,23 +109,23 @@ export const TodoTab = ({
 
   const getActionType = (booking: any) => {
     if (userType === "passenger") {
-      if (booking.payment_confirmation_status === 'price_awaiting_acceptance') {
+      if (booking?.payment_confirmation_status === 'price_awaiting_acceptance') {
         return { type: 'accept_offer', icon: DollarSign, text: 'Accept Price Offer', color: 'bg-blue-100 text-blue-800' };
       }
-      if (booking.payment_confirmation_status === 'waiting_for_payment') {
+      if (booking?.payment_confirmation_status === 'waiting_for_payment') {
         return { type: 'make_payment', icon: DollarSign, text: 'Make Payment', color: 'bg-yellow-100 text-yellow-800' };
       }
-      if (booking.payment_confirmation_status === 'all_set') {
+      if (booking?.payment_confirmation_status === 'all_set') {
         return { type: 'all_set', icon: Clock, text: 'Ready for Pickup', color: 'bg-green-100 text-green-800' };
       }
     } else {
-      if (booking.ride_status === 'pending_driver') {
+      if (booking?.ride_status === 'pending_driver') {
         return { type: 'send_offer', icon: Clock, text: 'Send Price Offer', color: 'bg-orange-100 text-orange-800' };
       }
-      if (booking.payment_confirmation_status === 'passenger_paid') {
+      if (booking?.payment_confirmation_status === 'passenger_paid') {
         return { type: 'confirm_payment', icon: DollarSign, text: 'Confirm Payment', color: 'bg-green-100 text-green-800' };
       }
-      if (booking.payment_confirmation_status === 'all_set') {
+      if (booking?.payment_confirmation_status === 'all_set') {
         return { type: 'all_set', icon: Clock, text: 'Ready for Pickup', color: 'bg-green-100 text-green-800' };
       }
     }
@@ -169,12 +175,13 @@ export const TodoTab = ({
       </Card>
 
       <div className="space-y-3">
-        {pendingActions.map((booking) => {
+        {/* Add null-safety to the map */}
+        {(pendingActions ?? []).map((booking) => {
           const actionType = getActionType(booking);
           const ActionIcon = actionType.icon;
           
           return (
-            <div key={booking.id} className="relative">
+            <div key={booking?.id || Math.random()} className="relative">
               <div className="absolute -top-2 -right-2 z-10">
                 <Badge className={`${actionType.color} shadow-md`}>
                   <ActionIcon className="h-3 w-3 mr-1" />

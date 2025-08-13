@@ -32,13 +32,17 @@ export const useRealtimeBookings = () => {
 
         if (mounted) {
           console.log('✅ Bookings fetched successfully:', data?.length || 0, 'bookings');
-          setBookings(data || []);
+          // Ensure we always set an array, even if data is null
+          const safeData = Array.isArray(data) ? data : [];
+          setBookings(safeData);
           setError(null);
         }
       } catch (err) {
         console.error('❌ Error in fetchBookings:', err);
         if (mounted) {
           setError(err instanceof Error ? err.message : 'Failed to fetch bookings');
+          // Set empty array on error to prevent .map() issues
+          setBookings([]);
         }
       } finally {
         if (mounted) {
@@ -94,12 +98,16 @@ export const useRealtimeBookings = () => {
 
       if (error) throw error;
 
-      setBookings(data || []);
+      // Ensure we always set an array
+      const safeData = Array.isArray(data) ? data : [];
+      setBookings(safeData);
       setError(null);
       console.log('✅ Manual refresh completed');
     } catch (err) {
       console.error('❌ Error in manual refresh:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh bookings');
+      // Set empty array on error
+      setBookings([]);
     } finally {
       setLoading(false);
     }
