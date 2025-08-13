@@ -680,15 +680,18 @@ export type Database = {
           additional_notes: string | null
           created_at: string
           email: string
+          first_name: string | null
           full_name: string
           id: string
           interaction_preference: string | null
+          last_name: string | null
           music_playlist_link: string | null
           music_preference: string | null
           phone: string | null
           preferred_temperature: number | null
           profile_photo_url: string | null
           trip_purpose: string | null
+          updated_at: string | null
         }
         Insert: {
           account_name?: string | null
@@ -696,15 +699,18 @@ export type Database = {
           additional_notes?: string | null
           created_at?: string
           email: string
+          first_name?: string | null
           full_name: string
           id?: string
           interaction_preference?: string | null
+          last_name?: string | null
           music_playlist_link?: string | null
           music_preference?: string | null
           phone?: string | null
           preferred_temperature?: number | null
           profile_photo_url?: string | null
           trip_purpose?: string | null
+          updated_at?: string | null
         }
         Update: {
           account_name?: string | null
@@ -712,15 +718,18 @@ export type Database = {
           additional_notes?: string | null
           created_at?: string
           email?: string
+          first_name?: string | null
           full_name?: string
           id?: string
           interaction_preference?: string | null
+          last_name?: string | null
           music_playlist_link?: string | null
           music_preference?: string | null
           phone?: string | null
           preferred_temperature?: number | null
           profile_photo_url?: string | null
           trip_purpose?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -1214,6 +1223,16 @@ export type Database = {
           trip_notes: string
         }[]
       }
+      get_my_passenger_profile: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          first_name: string
+          last_name: string
+          phone: string
+          email: string
+        }[]
+      }
       get_my_preferences: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -1283,6 +1302,15 @@ export type Database = {
           _conversation_preference: string
           _trip_purpose: string
           _trip_notes: string
+        }
+        Returns: undefined
+      }
+      upsert_my_passenger_profile: {
+        Args: {
+          _first_name: string
+          _last_name: string
+          _phone: string
+          _email: string
         }
         Returns: undefined
       }
