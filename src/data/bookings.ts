@@ -254,176 +254,55 @@ export const deleteBooking = async (bookingId: string) => {
 
 export const sendOffer = async (bookingId: string, driverId: string, finalPrice: number) => {
   try {
-    console.log('[SEND_OFFER] Starting offer process', { bookingId, driverId, finalPrice });
+    console.log('[SEND_OFFER] Using RPC function for atomic operation', { bookingId, driverId, finalPrice });
 
-    // First, get the current booking state
-    const { data: currentBooking, error: fetchError } = await supabase
-      .from('bookings')
-      .select('*')
-      .eq('id', bookingId)
-      .single();
-
-    if (fetchError) {
-      console.error("Error fetching current booking:", fetchError);
-      throw new Error(`Failed to fetch booking: ${fetchError.message}`);
-    }
-
-    console.log('[SEND_OFFER] Current booking state', {
-      id: currentBooking.id,
-      status: currentBooking.status,
-      driver_id: currentBooking.driver_id,
-      payment_confirmation_status: currentBooking.payment_confirmation_status
+    // Use RPC function for atomic driver assignment and offer sending
+    const { data, error } = await supabase.rpc('assign_driver_and_send_offer', {
+      p_booking_id: bookingId,
+      p_driver_id: driverId,
+      p_final_price: finalPrice
     });
 
-    // Check if we need to assign a driver or just update the offer
-    if (!currentBooking.driver_id) {
-      console.log('[SEND_OFFER] No driver assigned, assigning driver and sending offer');
-      
-      // Single atomic operation: assign driver and set offer in one go
-      // This should work if the constraint allows the transition
-      const { data: updatedBooking, error: offerError } = await supabase
-        .from('bookings')
-        .update({
-          driver_id: driverId,
-          final_price: finalPrice,
-          status: 'offer_sent',
-          payment_confirmation_status: 'offer_sent',
-          ride_status: 'offer_sent',
-          status_driver: 'offer_sent',
-          status_passenger: 'review_offer',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', bookingId)
-        .is('driver_id', null) // Only update if driver_id is still null
-        .select()
-        .single();
-
-      if (offerError) {
-        console.error("Error in offer operation:", offerError);
-        
-        // If the constraint blocks this, try a different approach
-        if (offerError.message?.includes('driver_id_guard')) {
-          console.log('[SEND_OFFER] Constraint violation, trying step-by-step approach');
-          
-          // Step 1: Just assign the driver with minimal status change
-          const { data: driverAssigned, error: assignError } = await supabase
-            .from('bookings')
-            .update({
-              driver_id: driverId,
-              status: 'assigned',
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', bookingId)
-            .is('driver_id', null)
-            .select()
-            .single();
-
-          if (assignError) {
-            console.error("Error assigning driver:", assignError);
-            throw new Error(`Failed to assign driver: ${assignError.message}`);
-          }
-
-          console.log('[SEND_OFFER] Driver assigned successfully, now setting offer');
-
-          // Step 2: Set the offer details
-          const { data: offerSet, error: offerSetError } = await supabase
-            .from('bookings')
-            .update({
-              final_price: finalPrice,
-              status: 'offer_sent',
-              payment_confirmation_status: 'offer_sent',
-              ride_status: 'offer_sent',
-              status_driver: 'offer_sent',
-              status_passenger: 'review_offer',
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', bookingId)
-            .eq('driver_id', driverId)
-            .select()
-            .single();
-
-          if (offerSetError) {
-            console.error("Error setting offer:", offerSetError);
-            throw new Error(`Failed to set offer: ${offerSetError.message}`);
-          }
-
-          updatedBooking = offerSet;
-        } else {
-          throw new Error(`Failed to send offer: ${offerError.message}`);
-        }
-      }
-
-      console.log('[SEND_OFFER] Offer sent successfully', {
-        id: updatedBooking.id,
-        final_price: updatedBooking.final_price,
-        driver_id: updatedBooking.driver_id,
-        status: updatedBooking.status
-      });
-
-      // Create timeline event (non-critical)
-      try {
-        await supabase
-          .from('timeline_events')
-          .insert([
-            {
-              booking_id: bookingId,
-              status: 'offer_sent',
-              system_message: `Driver assigned and offer sent for $${finalPrice}`,
-              driver_id: driverId,
-              passenger_id: updatedBooking.passenger_id,
-            },
-          ]);
-      } catch (timelineError) {
-        console.warn("Timeline event creation failed:", timelineError);
-      }
-
-      // Create status history event (non-critical)
-      try {
-        await supabase
-          .from('booking_status_history')
-          .insert([
-            {
-              booking_id: bookingId,
-              status: 'offer_sent',
-              metadata: { driver_id: driverId, final_price: finalPrice },
-            },
-          ]);
-      } catch (statusHistoryError) {
-        console.warn("Status history creation failed:", statusHistoryError);
-      }
-
-      return updatedBooking;
-
-    } else if (currentBooking.driver_id === driverId) {
-      console.log('[SEND_OFFER] Driver already assigned, updating offer details only');
-      
-      const { data: updatedBooking, error: updateError } = await supabase
-        .from('bookings')
-        .update({
-          final_price: finalPrice,
-          status: 'offer_sent',
-          payment_confirmation_status: 'offer_sent',
-          ride_status: 'offer_sent',
-          status_driver: 'offer_sent',
-          status_passenger: 'review_offer',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', bookingId)
-        .eq('driver_id', driverId)
-        .select()
-        .single();
-
-      if (updateError) {
-        console.error("Error updating offer details:", updateError);
-        throw new Error(`Failed to update offer: ${updateError.message}`);
-      }
-
-      console.log('[SEND_OFFER] Offer updated successfully');
-      return updatedBooking;
-
-    } else {
-      throw new Error('Booking is already assigned to another driver');
+    if (error) {
+      console.error("Error in RPC assign_driver_and_send_offer:", error);
+      throw new Error(`Failed to send offer: ${error.message}`);
     }
+
+    console.log('[SEND_OFFER] RPC operation successful:', data);
+
+    // Create timeline event (non-critical)
+    try {
+      await supabase
+        .from('timeline_events')
+        .insert([
+          {
+            booking_id: bookingId,
+            status: 'offer_sent',
+            system_message: `Driver assigned and offer sent for $${finalPrice}`,
+            driver_id: driverId,
+            passenger_id: data.passenger_id,
+          },
+        ]);
+    } catch (timelineError) {
+      console.warn("Timeline event creation failed:", timelineError);
+    }
+
+    // Create status history event (non-critical)
+    try {
+      await supabase
+        .from('booking_status_history')
+        .insert([
+          {
+            booking_id: bookingId,
+            status: 'offer_sent',
+            metadata: { driver_id: driverId, final_price: finalPrice },
+          },
+        ]);
+    } catch (statusHistoryError) {
+      console.warn("Status history creation failed:", statusHistoryError);
+    }
+
+    return data;
 
   } catch (error) {
     console.error("Error in sendOffer:", error);
