@@ -33,6 +33,10 @@ export const StandardDriverRideCard: React.FC<StandardDriverRideCardProps> = ({
     onUpdate?.();
   };
 
+  const isAllSet = booking.status === 'all_set' || booking.ride_status === 'all_set';
+  const hasPhone = booking.passengers?.phone;
+  const hasEmail = booking.passengers?.email;
+
   return (
     <Card className="w-full">
       <CardHeader className="pb-3">
@@ -105,7 +109,8 @@ export const StandardDriverRideCard: React.FC<StandardDriverRideCardProps> = ({
           <Button
             variant="outline"
             size="sm"
-            onClick={onMessagePassenger}
+            onClick={isAllSet && hasPhone ? onMessagePassenger : undefined}
+            aria-disabled={!isAllSet || !hasPhone}
             className="flex items-center gap-1"
           >
             <MessageSquare className="h-4 w-4" />
@@ -116,7 +121,8 @@ export const StandardDriverRideCard: React.FC<StandardDriverRideCardProps> = ({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.open(`tel:${booking.passengers.phone}`)}
+              onClick={isAllSet && hasPhone ? () => window.open(`tel:${booking.passengers.phone}`) : undefined}
+              aria-disabled={!isAllSet || !hasPhone}
               className="flex items-center gap-1"
             >
               <Phone className="h-4 w-4" />
