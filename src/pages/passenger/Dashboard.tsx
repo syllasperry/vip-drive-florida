@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { getDispatcherBookings } from '@/data/bookings';
 import { getPassengerDriverProfile } from '@/lib/api/profiles';
@@ -59,7 +58,7 @@ const Dashboard = () => {
               driver_id: profile.driver_id,
               full_name: profile.full_name,
               profile_photo_url: publicAvatarUrl(profile.photo_url),
-              car_make: profile.car_make || 'Tesla',
+              car_make: 'Tesla', // Default fallback
               car_model: profile.car_model || 'Model Y',
               car_year: '2024',
               car_color: 'Black',

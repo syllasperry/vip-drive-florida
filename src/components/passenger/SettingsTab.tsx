@@ -2,16 +2,14 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
-import { User, Phone, Mail, LogOut, Bell, Shield, HelpCircle, Camera, Upload } from "lucide-react";
+import { Bell, Shield, HelpCircle, LogOut } from "lucide-react";
 import { NotificationSettingsCard } from "./NotificationSettingsCard";
 import { PrivacySecurityCard } from "./PrivacySecurityCard";
 import { HelpSupportCard } from "./HelpSupportCard";
+import { ProfileSettingsCard } from "./ProfileSettingsCard";
 
 interface SettingsTabProps {
   passengerInfo: any;
@@ -20,122 +18,31 @@ interface SettingsTabProps {
 export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [editing, setEditing] = useState(false);
   const [activeModal, setActiveModal] = useState<'notifications' | 'privacy' | 'help' | null>(null);
-  const [formData, setFormData] = useState({
-    full_name: '',
-    phone: '',
-    email: ''
-  });
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
+  const [currentPassengerInfo, setCurrentPassengerInfo] = useState(passengerInfo);
 
+  // Update local state when passengerInfo prop changes
   useEffect(() => {
-    if (passengerInfo) {
-      setFormData({
-        full_name: passengerInfo.full_name || '',
-        phone: passengerInfo.phone || '',
-        email: passengerInfo.email || ''
-      });
-    }
+    setCurrentPassengerInfo(passengerInfo);
   }, [passengerInfo]);
 
-  const handlePhotoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Validate file type
-      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-      if (!validTypes.includes(file.type)) {
-        toast({
-          title: "Invalid file type",
-          description: "Please select a valid image file (JPG, PNG, GIF, WebP)",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      // Validate file size (5MB limit)
-      const maxSize = 5 * 1024 * 1024;
-      if (file.size > maxSize) {
-        toast({
-          title: "File too large", 
-          description: "File size must be less than 5MB",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      setPhotoFile(file);
-      setPhotoPreview(URL.createObjectURL(file));
-    }
-  };
-
-  const uploadPhoto = async () => {
-    if (!photoFile || !passengerInfo?.id) return null;
-
-    const fileExt = photoFile.name.split('.').pop();
-    const fileName = `${passengerInfo.id}.${fileExt}`;
-    const filePath = `avatars/${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(filePath, photoFile, { upsert: true });
-
-    if (uploadError) throw uploadError;
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('avatars')
-      .getPublicUrl(filePath);
-
-    return publicUrl;
-  };
-
-  const handleSave = async () => {
+  const handleProfileUpdate = async () => {
+    // Refresh passenger info after profile update
     try {
-      setIsUploading(true);
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (user) {
+        const { data: passenger, error } = await supabase
+          .from('passengers')
+          .select('*')
+          .eq('id', user.id)
+          .single();
 
-      let photoUrl = passengerInfo?.profile_photo_url;
-
-      // Upload photo if a new one was selected
-      if (photoFile) {
-        photoUrl = await uploadPhoto();
+        if (!error && passenger) {
+          setCurrentPassengerInfo(passenger);
+        }
       }
-
-      const updateData: any = {
-        ...formData
-      };
-
-      if (photoUrl) {
-        updateData.profile_photo_url = photoUrl;
-      }
-
-      const { error } = await supabase
-        .from('passengers')
-        .update(updateData)
-        .eq('id', user.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Profile updated successfully",
-      });
-      
-      setEditing(false);
-      setPhotoFile(null);
-      setPhotoPreview(null);
     } catch (error) {
-      console.error('Error updating profile:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update profile",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUploading(false);
+      console.error('Error refreshing passenger info:', error);
     }
   };
 
@@ -159,7 +66,7 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
           ← Back to Settings
         </Button>
         <NotificationSettingsCard 
-          userId={passengerInfo?.id} 
+          userId={currentPassengerInfo?.id} 
           onClose={() => setActiveModal(null)} 
         />
       </div>
@@ -200,117 +107,11 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
     <div className="space-y-4">
       <h2 className="text-lg font-semibold text-gray-900">Settings</h2>
       
-      {/* Profile Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="w-5 h-5" />
-            Profile Information
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="relative">
-              <Avatar className="h-16 w-16">
-                <AvatarImage src={photoPreview || passengerInfo?.profile_photo_url} />
-                <AvatarFallback className="bg-gray-200 text-gray-600">
-                  {passengerInfo?.full_name?.charAt(0) || 'P'}
-                </AvatarFallback>
-              </Avatar>
-              {editing && (
-                <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center cursor-pointer"
-                     onClick={() => document.getElementById('photo-upload')?.click()}>
-                  <Camera className="w-6 h-6 text-white" />
-                </div>
-              )}
-            </div>
-            
-            {!editing && (
-              <div>
-                <h3 className="font-medium text-gray-900">{passengerInfo?.full_name || 'Unknown'}</h3>
-                <p className="text-sm text-gray-500">{passengerInfo?.email || 'No email'}</p>
-              </div>
-            )}
-          </div>
-
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handlePhotoSelect}
-            className="hidden"
-            id="photo-upload"
-          />
-
-          {editing ? (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="full_name">Full Name</Label>
-                <Input
-                  id="full_name"
-                  value={formData.full_name}
-                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                />
-              </div>
-              {photoFile && (
-                <div className="text-sm text-gray-600">
-                  New photo selected: {photoFile.name}
-                </div>
-              )}
-              <div className="flex gap-2">
-                <Button 
-                  onClick={handleSave} 
-                  className="flex-1"
-                  disabled={isUploading}
-                >
-                  {isUploading ? "Saving..." : "Save Changes"}
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    setEditing(false);
-                    setPhotoFile(null);
-                    setPhotoPreview(null);
-                  }} 
-                  className="flex-1"
-                  disabled={isUploading}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <Phone className="w-4 h-4 text-gray-400" />
-                <span className="text-sm">{passengerInfo?.phone || 'No phone number'}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <Mail className="w-4 h-4 text-gray-400" />
-                <span className="text-sm">{passengerInfo?.email || 'No email'}</span>
-              </div>
-              <Button onClick={() => setEditing(true)} variant="outline" className="w-full">
-                Edit Profile
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Profile Settings Card - Restored */}
+      <ProfileSettingsCard 
+        passengerInfo={currentPassengerInfo}
+        onProfileUpdate={handleProfileUpdate}
+      />
 
       {/* Settings Options */}
       <div className="space-y-3">
