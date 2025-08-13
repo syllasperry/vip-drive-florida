@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
-import { getAllBookings } from '@/actions/booking';
-import { getPassengerDriverProfile } from '@/actions/profile';
+import { getDispatcherBookings } from '@/data/bookings';
+import { getPassengerDriverProfile } from '@/lib/api/profiles';
 import { toast } from 'sonner';
-import { BookingCard } from '@/components/BookingCard';
+import { StandardDriverRideCard } from '@/components/StandardDriverRideCard';
 import { Skeleton } from '@/components/ui/skeleton';
-import { publicAvatarUrl } from '@/lib/utils';
+import { publicAvatarUrl } from '@/lib/api/profiles';
 
 const Dashboard = () => {
   const [bookings, setBookings] = useState<any[]>([]);
@@ -18,7 +19,7 @@ const Dashboard = () => {
   const loadBookings = async () => {
     try {
       setIsLoading(true);
-      const bookings = await getAllBookings();
+      const bookings = await getDispatcherBookings();
       setBookings(bookings);
 
       // Fetch driver profiles in parallel for each booking
@@ -79,10 +80,11 @@ const Dashboard = () => {
       ) : (
         <div className="grid gap-4">
           {bookings.map((booking) => (
-            <BookingCard
+            <StandardDriverRideCard
               key={booking.id}
               booking={booking}
               driverProfile={driverProfiles[booking.id]}
+              onMessagePassenger={() => {}}
             />
           ))}
           {bookings.length === 0 && (
