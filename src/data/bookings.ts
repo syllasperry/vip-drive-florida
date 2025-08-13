@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { format } from 'date-fns';
 
@@ -254,9 +255,9 @@ export const deleteBooking = async (bookingId: string) => {
 
 export const sendOffer = async (bookingId: string, driverId: string, finalPrice: number) => {
   try {
-    console.log('[SEND_OFFER] Using RPC function for atomic operation', { bookingId, driverId, finalPrice });
+    console.log('[SEND_OFFER] Starting offer process', { bookingId, driverId, finalPrice });
 
-    // Use RPC function for atomic driver assignment and offer sending
+    // Use manual RPC call since the function isn't in types yet
     const { data, error } = await supabase.rpc('assign_driver_and_send_offer', {
       p_booking_id: bookingId,
       p_driver_id: driverId,
@@ -280,7 +281,7 @@ export const sendOffer = async (bookingId: string, driverId: string, finalPrice:
             status: 'offer_sent',
             system_message: `Driver assigned and offer sent for $${finalPrice}`,
             driver_id: driverId,
-            passenger_id: data.passenger_id,
+            passenger_id: data?.[0]?.passenger_id || null,
           },
         ]);
     } catch (timelineError) {

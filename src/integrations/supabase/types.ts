@@ -628,6 +628,51 @@ export type Database = {
         }
         Relationships: []
       }
+      passenger_preferences: {
+        Row: {
+          air_conditioning: boolean | null
+          conversation_preference: string | null
+          created_at: string
+          id: string
+          preferred_music: string | null
+          preferred_temperature: number | null
+          radio_on: boolean | null
+          temperature_unit: string | null
+          trip_notes: string | null
+          trip_purpose: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          air_conditioning?: boolean | null
+          conversation_preference?: string | null
+          created_at?: string
+          id?: string
+          preferred_music?: string | null
+          preferred_temperature?: number | null
+          radio_on?: boolean | null
+          temperature_unit?: string | null
+          trip_notes?: string | null
+          trip_purpose?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          air_conditioning?: boolean | null
+          conversation_preference?: string | null
+          created_at?: string
+          id?: string
+          preferred_music?: string | null
+          preferred_temperature?: number | null
+          radio_on?: boolean | null
+          temperature_unit?: string | null
+          trip_notes?: string | null
+          trip_purpose?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       passengers: {
         Row: {
           account_name: string | null
@@ -1097,6 +1142,34 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_driver_and_send_offer: {
+        Args: {
+          p_booking_id: string
+          p_driver_id: string
+          p_final_price: number
+        }
+        Returns: {
+          booking_id: string
+          assigned_driver_id: string
+          final_price: number
+          booking_status: string
+        }[]
+      }
+      dispatcher_booking_passenger_details: {
+        Args: { b_id: string }
+        Returns: {
+          passenger_id: string
+          full_name: string
+          email: string
+          phone: string
+          photo_url: string
+          preferred_temperature: number
+          preferred_music: string
+          conversation_preference: string
+          trip_purpose: string
+          trip_notes: string
+        }[]
+      }
       drivers_for_booking: {
         Args: { bookingid: string }
         Returns: {
@@ -1127,6 +1200,36 @@ export type Database = {
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      get_my_passenger_preferences: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          air_conditioning: boolean
+          preferred_temperature: number
+          temperature_unit: string
+          radio_on: boolean
+          preferred_music: string
+          conversation_preference: string
+          trip_purpose: string
+          trip_notes: string
+        }[]
+      }
+      get_my_preferences: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          air_conditioning: boolean | null
+          conversation_preference: string | null
+          created_at: string
+          id: string
+          preferred_music: string | null
+          preferred_temperature: number | null
+          radio_on: boolean | null
+          temperature_unit: string | null
+          trip_notes: string | null
+          trip_purpose: string | null
+          updated_at: string
+          user_id: string
+        }
       }
       get_ride_status_summary: {
         Args: { p_ride_id: string }
@@ -1159,6 +1262,52 @@ export type Database = {
         Args: Record<PropertyKey, never> | { u: string }
         Returns: boolean
       }
+      passenger_driver_profile: {
+        Args: { _booking_id: string }
+        Returns: {
+          driver_id: string
+          full_name: string
+          car_model: string
+          photo_url: string
+          phone: string
+          email: string
+        }[]
+      }
+      upsert_my_passenger_preferences: {
+        Args: {
+          _air_conditioning: boolean
+          _preferred_temperature: number
+          _temperature_unit: string
+          _radio_on: boolean
+          _preferred_music: string
+          _conversation_preference: string
+          _trip_purpose: string
+          _trip_notes: string
+        }
+        Returns: undefined
+      }
+      upsert_my_preferences: {
+        Args: {
+          _temperature_f: number
+          _radio_enabled: boolean
+          _conversation: Database["public"]["Enums"]["conversation_pref"]
+          _purpose: Database["public"]["Enums"]["trip_purpose"]
+        }
+        Returns: {
+          air_conditioning: boolean | null
+          conversation_preference: string | null
+          created_at: string
+          id: string
+          preferred_music: string | null
+          preferred_temperature: number | null
+          radio_on: boolean | null
+          temperature_unit: string | null
+          trip_notes: string | null
+          trip_purpose: string | null
+          updated_at: string
+          user_id: string
+        }
+      }
       user_owns_booking: {
         Args: { booking_id: string }
         Returns: boolean
@@ -1177,6 +1326,7 @@ export type Database = {
         | "payment_pending"
         | "price_awaiting_acceptance"
         | "all_set"
+      conversation_pref: "no_preference" | "chatty" | "quiet"
       notification_type:
         | "offer_received"
         | "offer_accepted"
@@ -1185,6 +1335,7 @@ export type Database = {
         | "driver_arrived"
         | "ride_started"
         | "ride_completed"
+      trip_purpose: "leisure" | "business" | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1325,6 +1476,7 @@ export const Constants = {
         "price_awaiting_acceptance",
         "all_set",
       ],
+      conversation_pref: ["no_preference", "chatty", "quiet"],
       notification_type: [
         "offer_received",
         "offer_accepted",
@@ -1334,6 +1486,7 @@ export const Constants = {
         "ride_started",
         "ride_completed",
       ],
+      trip_purpose: ["leisure", "business", "other"],
     },
   },
 } as const
