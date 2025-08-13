@@ -79,14 +79,21 @@ const Dashboard = () => {
         </div>
       ) : (
         <div className="grid gap-4">
-          {bookings.map((booking) => (
-            <StandardDriverRideCard
-              key={booking.id}
-              booking={booking}
-              driverProfile={driverProfiles[booking.id]}
-              onMessagePassenger={() => {}}
-            />
-          ))}
+          {bookings.map((booking) => {
+            // Add driver profile to booking object for StandardDriverRideCard
+            const bookingWithDriver = {
+              ...booking,
+              drivers: driverProfiles[booking.id] || null
+            };
+            
+            return (
+              <StandardDriverRideCard
+                key={booking.id}
+                booking={bookingWithDriver}
+                onMessagePassenger={() => {}}
+              />
+            );
+          })}
           {bookings.length === 0 && (
             <div className="text-gray-500">No bookings found.</div>
           )}
