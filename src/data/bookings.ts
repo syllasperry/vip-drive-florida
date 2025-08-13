@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { format } from 'date-fns';
 
@@ -257,7 +256,7 @@ export const sendOffer = async (bookingId: string, driverId: string, finalPrice:
   try {
     console.log('[SEND_OFFER] Starting offer process', { bookingId, driverId, finalPrice });
 
-    // First, get the current booking to validate its state
+    // First, validate the current booking state
     const { data: currentBooking, error: fetchError } = await supabase
       .from('bookings')
       .select('*')
@@ -276,41 +275,47 @@ export const sendOffer = async (bookingId: string, driverId: string, finalPrice:
       payment_confirmation_status: currentBooking.payment_confirmation_status
     });
 
-    // Validate that booking is in a state that allows driver assignment
-    const allowedStates = ['booking_requested', 'waiting_for_offer', 'pending', null, undefined];
-    const currentStatus = currentBooking.payment_confirmation_status || currentBooking.status;
+    // Check if booking is already assigned to a different driver
+    if (currentBooking.driver_id && currentBooking.driver_id !== driverId) {
+      throw new Error('Booking is already assigned to another driver');
+    }
+
+    // If driver is already assigned, just update the offer details
+    if (currentBooking.driver_id === driverId) {
+      console.log('[SEND_OFFER] Driver already assigned, updating offer details only');
+      
+      const { data: updatedBooking, error: updateError } = await supabase
+        .from('bookings')
+        .update({
+          final_price: finalPrice,
+          status: 'offer_sent',
+          payment_confirmation_status: 'offer_sent',
+          ride_status: 'offer_sent',
+          status_driver: 'offer_sent',
+          status_passenger: 'review_offer',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingId)
+        .eq('driver_id', driverId)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error("Error updating offer details:", updateError);
+        throw new Error(`Failed to update offer: ${updateError.message}`);
+      }
+
+      console.log('[SEND_OFFER] Offer updated successfully');
+      return updatedBooking;
+    }
+
+    // Driver not assigned yet - do a single update that assigns driver and sets offer
+    console.log('[SEND_OFFER] Assigning driver and setting offer in single operation');
     
-    if (!allowedStates.includes(currentStatus)) {
-      throw new Error(`Booking must be in 'needs driver' state to assign a driver. Current state: ${currentStatus}`);
-    }
-
-    // Step 1: ONLY assign driver_id (no other fields to avoid constraint violation)
-    const { data: driverAssignmentData, error: driverAssignmentError } = await supabase
-      .from('bookings')
-      .update({
-        driver_id: driverId
-      })
-      .eq('id', bookingId)
-      .select()
-      .single();
-
-    if (driverAssignmentError) {
-      console.error("Error assigning driver:", driverAssignmentError);
-      throw new Error(`Failed to assign driver: ${driverAssignmentError.message}`);
-    }
-
-    console.log('[SEND_OFFER] Driver assigned successfully', {
-      id: driverAssignmentData.id,
-      driver_id: driverAssignmentData.driver_id
-    });
-
-    // Small delay to ensure the first update is committed
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    // Step 2: Now update offer details and status (driver_id is already set)
     const { data: offerData, error: offerError } = await supabase
       .from('bookings')
       .update({
+        driver_id: driverId,
         final_price: finalPrice,
         status: 'offer_sent',
         payment_confirmation_status: 'offer_sent',
@@ -320,36 +325,25 @@ export const sendOffer = async (bookingId: string, driverId: string, finalPrice:
         updated_at: new Date().toISOString()
       })
       .eq('id', bookingId)
-      .eq('driver_id', driverId) // Additional safety check
+      .is('driver_id', null) // Only update if driver_id is currently null
       .select()
       .single();
 
     if (offerError) {
-      console.error("Error updating offer details:", offerError);
-      
-      // If the second step fails, try to revert the driver assignment
-      try {
-        await supabase
-          .from('bookings')
-          .update({ driver_id: null })
-          .eq('id', bookingId);
-        console.log('[SEND_OFFER] Reverted driver assignment due to offer update failure');
-      } catch (revertError) {
-        console.error("Failed to revert driver assignment:", revertError);
-      }
-      
-      throw new Error(`Failed to update offer details: ${offerError.message}`);
+      console.error("Error in single offer operation:", offerError);
+      throw new Error(`Failed to send offer: ${offerError.message}`);
     }
 
-    console.log('[SEND_OFFER] Offer details updated successfully', {
+    console.log('[SEND_OFFER] Offer sent successfully', {
       id: offerData.id,
       final_price: offerData.final_price,
+      driver_id: offerData.driver_id,
       status: offerData.status
     });
 
-    // Step 3: Create timeline event (non-critical, don't fail the whole process)
+    // Create timeline event (non-critical)
     try {
-      const { data: timelineData, error: timelineError } = await supabase
+      await supabase
         .from('timeline_events')
         .insert([
           {
@@ -359,22 +353,14 @@ export const sendOffer = async (bookingId: string, driverId: string, finalPrice:
             driver_id: driverId,
             passenger_id: offerData.passenger_id,
           },
-        ])
-        .select()
-        .single();
-
-      if (timelineError) {
-        console.warn("Timeline event creation failed:", timelineError);
-      } else {
-        console.log('[SEND_OFFER] Timeline event created', timelineData.id);
-      }
+        ]);
     } catch (timelineError) {
       console.warn("Timeline event creation failed:", timelineError);
     }
 
-    // Step 4: Create status history event (non-critical, don't fail the whole process)
+    // Create status history event (non-critical)
     try {
-      const { data: statusHistoryData, error: statusHistoryError } = await supabase
+      await supabase
         .from('booking_status_history')
         .insert([
           {
@@ -382,15 +368,7 @@ export const sendOffer = async (bookingId: string, driverId: string, finalPrice:
             status: 'offer_sent',
             metadata: { driver_id: driverId, final_price: finalPrice },
           },
-        ])
-        .select()
-        .single();
-
-      if (statusHistoryError) {
-        console.warn("Status history creation failed:", statusHistoryError);
-      } else {
-        console.log('[SEND_OFFER] Status history created', statusHistoryData.id);
-      }
+        ]);
     } catch (statusHistoryError) {
       console.warn("Status history creation failed:", statusHistoryError);
     }
