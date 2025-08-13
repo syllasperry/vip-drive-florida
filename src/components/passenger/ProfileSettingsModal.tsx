@@ -6,15 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { getMyPassengerProfile, upsertMyPassengerProfile, buildAvatarUrl } from "@/lib/api/profiles";
+import { getMyPassengerProfile, upsertMyPassengerProfile, uploadAvatar } from "@/lib/api/profiles";
 
 interface PassengerProfile {
-  id: string;
   first_name: string;
   last_name: string;
   phone: string;
   email: string;
+  avatarUrl: string | null;
 }
 
 interface ProfileSettingsModalProps {
@@ -46,31 +45,28 @@ export const ProfileSettingsModal = ({
 
   // Load profile data when modal opens
   useEffect(() => {
-    if (isOpen && initialProfile) {
-      setFormData({
-        first_name: initialProfile.first_name || '',
-        last_name: initialProfile.last_name || '',
-        phone: initialProfile.phone || '',
-        email: initialProfile.email || ''
-      });
-      
-      // Try to load existing avatar
-      loadExistingAvatar(initialProfile.id);
+    if (isOpen) {
+      loadProfileData();
     }
-  }, [isOpen, initialProfile]);
+  }, [isOpen]);
 
-  const loadExistingAvatar = async (userId: string) => {
+  const loadProfileData = async () => {
     try {
-      const { data: files } = await supabase.storage
-        .from('avatars')
-        .list(userId, { limit: 1, sortBy: { column: 'created_at', order: 'desc' } });
-      
-      if (files && files.length > 0) {
-        const avatarUrl = buildAvatarUrl(userId, files[0].name);
-        setAvatarUrl(avatarUrl);
-      }
+      const profile = await getMyPassengerProfile();
+      setFormData({
+        first_name: profile.first_name || '',
+        last_name: profile.last_name || '',
+        phone: profile.phone || '',
+        email: profile.email || ''
+      });
+      setAvatarUrl(profile.avatarUrl);
     } catch (error) {
-      console.error('Error loading existing avatar:', error);
+      console.error('Error loading profile data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load profile data",
+        variant: "destructive"
+      });
     }
   };
 
@@ -104,30 +100,7 @@ export const ProfileSettingsModal = ({
     }
   };
 
-  const uploadAvatar = async (file: File, userId: string): Promise<string | null> => {
-    const fileExt = file.name.split('.').pop() || 'jpg';
-    const fileName = `avatar-${Date.now()}.${fileExt}`;
-    const filePath = `${userId}/${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(filePath, file, { upsert: true });
-
-    if (uploadError) throw uploadError;
-
-    return buildAvatarUrl(userId, fileName);
-  };
-
   const handleSave = async () => {
-    if (!initialProfile?.id) {
-      toast({
-        title: "Error",
-        description: "User profile not found",
-        variant: "destructive"
-      });
-      return;
-    }
-
     // Validate required fields
     if (!formData.first_name.trim() || !formData.last_name.trim()) {
       toast({
@@ -147,10 +120,8 @@ export const ProfileSettingsModal = ({
       if (avatarFile) {
         setIsUploading(true);
         try {
-          newAvatarUrl = await uploadAvatar(avatarFile, initialProfile.id);
-          if (newAvatarUrl) {
-            setAvatarUrl(newAvatarUrl);
-          }
+          newAvatarUrl = await uploadAvatar(avatarFile);
+          setAvatarUrl(newAvatarUrl);
         } catch (error) {
           console.error('Avatar upload failed:', error);
           toast({
@@ -173,11 +144,11 @@ export const ProfileSettingsModal = ({
 
       // Create updated profile object
       const updatedProfile: PassengerProfile = {
-        ...initialProfile,
         first_name: formData.first_name.trim(),
         last_name: formData.last_name.trim(),
         phone: formData.phone.trim(),
-        email: formData.email.trim()
+        email: formData.email.trim(),
+        avatarUrl: newAvatarUrl
       };
 
       // Clear file selection
@@ -214,6 +185,7 @@ export const ProfileSettingsModal = ({
         phone: initialProfile.phone || '',
         email: initialProfile.email || ''
       });
+      setAvatarUrl(initialProfile.avatarUrl);
     }
 
     // Clear file selection
@@ -237,8 +209,8 @@ export const ProfileSettingsModal = ({
   };
 
   const getInitials = () => {
-    const firstName = formData.first_name || initialProfile?.first_name || '';
-    const lastName = formData.last_name || initialProfile?.last_name || '';
+    const firstName = formData.first_name || '';
+    const lastName = formData.last_name || '';
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || 'P';
   };
 
@@ -252,7 +224,7 @@ export const ProfileSettingsModal = ({
           <div className="flex items-center space-x-2">
             <User className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold text-card-foreground">
-              Profile Settings
+              Edit Profile
             </h2>
           </div>
           <Button variant="ghost" size="sm" onClick={handleCancel}>

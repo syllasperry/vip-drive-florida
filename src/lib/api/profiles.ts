@@ -49,20 +49,69 @@ export function publicAvatarUrl(pathOrUrl?: string) {
   return supabase.storage.from('avatars').getPublicUrl(pathOrUrl).data.publicUrl;
 }
 
-// New functions for passenger profile management
+// Enhanced functions for passenger profile management
 export async function getMyPassengerProfile() {
   try {
     const { data, error } = await supabase.rpc('get_my_passenger_profile');
 
     if (error) {
       console.error("Error fetching my passenger profile:", error);
-      return null;
+      return {
+        first_name: '',
+        last_name: '',
+        phone: '',
+        email: '',
+        avatarUrl: null
+      };
     }
 
-    return data && Array.isArray(data) && data.length > 0 ? data[0] : null;
+    const profile = data && Array.isArray(data) && data.length > 0 ? data[0] : null;
+    
+    if (!profile) {
+      return {
+        first_name: '',
+        last_name: '',
+        phone: '',
+        email: '',
+        avatarUrl: null
+      };
+    }
+
+    // Try to get avatar from storage
+    let avatarUrl = null;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.id) {
+        const { data: files } = await supabase.storage
+          .from('avatars')
+          .list(user.id, { limit: 1, sortBy: { column: 'created_at', order: 'desc' } });
+        
+        if (files && files.length > 0) {
+          avatarUrl = supabase.storage
+            .from('avatars')
+            .getPublicUrl(`${user.id}/${files[0].name}`).data.publicUrl;
+        }
+      }
+    } catch (avatarError) {
+      console.error('Error loading avatar:', avatarError);
+    }
+
+    return {
+      first_name: profile.first_name || '',
+      last_name: profile.last_name || '',
+      phone: profile.phone || '',
+      email: profile.email || '',
+      avatarUrl
+    };
   } catch (error) {
     console.error("Unexpected error fetching my passenger profile:", error);
-    return null;
+    return {
+      first_name: '',
+      last_name: '',
+      phone: '',
+      email: '',
+      avatarUrl: null
+    };
   }
 }
 
@@ -88,6 +137,36 @@ export async function upsertMyPassengerProfile(input: {
     return data;
   } catch (error) {
     console.error("Unexpected error upserting passenger profile:", error);
+    throw error;
+  }
+}
+
+export async function uploadAvatar(file: File) {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.id) {
+      throw new Error('User not authenticated');
+    }
+
+    const fileExt = file.name.split('.').pop() || 'jpg';
+    const fileName = `avatar-${Date.now()}.${fileExt}`;
+    const filePath = `${user.id}/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file, { upsert: true });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath);
+
+    return publicUrl;
+  } catch (error) {
+    console.error("Error uploading avatar:", error);
     throw error;
   }
 }

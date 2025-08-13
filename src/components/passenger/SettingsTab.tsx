@@ -18,11 +18,11 @@ interface SettingsTabProps {
 }
 
 interface PassengerProfile {
-  id: string;
   first_name: string;
   last_name: string;
   phone: string;
   email: string;
+  avatarUrl: string | null;
 }
 
 export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
@@ -179,6 +179,22 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
           </CardContent>
         </Card>
 
+        {/* Edit Profile Button - Added after Notifications */}
+        <Card 
+          className="cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => setActiveModal('profileSettings')}
+        >
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <User className="w-5 h-5 text-gray-600" />
+              <div className="flex-1">
+                <h3 className="font-medium text-gray-900">Edit Profile</h3>
+                <p className="text-sm text-gray-500">Update your personal information and photo</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card 
           className="cursor-pointer hover:shadow-md transition-shadow"
           onClick={() => setActiveModal('privacy')}
@@ -204,22 +220,6 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
               <div className="flex-1">
                 <h3 className="font-medium text-gray-900">Preferences</h3>
                 <p className="text-sm text-gray-500">Profile and account preferences</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Edit Profile Button - Added between Configure Notifications and Logout */}
-        <Card 
-          className="cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => setActiveModal('profileSettings')}
-        >
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <User className="w-5 h-5 text-gray-600" />
-              <div className="flex-1">
-                <h3 className="font-medium text-gray-900">Edit Profile</h3>
-                <p className="text-sm text-gray-500">Update your personal information and photo</p>
               </div>
             </div>
           </CardContent>
