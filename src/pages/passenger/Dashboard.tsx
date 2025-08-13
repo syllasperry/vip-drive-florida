@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MapPin, Clock, Users, MessageSquare, Phone, Plus, Car } from 'lucide-react';
 import { BottomNavigation } from '@/components/dashboard/BottomNavigation';
+import { MessagingInterface } from '@/components/dashboard/MessagingInterface';
+import { PaymentModal } from '@/components/dashboard/PaymentModal';
 
 // Test comment: Confirming commit sync between Lovable and GitHub - passenger dashboard
 
@@ -19,6 +21,9 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [driverProfiles, setDriverProfiles] = useState<Record<string, any>>({});
   const [activeTab, setActiveTab] = useState('bookings');
+  const [showMessaging, setShowMessaging] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<any>(null);
 
   useEffect(() => {
     loadBookings();
@@ -85,39 +90,87 @@ const Dashboard = () => {
   };
 
   const handleNewBooking = () => {
-    // Navigate to booking form
     window.location.href = '/passenger/booking-form';
   };
 
   const handleMessage = (booking: any) => {
-    if (booking.status === 'all_set') {
-      // Implement messaging functionality
-      console.log('Opening message for booking:', booking.id);
+    const driver = driverProfiles[booking.id];
+    const statusAllowsContact = booking.status === 'all_set' || booking.status === 'completed';
+    
+    if (statusAllowsContact && driver) {
+      setSelectedBooking(booking);
+      setShowMessaging(true);
     }
   };
 
-  const handleCall = (booking: any, phone: string) => {
-    if (booking.status === 'all_set' && phone) {
-      window.open(`tel:${phone}`);
+  const handleCall = (booking: any) => {
+    const driver = driverProfiles[booking.id];
+    const statusAllowsContact = booking.status === 'all_set' || booking.status === 'completed';
+    
+    if (statusAllowsContact && driver?.phone) {
+      window.open(`tel:${driver.phone}`);
     }
+  };
+
+  const handleProceedToPayment = (booking: any) => {
+    setSelectedBooking(booking);
+    setShowPayment(true);
+  };
+
+  const handlePaymentConfirmed = () => {
+    setShowPayment(false);
+    loadBookings(); // Refresh bookings after payment
+    toast.success('Payment confirmed successfully!');
   };
 
   const handleViewDetails = (booking: any) => {
     console.log('Viewing details for booking:', booking.id);
   };
 
+  // Messages Tab Component
+  const MessagesTab = () => (
+    <div className="text-center py-20">
+      <MessageSquare className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+      <h2 className="text-2xl font-semibold text-gray-600 mb-4">Messages</h2>
+      <p className="text-gray-500">Your conversations will appear here.</p>
+    </div>
+  );
+
+  // Payments Tab Component
+  const PaymentsTab = () => (
+    <div className="text-center py-20">
+      <div className="text-gray-400 mb-4">
+        <svg className="h-16 w-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+        </svg>
+      </div>
+      <h2 className="text-2xl font-semibold text-gray-600 mb-4">Payment History</h2>
+      <p className="text-gray-500">Your payment history will appear here.</p>
+    </div>
+  );
+
+  // Settings Tab Component
+  const SettingsTab = () => (
+    <div className="text-center py-20">
+      <div className="text-gray-400 mb-4">
+        <svg className="h-16 w-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      </div>
+      <h2 className="text-2xl font-semibold text-gray-600 mb-4">Settings</h2>
+      <p className="text-gray-500">Manage your account settings here.</p>
+    </div>
+  );
+
+  // Render different tabs based on activeTab
   if (activeTab !== 'bookings') {
     return (
       <div className="min-h-screen bg-gray-50 pb-20">
         <div className="container mx-auto py-6 px-4">
-          <div className="text-center py-20">
-            <h2 className="text-2xl font-semibold text-gray-600 mb-4">
-              {activeTab === 'messages' && 'Messages'}
-              {activeTab === 'payments' && 'Payments'}
-              {activeTab === 'settings' && 'Settings'}
-            </h2>
-            <p className="text-gray-500">This section is coming soon.</p>
-          </div>
+          {activeTab === 'messages' && <MessagesTab />}
+          {activeTab === 'payments' && <PaymentsTab />}
+          {activeTab === 'settings' && <SettingsTab />}
         </div>
         <BottomNavigation 
           activeTab={activeTab} 
@@ -166,8 +219,9 @@ const Dashboard = () => {
           <div className="space-y-4">
             {bookings.map((booking) => {
               const driver = driverProfiles[booking.id];
-              const isAllSet = booking.status === 'all_set';
-              const canShowContact = isAllSet && driver?.phone;
+              const statusAllowsContact = booking.status === 'all_set' || booking.status === 'completed';
+              const showDriverData = booking.status === 'offer_sent' || booking.status === 'payment_pending' || booking.status === 'all_set' || booking.status === 'completed';
+              const showPaymentButton = booking.status === 'offer_sent';
 
               return (
                 <Card key={booking.id} className="w-full hover:shadow-md transition-shadow">
@@ -183,20 +237,43 @@ const Dashboard = () => {
                       </Badge>
                     </div>
 
+                    {/* Driver Information */}
+                    {showDriverData && driver && (
+                      <div className="flex items-center space-x-3 mb-4 p-3 bg-gray-50 rounded-lg">
+                        <Avatar className="h-12 w-12">
+                          <AvatarImage src={driver.profile_photo_url} />
+                          <AvatarFallback>
+                            {driver.full_name?.charAt(0) || 'D'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900">{driver.full_name}</p>
+                          <p className="text-sm text-gray-600">{driver.car_make} {driver.car_model} ({driver.car_year})</p>
+                          <p className="text-xs text-gray-500">{driver.car_color}</p>
+                          {statusAllowsContact && (
+                            <>
+                              <p className="text-xs text-gray-500">📞 {driver.phone}</p>
+                              <p className="text-xs text-gray-500">✉️ {driver.email}</p>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Trip Details */}
                     <div className="space-y-3 mb-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-3 h-3 bg-green-500 rounded-full flex-shrink-0"></div>
-                        <div>
-                          <p className="text-sm text-gray-500">Pickup</p>
+                      <div>
+                        <p className="text-sm text-gray-500">Pickup</p>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 bg-green-500 rounded-full flex-shrink-0"></div>
                           <p className="text-gray-900 font-medium">{booking.pickup_location}</p>
                         </div>
                       </div>
                       
-                      <div className="flex items-center space-x-3">
-                        <div className="w-3 h-3 bg-red-500 rounded-full flex-shrink-0"></div>
-                        <div>
-                          <p className="text-sm text-gray-500">Drop-off</p>
+                      <div>
+                        <p className="text-sm text-gray-500">Drop-off</p>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 bg-red-500 rounded-full flex-shrink-0"></div>
                           <p className="text-gray-900 font-medium">{booking.dropoff_location}</p>
                         </div>
                       </div>
@@ -225,6 +302,18 @@ const Dashboard = () => {
                       </span>
                     </div>
 
+                    {/* Payment Button */}
+                    {showPaymentButton && (
+                      <div className="mb-4">
+                        <Button
+                          onClick={() => handleProceedToPayment(booking)}
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg font-semibold"
+                        >
+                          Proceed to Payment - ${booking.estimated_price || booking.final_price || '0.00'}
+                        </Button>
+                      </div>
+                    )}
+
                     {/* Price and Actions */}
                     <div className="flex items-center justify-between">
                       <div>
@@ -240,8 +329,8 @@ const Dashboard = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleMessage(booking)}
-                          disabled={!canShowContact}
-                          className={`flex items-center gap-2 ${!canShowContact ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          disabled={!statusAllowsContact}
+                          className={`flex items-center gap-2 ${!statusAllowsContact ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                           <MessageSquare className="h-4 w-4" />
                           Message
@@ -250,9 +339,9 @@ const Dashboard = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleCall(booking, driver?.phone)}
-                          disabled={!canShowContact}
-                          className={`flex items-center gap-2 ${!canShowContact ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          onClick={() => handleCall(booking)}
+                          disabled={!statusAllowsContact}
+                          className={`flex items-center gap-2 ${!statusAllowsContact ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                           <Phone className="h-4 w-4" />
                           Call
@@ -298,6 +387,28 @@ const Dashboard = () => {
         onTabChange={setActiveTab} 
         userType="passenger" 
       />
+
+      {/* Messaging Interface */}
+      {showMessaging && selectedBooking && (
+        <MessagingInterface
+          bookingId={selectedBooking.id}
+          userType="passenger"
+          isOpen={showMessaging}
+          onClose={() => setShowMessaging(false)}
+          currentUserId={selectedBooking.passenger_id || ''}
+          currentUserName="Passenger"
+        />
+      )}
+
+      {/* Payment Modal */}
+      {showPayment && selectedBooking && (
+        <PaymentModal
+          isOpen={showPayment}
+          onClose={() => setShowPayment(false)}
+          booking={selectedBooking}
+          onPaymentConfirmed={handlePaymentConfirmed}
+        />
+      )}
     </div>
   );
 };
