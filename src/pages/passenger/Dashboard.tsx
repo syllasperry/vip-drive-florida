@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MapPin, Clock, Users, MessageSquare, Phone, Plus } from 'lucide-react';
+import { MapPin, Clock, Users, MessageSquare, Phone, Plus, Car } from 'lucide-react';
 import { BottomNavigation } from '@/components/dashboard/BottomNavigation';
 
 // Test comment: Confirming commit sync between Lovable and GitHub - passenger dashboard
@@ -171,33 +171,33 @@ const Dashboard = () => {
 
               return (
                 <Card key={booking.id} className="w-full hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-4">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg font-semibold">
-                        Booking ID: #{booking.id?.slice(-6)}
-                      </CardTitle>
+                  <CardContent className="p-6">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium text-gray-700">Booking ID</span>
+                        <span className="text-lg font-bold">#{booking.id?.slice(-8)}</span>
+                      </div>
                       <Badge className={getStatusColor(booking.status)}>
-                        {booking.status?.replace('_', ' ').toUpperCase()}
+                        {booking.status?.replace('_', ' ').charAt(0).toUpperCase() + booking.status?.replace('_', ' ').slice(1)}
                       </Badge>
                     </div>
-                  </CardHeader>
-                  
-                  <CardContent className="space-y-4">
+
                     {/* Trip Details */}
-                    <div className="space-y-3">
+                    <div className="space-y-3 mb-4">
                       <div className="flex items-center space-x-3">
-                        <MapPin className="h-5 w-5 text-green-600 flex-shrink-0" />
+                        <div className="w-3 h-3 bg-green-500 rounded-full flex-shrink-0"></div>
                         <div>
-                          <p className="text-sm font-medium text-gray-700">Pickup</p>
-                          <p className="text-sm text-gray-900">{booking.pickup_location}</p>
+                          <p className="text-sm text-gray-500">Pickup</p>
+                          <p className="text-gray-900 font-medium">{booking.pickup_location}</p>
                         </div>
                       </div>
                       
                       <div className="flex items-center space-x-3">
-                        <MapPin className="h-5 w-5 text-red-600 flex-shrink-0" />
+                        <div className="w-3 h-3 bg-red-500 rounded-full flex-shrink-0"></div>
                         <div>
-                          <p className="text-sm font-medium text-gray-700">Drop-off</p>
-                          <p className="text-sm text-gray-900">{booking.dropoff_location}</p>
+                          <p className="text-sm text-gray-500">Drop-off</p>
+                          <p className="text-gray-900 font-medium">{booking.dropoff_location}</p>
                         </div>
                       </div>
 
@@ -206,7 +206,7 @@ const Dashboard = () => {
                           <div className="flex items-center space-x-2">
                             <Clock className="h-4 w-4" />
                             <span>
-                              {new Date(booking.pickup_time).toLocaleDateString()} at {new Date(booking.pickup_time).toLocaleTimeString()}
+                              {new Date(booking.pickup_time).toLocaleDateString()} - {new Date(booking.pickup_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                             </span>
                           </div>
                           <div className="flex items-center space-x-2">
@@ -217,38 +217,22 @@ const Dashboard = () => {
                       </div>
                     </div>
 
-                    {/* Driver Information */}
-                    {driver && (
-                      <div className="border-t pt-4">
-                        <div className="flex items-center space-x-3 mb-3">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={driver.profile_photo_url} />
-                            <AvatarFallback>
-                              {driver.full_name?.charAt(0) || 'D'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium text-gray-900">{driver.full_name}</p>
-                            <p className="text-sm text-gray-600">
-                              {driver.car_year} {driver.car_make} {driver.car_model}
-                            </p>
-                            {canShowContact && driver.phone && (
-                              <p className="text-sm text-gray-600">{driver.phone}</p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                    {/* Car Information */}
+                    <div className="flex items-center space-x-2 mb-4">
+                      <Car className="h-4 w-4 text-gray-600" />
+                      <span className="text-gray-900 font-medium">
+                        {driver?.car_make || 'Tesla'} {driver?.car_model || 'Model Y'}
+                      </span>
+                    </div>
 
                     {/* Price and Actions */}
-                    <div className="border-t pt-4 flex items-center justify-between">
+                    <div className="flex items-center justify-between">
                       <div>
                         {(booking.estimated_price || booking.final_price) && (
                           <p className="text-2xl font-bold text-red-600">
                             ${booking.final_price || booking.estimated_price}
                           </p>
                         )}
-                        <p className="text-sm text-gray-500">Estimated Fare</p>
                       </div>
                       
                       <div className="flex space-x-2">
@@ -275,10 +259,9 @@ const Dashboard = () => {
                         </Button>
                         
                         <Button
-                          variant="default"
                           size="sm"
                           onClick={() => handleViewDetails(booking)}
-                          className="bg-gray-900 hover:bg-gray-800 text-white"
+                          className="bg-red-500 hover:bg-red-600 text-white"
                         >
                           View Details
                         </Button>
