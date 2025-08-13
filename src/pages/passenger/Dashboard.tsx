@@ -13,8 +13,7 @@ import { MapPin, Clock, Users, MessageSquare, Phone, Plus, Car } from 'lucide-re
 import { BottomNavigation } from '@/components/dashboard/BottomNavigation';
 import { MessagingInterface } from '@/components/dashboard/MessagingInterface';
 import { PaymentModal } from '@/components/dashboard/PaymentModal';
-
-// Test comment: Confirming commit sync between Lovable and GitHub - passenger dashboard
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const Dashboard = () => {
   const [bookings, setBookings] = useState<any[]>([]);
@@ -24,6 +23,7 @@ const Dashboard = () => {
   const [showMessaging, setShowMessaging] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   useEffect(() => {
     loadBookings();
@@ -59,8 +59,8 @@ const Dashboard = () => {
               profile_photo_url: publicAvatarUrl(profile.photo_url),
               car_make: profile.car_make || 'Tesla',
               car_model: profile.car_model || 'Model Y',
-              car_year: profile.car_year || '2023',
-              car_color: profile.car_color || 'White',
+              car_year: profile.car_year || '2024',
+              car_color: profile.car_color || 'Black',
               phone: profile.phone,
               email: profile.email
             };
@@ -94,20 +94,27 @@ const Dashboard = () => {
   };
 
   const handleMessage = (booking: any) => {
-    const driver = driverProfiles[booking.id];
-    const statusAllowsContact = booking.status === 'all_set' || booking.status === 'completed';
+    const isPaidStatus = booking.status === 'all_set' || booking.status === 'completed';
     
-    if (statusAllowsContact && driver) {
-      setSelectedBooking(booking);
-      setShowMessaging(true);
+    if (!isPaidStatus) {
+      toast.error('Please proceed with payment first to contact your driver.');
+      return;
     }
+
+    setSelectedBooking(booking);
+    setShowMessaging(true);
   };
 
   const handleCall = (booking: any) => {
     const driver = driverProfiles[booking.id];
-    const statusAllowsContact = booking.status === 'all_set' || booking.status === 'completed';
+    const isPaidStatus = booking.status === 'all_set' || booking.status === 'completed';
     
-    if (statusAllowsContact && driver?.phone) {
+    if (!isPaidStatus) {
+      toast.error('Please proceed with payment first to contact your driver.');
+      return;
+    }
+    
+    if (driver?.phone) {
       window.open(`tel:${driver.phone}`);
     }
   };
@@ -124,7 +131,8 @@ const Dashboard = () => {
   };
 
   const handleViewDetails = (booking: any) => {
-    console.log('Viewing details for booking:', booking.id);
+    setSelectedBooking(booking);
+    setShowDetailsModal(true);
   };
 
   // Messages Tab Component
@@ -248,8 +256,7 @@ const Dashboard = () => {
                         </Avatar>
                         <div className="flex-1">
                           <p className="font-medium text-gray-900">{driver.full_name}</p>
-                          <p className="text-sm text-gray-600">{driver.car_make} {driver.car_model} ({driver.car_year})</p>
-                          <p className="text-xs text-gray-500">{driver.car_color}</p>
+                          <p className="text-sm text-gray-600">{driver.car_make} {driver.car_model} ({driver.car_year}) - {driver.car_color}</p>
                           {statusAllowsContact && (
                             <>
                               <p className="text-xs text-gray-500">📞 {driver.phone}</p>
@@ -295,19 +302,21 @@ const Dashboard = () => {
                     </div>
 
                     {/* Car Information */}
-                    <div className="flex items-center space-x-2 mb-4">
-                      <Car className="h-4 w-4 text-gray-600" />
-                      <span className="text-gray-900 font-medium">
-                        {driver?.car_make || 'Tesla'} {driver?.car_model || 'Model Y'}
-                      </span>
-                    </div>
+                    {driver && (
+                      <div className="flex items-center space-x-2 mb-4">
+                        <Car className="h-4 w-4 text-gray-600" />
+                        <span className="text-gray-900 font-medium">
+                          {driver.car_make} {driver.car_model}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Payment Button */}
                     {showPaymentButton && (
-                      <div className="mb-4">
+                      <div className="mb-4 flex justify-center">
                         <Button
                           onClick={() => handleProceedToPayment(booking)}
-                          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg font-semibold"
+                          className="w-full max-w-md bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg font-semibold"
                         >
                           Proceed to Payment - ${booking.estimated_price || booking.final_price || '0.00'}
                         </Button>
@@ -329,8 +338,7 @@ const Dashboard = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleMessage(booking)}
-                          disabled={!statusAllowsContact}
-                          className={`flex items-center gap-2 ${!statusAllowsContact ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          className="flex items-center gap-2"
                         >
                           <MessageSquare className="h-4 w-4" />
                           Message
@@ -340,20 +348,21 @@ const Dashboard = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleCall(booking)}
-                          disabled={!statusAllowsContact}
-                          className={`flex items-center gap-2 ${!statusAllowsContact ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          className="flex items-center gap-2"
                         >
                           <Phone className="h-4 w-4" />
                           Call
                         </Button>
                         
-                        <Button
-                          size="sm"
-                          onClick={() => handleViewDetails(booking)}
-                          className="bg-red-500 hover:bg-red-600 text-white"
-                        >
-                          View Details
-                        </Button>
+                        <div className="flex justify-center">
+                          <Button
+                            size="sm"
+                            onClick={() => handleViewDetails(booking)}
+                            className="bg-red-500 hover:bg-red-600 text-white"
+                          >
+                            View Details
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -408,6 +417,82 @@ const Dashboard = () => {
           booking={selectedBooking}
           onPaymentConfirmed={handlePaymentConfirmed}
         />
+      )}
+
+      {/* Booking Details Modal */}
+      {showDetailsModal && selectedBooking && (
+        <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Booking Details</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm font-medium text-gray-700">Booking ID</p>
+                <p className="text-lg font-bold">#{selectedBooking.id?.slice(-8)}</p>
+              </div>
+              
+              {driverProfiles[selectedBooking.id] && (
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-2">Driver Information</p>
+                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={driverProfiles[selectedBooking.id].profile_photo_url} />
+                      <AvatarFallback>
+                        {driverProfiles[selectedBooking.id].full_name?.charAt(0) || 'D'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">{driverProfiles[selectedBooking.id].full_name}</p>
+                      <p className="text-sm text-gray-600">
+                        {driverProfiles[selectedBooking.id].car_make} {driverProfiles[selectedBooking.id].car_model} ({driverProfiles[selectedBooking.id].car_year}) - {driverProfiles[selectedBooking.id].car_color}
+                      </p>
+                      <p className="text-xs text-gray-500">📞 {driverProfiles[selectedBooking.id].phone}</p>
+                      <p className="text-xs text-gray-500">✉️ {driverProfiles[selectedBooking.id].email}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <div>
+                <p className="text-sm font-medium text-gray-700">Trip Details</p>
+                <div className="space-y-2 mt-2">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <p className="text-sm">{selectedBooking.pickup_location}</p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                    <p className="text-sm">{selectedBooking.dropoff_location}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <p className="text-sm font-medium text-gray-700">Date & Time</p>
+                <p className="text-sm">
+                  {new Date(selectedBooking.pickup_time).toLocaleDateString()} - {new Date(selectedBooking.pickup_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                </p>
+              </div>
+              
+              <div>
+                <p className="text-sm font-medium text-gray-700">Status</p>
+                <Badge className={getStatusColor(selectedBooking.status)}>
+                  {selectedBooking.status?.replace('_', ' ').charAt(0).toUpperCase() + selectedBooking.status?.replace('_', ' ').slice(1)}
+                </Badge>
+              </div>
+              
+              {(selectedBooking.estimated_price || selectedBooking.final_price) && (
+                <div>
+                  <p className="text-sm font-medium text-gray-700">Price</p>
+                  <p className="text-xl font-bold text-red-600">
+                    ${selectedBooking.final_price || selectedBooking.estimated_price}
+                  </p>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
