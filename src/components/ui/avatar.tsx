@@ -1,3 +1,4 @@
+
 import * as React from "react"
 import * as AvatarPrimitive from "@radix-ui/react-avatar"
 
@@ -27,10 +28,12 @@ const AvatarImage = React.forwardRef<
     className={cn("aspect-square h-full w-full transition-opacity duration-300", className)}
     {...props}
     onError={(e) => {
-      e.currentTarget.style.display = 'none';
+      const target = e.currentTarget as HTMLImageElement;
+      target.style.display = 'none';
     }}
     onLoad={(e) => {
-      e.currentTarget.style.opacity = '1';
+      const target = e.currentTarget as HTMLImageElement;
+      target.style.opacity = '1';
     }}
   />
 ))

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SafeAvatar } from "@/components/ui/SafeAvatar";
 import { Clock, Users, MessageCircle, Phone, ArrowLeft, Car, CreditCard, Settings } from "lucide-react";
 import { MessagingInterface } from "@/components/MessagingInterface";
 import { format } from "date-fns";
@@ -28,7 +29,7 @@ const PassengerDashboard = () => {
   const [activeTab, setActiveTab] = useState<"bookings" | "messages" | "payments" | "settings">("bookings");
   const [passengerProfile, setPassengerProfile] = useState<any | null>(null);
 
-  // Carrega perfil completo do passageiro (foto/nome/prefs)
+  // Load complete passenger profile (photo/name/preferences)
   async function loadPassengerProfile(userId: string) {
     try {
       const { data, error } = await supabase
@@ -39,23 +40,33 @@ const PassengerDashboard = () => {
         .eq("id", userId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error loading passenger profile:", error);
+        return;
+      }
       setPassengerProfile(data);
     } catch (err) {
       console.error("Error loading passenger profile:", err);
     }
   }
 
-  // Primeira carga + listener em tempo real (com cleanup)
+  // First load + real-time listener (with cleanup)
   useEffect(() => {
     async function fetchBookings() {
-      const allBookings = await getAllBookings();
-      setBookings(allBookings);
+      try {
+        const allBookings = await getAllBookings();
+        setBookings(allBookings || []);
+      } catch (error) {
+        console.error("Error fetching bookings:", error);
+        setBookings([]);
+      }
     }
 
     fetchBookings();
 
     const cleanup = listenForBookingChanges((updatedBooking: any) => {
+      if (!updatedBooking) return;
+      
       setBookings(prev => {
         const index = prev.findIndex(b => b.id === updatedBooking.id);
         if (index !== -1) {
@@ -70,7 +81,7 @@ const PassengerDashboard = () => {
     return cleanup;
   }, []);
 
-  // Auth + auto-refresh + assinatura realtime com cleanup
+  // Auth + auto-refresh + realtime subscription with cleanup
   useEffect(() => {
     checkAuth();
     const cleanupRealtime = setupRealtimeSubscription();
@@ -119,7 +130,7 @@ const PassengerDashboard = () => {
         return;
       }
 
-      // Admin/dispatcher desvia para dashboard do dispatcher
+      // Admin/dispatcher redirects to dispatcher dashboard
       if (user.email === "syllasperry@gmail.com") {
         navigate("/dispatcher/dashboard");
         return;
@@ -137,7 +148,10 @@ const PassengerDashboard = () => {
   const loadPassengerInfo = async (userId: string) => {
     try {
       const { data, error } = await supabase.from("passengers").select("*").eq("id", userId).single();
-      if (error) throw error;
+      if (error) {
+        console.error("Error loading passenger info:", error);
+        return;
+      }
       setPassengerInfo(data);
     } catch (error) {
       console.error("Error loading passenger info:", error);
@@ -165,37 +179,44 @@ const PassengerDashboard = () => {
         .eq("passenger_id", userId)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error loading bookings:", error);
+        return;
+      }
 
-      const mapped: Booking[] = (data || []).map((b: any) => ({
-        id: b.id,
-        pickup_location: b.pickup_location,
-        dropoff_location: b.dropoff_location,
-        pickup_time: b.pickup_time,
-        passenger_count: b.passenger_count,
-        vehicle_type: b.vehicle_type,
-        simple_status: mapToSimpleStatus(b),
-        estimated_price: b.estimated_price,
-        final_negotiated_price: b.final_price,
-        final_price: b.final_price,
-        created_at: b.created_at,
-        passenger_id: b.passenger_id,
-        driver_id: b.driver_id,
-        status: b.status,
-        ride_status: b.ride_status,
-        payment_confirmation_status: b.payment_confirmation_status,
-        driver_profiles: b.drivers
-          ? {
-              full_name: b.drivers.full_name,
-              phone: b.drivers.phone,
-              profile_photo_url: b.drivers.profile_photo_url,
-              car_make: b.drivers.car_make,
-              car_model: b.drivers.car_model,
-              car_color: b.drivers.car_color,
-              license_plate: b.drivers.license_plate
-            }
-          : undefined
-      }));
+      const mapped: Booking[] = (data || []).map((b: any) => {
+        const simpleStatus = mapToSimpleStatus(b);
+        
+        return {
+          id: b.id,
+          pickup_location: b.pickup_location,
+          dropoff_location: b.dropoff_location,
+          pickup_time: b.pickup_time,
+          passenger_count: b.passenger_count,
+          vehicle_type: b.vehicle_type,
+          simple_status: simpleStatus as 'booking_requested' | 'payment_pending' | 'all_set' | 'completed' | 'cancelled',
+          estimated_price: b.estimated_price,
+          final_negotiated_price: b.final_price,
+          final_price: b.final_price,
+          created_at: b.created_at,
+          passenger_id: b.passenger_id,
+          driver_id: b.driver_id,
+          status: b.status,
+          ride_status: b.ride_status,
+          payment_confirmation_status: b.payment_confirmation_status,
+          driver_profiles: b.drivers
+            ? {
+                full_name: b.drivers.full_name,
+                phone: b.drivers.phone,
+                profile_photo_url: b.drivers.profile_photo_url,
+                car_make: b.drivers.car_make,
+                car_model: b.drivers.car_model,
+                car_color: b.drivers.car_color,
+                license_plate: b.drivers.license_plate
+              }
+            : undefined
+        };
+      });
 
       setBookings(mapped);
     } catch (error) {
@@ -257,7 +278,14 @@ const PassengerDashboard = () => {
 
   const handleCall = () => window.open("tel:+1234567890", "_blank");
 
-  const formatDateTime = (s: string) => format(new Date(s), "MMM dd, yyyy - HH:mm");
+  const formatDateTime = (s: string) => {
+    try {
+      return format(new Date(s), "MMM dd, yyyy - HH:mm");
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return s;
+    }
+  };
 
   const getCurrentPrice = (b: Booking): number | null => (b.final_price && b.final_price > 0 ? b.final_price : null);
 
@@ -315,15 +343,16 @@ const PassengerDashboard = () => {
       default:
         return (
           <div className="space-y-4">
-            {/* Resumo do passageiro no topo da lista (sempre que houver perfil) */}
+            {/* Passenger summary at top of list (when profile exists) */}
             {passengerProfile && (
               <div className="bg-white rounded-lg shadow p-4 mb-2">
                 <h2 className="text-lg font-semibold text-gray-800 mb-2">Passenger</h2>
                 <div className="flex items-center">
-                  <Avatar className="h-10 w-10 mr-3">
-                    <AvatarImage src={passengerProfile.profile_photo_url || ""} />
-                    <AvatarFallback>{(passengerProfile.full_name?.[0] || "P").toUpperCase()}</AvatarFallback>
-                  </Avatar>
+                  <SafeAvatar 
+                    src={passengerProfile.profile_photo_url}
+                    fallbackText={passengerProfile.full_name}
+                    className="h-10 w-10 mr-3"
+                  />
                   <div>
                     <div className="font-semibold text-gray-900">{passengerProfile.full_name || "Passenger"}</div>
                     {(passengerProfile.music_preference ||
@@ -427,17 +456,16 @@ const PassengerDashboard = () => {
                       )}
                     </div>
 
-                    {/* Driver (quando há oferta) */}
+                    {/* Driver (when there's an offer) */}
                     {booking.simple_status === "payment_pending" && booking.driver_profiles && getCurrentPrice(booking) !== null && (
                       <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                         <p className="text-sm font-medium text-blue-900 mb-2">Your Assigned Driver</p>
                         <div className="flex items-center space-x-3">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={booking.driver_profiles.profile_photo_url} />
-                            <AvatarFallback className="bg-blue-200 text-blue-800">
-                              {booking.driver_profiles.full_name.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
+                          <SafeAvatar 
+                            src={booking.driver_profiles.profile_photo_url}
+                            fallbackText={booking.driver_profiles.full_name}
+                            className="h-10 w-10"
+                          />
                           <div className="flex-1">
                             <p className="font-medium text-blue-900">{booking.driver_profiles.full_name}</p>
                             <p className="text-sm text-blue-700">
@@ -456,12 +484,11 @@ const PassengerDashboard = () => {
                       <div className="mb-4 p-3 bg-green-50 rounded-lg">
                         <p className="text-sm font-medium text-gray-900 mb-2">Your Driver</p>
                         <div className="flex items-center space-x-3">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={booking.driver_profiles.profile_photo_url} />
-                            <AvatarFallback className="bg-gray-200 text-gray-600">
-                              {booking.driver_profiles.full_name.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
+                          <SafeAvatar 
+                            src={booking.driver_profiles.profile_photo_url}
+                            fallbackText={booking.driver_profiles.full_name}
+                            className="h-10 w-10"
+                          />
                           <div className="flex-1">
                             <p className="font-medium text-gray-900">{booking.driver_profiles.full_name}</p>
                             <p className="text-sm text-gray-500">{booking.driver_profiles.phone}</p>
@@ -508,7 +535,7 @@ const PassengerDashboard = () => {
                       </Button>
                     </div>
 
-                    {/* Botão de pagamento (quando há preço) */}
+                    {/* Payment button (when there's a price) */}
                     {booking.simple_status === "payment_pending" && getCurrentPrice(booking) !== null && (
                       <Button className="w-full mt-3 bg-red-500 hover:bg-red-600 text-white" onClick={() => handlePayment(booking)}>
                         Pay ${getCurrentPrice(booking)} - Complete Booking

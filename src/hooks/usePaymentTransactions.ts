@@ -17,17 +17,30 @@ export const usePaymentTransactions = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
+      setError(null);
+      
       const [transactionsData, summaryData] = await Promise.all([
         getPaymentTransactions(),
         getPaymentSummary()
       ]);
       
-      setTransactions(transactionsData);
-      setSummary(summaryData);
-      setError(null);
+      setTransactions(transactionsData || []);
+      setSummary(summaryData || {
+        totalReceived: 0,
+        pendingPayments: 0,
+        refundsDisputes: 0,
+        totalCommission: 0
+      });
     } catch (err) {
       console.error('Error fetching payment data:', err);
       setError('Failed to load payment data');
+      setTransactions([]);
+      setSummary({
+        totalReceived: 0,
+        pendingPayments: 0,
+        refundsDisputes: 0,
+        totalCommission: 0
+      });
     } finally {
       setLoading(false);
     }
