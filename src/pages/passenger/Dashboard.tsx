@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { getDispatcherBookings } from '@/data/bookings';
 import { getPassengerDriverProfile } from '@/lib/api/profiles';
@@ -6,6 +5,8 @@ import { toast } from 'sonner';
 import { StandardDriverRideCard } from '@/components/StandardDriverRideCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { publicAvatarUrl } from '@/lib/api/profiles';
+
+// Test comment: Confirming commit sync between Lovable and GitHub - passenger dashboard
 
 const Dashboard = () => {
   const [bookings, setBookings] = useState<any[]>([]);
