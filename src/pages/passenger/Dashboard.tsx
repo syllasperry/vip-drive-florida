@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +13,7 @@ import { Booking } from "@/types/booking";
 import { MessagesTab } from "@/components/passenger/MessagesTab";
 import { PaymentsTab } from "@/components/passenger/PaymentsTab";
 import { SettingsTab } from "@/components/passenger/SettingsTab";
+import { getPassengerDriverProfile, publicAvatarUrl } from "@/lib/api/profiles";
 
 const PassengerDashboard = () => {
   const navigate = useNavigate();
@@ -25,6 +25,7 @@ const PassengerDashboard = () => {
   const [showMessaging, setShowMessaging] = useState(false);
   const [passengerInfo, setPassengerInfo] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<"bookings" | "messages" | "payments" | "settings">("bookings");
+  const [driverProfiles, setDriverProfiles] = useState<Record<string, any>>({});
 
   useEffect(() => {
     checkAuth();
@@ -161,6 +162,33 @@ const PassengerDashboard = () => {
       });
 
       setBookings(mapped);
+
+      // Load driver profiles in parallel without blocking render
+      mapped.forEach(async (booking) => {
+        if (booking.driver_id) {
+          try {
+            const profile = await getPassengerDriverProfile(booking.id);
+            if (profile) {
+              setDriverProfiles(prev => ({
+                ...prev,
+                [booking.id]: {
+                  driver_id: profile.driver_id,
+                  full_name: profile.full_name,
+                  profile_photo_url: publicAvatarUrl(profile.profile_photo_url),
+                  car_make: profile.car_make,
+                  car_model: profile.car_model,
+                  car_year: profile.car_year,
+                  car_color: profile.car_color,
+                  phone: profile.phone,
+                  email: profile.email
+                }
+              }));
+            }
+          } catch (error) {
+            console.error("Error loading driver profile for booking:", booking.id, error);
+          }
+        }
+      });
     } catch (error) {
       console.error("Error loading bookings:", error);
       toast({
@@ -320,155 +348,162 @@ const PassengerDashboard = () => {
                 </Button>
               </div>
             ) : (
-              bookings.map(booking => (
-                <Card key={booking.id} className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm font-medium text-gray-900">Booking ID</span>
-                        <Badge className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(booking.simple_status || "booking_requested")}`}>
-                          {getStatusLabel(booking.simple_status || "booking_requested")}
-                        </Badge>
-                      </div>
-                      <Clock className="w-4 h-4 text-gray-400" />
-                    </div>
-
-                    <div className="text-lg font-semibold text-gray-900 mb-4">
-                      #{booking.id.slice(-8).toUpperCase()}
-                    </div>
-
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-start space-x-3">
-                        <div className="w-3 h-3 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-                        <div>
-                          <p className="text-sm text-gray-500">Pickup</p>
-                          <p className="text-sm font-medium text-gray-900">{booking.pickup_location}</p>
+              bookings.map(booking => {
+                const driverProfile = driverProfiles[booking.id];
+                return (
+                  <Card key={booking.id} className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm font-medium text-gray-900">Booking ID</span>
+                          <Badge className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(booking.simple_status || "booking_requested")}`}>
+                            {getStatusLabel(booking.simple_status || "booking_requested")}
+                          </Badge>
                         </div>
-                      </div>
-                      <div className="flex items-start space-x-3">
-                        <div className="w-3 h-3 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
-                        <div>
-                          <p className="text-sm text-gray-500">Drop-off</p>
-                          <p className="text-sm font-medium text-gray-900">{booking.dropoff_location}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div className="flex items-center space-x-2">
                         <Clock className="w-4 h-4 text-gray-400" />
-                        <span className="text-xs text-gray-600">{formatDateTime(booking.pickup_time)}</span>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <Users className="w-4 h-4 text-gray-400" />
-                        <span className="text-xs text-gray-600">{booking.passenger_count} passengers</span>
+
+                      <div className="text-lg font-semibold text-gray-900 mb-4">
+                        #{booking.id.slice(-8).toUpperCase()}
                       </div>
-                      {booking.vehicle_type && (
-                        <div className="flex items-center space-x-2 col-span-2">
-                          <Car className="w-4 h-4 text-gray-400" />
-                          <span className="text-xs text-gray-600">{booking.vehicle_type}</span>
+
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-start space-x-3">
+                          <div className="w-3 h-3 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                          <div>
+                            <p className="text-sm text-gray-500">Pickup</p>
+                            <p className="text-sm font-medium text-gray-900">{booking.pickup_location}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start space-x-3">
+                          <div className="w-3 h-3 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
+                          <div>
+                            <p className="text-sm text-gray-500">Drop-off</p>
+                            <p className="text-sm font-medium text-gray-900">{booking.dropoff_location}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div className="flex items-center space-x-2">
+                          <Clock className="w-4 h-4 text-gray-400" />
+                          <span className="text-xs text-gray-600">{formatDateTime(booking.pickup_time)}</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Users className="w-4 h-4 text-gray-400" />
+                          <span className="text-xs text-gray-600">{booking.passenger_count} passengers</span>
+                        </div>
+                        {booking.vehicle_type && (
+                          <div className="flex items-center space-x-2 col-span-2">
+                            <Car className="w-4 h-4 text-gray-400" />
+                            <span className="text-xs text-gray-600">{booking.vehicle_type}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between mb-4">
+                        <span className={`text-2xl font-bold ${getPriceColor(booking)}`}>
+                          {getPriceDisplay(booking)}
+                        </span>
+                        {booking.simple_status === "payment_pending" && getCurrentPrice(booking) !== null && (
+                          <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200 text-blue-800">
+                            Offer Received
+                          </Badge>
+                        )}
+                      </div>
+
+                      {booking.simple_status === "payment_pending" && driverProfile && getCurrentPrice(booking) !== null && (
+                        <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <p className="text-sm font-medium text-blue-900 mb-2">Your Assigned Driver</p>
+                          <div className="flex items-center space-x-3">
+                            <SafeAvatar 
+                              src={driverProfile.profile_photo_url}
+                              fallbackText={driverProfile.full_name || "Driver"}
+                              className="h-10 w-10"
+                            />
+                            <div className="flex-1">
+                              <p className="font-medium text-blue-900">{driverProfile.full_name}</p>
+                              <p className="text-sm text-blue-700">
+                                {driverProfile.car_make} {driverProfile.car_model}
+                                {driverProfile.car_year && ` (${driverProfile.car_year})`}
+                              </p>
+                              <p className="text-sm text-blue-600">
+                                {driverProfile.car_color}
+                              </p>
+                            </div>
+                          </div>
                         </div>
                       )}
-                    </div>
 
-                    <div className="flex items-center justify-between mb-4">
-                      <span className={`text-2xl font-bold ${getPriceColor(booking)}`}>
-                        {getPriceDisplay(booking)}
-                      </span>
+                      {booking.simple_status === "all_set" && driverProfile && (
+                        <div className="mb-4 p-3 bg-green-50 rounded-lg">
+                          <p className="text-sm font-medium text-gray-900 mb-2">Your Driver</p>
+                          <div className="flex items-center space-x-3">
+                            <SafeAvatar 
+                              src={driverProfile.profile_photo_url}
+                              fallbackText={driverProfile.full_name || "Driver"}
+                              className="h-10 w-10"
+                            />
+                            <div className="flex-1">
+                              <p className="font-medium text-gray-900">{driverProfile.full_name}</p>
+                              {driverProfile.phone && (
+                                <p className="text-sm text-gray-500">{driverProfile.phone}</p>
+                              )}
+                              <p className="text-sm text-gray-500">
+                                {driverProfile.car_make} {driverProfile.car_model}
+                                {driverProfile.car_year && ` (${driverProfile.car_year})`}
+                                {driverProfile.car_color && ` - ${driverProfile.car_color}`}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedBooking(booking);
+                            setShowMessaging(true);
+                          }}
+                          className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
+                        >
+                          <MessageCircle className="w-4 h-4 mr-2" />
+                          Message
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleCall}
+                          className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
+                        >
+                          <Phone className="w-4 h-4 mr-2" />
+                          Call
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+                          onClick={() =>
+                            toast({ title: "View Details", description: "Detailed view coming soon" })
+                          }
+                        >
+                          View Details
+                        </Button>
+                      </div>
+
                       {booking.simple_status === "payment_pending" && getCurrentPrice(booking) !== null && (
-                        <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200 text-blue-800">
-                          Offer Received
-                        </Badge>
+                        <Button 
+                          className="w-full mt-3 bg-red-500 hover:bg-red-600 text-white" 
+                          onClick={() => handlePayment(booking)}
+                        >
+                          Pay ${getCurrentPrice(booking)} - Complete Booking
+                        </Button>
                       )}
-                    </div>
-
-                    {booking.simple_status === "payment_pending" && booking.driver_profiles && getCurrentPrice(booking) !== null && (
-                      <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                        <p className="text-sm font-medium text-blue-900 mb-2">Your Assigned Driver</p>
-                        <div className="flex items-center space-x-3">
-                          <SafeAvatar 
-                            src={booking.driver_profiles.profile_photo_url}
-                            fallbackText={booking.driver_profiles.full_name}
-                            className="h-10 w-10"
-                          />
-                          <div className="flex-1">
-                            <p className="font-medium text-blue-900">{booking.driver_profiles.full_name}</p>
-                            <p className="text-sm text-blue-700">
-                              {booking.driver_profiles.car_make} {booking.driver_profiles.car_model}
-                            </p>
-                            <p className="text-sm text-blue-600">
-                              {booking.driver_profiles.car_color} • {booking.driver_profiles.license_plate}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {booking.simple_status === "all_set" && booking.driver_profiles && (
-                      <div className="mb-4 p-3 bg-green-50 rounded-lg">
-                        <p className="text-sm font-medium text-gray-900 mb-2">Your Driver</p>
-                        <div className="flex items-center space-x-3">
-                          <SafeAvatar 
-                            src={booking.driver_profiles.profile_photo_url}
-                            fallbackText={booking.driver_profiles.full_name}
-                            className="h-10 w-10"
-                          />
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-900">{booking.driver_profiles.full_name}</p>
-                            <p className="text-sm text-gray-500">{booking.driver_profiles.phone}</p>
-                            <p className="text-sm text-gray-500">
-                              {booking.driver_profiles.car_make} {booking.driver_profiles.car_model} ({booking.driver_profiles.car_color})
-                            </p>
-                            <p className="text-sm text-gray-500">License: {booking.driver_profiles.license_plate}</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedBooking(booking);
-                          setShowMessaging(true);
-                        }}
-                        className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
-                      >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        Message
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleCall}
-                        className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
-                      >
-                        <Phone className="w-4 h-4 mr-2" />
-                        Call
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="flex-1 bg-red-500 hover:bg-red-600 text-white"
-                        onClick={() =>
-                          toast({ title: "View Details", description: "Detailed view coming soon" })
-                        }
-                      >
-                        View Details
-                      </Button>
-                    </div>
-
-                    {booking.simple_status === "payment_pending" && getCurrentPrice(booking) !== null && (
-                      <Button 
-                        className="w-full mt-3 bg-red-500 hover:bg-red-600 text-white" 
-                        onClick={() => handlePayment(booking)}
-                      >
-                        Pay ${getCurrentPrice(booking)} - Complete Booking
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-              ))
+                    </CardContent>
+                  </Card>
+                );
+              })
             )}
           </div>
         );
