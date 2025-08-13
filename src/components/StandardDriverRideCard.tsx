@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -109,8 +108,9 @@ export const StandardDriverRideCard: React.FC<StandardDriverRideCardProps> = ({
           <Button
             variant="outline"
             size="sm"
-            onClick={isAllSet && hasPhone ? onMessagePassenger : undefined}
+            onClick={isAllSet && hasPhone ? onMessagePassenger : (e) => e.preventDefault()}
             aria-disabled={!isAllSet || !hasPhone}
+            tabIndex={!isAllSet || !hasPhone ? -1 : undefined}
             className="flex items-center gap-1"
           >
             <MessageSquare className="h-4 w-4" />
@@ -121,8 +121,9 @@ export const StandardDriverRideCard: React.FC<StandardDriverRideCardProps> = ({
             <Button
               variant="outline"
               size="sm"
-              onClick={isAllSet && hasPhone ? () => window.open(`tel:${booking.passengers.phone}`) : undefined}
+              onClick={isAllSet && hasPhone ? () => window.open(`tel:${booking.passengers.phone}`) : (e) => e.preventDefault()}
               aria-disabled={!isAllSet || !hasPhone}
+              tabIndex={!isAllSet || !hasPhone ? -1 : undefined}
               className="flex items-center gap-1"
             >
               <Phone className="h-4 w-4" />
