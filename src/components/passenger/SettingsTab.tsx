@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { Bell, Shield, HelpCircle, LogOut } from "lucide-react";
+import { Bell, Shield, HelpCircle, LogOut, Settings as SettingsIcon } from "lucide-react";
 import { NotificationSettingsCard } from "./NotificationSettingsCard";
 import { PrivacySecurityCard } from "./PrivacySecurityCard";
 import { HelpSupportCard } from "./HelpSupportCard";
@@ -18,7 +18,7 @@ interface SettingsTabProps {
 export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [activeModal, setActiveModal] = useState<'notifications' | 'privacy' | 'help' | null>(null);
+  const [activeModal, setActiveModal] = useState<'notifications' | 'privacy' | 'help' | 'preferences' | null>(null);
   const [currentPassengerInfo, setCurrentPassengerInfo] = useState(passengerInfo);
 
   // Update local state when passengerInfo prop changes
@@ -103,16 +103,28 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
     );
   }
 
+  if (activeModal === 'preferences') {
+    return (
+      <div className="space-y-4">
+        <Button 
+          variant="ghost" 
+          onClick={() => setActiveModal(null)}
+          className="mb-4"
+        >
+          ← Back to Settings
+        </Button>
+        <ProfileSettingsCard 
+          passengerInfo={currentPassengerInfo}
+          onProfileUpdate={handleProfileUpdate}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-semibold text-gray-900">Settings</h2>
       
-      {/* Profile Settings Card - Restored */}
-      <ProfileSettingsCard 
-        passengerInfo={currentPassengerInfo}
-        onProfileUpdate={handleProfileUpdate}
-      />
-
       {/* Settings Options */}
       <div className="space-y-3">
         <Card 
@@ -140,6 +152,21 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
               <div className="flex-1">
                 <h3 className="font-medium text-gray-900">Privacy & Security</h3>
                 <p className="text-sm text-gray-500">Account security settings</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => setActiveModal('preferences')}
+        >
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <SettingsIcon className="w-5 h-5 text-gray-600" />
+              <div className="flex-1">
+                <h3 className="font-medium text-gray-900">Preferences</h3>
+                <p className="text-sm text-gray-500">Profile and account preferences</p>
               </div>
             </div>
           </CardContent>
