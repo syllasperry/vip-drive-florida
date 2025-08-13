@@ -59,8 +59,8 @@ const Dashboard = () => {
               profile_photo_url: publicAvatarUrl(profile.photo_url),
               car_make: profile.car_make || 'Tesla',
               car_model: profile.car_model || 'Model Y',
-              car_year: profile.car_year || '2024',
-              car_color: profile.car_color || 'Black',
+              car_year: profile.car_year || '2023',
+              car_color: profile.car_color || 'White',
               phone: profile.phone,
               email: profile.email
             };
@@ -95,14 +95,9 @@ const Dashboard = () => {
 
   const handleMessage = (booking: any) => {
     const driver = driverProfiles[booking.id];
-    const isPaid = booking.status === 'all_set' || booking.status === 'completed';
+    const statusAllowsContact = booking.status === 'all_set' || booking.status === 'completed';
     
-    if (!isPaid) {
-      toast.error('Please proceed with your payment first to contact your driver.');
-      return;
-    }
-    
-    if (driver) {
+    if (statusAllowsContact && driver) {
       setSelectedBooking(booking);
       setShowMessaging(true);
     }
@@ -110,14 +105,9 @@ const Dashboard = () => {
 
   const handleCall = (booking: any) => {
     const driver = driverProfiles[booking.id];
-    const isPaid = booking.status === 'all_set' || booking.status === 'completed';
+    const statusAllowsContact = booking.status === 'all_set' || booking.status === 'completed';
     
-    if (!isPaid) {
-      toast.error('Please proceed with your payment first to contact your driver.');
-      return;
-    }
-    
-    if (driver?.phone) {
+    if (statusAllowsContact && driver?.phone) {
       window.open(`tel:${driver.phone}`);
     }
   };
@@ -134,24 +124,7 @@ const Dashboard = () => {
   };
 
   const handleViewDetails = (booking: any) => {
-    const driver = driverProfiles[booking.id];
-    const detailsMessage = `
-Booking Details:
-- ID: ${booking.id?.slice(-8)}
-- Driver: ${driver?.full_name || 'Not assigned'}
-- Vehicle: ${driver ? `${driver.car_make} ${driver.car_model} (${driver.car_year}) - ${driver.car_color}` : 'Not assigned'}
-- Pickup: ${booking.pickup_location}
-- Dropoff: ${booking.dropoff_location}
-- Date: ${new Date(booking.pickup_time).toLocaleDateString()}
-- Time: ${new Date(booking.pickup_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-- Passengers: ${booking.passenger_count}
-- Status: ${booking.status}
-- Amount: $${booking.final_price || booking.estimated_price || '0.00'}
-${driver?.phone ? `- Driver Phone: ${driver.phone}` : ''}
-${driver?.email ? `- Driver Email: ${driver.email}` : ''}
-    `.trim();
-    
-    alert(detailsMessage);
+    console.log('Viewing details for booking:', booking.id);
   };
 
   // Messages Tab Component
@@ -246,7 +219,7 @@ ${driver?.email ? `- Driver Email: ${driver.email}` : ''}
           <div className="space-y-4">
             {bookings.map((booking) => {
               const driver = driverProfiles[booking.id];
-              const isPaid = booking.status === 'all_set' || booking.status === 'completed';
+              const statusAllowsContact = booking.status === 'all_set' || booking.status === 'completed';
               const showDriverData = booking.status === 'offer_sent' || booking.status === 'payment_pending' || booking.status === 'all_set' || booking.status === 'completed';
               const showPaymentButton = booking.status === 'offer_sent';
 
@@ -275,10 +248,9 @@ ${driver?.email ? `- Driver Email: ${driver.email}` : ''}
                         </Avatar>
                         <div className="flex-1">
                           <p className="font-medium text-gray-900">{driver.full_name}</p>
-                          <p className="text-sm text-gray-600">
-                            {driver.car_make} {driver.car_model} ({driver.car_year}) - {driver.car_color}
-                          </p>
-                          {isPaid && (
+                          <p className="text-sm text-gray-600">{driver.car_make} {driver.car_model} ({driver.car_year})</p>
+                          <p className="text-xs text-gray-500">{driver.car_color}</p>
+                          {statusAllowsContact && (
                             <>
                               <p className="text-xs text-gray-500">📞 {driver.phone}</p>
                               <p className="text-xs text-gray-500">✉️ {driver.email}</p>
@@ -323,14 +295,12 @@ ${driver?.email ? `- Driver Email: ${driver.email}` : ''}
                     </div>
 
                     {/* Car Information */}
-                    {driver && (
-                      <div className="flex items-center space-x-2 mb-4">
-                        <Car className="h-4 w-4 text-gray-600" />
-                        <span className="text-gray-900 font-medium">
-                          {driver.car_make} {driver.car_model}
-                        </span>
-                      </div>
-                    )}
+                    <div className="flex items-center space-x-2 mb-4">
+                      <Car className="h-4 w-4 text-gray-600" />
+                      <span className="text-gray-900 font-medium">
+                        {driver?.car_make || 'Tesla'} {driver?.car_model || 'Model Y'}
+                      </span>
+                    </div>
 
                     {/* Payment Button */}
                     {showPaymentButton && (
@@ -359,7 +329,8 @@ ${driver?.email ? `- Driver Email: ${driver.email}` : ''}
                           variant="outline"
                           size="sm"
                           onClick={() => handleMessage(booking)}
-                          className={`flex items-center gap-2 ${!isPaid ? 'opacity-50' : ''}`}
+                          disabled={!statusAllowsContact}
+                          className={`flex items-center gap-2 ${!statusAllowsContact ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                           <MessageSquare className="h-4 w-4" />
                           Message
@@ -369,7 +340,8 @@ ${driver?.email ? `- Driver Email: ${driver.email}` : ''}
                           variant="outline"
                           size="sm"
                           onClick={() => handleCall(booking)}
-                          className={`flex items-center gap-2 ${!isPaid ? 'opacity-50' : ''}`}
+                          disabled={!statusAllowsContact}
+                          className={`flex items-center gap-2 ${!statusAllowsContact ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                           <Phone className="h-4 w-4" />
                           Call
@@ -378,7 +350,7 @@ ${driver?.email ? `- Driver Email: ${driver.email}` : ''}
                         <Button
                           size="sm"
                           onClick={() => handleViewDetails(booking)}
-                          className="bg-red-500 hover:bg-red-600 text-white mx-auto"
+                          className="bg-red-500 hover:bg-red-600 text-white"
                         >
                           View Details
                         </Button>
@@ -409,39 +381,12 @@ ${driver?.email ? `- Driver Email: ${driver.email}` : ''}
         )}
       </div>
 
-      {/* Bottom Navigation with improved styling */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
-        <div className="max-w-md mx-auto">
-          <div className="grid grid-cols-4 h-20">
-            {[
-              { id: "bookings", label: "Bookings", icon: Calendar },
-              { id: "messages", label: "Messages", icon: MessageSquare },
-              { id: "payments", label: "Payments", icon: Car },
-              { id: "settings", label: "Settings", icon: Users }
-            ].map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex flex-col items-center justify-center h-full transition-colors ${
-                    isActive
-                      ? "text-red-500"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                  <Icon className={`h-6 w-6 mb-1 ${isActive ? "text-red-500" : "text-gray-500"}`} />
-                  <span className={`text-sm font-medium ${isActive ? "text-red-500" : "text-gray-500"}`}>
-                    {tab.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+      {/* Bottom Navigation */}
+      <BottomNavigation 
+        activeTab={activeTab} 
+        onTabChange={setActiveTab} 
+        userType="passenger" 
+      />
 
       {/* Messaging Interface */}
       {showMessaging && selectedBooking && (
