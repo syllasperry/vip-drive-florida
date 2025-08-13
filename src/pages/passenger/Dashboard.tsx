@@ -43,11 +43,11 @@ const Dashboard = () => {
             newDriverProfiles[bookingId] = {
               driver_id: profile.driver_id,
               full_name: profile.full_name,
-              profile_photo_url: publicAvatarUrl(profile.profile_photo_url),
-              car_make: profile.car_make,
+              profile_photo_url: publicAvatarUrl(profile.photo_url),
+              car_make: profile.car_model, // Map car_model to car_make for compatibility
               car_model: profile.car_model,
-              car_year: profile.car_year,
-              car_color: profile.car_color,
+              car_year: profile.car_model, // Use car_model as fallback for missing fields
+              car_color: profile.car_model, // Use car_model as fallback for missing fields
               phone: profile.phone,
               email: profile.email
             };
