@@ -14,6 +14,7 @@ import { BottomNavigation } from '@/components/dashboard/BottomNavigation';
 import { MessagingInterface } from '@/components/dashboard/MessagingInterface';
 import { PaymentModal } from '@/components/dashboard/PaymentModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { EnhancedSettingsModal } from '@/components/EnhancedSettingsModal';
 
 const Dashboard = () => {
   const [bookings, setBookings] = useState<any[]>([]);
@@ -24,6 +25,7 @@ const Dashboard = () => {
   const [showPayment, setShowPayment] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     loadBookings();
@@ -135,6 +137,14 @@ const Dashboard = () => {
     setShowDetailsModal(true);
   };
 
+  const handleTabChange = (tab: string) => {
+    if (tab === 'settings') {
+      setShowSettings(true);
+    } else {
+      setActiveTab(tab);
+    }
+  };
+
   // Messages Tab Component
   const MessagesTab = () => (
     <div className="text-center py-20">
@@ -157,20 +167,6 @@ const Dashboard = () => {
     </div>
   );
 
-  // Settings Tab Component
-  const SettingsTab = () => (
-    <div className="text-center py-20">
-      <div className="text-gray-400 mb-4">
-        <svg className="h-16 w-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-      </div>
-      <h2 className="text-2xl font-semibold text-gray-600 mb-4">Settings</h2>
-      <p className="text-gray-500">Manage your account settings here.</p>
-    </div>
-  );
-
   // Render different tabs based on activeTab
   if (activeTab !== 'bookings') {
     return (
@@ -178,12 +174,18 @@ const Dashboard = () => {
         <div className="container mx-auto py-6 px-4">
           {activeTab === 'messages' && <MessagesTab />}
           {activeTab === 'payments' && <PaymentsTab />}
-          {activeTab === 'settings' && <SettingsTab />}
         </div>
         <BottomNavigation 
           activeTab={activeTab} 
-          onTabChange={setActiveTab} 
+          onTabChange={handleTabChange} 
           userType="passenger" 
+        />
+        
+        {/* Settings Modal */}
+        <EnhancedSettingsModal 
+          isOpen={showSettings}
+          onClose={() => setShowSettings(false)}
+          userType="passenger"
         />
       </div>
     );
@@ -256,7 +258,7 @@ const Dashboard = () => {
                         </Avatar>
                         <div className="flex-1">
                           <p className="font-medium text-gray-900">{driver.full_name}</p>
-                          <p className="text-sm text-gray-600">{driver.car_make} {driver.car_model} ({driver.car_year}) • {driver.car_color}</p>
+                          <p className="text-sm text-gray-600">Tesla Model Y ({driver.car_year}) • {driver.car_color}</p>
                           {statusAllowsContact && (
                             <>
                               <p className="text-xs text-gray-500">📞 {driver.phone}</p>
@@ -313,8 +315,8 @@ const Dashboard = () => {
                       </div>
                     )}
 
-                    {/* Price and Actions */}
-                    <div className="flex items-center justify-between">
+                    {/* Price and Actions - Updated layout */}
+                    <div className="flex items-center justify-between mb-4">
                       <div>
                         {(booking.estimated_price || booking.final_price) && (
                           <p className="text-2xl font-bold text-red-600">
@@ -347,15 +349,18 @@ const Dashboard = () => {
                           <Phone className="h-4 w-4" />
                           Call
                         </Button>
-                        
-                        <Button
-                          size="sm"
-                          onClick={() => handleViewDetails(booking)}
-                          className="bg-red-500 hover:bg-red-600 text-white"
-                        >
-                          View Details
-                        </Button>
                       </div>
+                    </div>
+
+                    {/* View Details Button - Moved inside card */}
+                    <div className="flex justify-end">
+                      <Button
+                        size="sm"
+                        onClick={() => handleViewDetails(booking)}
+                        className="bg-red-500 hover:bg-red-600 text-white"
+                      >
+                        View Details
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -385,7 +390,7 @@ const Dashboard = () => {
       {/* Bottom Navigation */}
       <BottomNavigation 
         activeTab={activeTab} 
-        onTabChange={setActiveTab} 
+        onTabChange={handleTabChange} 
         userType="passenger" 
       />
 
@@ -410,6 +415,13 @@ const Dashboard = () => {
           onPaymentConfirmed={handlePaymentConfirmed}
         />
       )}
+
+      {/* Settings Modal */}
+      <EnhancedSettingsModal 
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        userType="passenger"
+      />
 
       {/* Booking Details Modal */}
       {showDetailsModal && selectedBooking && (
@@ -437,7 +449,7 @@ const Dashboard = () => {
                     <div>
                       <p className="font-medium">{driverProfiles[selectedBooking.id].full_name}</p>
                       <p className="text-sm text-gray-600">
-                        {driverProfiles[selectedBooking.id].car_make} {driverProfiles[selectedBooking.id].car_model} ({driverProfiles[selectedBooking.id].car_year}) • {driverProfiles[selectedBooking.id].car_color}
+                        Tesla Model Y ({driverProfiles[selectedBooking.id].car_year}) • {driverProfiles[selectedBooking.id].car_color}
                       </p>
                       <p className="text-xs text-gray-500">📞 {driverProfiles[selectedBooking.id].phone}</p>
                       <p className="text-xs text-gray-500">✉️ {driverProfiles[selectedBooking.id].email}</p>
