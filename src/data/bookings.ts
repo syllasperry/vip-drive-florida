@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { format } from 'date-fns';
 
@@ -281,7 +280,7 @@ export const sendOffer = async (bookingId: string, driverId: string, finalPrice:
             status: 'offer_sent',
             system_message: `Driver assigned and offer sent for $${finalPrice}`,
             driver_id: driverId,
-            passenger_id: data?.[0]?.passenger_id || null,
+            passenger_id: null, // We don't have passenger_id in the RPC response
           },
         ]);
     } catch (timelineError) {
