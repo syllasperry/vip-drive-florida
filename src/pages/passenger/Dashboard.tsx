@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { getAllBookings, listenForBookingChanges } from "../../data/bookings";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,7 +14,6 @@ import { Booking } from "@/types/booking";
 import { MessagesTab } from "@/components/passenger/MessagesTab";
 import { PaymentsTab } from "@/components/passenger/PaymentsTab";
 import { SettingsTab } from "@/components/passenger/SettingsTab";
-import { mapToSimpleStatus } from "@/utils/bookingHelpers";
 
 const PassengerDashboard = () => {
   const navigate = useNavigate();
@@ -133,30 +131,30 @@ const PassengerDashboard = () => {
         
         return {
           id: b.id,
-          pickup_location: b.pickup_location,
-          dropoff_location: b.dropoff_location,
-          pickup_time: b.pickup_time,
-          passenger_count: b.passenger_count,
-          vehicle_type: b.vehicle_type,
+          pickup_location: b.pickup_location || "",
+          dropoff_location: b.dropoff_location || "",
+          pickup_time: b.pickup_time || "",
+          passenger_count: b.passenger_count || 1,
+          vehicle_type: b.vehicle_type || "",
           simple_status: simpleStatus as 'booking_requested' | 'payment_pending' | 'all_set' | 'completed' | 'cancelled',
-          estimated_price: b.estimated_price,
-          final_negotiated_price: b.final_price,
-          final_price: b.final_price,
-          created_at: b.created_at,
-          passenger_id: b.passenger_id,
-          driver_id: b.driver_id,
-          status: b.status,
-          ride_status: b.ride_status,
-          payment_confirmation_status: b.payment_confirmation_status,
+          estimated_price: b.estimated_price || 0,
+          final_negotiated_price: b.final_price || 0,
+          final_price: b.final_price || 0,
+          created_at: b.created_at || "",
+          passenger_id: b.passenger_id || "",
+          driver_id: b.driver_id || "",
+          status: b.status || "",
+          ride_status: b.ride_status || "",
+          payment_confirmation_status: b.payment_confirmation_status || "",
           driver_profiles: b.drivers
             ? {
-                full_name: b.drivers.full_name,
-                phone: b.drivers.phone,
-                profile_photo_url: b.drivers.profile_photo_url,
-                car_make: b.drivers.car_make,
-                car_model: b.drivers.car_model,
-                car_color: b.drivers.car_color,
-                license_plate: b.drivers.license_plate
+                full_name: b.drivers.full_name || "",
+                phone: b.drivers.phone || "",
+                profile_photo_url: b.drivers.profile_photo_url || "",
+                car_make: b.drivers.car_make || "",
+                car_model: b.drivers.car_model || "",
+                car_color: b.drivers.car_color || "",
+                license_plate: b.drivers.license_plate || ""
               }
             : undefined
         };
@@ -173,6 +171,17 @@ const PassengerDashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const mapToSimpleStatus = (booking: any): string => {
+    if (!booking.status) return "booking_requested";
+    
+    if (booking.status === "cancelled") return "cancelled";
+    if (booking.status === "completed") return "completed";
+    if (booking.status === "offer_sent" && !booking.payment_confirmation_status) return "payment_pending";
+    if (booking.status === "offer_accepted" || booking.payment_confirmation_status === "confirmed") return "all_set";
+    
+    return "booking_requested";
   };
 
   const getStatusColor = (status: string) => {
@@ -210,9 +219,10 @@ const PassengerDashboard = () => {
   };
 
   const handlePayment = (booking: Booking) => {
+    const price = booking.final_price || booking.estimated_price || 0;
     toast({
       title: "Payment Processing",
-      description: `Processing payment of $${booking.final_price || booking.estimated_price}`
+      description: `Processing payment of $${price}`
     });
 
     setTimeout(() => {
@@ -224,6 +234,7 @@ const PassengerDashboard = () => {
 
   const formatDateTime = (s: string) => {
     try {
+      if (!s) return "Invalid date";
       return format(new Date(s), "MMM dd, yyyy - HH:mm");
     } catch (error) {
       console.error("Error formatting date:", error);
@@ -231,14 +242,21 @@ const PassengerDashboard = () => {
     }
   };
 
-  const getCurrentPrice = (b: Booking): number | null => (b.final_price && b.final_price > 0 ? b.final_price : null);
+  const getCurrentPrice = (b: Booking): number | null => {
+    if (b.final_price && b.final_price > 0) return b.final_price;
+    return null;
+  };
 
   const getPriceDisplay = (b: Booking): string => {
     const p = getCurrentPrice(b);
-    return p !== null ? `$${p}` : "Awaiting price";
+    if (p !== null) return `$${p}`;
+    return "Awaiting price";
   };
 
-  const getPriceColor = (b: Booking): string => (getCurrentPrice(b) !== null ? "text-red-600" : "text-gray-500");
+  const getPriceColor = (b: Booking): string => {
+    const price = getCurrentPrice(b);
+    return price !== null ? "text-red-600" : "text-gray-500";
+  };
 
   if (loading) {
     return (
@@ -279,7 +297,7 @@ const PassengerDashboard = () => {
 
     switch (activeTab) {
       case "messages":
-        return <MessagesTab bookings={bookings} currentUserId={currentUser.id} currentUserName={currentUser.full_name} />;
+        return <MessagesTab bookings={bookings} currentUserId={currentUser.id} currentUserName={currentUser.full_name || "Passenger"} />;
       case "payments":
         return <PaymentsTab bookings={bookings} />;
       case "settings":
@@ -308,14 +326,16 @@ const PassengerDashboard = () => {
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-2">
                         <span className="text-sm font-medium text-gray-900">Booking ID</span>
-                        <Badge className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(booking.simple_status)}`}>
-                          {getStatusLabel(booking.simple_status)}
+                        <Badge className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(booking.simple_status || "booking_requested")}`}>
+                          {getStatusLabel(booking.simple_status || "booking_requested")}
                         </Badge>
                       </div>
                       <Clock className="w-4 h-4 text-gray-400" />
                     </div>
 
-                    <div className="text-lg font-semibold text-gray-900 mb-4">#{booking.id.slice(-8).toUpperCase()}</div>
+                    <div className="text-lg font-semibold text-gray-900 mb-4">
+                      #{booking.id.slice(-8).toUpperCase()}
+                    </div>
 
                     <div className="space-y-2 mb-4">
                       <div className="flex items-start space-x-3">
@@ -352,7 +372,9 @@ const PassengerDashboard = () => {
                     </div>
 
                     <div className="flex items-center justify-between mb-4">
-                      <span className={`text-2xl font-bold ${getPriceColor(booking)}`}>{getPriceDisplay(booking)}</span>
+                      <span className={`text-2xl font-bold ${getPriceColor(booking)}`}>
+                        {getPriceDisplay(booking)}
+                      </span>
                       {booking.simple_status === "payment_pending" && getCurrentPrice(booking) !== null && (
                         <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200 text-blue-800">
                           Offer Received
@@ -437,7 +459,10 @@ const PassengerDashboard = () => {
                     </div>
 
                     {booking.simple_status === "payment_pending" && getCurrentPrice(booking) !== null && (
-                      <Button className="w-full mt-3 bg-red-500 hover:bg-red-600 text-white" onClick={() => handlePayment(booking)}>
+                      <Button 
+                        className="w-full mt-3 bg-red-500 hover:bg-red-600 text-white" 
+                        onClick={() => handlePayment(booking)}
+                      >
                         Pay ${getCurrentPrice(booking)} - Complete Booking
                       </Button>
                     )}
