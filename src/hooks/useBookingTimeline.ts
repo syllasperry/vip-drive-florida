@@ -7,6 +7,8 @@ export const useBookingTimeline = (bookingId: string) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!bookingId) return;
+
     const fetchTimeline = async () => {
       try {
         const { data, error } = await supabase
@@ -24,9 +26,7 @@ export const useBookingTimeline = (bookingId: string) => {
       }
     };
 
-    if (bookingId) {
-      fetchTimeline();
-    }
+    fetchTimeline();
   }, [bookingId]);
 
   return { timeline, loading };

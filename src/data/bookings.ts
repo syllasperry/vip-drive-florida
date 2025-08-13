@@ -1,7 +1,7 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { format } from 'date-fns';
 
-// Remove the conflicting import and local declaration
 export const normalizeBookingStatus = (booking: any) => {
   if (booking.payment_confirmation_status === 'all_set' && booking.ride_status === 'completed') {
     return 'completed';
@@ -52,6 +52,8 @@ export const getBookings = async () => {
     return null;
   }
 };
+
+export const getAllBookings = getBookings;
 
 export const getBookingById = async (bookingId: string) => {
   try {
@@ -277,9 +279,10 @@ export const sendOffer = async (bookingId: string, driverId: string, finalPrice:
       .insert([
         {
           booking_id: bookingId,
-          event_type: 'driver_assigned',
-          event_description: `Driver assigned and offer sent.`,
-          event_data: { driver_id: driverId, final_price: finalPrice },
+          status: 'offer_sent',
+          system_message: `Driver assigned and offer sent.`,
+          driver_id: driverId,
+          passenger_id: bookingData.passenger_id,
         },
       ])
       .select()
@@ -297,8 +300,7 @@ export const sendOffer = async (bookingId: string, driverId: string, finalPrice:
         {
           booking_id: bookingId,
           status: 'offer_sent',
-          status_description: `Driver assigned and offer sent.`,
-          status_data: { driver_id: driverId, final_price: finalPrice },
+          metadata: { driver_id: driverId, final_price: finalPrice },
         },
       ])
       .select()
@@ -314,4 +316,11 @@ export const sendOffer = async (bookingId: string, driverId: string, finalPrice:
     console.error("Error in sendOffer:", error);
     throw error;
   }
+};
+
+// Add a placeholder function for listening to booking changes
+export const listenForBookingChanges = (callback: (booking: any) => void) => {
+  // This is a placeholder function
+  // Real-time listening is handled by the useRealtimeBookings hook
+  return () => {};
 };

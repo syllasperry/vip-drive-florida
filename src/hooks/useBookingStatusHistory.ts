@@ -7,6 +7,8 @@ export const useBookingStatusHistory = (bookingId: string) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!bookingId) return;
+
     const fetchStatusHistory = async () => {
       try {
         const { data, error } = await supabase
@@ -24,9 +26,7 @@ export const useBookingStatusHistory = (bookingId: string) => {
       }
     };
 
-    if (bookingId) {
-      fetchStatusHistory();
-    }
+    fetchStatusHistory();
   }, [bookingId]);
 
   return { statusHistory, loading };
