@@ -27,64 +27,10 @@ const PassengerDashboard = () => {
   const [showMessaging, setShowMessaging] = useState(false);
   const [passengerInfo, setPassengerInfo] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<"bookings" | "messages" | "payments" | "settings">("bookings");
-  const [passengerProfile, setPassengerProfile] = useState<any | null>(null);
 
-  // Load complete passenger profile (photo/name/preferences)
-  async function loadPassengerProfile(userId: string) {
-    try {
-      const { data, error } = await supabase
-        .from("passengers")
-        .select(
-          "id, full_name, profile_photo_url, preferred_temperature, music_preference, interaction_preference, trip_purpose, additional_notes"
-        )
-        .eq("id", userId)
-        .single();
-
-      if (error) {
-        console.error("Error loading passenger profile:", error);
-        return;
-      }
-      setPassengerProfile(data);
-    } catch (err) {
-      console.error("Error loading passenger profile:", err);
-    }
-  }
-
-  // First load + real-time listener (with cleanup)
-  useEffect(() => {
-    async function fetchBookings() {
-      try {
-        const allBookings = await getAllBookings();
-        setBookings(allBookings || []);
-      } catch (error) {
-        console.error("Error fetching bookings:", error);
-        setBookings([]);
-      }
-    }
-
-    fetchBookings();
-
-    const cleanup = listenForBookingChanges((updatedBooking: any) => {
-      if (!updatedBooking) return;
-      
-      setBookings(prev => {
-        const index = prev.findIndex(b => b.id === updatedBooking.id);
-        if (index !== -1) {
-          const next = [...prev];
-          next[index] = updatedBooking;
-          return next;
-        }
-        return [updatedBooking, ...prev];
-      });
-    });
-
-    return cleanup;
-  }, []);
-
-  // Auth + auto-refresh + realtime subscription with cleanup
   useEffect(() => {
     checkAuth();
-    const cleanupRealtime = setupRealtimeSubscription();
+    const cleanup = setupRealtimeSubscription();
 
     const refreshInterval = setInterval(async () => {
       try {
@@ -93,13 +39,13 @@ const PassengerDashboard = () => {
           await loadBookings(user.id);
         }
       } catch (error) {
-        console.error("❌ Error in auto-refresh:", error);
+        console.error("Error in auto-refresh:", error);
       }
     }, 2000);
 
     return () => {
       clearInterval(refreshInterval);
-      if (cleanupRealtime) cleanupRealtime();
+      if (cleanup) cleanup();
     };
   }, []);
 
@@ -130,13 +76,11 @@ const PassengerDashboard = () => {
         return;
       }
 
-      // Admin/dispatcher redirects to dispatcher dashboard
       if (user.email === "syllasperry@gmail.com") {
         navigate("/dispatcher/dashboard");
         return;
       }
 
-      await loadPassengerProfile(user.id);
       await loadBookings(user.id);
       await loadPassengerInfo(user.id);
     } catch (error) {
@@ -220,7 +164,7 @@ const PassengerDashboard = () => {
 
       setBookings(mapped);
     } catch (error) {
-      console.error("❌ Error loading bookings:", error);
+      console.error("Error loading bookings:", error);
       toast({
         title: "Error",
         description: "Failed to load your bookings",
@@ -343,36 +287,6 @@ const PassengerDashboard = () => {
       default:
         return (
           <div className="space-y-4">
-            {/* Passenger summary at top of list (when profile exists) */}
-            {passengerProfile && (
-              <div className="bg-white rounded-lg shadow p-4 mb-2">
-                <h2 className="text-lg font-semibold text-gray-800 mb-2">Passenger</h2>
-                <div className="flex items-center">
-                  <SafeAvatar 
-                    src={passengerProfile.profile_photo_url}
-                    fallbackText={passengerProfile.full_name}
-                    className="h-10 w-10 mr-3"
-                  />
-                  <div>
-                    <div className="font-semibold text-gray-900">{passengerProfile.full_name || "Passenger"}</div>
-                    {(passengerProfile.music_preference ||
-                      passengerProfile.interaction_preference ||
-                      passengerProfile.preferred_temperature) && (
-                      <p className="text-xs text-gray-600">
-                        {[
-                          passengerProfile.music_preference,
-                          passengerProfile.interaction_preference,
-                          passengerProfile.preferred_temperature ? `Temp: ${passengerProfile.preferred_temperature}°` : null
-                        ]
-                          .filter(Boolean)
-                          .join(" • ")}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
             {bookings.length === 0 ? (
               <div className="text-center py-12">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -391,7 +305,6 @@ const PassengerDashboard = () => {
               bookings.map(booking => (
                 <Card key={booking.id} className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                   <CardContent className="p-4">
-                    {/* Header */}
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-2">
                         <span className="text-sm font-medium text-gray-900">Booking ID</span>
@@ -402,10 +315,8 @@ const PassengerDashboard = () => {
                       <Clock className="w-4 h-4 text-gray-400" />
                     </div>
 
-                    {/* Booking ID */}
                     <div className="text-lg font-semibold text-gray-900 mb-4">#{booking.id.slice(-8).toUpperCase()}</div>
 
-                    {/* Locations */}
                     <div className="space-y-2 mb-4">
                       <div className="flex items-start space-x-3">
                         <div className="w-3 h-3 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
@@ -423,7 +334,6 @@ const PassengerDashboard = () => {
                       </div>
                     </div>
 
-                    {/* Trip details */}
                     <div className="grid grid-cols-2 gap-4 mb-4">
                       <div className="flex items-center space-x-2">
                         <Clock className="w-4 h-4 text-gray-400" />
@@ -441,7 +351,6 @@ const PassengerDashboard = () => {
                       )}
                     </div>
 
-                    {/* Price */}
                     <div className="flex items-center justify-between mb-4">
                       <span className={`text-2xl font-bold ${getPriceColor(booking)}`}>{getPriceDisplay(booking)}</span>
                       {booking.simple_status === "payment_pending" && getCurrentPrice(booking) !== null && (
@@ -449,14 +358,8 @@ const PassengerDashboard = () => {
                           Offer Received
                         </Badge>
                       )}
-                      {getCurrentPrice(booking) === null && (
-                        <Badge variant="outline" className="text-xs bg-gray-50 border-gray-200 text-gray-600">
-                          Pending Quote
-                        </Badge>
-                      )}
                     </div>
 
-                    {/* Driver (when there's an offer) */}
                     {booking.simple_status === "payment_pending" && booking.driver_profiles && getCurrentPrice(booking) !== null && (
                       <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                         <p className="text-sm font-medium text-blue-900 mb-2">Your Assigned Driver</p>
@@ -479,7 +382,6 @@ const PassengerDashboard = () => {
                       </div>
                     )}
 
-                    {/* Driver (all_set) */}
                     {booking.simple_status === "all_set" && booking.driver_profiles && (
                       <div className="mb-4 p-3 bg-green-50 rounded-lg">
                         <p className="text-sm font-medium text-gray-900 mb-2">Your Driver</p>
@@ -501,7 +403,6 @@ const PassengerDashboard = () => {
                       </div>
                     )}
 
-                    {/* Actions */}
                     <div className="flex space-x-2">
                       <Button
                         variant="outline"
@@ -535,7 +436,6 @@ const PassengerDashboard = () => {
                       </Button>
                     </div>
 
-                    {/* Payment button (when there's a price) */}
                     {booking.simple_status === "payment_pending" && getCurrentPrice(booking) !== null && (
                       <Button className="w-full mt-3 bg-red-500 hover:bg-red-600 text-white" onClick={() => handlePayment(booking)}>
                         Pay ${getCurrentPrice(booking)} - Complete Booking
@@ -552,7 +452,6 @@ const PassengerDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-md mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -574,10 +473,8 @@ const PassengerDashboard = () => {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="max-w-md mx-auto px-6 py-6 pb-24">{renderTabContent()}</div>
 
-      {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
         <div className="max-w-md mx-auto">
           <div className="grid grid-cols-4 py-2">
