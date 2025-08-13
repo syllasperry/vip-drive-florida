@@ -255,25 +255,64 @@ export const deleteBooking = async (bookingId: string) => {
 
 export const sendOffer = async (bookingId: string, driverId: string, finalPrice: number) => {
   try {
-    // 1. Update the booking with the driver assignment and status
-    const { data: bookingData, error: bookingError } = await supabase
+    console.log('[SEND_OFFER] Starting offer process', { bookingId, driverId, finalPrice });
+
+    // First, get the current booking to check its state
+    const { data: currentBooking, error: fetchError } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('id', bookingId)
+      .single();
+
+    if (fetchError) {
+      console.error("Error fetching current booking:", fetchError);
+      throw new Error(fetchError.message);
+    }
+
+    console.log('[SEND_OFFER] Current booking state', currentBooking);
+
+    // Step 1: Update only the driver assignment and basic status first
+    const { data: driverAssignmentData, error: driverAssignmentError } = await supabase
       .from('bookings')
       .update({
         driver_id: driverId,
-        status: 'offer_sent',
-        final_price: finalPrice,
-        payment_confirmation_status: 'offer_sent'
+        updated_at: new Date().toISOString()
       })
       .eq('id', bookingId)
       .select()
       .single();
 
-    if (bookingError) {
-      console.error("Error assigning driver to booking:", bookingError);
-      throw new Error(bookingError.message);
+    if (driverAssignmentError) {
+      console.error("Error assigning driver:", driverAssignmentError);
+      throw new Error(driverAssignmentError.message);
     }
 
-    // 2. Create a timeline event
+    console.log('[SEND_OFFER] Driver assigned successfully', driverAssignmentData);
+
+    // Step 2: Now update the offer details and status
+    const { data: offerData, error: offerError } = await supabase
+      .from('bookings')
+      .update({
+        final_price: finalPrice,
+        status: 'offer_sent',
+        payment_confirmation_status: 'offer_sent',
+        ride_status: 'offer_sent',
+        status_driver: 'offer_sent',
+        status_passenger: 'review_offer',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', bookingId)
+      .select()
+      .single();
+
+    if (offerError) {
+      console.error("Error updating offer details:", offerError);
+      throw new Error(offerError.message);
+    }
+
+    console.log('[SEND_OFFER] Offer details updated successfully', offerData);
+
+    // Step 3: Create timeline event
     const { data: timelineData, error: timelineError } = await supabase
       .from('timeline_events')
       .insert([
@@ -282,7 +321,7 @@ export const sendOffer = async (bookingId: string, driverId: string, finalPrice:
           status: 'offer_sent',
           system_message: `Driver assigned and offer sent.`,
           driver_id: driverId,
-          passenger_id: bookingData.passenger_id,
+          passenger_id: offerData.passenger_id,
         },
       ])
       .select()
@@ -290,11 +329,14 @@ export const sendOffer = async (bookingId: string, driverId: string, finalPrice:
 
     if (timelineError) {
       console.error("Error creating timeline event:", timelineError);
-      throw new Error(timelineError.message);
+      // Don't throw here, as the main operation succeeded
+      console.warn("Timeline event creation failed, but offer was sent successfully");
+    } else {
+      console.log('[SEND_OFFER] Timeline event created', timelineData);
     }
 
-    // 3. Create a status history event
-     const { data: statusHistoryData, error: statusHistoryError } = await supabase
+    // Step 4: Create status history event
+    const { data: statusHistoryData, error: statusHistoryError } = await supabase
       .from('booking_status_history')
       .insert([
         {
@@ -308,10 +350,14 @@ export const sendOffer = async (bookingId: string, driverId: string, finalPrice:
 
     if (statusHistoryError) {
       console.error("Error creating status history event:", statusHistoryError);
-      throw new Error(statusHistoryError.message);
+      // Don't throw here, as the main operation succeeded
+      console.warn("Status history creation failed, but offer was sent successfully");
+    } else {
+      console.log('[SEND_OFFER] Status history created', statusHistoryData);
     }
 
-    return bookingData;
+    console.log('[SEND_OFFER] Process completed successfully');
+    return offerData;
   } catch (error) {
     console.error("Error in sendOffer:", error);
     throw error;
