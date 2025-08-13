@@ -1,71 +1,130 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { PaymentTransaction } from "@/types/booking";
 
-export interface PaymentTransaction {
-  id: string;
-  booking_id: string;
-  passenger_id: string;
-  driver_id: string;
-  currency: string;
-  amount_cents: number;
-  payment_method: string;
-  payment_status: string;
-  stripe_payment_intent_id?: string;
-  stripe_charge_id?: string;
-  stripe_fee_cents?: number;
-  dispatcher_commission_cents: number;
-  net_driver_amount_cents: number;
-  transaction_date: string;
-  created_at: string;
-  updated_at: string;
-  metadata?: any;
-}
+export const getPaymentTransactions = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('payment_transactions')
+      .select(`
+        *,
+        bookings!inner(
+          passengers(full_name, profile_photo_url),
+          drivers(full_name)
+        )
+      `)
+      .order('transaction_date', { ascending: false });
 
-export const fetchPaymentTransactions = async () => {
-  // For now, return mock data since the table isn't available in types yet
-  const mockTransactions: PaymentTransaction[] = [
-    {
-      id: '1',
-      booking_id: 'booking-1',
-      passenger_id: 'passenger-1',
-      driver_id: 'driver-1',
-      currency: 'usd',
-      amount_cents: 5000,
-      payment_method: 'stripe_card',
-      payment_status: 'succeeded',
-      dispatcher_commission_cents: 1000,
-      net_driver_amount_cents: 3850,
-      stripe_fee_cents: 150,
-      transaction_date: new Date().toISOString(),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+    if (error) {
+      console.error("Error fetching payment transactions:", error);
+      return [];
     }
-  ];
 
-  return mockTransactions;
+    return data?.map((transaction: any) => ({
+      ...transaction,
+      passenger: transaction.bookings?.passengers,
+      driver: transaction.bookings?.drivers
+    })) || [];
+  } catch (error) {
+    console.error("Unexpected error fetching payment transactions:", error);
+    return [];
+  }
 };
 
-export const calculateSummary = (transactions: PaymentTransaction[]) => {
-  const totalReceived = transactions
-    .filter(t => t.payment_status === 'succeeded')
-    .reduce((sum, t) => sum + t.amount_cents, 0);
+export const getPaymentSummary = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('payment_transactions')
+      .select('amount_cents, payment_status, dispatcher_commission_cents');
 
-  const pendingPayments = transactions
-    .filter(t => t.payment_status === 'pending')
-    .reduce((sum, t) => sum + t.amount_cents, 0);
+    if (error) {
+      console.error("Error fetching payment summary:", error);
+      return {
+        totalReceived: 0,
+        pendingPayments: 0,
+        refundsDisputes: 0,
+        totalCommission: 0
+      };
+    }
 
-  const totalDispatcherCommission = transactions
-    .filter(t => t.payment_status === 'succeeded')
-    .reduce((sum, t) => sum + t.dispatcher_commission_cents, 0);
+    const summary = data?.reduce((acc, transaction) => {
+      const amount = transaction.amount_cents / 100; // Convert cents to dollars
+      const commission = transaction.dispatcher_commission_cents / 100;
 
-  const refundsDisputes = transactions
-    .filter(t => ['refunded', 'disputed'].includes(t.payment_status))
-    .reduce((sum, t) => sum + t.amount_cents, 0);
+      switch (transaction.payment_status) {
+        case 'succeeded':
+          acc.totalReceived += amount;
+          acc.totalCommission += commission;
+          break;
+        case 'pending':
+          acc.pendingPayments += amount;
+          break;
+        case 'refunded':
+        case 'disputed':
+          acc.refundsDisputes += amount;
+          break;
+      }
+      return acc;
+    }, {
+      totalReceived: 0,
+      pendingPayments: 0,
+      refundsDisputes: 0,
+      totalCommission: 0
+    });
 
-  return {
-    totalReceived: totalReceived / 100,
-    pendingPayments: pendingPayments / 100,
-    refundsDisputes: refundsDisputes / 100,
-    totalDispatcherCommission: totalDispatcherCommission / 100
-  };
+    return summary || {
+      totalReceived: 0,
+      pendingPayments: 0,
+      refundsDisputes: 0,
+      totalCommission: 0
+    };
+  } catch (error) {
+    console.error("Unexpected error fetching payment summary:", error);
+    return {
+      totalReceived: 0,
+      pendingPayments: 0,
+      refundsDisputes: 0,
+      totalCommission: 0
+    };
+  }
+};
+
+export const exportPaymentData = (transactions: PaymentTransaction[], format: 'csv' | 'pdf') => {
+  if (format === 'csv') {
+    const headers = [
+      'Date',
+      'Passenger',
+      'Driver', 
+      'Amount',
+      'Payment Method',
+      'Status',
+      'Commission (20%)',
+      'Stripe Fee',
+      'Net to Driver'
+    ];
+
+    const csvData = transactions.map(t => [
+      new Date(t.transaction_date).toLocaleDateString(),
+      t.passenger?.full_name || 'Unknown',
+      t.driver?.full_name || 'Unknown',
+      `$${(t.amount_cents / 100).toFixed(2)}`,
+      t.payment_method,
+      t.payment_status,
+      `$${(t.dispatcher_commission_cents / 100).toFixed(2)}`,
+      `$${((t.stripe_fee_cents || 0) / 100).toFixed(2)}`,
+      `$${(t.net_driver_amount_cents / 100).toFixed(2)}`
+    ]);
+
+    const csvContent = [headers, ...csvData]
+      .map(row => row.join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `payments_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    window.URL.revokeObjectURL(url);
+  }
 };
