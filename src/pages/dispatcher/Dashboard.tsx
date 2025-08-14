@@ -9,7 +9,9 @@ import { DriverManagement } from "@/components/dispatcher/DriverManagement";
 import { DispatcherMessaging } from "@/components/dispatcher/DispatcherMessaging";
 import { FinancialReports } from "@/components/dispatcher/FinancialReports";
 import { ProfileHeader } from "@/components/dashboard/ProfileHeader";
-import { Users, DollarSign, Calendar, TrendingUp } from "lucide-react";
+import { BottomNavigation } from "@/components/dashboard/BottomNavigation";
+import { Button } from "@/components/ui/button";
+import { Users, DollarSign, Calendar, TrendingUp, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -65,7 +67,7 @@ const DispatcherDashboard: React.FC = () => {
     try {
       setLoading(true);
       
-      // Load basic stats - you can expand this with real queries
+      // Load basic stats
       const { data: bookings } = await supabase
         .from('bookings')
         .select('id, final_price, status')
@@ -89,23 +91,35 @@ const DispatcherDashboard: React.FC = () => {
     }
   };
 
-  const mockDispatcherProfile = {
-    full_name: 'Dispatcher Admin',
-    profile_photo_url: null,
-    phone: '+1 (555) 123-4567',
-    email: 'dispatcher@vip-drive-florida.com'
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate('/');
+    } catch (error) {
+      console.error('Error logging out:', error);
+      toast({
+        title: "Error",
+        description: "Failed to logout",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-20">
       <div className="max-w-7xl mx-auto">
-        <ProfileHeader 
-          userType="dispatcher" 
-          userProfile={mockDispatcherProfile}
-          onPhotoUpload={async (file: File) => {
-            console.log('Photo upload for dispatcher:', file);
-          }}
-        />
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 bg-white shadow-sm">
+          <h1 className="text-2xl font-bold text-gray-900">VIP Dispatcher Dashboard</h1>
+          <Button 
+            onClick={handleLogout}
+            variant="destructive"
+            className="bg-red-500 hover:bg-red-600 text-white"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Logout
+          </Button>
+        </div>
         
         {/* Dashboard Stats */}
         <div className="px-6 py-4">
@@ -159,44 +173,37 @@ const DispatcherDashboard: React.FC = () => {
             </Card>
           </div>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-6">
-              <TabsTrigger value="bookings">Bookings</TabsTrigger>
-              <TabsTrigger value="drivers">Drivers</TabsTrigger>
-              <TabsTrigger value="payments">Payments</TabsTrigger>
-              <TabsTrigger value="messages">Messages</TabsTrigger>
-              <TabsTrigger value="reports">Reports</TabsTrigger>
-              <TabsTrigger value="settings">Settings</TabsTrigger>
-            </TabsList>
-
-            <div className="mt-6">
-              <TabsContent value="bookings" className="mt-0">
-                <DispatcherBookingManager />
-              </TabsContent>
-
-              <TabsContent value="drivers" className="mt-0">
-                <DriverManagement />
-              </TabsContent>
-
-              <TabsContent value="payments" className="mt-0">
-                <PaymentsSection />
-              </TabsContent>
-
-              <TabsContent value="messages" className="mt-0">
-                <DispatcherMessaging />
-              </TabsContent>
-
-              <TabsContent value="reports" className="mt-0">
-                <FinancialReports />
-              </TabsContent>
-
-              <TabsContent value="settings" className="mt-0">
-                <DispatcherSettings />
-              </TabsContent>
-            </div>
-          </Tabs>
+          {/* Tab Content */}
+          <div className="mt-6">
+            {activeTab === 'bookings' && <DispatcherBookingManager />}
+            {activeTab === 'drivers' && (
+              <Card>
+                <CardContent className="p-6">
+                  <div className="text-center text-gray-500">Driver management coming soon</div>
+                </CardContent>
+              </Card>
+            )}
+            {activeTab === 'payments' && <PaymentsSection />}
+            {activeTab === 'messages' && (
+              <Card>
+                <CardContent className="p-6">
+                  <div className="text-center text-gray-500">Messages coming soon</div>
+                </CardContent>
+              </Card>
+            )}
+            {activeTab === 'reports' && <FinancialReports />}
+            {activeTab === 'settings' && <DispatcherSettings />}
+          </div>
         </div>
       </div>
+
+      {/* Bottom Navigation */}
+      <BottomNavigation 
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        userType="dispatcher"
+        pendingActionsCount={0}
+      />
     </div>
   );
 };
