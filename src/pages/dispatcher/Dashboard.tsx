@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -107,65 +106,13 @@ const DispatcherDashboard: React.FC = () => {
           }}
         />
         
-        {/* Dashboard Stats */}
         <div className="px-6 py-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Total Bookings</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.totalBookings}</p>
-                  </div>
-                  <Calendar className="h-8 w-8 text-blue-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                    <p className="text-2xl font-bold text-gray-900">${stats.totalRevenue.toLocaleString()}</p>
-                  </div>
-                  <DollarSign className="h-8 w-8 text-green-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Active Drivers</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.activeDrivers}</p>
-                  </div>
-                  <Users className="h-8 w-8 text-purple-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Completion Rate</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.completionRate}%</p>
-                  </div>
-                  <TrendingUp className="h-8 w-8 text-orange-600" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-6">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="bookings">Bookings</TabsTrigger>
               <TabsTrigger value="drivers">Drivers</TabsTrigger>
               <TabsTrigger value="payments">Payments</TabsTrigger>
               <TabsTrigger value="messages">Messages</TabsTrigger>
-              <TabsTrigger value="reports">Reports</TabsTrigger>
               <TabsTrigger value="settings">Settings</TabsTrigger>
             </TabsList>
 
@@ -175,19 +122,66 @@ const DispatcherDashboard: React.FC = () => {
               </TabsContent>
 
               <TabsContent value="drivers" className="mt-0">
-                <DriverManagement />
+                <DriverManagement drivers={[]} onDriverUpdate={() => {}} />
               </TabsContent>
 
               <TabsContent value="payments" className="mt-0">
+                {/* Dashboard Stats - moved to payments tab */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">Total Bookings</p>
+                          <p className="text-2xl font-bold text-gray-900">{stats.totalBookings}</p>
+                        </div>
+                        <Calendar className="h-8 w-8 text-blue-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+                          <p className="text-2xl font-bold text-gray-900">${stats.totalRevenue.toLocaleString()}</p>
+                        </div>
+                        <DollarSign className="h-8 w-8 text-green-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">Active Drivers</p>
+                          <p className="text-2xl font-bold text-gray-900">{stats.activeDrivers}</p>
+                        </div>
+                        <Users className="h-8 w-8 text-purple-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">Completion Rate</p>
+                          <p className="text-2xl font-bold text-gray-900">{stats.completionRate}%</p>
+                        </div>
+                        <TrendingUp className="h-8 w-8 text-orange-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+                
                 <PaymentsSection />
               </TabsContent>
 
               <TabsContent value="messages" className="mt-0">
-                <DispatcherMessaging />
-              </TabsContent>
-
-              <TabsContent value="reports" className="mt-0">
-                <FinancialReports />
+                <DispatcherMessaging bookings={[]} />
               </TabsContent>
 
               <TabsContent value="settings" className="mt-0">

@@ -1,36 +1,36 @@
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 interface PreferencesData {
-  preferred_temperature?: number;
-  music_preference?: string;
-  music_playlist_link?: string;
-  interaction_preference?: string;
-  trip_purpose?: string;
-  additional_notes?: string;
+  air_conditioning: boolean;
+  preferred_temperature: number;
+  temperature_unit: string;
+  radio_on: boolean;
+  preferred_music: string;
+  conversation_preference: string;
+  trip_purpose: string;
+  trip_notes: string;
 }
 
-interface PreferencesSettingsCardProps {
-  onClose: () => void;
-}
-
-export const PreferencesSettingsCard = ({ onClose }: PreferencesSettingsCardProps) => {
+export const PreferencesSettingsCard = () => {
   const [preferences, setPreferences] = useState<PreferencesData>({
+    air_conditioning: true,
     preferred_temperature: 72,
-    music_preference: 'off',
-    music_playlist_link: '',
-    interaction_preference: 'no_preference',
+    temperature_unit: 'F',
+    radio_on: false,
+    preferred_music: '',
+    conversation_preference: 'neutral',
     trip_purpose: 'leisure',
-    additional_notes: ''
+    trip_notes: ''
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -43,17 +43,11 @@ export const PreferencesSettingsCard = ({ onClose }: PreferencesSettingsCardProp
   const loadPreferences = async () => {
     try {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error('No authenticated user');
-      }
-
       const { data, error } = await supabase
-        .from('passengers')
-        .select('preferred_temperature, music_preference, music_playlist_link, interaction_preference, trip_purpose, additional_notes')
-        .eq('auth_user_id', user.id)
-        .single();
+        .from('passenger_preferences')
+        .select('*')
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
         throw error;
@@ -61,12 +55,14 @@ export const PreferencesSettingsCard = ({ onClose }: PreferencesSettingsCardProp
 
       if (data) {
         setPreferences({
-          preferred_temperature: data.preferred_temperature || 72,
-          music_preference: data.music_preference || 'off',
-          music_playlist_link: data.music_playlist_link || '',
-          interaction_preference: data.interaction_preference || 'no_preference',
-          trip_purpose: data.trip_purpose || 'leisure',
-          additional_notes: data.additional_notes || ''
+          air_conditioning: data.air_conditioning ?? true,
+          preferred_temperature: data.preferred_temperature ?? 72,
+          temperature_unit: data.temperature_unit ?? 'F',
+          radio_on: data.radio_on ?? false,
+          preferred_music: data.preferred_music ?? '',
+          conversation_preference: data.conversation_preference ?? 'neutral',
+          trip_purpose: data.trip_purpose ?? 'leisure',
+          trip_notes: data.trip_notes ?? ''
         });
       }
     } catch (error) {
@@ -74,7 +70,7 @@ export const PreferencesSettingsCard = ({ onClose }: PreferencesSettingsCardProp
       toast({
         title: "Error",
         description: "Failed to load preferences",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
@@ -84,38 +80,29 @@ export const PreferencesSettingsCard = ({ onClose }: PreferencesSettingsCardProp
   const savePreferences = async () => {
     try {
       setSaving(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error('No authenticated user');
-      }
+      const user = (await supabase.auth.getUser()).data.user;
+      if (!user) throw new Error('No user found');
 
       const { error } = await supabase
-        .from('passengers')
-        .update({
-          preferred_temperature: preferences.preferred_temperature,
-          music_preference: preferences.music_preference,
-          music_playlist_link: preferences.music_playlist_link,
-          interaction_preference: preferences.interaction_preference,
-          trip_purpose: preferences.trip_purpose,
-          additional_notes: preferences.additional_notes
-        })
-        .eq('auth_user_id', user.id);
+        .from('passenger_preferences')
+        .upsert({
+          user_id: user.id,
+          ...preferences,
+          updated_at: new Date().toISOString()
+        });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       toast({
         title: "Success",
-        description: "Preferences saved successfully",
+        description: "Preferences saved successfully"
       });
     } catch (error) {
       console.error('Error saving preferences:', error);
       toast({
         title: "Error",
         description: "Failed to save preferences",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setSaving(false);
@@ -125,8 +112,11 @@ export const PreferencesSettingsCard = ({ onClose }: PreferencesSettingsCardProp
   if (loading) {
     return (
       <Card>
-        <CardContent className="p-6">
-          <div className="text-center">Loading preferences...</div>
+        <CardHeader>
+          <CardTitle>Ride Preferences</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-4">Loading preferences...</div>
         </CardContent>
       </Card>
     );
@@ -135,127 +125,106 @@ export const PreferencesSettingsCard = ({ onClose }: PreferencesSettingsCardProp
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Account Preferences</CardTitle>
+        <CardTitle>Ride Preferences</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Temperature */}
-        <div className="space-y-2">
-          <Label>Preferred Temperature (°F)</Label>
-          <div className="px-4">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="air_conditioning">Air Conditioning</Label>
+            <Switch
+              id="air_conditioning"
+              checked={preferences.air_conditioning}
+              onCheckedChange={(checked) => 
+                setPreferences(prev => ({ ...prev, air_conditioning: checked }))
+              }
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Preferred Temperature: {preferences.preferred_temperature}°{preferences.temperature_unit}</Label>
             <Slider
-              value={[preferences.preferred_temperature || 72]}
+              value={[preferences.preferred_temperature]}
               onValueChange={(value) => 
                 setPreferences(prev => ({ ...prev, preferred_temperature: value[0] }))
               }
-              max={80}
+              max={85}
               min={60}
               step={1}
               className="w-full"
             />
-            <div className="flex justify-between text-sm text-gray-500 mt-1">
-              <span>60°F</span>
-              <span className="font-medium">{preferences.preferred_temperature}°F</span>
-              <span>80°F</span>
-            </div>
           </div>
-        </div>
 
-        {/* Music Preference */}
-        <div className="space-y-2">
-          <Label>Music Preference</Label>
-          <Select 
-            value={preferences.music_preference} 
-            onValueChange={(value) => 
-              setPreferences(prev => ({ ...prev, music_preference: value }))
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select music preference" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="on">On</SelectItem>
-              <SelectItem value="off">Off</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Playlist Link */}
-        {preferences.music_preference === 'on' && (
-          <div className="space-y-2">
-            <Label>Playlist Link (Optional)</Label>
-            <Input
-              type="url"
-              placeholder="https://..."
-              value={preferences.music_playlist_link}
-              onChange={(e) => 
-                setPreferences(prev => ({ ...prev, music_playlist_link: e.target.value }))
+          <div className="flex items-center justify-between">
+            <Label htmlFor="radio_on">Music/Radio</Label>
+            <Switch
+              id="radio_on"
+              checked={preferences.radio_on}
+              onCheckedChange={(checked) => 
+                setPreferences(prev => ({ ...prev, radio_on: checked }))
               }
             />
           </div>
-        )}
 
-        {/* Conversation Preference */}
-        <div className="space-y-2">
-          <Label>Conversation Preference</Label>
-          <Select 
-            value={preferences.interaction_preference} 
-            onValueChange={(value) => 
-              setPreferences(prev => ({ ...prev, interaction_preference: value }))
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select conversation preference" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="talkative">Talkative</SelectItem>
-              <SelectItem value="quiet">Quiet</SelectItem>
-              <SelectItem value="no_preference">No Preference</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="space-y-2">
+            <Label htmlFor="conversation_preference">Conversation Preference</Label>
+            <Select
+              value={preferences.conversation_preference}
+              onValueChange={(value) => 
+                setPreferences(prev => ({ ...prev, conversation_preference: value }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="quiet">Prefer quiet ride</SelectItem>
+                <SelectItem value="neutral">No preference</SelectItem>
+                <SelectItem value="chatty">Enjoy conversation</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="trip_purpose">Trip Purpose</Label>
+            <Select
+              value={preferences.trip_purpose}
+              onValueChange={(value) => 
+                setPreferences(prev => ({ ...prev, trip_purpose: value }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="business">Business</SelectItem>
+                <SelectItem value="leisure">Leisure</SelectItem>
+                <SelectItem value="airport">Airport transfer</SelectItem>
+                <SelectItem value="medical">Medical appointment</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="trip_notes">Additional Notes</Label>
+            <Textarea
+              id="trip_notes"
+              placeholder="Any special requests or notes for your driver..."
+              value={preferences.trip_notes}
+              onChange={(e) => 
+                setPreferences(prev => ({ ...prev, trip_notes: e.target.value }))
+              }
+            />
+          </div>
         </div>
 
-        {/* Trip Purpose */}
-        <div className="space-y-2">
-          <Label>Trip Purpose</Label>
-          <Select 
-            value={preferences.trip_purpose} 
-            onValueChange={(value) => 
-              setPreferences(prev => ({ ...prev, trip_purpose: value }))
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select trip purpose" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="business">Business</SelectItem>
-              <SelectItem value="leisure">Leisure</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Additional Notes */}
-        <div className="space-y-2">
-          <Label>Additional Notes</Label>
-          <Textarea
-            placeholder="Any special requests or preferences..."
-            value={preferences.additional_notes}
-            onChange={(e) => 
-              setPreferences(prev => ({ ...prev, additional_notes: e.target.value }))
-            }
-            rows={3}
-          />
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-2 pt-4">
-          <Button variant="outline" onClick={onClose} className="flex-1">
-            Back
-          </Button>
-          <Button onClick={savePreferences} disabled={saving} className="flex-1">
-            {saving ? "Saving..." : "Save Preferences"}
-          </Button>
-        </div>
+        <Button 
+          onClick={savePreferences}
+          disabled={saving}
+          className="w-full"
+        >
+          {saving ? 'Saving...' : 'Save Preferences'}
+        </Button>
       </CardContent>
     </Card>
   );
