@@ -1,11 +1,14 @@
 
 import React, { useEffect, useState } from 'react';
 import { fetchPassengerBookings, subscribeToBookingsAndPassengers } from '@/lib/api/bookings';
-import { BookingCard } from '@/components/dashboard/BookingCard';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MapPin, Clock, Users, Car, MessageCircle, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
 
 interface PassengerBookingsListProps {
   onUpdate?: () => void;
@@ -148,6 +151,26 @@ export const PassengerBookingsList = ({ onUpdate }: PassengerBookingsListProps) 
     }
   };
 
+  const formatPrice = (price: number | null) => {
+    if (!price) return '$0';
+    return `$${price}`;
+  };
+
+  const getStatusText = (booking: PassengerBookingRPC) => {
+    if (booking.driver_id && booking.payment_confirmation_status !== 'paid') {
+      return 'Offer Received';
+    } else if (!booking.driver_id) {
+      return 'Pending Driver';
+    } else if (booking.payment_confirmation_status === 'paid') {
+      return 'Confirmed';
+    }
+    return 'Pending';
+  };
+
+  const shouldShowPaymentCTA = (booking: PassengerBookingRPC) => {
+    return booking.driver_id && booking.payment_confirmation_status !== 'paid';
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -196,101 +219,131 @@ export const PassengerBookingsList = ({ onUpdate }: PassengerBookingsListProps) 
     );
   }
 
-  const transformBooking = (booking: PassengerBookingRPC) => {
-    // Determine correct status
-    let statusText = 'PENDING';
-    if (booking.driver_id && booking.payment_confirmation_status !== 'paid') {
-      statusText = 'PAYMENT PENDING';
-    } else if (!booking.driver_id) {
-      statusText = 'PENDING DRIVER';
-    } else if (booking.payment_confirmation_status === 'paid') {
-      statusText = 'ALL SET';
-    }
-
-    // Build car subtitle
-    const carSubtitle = booking.driver_car_make && booking.driver_car_model 
-      ? `${booking.driver_car_make} ${booking.driver_car_model}`
-      : 'Vehicle TBD';
-
-    return {
-      id: booking.booking_id,
-      pickup_location: booking.pickup_location,
-      dropoff_location: booking.dropoff_location,
-      pickup_time: booking.pickup_time,
-      pickup_datetime: booking.pickup_time,
-      passenger_count: booking.passenger_count,
-      status: statusText,
-      ride_status: booking.ride_status,
-      payment_confirmation_status: booking.payment_confirmation_status,
-      status_passenger: booking.status_passenger,
-      status_driver: booking.status_driver,
-      estimated_price: booking.estimated_price,
-      final_price: booking.final_price,
-      created_at: booking.created_at,
-      updated_at: booking.updated_at,
-      passenger_id: booking.passenger_id,
-      driver_id: booking.driver_id,
-      drivers: booking.driver_name ? {
-        id: booking.driver_id,
-        full_name: booking.driver_name,
-        profile_photo_url: booking.driver_photo_url,
-        car_make: booking.driver_car_make,
-        car_model: booking.driver_car_model,
-        phone: booking.driver_phone,
-        email: booking.driver_email,
-        license_plate: booking.driver_license_plate,
-        subtitle: carSubtitle
-      } : null,
-      passengers: {
-        id: booking.passenger_id,
-        full_name: booking.passenger_name,
-        profile_photo_url: booking.passenger_photo_url,
-        phone: booking.passenger_phone,
-        email: booking.passenger_email
-      },
-      // Payment CTA data
-      showPaymentCTA: booking.driver_id && booking.payment_confirmation_status !== 'paid',
-      paymentAmount: booking.estimated_price || booking.final_price || 0
-    };
-  };
-
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-gray-900">
-        Your Bookings ({bookings.length})
-      </h3>
-      
-      <div className="space-y-3">
-        {bookings.map((booking) => {
-          const transformedBooking = transformBooking(booking);
-          
-          return (
-            <div key={transformedBooking.id} className="relative">
-              <BookingCard
-                booking={transformedBooking}
-                userType="passenger"
-                onUpdate={handleUpdate}
-              />
+      {bookings.map((booking) => (
+        <Card key={booking.booking_id} className="bg-white rounded-xl shadow-sm border border-gray-100">
+          <CardContent className="p-6">
+            {/* Pickup and Drop-off */}
+            <div className="space-y-3 mb-4">
+              <div className="flex items-start space-x-3">
+                <div className="w-3 h-3 bg-green-500 rounded-full mt-1 flex-shrink-0"></div>
+                <div>
+                  <div className="font-semibold text-gray-900">Pickup</div>
+                  <div className="text-gray-600 text-sm">
+                    {booking.pickup_location || 'Pickup location'}
+                  </div>
+                </div>
+              </div>
               
-              {/* Payment CTA overlay */}
-              {transformedBooking.showPaymentCTA && (
-                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-sm text-blue-800 mb-2">
-                    Driver assigned! Complete your payment to confirm the ride.
-                  </p>
-                  <Button
-                    onClick={() => handlePayment(booking)}
-                    className="w-full"
-                    variant="default"
-                  >
-                    Pay ${transformedBooking.paymentAmount}
+              <div className="flex items-start space-x-3">
+                <div className="w-3 h-3 bg-red-500 rounded-full mt-1 flex-shrink-0"></div>
+                <div>
+                  <div className="font-semibold text-gray-900">Drop-off</div>
+                  <div className="text-gray-600 text-sm">
+                    {booking.dropoff_location || 'Drop-off location'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Booking meta info */}
+            <div className="flex items-center space-x-4 mb-3 text-sm text-gray-600">
+              <div className="flex items-center space-x-1">
+                <Clock className="h-4 w-4" />
+                <span>
+                  {booking.pickup_time 
+                    ? format(new Date(booking.pickup_time), 'MMM d, yyyy - HH:mm')
+                    : 'Time TBD'
+                  }
+                </span>
+              </div>
+              
+              <div className="flex items-center space-x-1">
+                <Users className="h-4 w-4" />
+                <span>{booking.passenger_count || 1} passengers</span>
+              </div>
+            </div>
+
+            {/* Vehicle info */}
+            {(booking.driver_car_make || booking.driver_car_model) && (
+              <div className="flex items-center space-x-1 mb-4 text-sm text-gray-600">
+                <Car className="h-4 w-4" />
+                <span>
+                  {booking.driver_car_make && booking.driver_car_model 
+                    ? `${booking.driver_car_make} ${booking.driver_car_model}`
+                    : booking.driver_car_model || 'Vehicle TBD'
+                  }
+                </span>
+              </div>
+            )}
+
+            {/* Price and Status */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-2xl font-bold text-red-500">
+                {formatPrice(booking.estimated_price || booking.final_price)}
+              </div>
+              <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
+                {getStatusText(booking)}
+              </Badge>
+            </div>
+
+            {/* Assigned Driver Section */}
+            {booking.driver_id && booking.driver_name && (
+              <div className="bg-blue-50 rounded-lg p-4 mb-4">
+                <div className="text-sm font-medium text-gray-700 mb-3">Your Assigned Driver</div>
+                <div className="flex items-center space-x-3 mb-4">
+                  <Avatar className="h-12 w-12">
+                    <AvatarImage src={booking.driver_photo_url || undefined} />
+                    <AvatarFallback>
+                      {booking.driver_name?.charAt(0) || 'D'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <div className="font-semibold text-gray-900">{booking.driver_name}</div>
+                    <div className="text-blue-600 text-sm">
+                      {booking.driver_car_make && booking.driver_car_model 
+                        ? `${booking.driver_car_make} ${booking.driver_car_model}`
+                        : 'Vehicle TBD'
+                      }
+                    </div>
+                    {booking.driver_license_plate && (
+                      <div className="text-gray-500 text-sm">
+                        Silver • {booking.driver_license_plate}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex space-x-2">
+                  <Button variant="outline" size="sm" className="flex-1">
+                    <MessageCircle className="h-4 w-4 mr-1" />
+                    Message
+                  </Button>
+                  <Button variant="outline" size="sm" className="flex-1">
+                    <Phone className="h-4 w-4 mr-1" />
+                    Call
+                  </Button>
+                  <Button className="flex-1 bg-red-500 hover:bg-red-600 text-white" size="sm">
+                    View Details
                   </Button>
                 </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+              </div>
+            )}
+
+            {/* Payment CTA */}
+            {shouldShowPaymentCTA(booking) && (
+              <Button
+                onClick={() => handlePayment(booking)}
+                className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-3 rounded-lg"
+              >
+                Pay {formatPrice(booking.estimated_price || booking.final_price)} - Complete Booking
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 };

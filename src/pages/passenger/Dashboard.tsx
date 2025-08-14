@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BottomNavigation } from '@/components/dashboard/BottomNavigation';
@@ -6,13 +5,13 @@ import { ProfileHeader } from '@/components/dashboard/ProfileHeader';
 import { MessagesTab } from '@/components/passenger/MessagesTab';
 import { SettingsTab } from '@/components/passenger/SettingsTab';
 import { PaymentsTab } from '@/components/passenger/PaymentsTab';
-import { FloatingActionButton } from '@/components/dashboard/FloatingActionButton';
 import { PassengerBookingsList } from '@/components/passenger/PassengerBookingsList';
 import { fetchPassengerBookings, subscribeToBookingsAndPassengers } from '@/lib/api/bookings';
 import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 
 const PassengerDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab, setActiveTab] = useState('bookings');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [passengerInfo, setPassengerInfo] = useState({
     full_name: 'Passenger User',
@@ -74,44 +73,31 @@ const PassengerDashboard: React.FC = () => {
   const mockCurrentUserName = passengerInfo.full_name || 'Passenger User';
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-md mx-auto bg-white min-h-screen shadow-lg">
         <ProfileHeader 
           userType="passenger" 
           userProfile={passengerInfo}
           onPhotoUpload={async (file: File) => {
-            // Handle photo upload - placeholder for now
             console.log('Photo upload:', file);
-            // After successful upload, refresh the info
             setRefreshTrigger(prev => prev + 1);
           }}
         />
         
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          {/* Only show TabsList for non-home tabs */}
-          {activeTab !== 'home' && (
-            <TabsList className="grid w-full grid-cols-4 sticky top-0 z-10 bg-white border-b">
-              <TabsTrigger value="home">Home</TabsTrigger>
-              <TabsTrigger value="messages">Messages</TabsTrigger>
-              <TabsTrigger value="payments">Payments</TabsTrigger>
-              <TabsTrigger value="settings">Settings</TabsTrigger>
-            </TabsList>
-          )}
-
-          <div className="p-4">
-            <TabsContent value="home" className="mt-0">
-              <div className="space-y-6">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                    Welcome back!
-                  </h2>
-                  <p className="text-gray-600 mb-6">
-                    Here are your recent ride bookings and updates, {passengerInfo.full_name}.
-                  </p>
-                </div>
-
-                <PassengerBookingsList key={refreshTrigger} onUpdate={handleUpdate} />
+          <div className="px-4 pb-20">
+            <TabsContent value="bookings" className="mt-0">
+              <div className="flex items-center justify-between mb-6">
+                <h1 className="text-2xl font-bold text-gray-900">My Bookings</h1>
+                <Button
+                  onClick={handleNewBooking}
+                  className="bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-2 rounded-lg"
+                >
+                  New Booking
+                </Button>
               </div>
+
+              <PassengerBookingsList key={refreshTrigger} onUpdate={handleUpdate} />
             </TabsContent>
 
             <TabsContent value="messages" className="mt-0">
@@ -132,7 +118,6 @@ const PassengerDashboard: React.FC = () => {
           </div>
         </Tabs>
 
-        <FloatingActionButton onClick={handleNewBooking} />
         <BottomNavigation 
           userType="passenger"
           activeTab={activeTab}
