@@ -3,7 +3,15 @@ import { supabase } from "@/integrations/supabase/client";
 
 export async function getMyPassengerBookings() {
   try {
-    // Direct query to bookings table with related data
+    // Get the current user first
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      console.error('User not authenticated:', userError);
+      throw new Error('User not authenticated');
+    }
+
+    // Query bookings table with related data, using the correct column name
     const { data, error } = await supabase
       .from('bookings')
       .select(`
@@ -28,8 +36,8 @@ export async function getMyPassengerBookings() {
           additional_notes
         )
       `)
-      .eq('passenger_id', (await supabase.auth.getUser()).data.user?.id)
-      .order('pickup_time', { ascending: true, nullsFirst: false });
+      .eq('passenger_id', user.id)
+      .order('created_at', { ascending: false }); // Use created_at instead of pickup_time for ordering
     
     if (error) {
       console.error('Error fetching passenger bookings:', error);
@@ -37,12 +45,27 @@ export async function getMyPassengerBookings() {
     }
 
     console.log('Passenger bookings fetched:', Array.isArray(data) ? data.length : 0, 'bookings');
+    console.log('Raw booking data:', data);
     
     // Ensure we always return an array
     if (!data) return [];
     if (!Array.isArray(data)) return [];
     
-    return data;
+    // Sort by pickup_time when available, otherwise by created_at
+    const sortedData = data.sort((a, b) => {
+      // If both have pickup_time, sort by that (ascending)
+      if (a.pickup_time && b.pickup_time) {
+        return new Date(a.pickup_time).getTime() - new Date(b.pickup_time).getTime();
+      }
+      // If only one has pickup_time, prioritize it
+      if (a.pickup_time && !b.pickup_time) return -1;
+      if (!a.pickup_time && b.pickup_time) return 1;
+      
+      // Both don't have pickup_time, sort by created_at (descending)
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+    
+    return sortedData;
   } catch (error) {
     console.error('Unexpected error in getMyPassengerBookings:', error);
     throw error;

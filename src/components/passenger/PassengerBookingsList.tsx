@@ -14,6 +14,9 @@ interface BookingData {
   id: string;
   pickup_time?: string;
   created_at: string;
+  status?: string;
+  pickup_location?: string;
+  dropoff_location?: string;
   [key: string]: any; // Allow other properties
 }
 
@@ -25,29 +28,20 @@ export const PassengerBookingsList = ({ onUpdate }: PassengerBookingsListProps) 
   const fetchBookings = async () => {
     try {
       setLoading(true);
+      console.log('🔄 Fetching passenger bookings...');
+      
       const data = await getMyPassengerBookings();
+      
+      console.log('✅ Bookings received:', data);
       
       // Ensure data is an array and has the right structure
       const bookingsArray = Array.isArray(data) ? data as BookingData[] : [];
       
-      // Sort by pickup_time ascending when present, otherwise created_at desc
-      const sortedBookings = bookingsArray.sort((a, b) => {
-        const aBooking = a as BookingData;
-        const bBooking = b as BookingData;
-        
-        if (aBooking.pickup_time && bBooking.pickup_time) {
-          return new Date(aBooking.pickup_time).getTime() - new Date(bBooking.pickup_time).getTime();
-        }
-        if (aBooking.pickup_time && !bBooking.pickup_time) return -1;
-        if (!aBooking.pickup_time && bBooking.pickup_time) return 1;
-        
-        // Both don't have pickup_time, sort by created_at desc
-        return new Date(bBooking.created_at).getTime() - new Date(aBooking.created_at).getTime();
-      });
+      console.log('📊 Processed bookings count:', bookingsArray.length);
       
-      setBookings(sortedBookings);
+      setBookings(bookingsArray);
     } catch (error) {
-      console.error('Failed to fetch passenger bookings:', error);
+      console.error('❌ Failed to fetch passenger bookings:', error);
       toast({
         title: "Error",
         description: "Failed to load your bookings. Please try again.",
@@ -78,6 +72,7 @@ export const PassengerBookingsList = ({ onUpdate }: PassengerBookingsListProps) 
     );
   }
 
+  // Only show empty state when there are truly no bookings
   if (bookings.length === 0) {
     return (
       <div className="text-center py-8">
