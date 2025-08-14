@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { routeAfterAuth } from "@/lib/authRouting";
 
 const PassengerLogin = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -53,15 +54,14 @@ const PassengerLogin = () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
-          navigate(bookingData ? "/passenger/choose-vehicle" : "/passenger/dashboard", 
-                 { state: bookingData });
+          await routeAfterAuth(navigate, location);
         }
       } catch (error) {
         console.error("Auth check error:", error);
       }
     };
     checkAuth();
-  }, [navigate, bookingData]);
+  }, [navigate, location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,9 +83,8 @@ const PassengerLogin = () => {
         });
 
         // Use setTimeout to ensure toast shows briefly before navigation
-        setTimeout(() => {
-          navigate(bookingData ? "/passenger/choose-vehicle" : "/passenger/dashboard", 
-                 { state: bookingData, replace: true });
+        setTimeout(async () => {
+          await routeAfterAuth(navigate, location);
         }, 100);
       } else {
         // Check if email already exists in passengers table
@@ -159,8 +158,7 @@ const PassengerLogin = () => {
             description: "Welcome to VIP! Your account has been created.",
           });
 
-          navigate(bookingData ? "/passenger/choose-vehicle" : "/passenger/dashboard", 
-                 { state: bookingData });
+          await routeAfterAuth(navigate, location);
         }
       }
     } catch (error: any) {
@@ -214,7 +212,6 @@ const PassengerLogin = () => {
       setFormData(prev => ({ ...prev, profilePhoto: file }));
     }
   };
-
 
   const handleGoogleAuth = async () => {
     setLoading(true);
