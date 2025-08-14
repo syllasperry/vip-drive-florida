@@ -1,111 +1,104 @@
 
-import React, { useState, useEffect } from 'react';
-import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { BottomNavigation } from '@/components/dashboard/BottomNavigation';
-import { ProfileHeader } from '@/components/dashboard/ProfileHeader';
-import { DispatcherBookingList } from '@/components/dispatcher/DispatcherBookingList';
-import { DriverManagement } from '@/components/dispatcher/DriverManagement';
-import { PaymentsSection } from '@/components/dispatcher/PaymentsSection';
-import { DispatcherMessaging } from '@/components/dispatcher/DispatcherMessaging';
-import { DispatcherSettings } from '@/components/dispatcher/DispatcherSettings';
-import { getDispatcherBookings, subscribeToBookingsAndPassengers } from '@/data/bookings';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { BottomNavigation } from "@/components/dashboard/BottomNavigation";
+import { DispatcherBookingManager } from "@/components/dispatcher/DispatcherBookingManager";
+import { DriverManagement } from "@/components/dispatcher/DriverManagement";
+import { PaymentsSection } from "@/components/dispatcher/PaymentsSection";
+import { DispatcherMessaging } from "@/components/dispatcher/DispatcherMessaging";
+import { DispatcherSettings } from "@/components/dispatcher/DispatcherSettings";
+import { useToast } from "@/hooks/use-toast";
 
-const DispatcherDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('bookings');
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [bookings, setBookings] = useState<any[]>([]);
-  const [dispatcherInfo] = useState({
-    full_name: 'Dispatcher Admin',
-    profile_photo_url: null,
-    phone: null,
-    email: null
-  });
-
-  const loadBookings = async () => {
-    try {
-      const data = await getDispatcherBookings();
-      setBookings(data);
-    } catch (error) {
-      console.error('Failed to load dispatcher bookings:', error);
-    }
-  };
+const DispatcherDashboard = () => {
+  const [activeTab, setActiveTab] = useState("bookings");
+  const [pendingActionsCount, setPendingActionsCount] = useState(0);
+  const [user, setUser] = useState<any>(null);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
-    loadBookings();
-  }, [refreshTrigger]);
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate("/dispatcher/login");
+        return;
+      }
+      setUser(session.user);
+    };
 
-  // Set up realtime subscription
+    checkAuth();
+  }, [navigate]);
+
   useEffect(() => {
-    const unsubscribe = subscribeToBookingsAndPassengers(() => {
-      console.log('🔄 Real-time update in Dispatcher Dashboard - refreshing bookings...');
-      loadBookings();
-    });
+    const fetchPendingActions = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('bookings')
+          .select('id')
+          .in('status', ['pending', 'driver_assigned'])
+          .eq('payment_confirmation_status', 'waiting_for_offer');
+
+        if (error) throw error;
+        setPendingActionsCount(data?.length || 0);
+      } catch (error) {
+        console.error('Error fetching pending actions:', error);
+      }
+    };
+
+    fetchPendingActions();
+
+    // Subscribe to booking changes
+    const channel = supabase
+      .channel('dispatcher-bookings')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'bookings' },
+        () => fetchPendingActions()
+      )
+      .subscribe();
 
     return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
+      supabase.removeChannel(channel);
     };
   }, []);
 
-  const handleUpdate = async () => {
-    setRefreshTrigger(prev => prev + 1);
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "bookings":
+        return <DispatcherBookingManager />;
+      case "drivers":
+        return <DriverManagement />;
+      case "payments":
+        return <PaymentsSection />;
+      case "messages":
+        return <DispatcherMessaging />;
+      case "settings":
+        return <DispatcherSettings />;
+      default:
+        return <DispatcherBookingManager />;
+    }
   };
 
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
-  };
-
-  const pendingActionsCount = bookings.filter(booking => 
-    booking.payment_confirmation_status === 'waiting_for_offer'
-  ).length;
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading dispatcher dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-md mx-auto bg-white min-h-screen shadow-lg">
-        <ProfileHeader 
-          userType="dispatcher" as "passenger"
-          userProfile={dispatcherInfo}
-          onPhotoUpload={async (file: File) => {
-            console.log('Photo upload:', file);
-            setRefreshTrigger(prev => prev + 1);
-          }}
-        />
+    <div className="min-h-screen bg-background pb-20">
+      <div className="max-w-md mx-auto">
+        {renderTabContent()}
         
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <div className="px-4 pb-20">
-            <TabsContent value="bookings" className="mt-0">
-              <div className="mb-6">
-                <h1 className="text-2xl font-bold text-gray-900">Manage Bookings</h1>
-              </div>
-              <DispatcherBookingList 
-                key={refreshTrigger} 
-                onUpdate={handleUpdate} 
-              />
-            </TabsContent>
-
-            <TabsContent value="drivers" className="mt-0">
-              <DriverManagement />
-            </TabsContent>
-
-            <TabsContent value="payments" className="mt-0">
-              <PaymentsSection />
-            </TabsContent>
-
-            <TabsContent value="messages" className="mt-0">
-              <DispatcherMessaging bookings={bookings} />
-            </TabsContent>
-
-            <TabsContent value="settings" className="mt-0">
-              <DispatcherSettings />
-            </TabsContent>
-          </div>
-        </Tabs>
-
-        <BottomNavigation 
-          userType="dispatcher"
+        <BottomNavigation
           activeTab={activeTab}
-          onTabChange={handleTabChange}
+          onTabChange={setActiveTab}
+          userType="dispatcher"
           pendingActionsCount={pendingActionsCount}
         />
       </div>

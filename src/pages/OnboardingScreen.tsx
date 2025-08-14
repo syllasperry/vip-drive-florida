@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Star } from "lucide-react";
@@ -21,14 +22,14 @@ const onboardingSlides = [
     description: "Professional chauffeur service for all major South Florida airports. Arrive in style and comfort."
   },
   {
-    image: womanBookingImg,
-    title: "Easy Booking",
-    description: "Book your premium ride in just a few taps. Simple, fast, and secure reservation system."
-  },
-  {
     image: chauffeurWelcomeImg,
     title: "Professional Service",
     description: "Experienced, courteous drivers providing luxury transportation with the highest standards."
+  },
+  {
+    image: womanBookingImg,
+    title: "Easy Booking",
+    description: "Book your premium ride in just a few taps. Simple, fast, and secure reservation system."
   }
 ];
 
@@ -106,7 +107,6 @@ const DeparturesBoard = ({ airports }: { airports: Airport[] }) => {
 
       {/* Mobile: Card Layout */}
       <div className="block sm:hidden space-y-3">
-        {/* Current Airport Card */}
         <div className="bg-slate-800/50 rounded p-3 border border-amber-400/20">
           <div className="flex items-center justify-between mb-2">
             <div className={`text-amber-400 text-lg font-bold transition-all duration-300 ${
@@ -125,7 +125,6 @@ const DeparturesBoard = ({ airports }: { airports: Airport[] }) => {
           </div>
         </div>
 
-        {/* Next Airport Preview */}
         <div className="bg-slate-800/30 rounded p-3 border border-amber-400/10 opacity-60">
           <div className="flex items-center justify-between mb-2">
             <div className="text-amber-400 text-lg font-bold">
@@ -143,7 +142,6 @@ const DeparturesBoard = ({ airports }: { airports: Airport[] }) => {
 
       {/* Desktop: Table Layout */}
       <div className="hidden sm:block">
-        {/* Column Headers */}
         <div className="grid grid-cols-12 gap-2 mb-2 text-amber-400/70 text-xs font-bold uppercase">
           <div className="col-span-2">CODE</div>
           <div className="col-span-6">DESTINATION</div>
@@ -151,7 +149,6 @@ const DeparturesBoard = ({ airports }: { airports: Airport[] }) => {
           <div className="col-span-2">GATE</div>
         </div>
 
-        {/* Departure Row */}
         <div className="grid grid-cols-12 gap-2 items-center py-3 border-t border-amber-400/20">
           <div className="col-span-2">
             <div className={`text-amber-400 text-lg font-bold transition-all duration-300 ${
@@ -179,7 +176,6 @@ const DeparturesBoard = ({ airports }: { airports: Airport[] }) => {
           </div>
         </div>
 
-        {/* Next Row Preview */}
         <div className="grid grid-cols-12 gap-2 items-center py-2 opacity-40 border-t border-amber-400/10">
           <div className="col-span-2">
             <div className="text-amber-400 text-lg font-bold">
@@ -360,12 +356,11 @@ const OnboardingScreen = () => {
       {/* Continue Button */}
       <div className="p-6">
         <Button 
-          variant="luxury" 
-          size="lg" 
           onClick={goToBooking}
-          className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+          className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-4 px-8 rounded-xl text-lg"
+          size="lg"
         >
-          Book Your Ride
+          Get Started
         </Button>
       </div>
     </div>

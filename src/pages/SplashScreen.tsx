@@ -11,7 +11,7 @@ const SplashScreen = () => {
     const timer = setTimeout(() => {
       setIsVisible(false);
       setTimeout(() => navigate("/onboarding"), 500);
-    }, 2000); // Reduced to 2 seconds for better UX
+    }, 1200); // Show splash for 1.2 seconds
 
     return () => clearTimeout(timer);
   }, [navigate]);

@@ -33,16 +33,16 @@ const App = () => {
             <Route path="/onboarding" element={<OnboardingScreen />} />
             <Route path="/home" element={<HomeScreen />} />
             
-            {/* Booking flow */}
+            {/* Booking flow - consolidated routes */}
             <Route path="/estimate" element={<PriceEstimate />} />
             <Route path="/get-started" element={<PriceEstimate />} />
             <Route path="/passenger/price-estimate" element={<PriceEstimate />} />
-            <Route path="/passenger/choose-vehicle" element={<ChooseVehicle />} />
             <Route path="/cars" element={<ChooseVehicle />} />
-            <Route path="/passenger/booking-form" element={<BookingForm />} />
+            <Route path="/passenger/choose-vehicle" element={<ChooseVehicle />} />
             <Route path="/booking/details" element={<BookingForm />} />
-            <Route path="/passenger/confirmation" element={<Confirmation />} />
+            <Route path="/passenger/booking-form" element={<BookingForm />} />
             <Route path="/booking/confirm" element={<Confirmation />} />
+            <Route path="/passenger/confirmation" element={<Confirmation />} />
             
             {/* Auth */}
             <Route path="/passenger/login" element={<PassengerLogin />} />

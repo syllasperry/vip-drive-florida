@@ -48,6 +48,11 @@ export const BottomNavigation = ({ activeTab, onTabChange, userType, pendingActi
 
   const finalTabs = getFinalTabs();
 
+  const handleTabClick = (tabId: string) => {
+    // Ensure immediate tab change without blank screen
+    onTabChange(tabId);
+  };
+
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
       <div className="max-w-md mx-auto">
@@ -59,7 +64,7 @@ export const BottomNavigation = ({ activeTab, onTabChange, userType, pendingActi
             return (
               <button
                 key={tab.id}
-                onClick={() => onTabChange(tab.id)}
+                onClick={() => handleTabClick(tab.id)}
                 className={`flex flex-col items-center justify-center h-full min-h-[44px] relative transition-colors px-2 py-2 ${
                   isActive
                     ? "text-red-500"

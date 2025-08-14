@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
@@ -33,7 +34,7 @@ const PriceEstimate = () => {
   };
 
   const handleGoBack = () => {
-    navigate("/home");
+    navigate("/onboarding");
   };
 
   const calculateEstimate = () => {
@@ -57,7 +58,7 @@ const PriceEstimate = () => {
     
     if (isLoggedIn) {
       // If logged in, go directly to choose vehicle
-      navigate("/passenger/choose-vehicle", { 
+      navigate("/cars", { 
         state: { pickup, dropoff, estimatedPrice } 
       });
     } else {
@@ -138,7 +139,7 @@ const PriceEstimate = () => {
             <Button 
               onClick={calculateEstimate}
               disabled={!pickup.trim() || !dropoff.trim()}
-              className="w-full"
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
               size="lg"
             >
               Calculate Estimate
@@ -159,9 +160,8 @@ const PriceEstimate = () => {
 
               <Button 
                 onClick={handleContinue}
-                variant="luxury"
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
                 size="lg"
-                className="w-full"
               >
                 Continue to Book Your Ride
                 <ArrowRight className="h-5 w-5 ml-2" />
