@@ -1,172 +1,264 @@
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ChevronRight, User, Bell, Shield, HelpCircle, LogOut, Heart } from 'lucide-react';
-import { ProfileSettingsModal } from './ProfileSettingsModal';
-import { NotificationSettingsModal } from '@/components/NotificationSettingsModal';
-import { PreferencesSettingsCard } from './PreferencesSettingsCard';
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
+import { Bell, Shield, HelpCircle, LogOut, Settings as SettingsIcon, User } from "lucide-react";
+import { NotificationSettingsCard } from "./NotificationSettingsCard";
+import { PrivacySecurityCard } from "./PrivacySecurityCard";
+import { HelpSupportCard } from "./HelpSupportCard";
+import { ProfileSettingsCard } from "./ProfileSettingsCard";
+import { ProfileSettingsModal } from "./ProfileSettingsModal";
+import { PreferencesSettingsCard } from "./PreferencesSettingsCard";
+import { getMyPassengerProfile } from "@/lib/api/profiles";
 
 interface SettingsTabProps {
-  passenger?: {
-    full_name?: string;
-    profile_photo_url?: string;
-    email?: string;
-    phone?: string;
-  };
+  passengerInfo: any;
 }
 
-export const SettingsTab: React.FC<SettingsTabProps> = ({ passenger }) => {
-  const [showProfileModal, setShowProfileModal] = useState(false);
-  const [showNotificationModal, setShowNotificationModal] = useState(false);
-  const [showPreferences, setShowPreferences] = useState(false);
+interface PassengerProfile {
+  first_name: string;
+  last_name: string;
+  phone: string;
+  email: string;
+  avatarUrl: string | null;
+}
+
+export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [activeModal, setActiveModal] = useState<'notifications' | 'privacy' | 'help' | 'preferences' | 'profileSettings' | null>(null);
+  const [currentPassengerInfo, setCurrentPassengerInfo] = useState(passengerInfo);
+  const [passengerProfile, setPassengerProfile] = useState<PassengerProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+
+  // Update local state when passengerInfo prop changes
+  useEffect(() => {
+    setCurrentPassengerInfo(passengerInfo);
+  }, [passengerInfo]);
+
+  // Load passenger profile when component mounts
+  useEffect(() => {
+    loadPassengerProfile();
+  }, []);
+
+  const loadPassengerProfile = async () => {
+    setProfileLoading(true);
+    try {
+      const profile = await getMyPassengerProfile();
+      setPassengerProfile(profile);
+    } catch (error) {
+      console.error('Error loading passenger profile:', error);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const handleProfileUpdate = async () => {
+    // Refresh passenger info after profile update
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: passenger, error } = await supabase
+          .from('passengers')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (!error && passenger) {
+          setCurrentPassengerInfo(passenger);
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing passenger info:', error);
+    }
+    
+    // Also reload the profile data
+    await loadPassengerProfile();
+  };
 
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
-      navigate('/');
+      navigate('/passenger/login');
     } catch (error) {
-      console.error('Error logging out:', error);
-      toast({
-        title: "Error",
-        description: "Failed to logout",
-        variant: "destructive",
-      });
+      console.error('Error signing out:', error);
     }
   };
 
-  const settingsItems = [
-    {
-      icon: User,
-      title: 'Profile Settings',
-      description: 'Update your personal information',
-      action: () => setShowProfileModal(true),
-    },
-    {
-      icon: Heart,
-      title: 'Preferences',
-      description: 'Ride preferences and comfort settings',
-      action: () => setShowPreferences(true),
-    },
-    {
-      icon: Bell,
-      title: 'Notifications',
-      description: 'Manage notification preferences',
-      action: () => setShowNotificationModal(true),
-    },
-    {
-      icon: Shield,
-      title: 'Privacy & Security',
-      description: 'Privacy settings and security options',
-      action: () => {},
-    },
-    {
-      icon: HelpCircle,
-      title: 'Help & Support',
-      description: 'Get help and contact support',
-      action: () => {},
-    },
-  ];
+  const handleProfileSettingsUpdate = (updatedProfile: PassengerProfile) => {
+    setPassengerProfile(updatedProfile);
+    handleProfileUpdate();
+  };
 
-  if (showPreferences) {
+  if (activeModal === 'notifications') {
     return (
       <div className="space-y-4">
         <Button 
           variant="ghost" 
-          onClick={() => setShowPreferences(false)}
+          onClick={() => setActiveModal(null)}
           className="mb-4"
         >
           ← Back to Settings
         </Button>
-        <PreferencesSettingsCard />
+        <NotificationSettingsCard 
+          userId={currentPassengerInfo?.id} 
+          onClose={() => setActiveModal(null)} 
+        />
+      </div>
+    );
+  }
+
+  if (activeModal === 'privacy') {
+    return (
+      <div className="space-y-4">
+        <Button 
+          variant="ghost" 
+          onClick={() => setActiveModal(null)}
+          className="mb-4"
+        >
+          ← Back to Settings
+        </Button>
+        <PrivacySecurityCard onClose={() => setActiveModal(null)} />
+      </div>
+    );
+  }
+
+  if (activeModal === 'help') {
+    return (
+      <div className="space-y-4">
+        <Button 
+          variant="ghost" 
+          onClick={() => setActiveModal(null)}
+          className="mb-4"
+        >
+          ← Back to Settings
+        </Button>
+        <HelpSupportCard onClose={() => setActiveModal(null)} />
+      </div>
+    );
+  }
+
+  if (activeModal === 'preferences') {
+    return (
+      <div className="space-y-4">
+        <Button 
+          variant="ghost" 
+          onClick={() => setActiveModal(null)}
+          className="mb-4"
+        >
+          ← Back to Settings
+        </Button>
+        <PreferencesSettingsCard onClose={() => setActiveModal(null)} />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Profile Header */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center space-x-4">
-            <Avatar className="h-16 w-16">
-              <AvatarImage src={passenger?.profile_photo_url} />
-              <AvatarFallback>
-                {passenger?.full_name?.charAt(0) || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold">
-                {passenger?.full_name || 'User'}
-              </h3>
-              <p className="text-sm text-gray-600">
-                {passenger?.email || 'No email provided'}
-              </p>
-              <p className="text-sm text-gray-600">
-                {passenger?.phone || 'No phone provided'}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
+    <div className="space-y-4">
+      <h2 className="text-lg font-semibold text-gray-900">Settings</h2>
+      
       {/* Settings Options */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Settings</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="divide-y">
-            {settingsItems.map((item, index) => (
-              <button
-                key={index}
-                onClick={item.action}
-                className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors text-left"
-              >
-                <div className="flex items-center space-x-3">
-                  <item.icon className="h-5 w-5 text-gray-400" />
-                  <div>
-                    <p className="font-medium">{item.title}</p>
-                    <p className="text-sm text-gray-600">{item.description}</p>
-                  </div>
-                </div>
-                <ChevronRight className="h-5 w-5 text-gray-400" />
-              </button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-3">
+        <Card 
+          className="cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => setActiveModal('notifications')}
+        >
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <Bell className="w-5 h-5 text-gray-600" />
+              <div className="flex-1">
+                <h3 className="font-medium text-gray-900">Notifications</h3>
+                <p className="text-sm text-gray-500">Manage your notification preferences</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Edit Profile Button - Added after Notifications */}
+        <Card 
+          className="cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => setActiveModal('profileSettings')}
+        >
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <User className="w-5 h-5 text-gray-600" />
+              <div className="flex-1">
+                <h3 className="font-medium text-gray-900">Edit Profile</h3>
+                <p className="text-sm text-gray-500">Update your personal information and photo</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => setActiveModal('privacy')}
+        >
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <Shield className="w-5 h-5 text-gray-600" />
+              <div className="flex-1">
+                <h3 className="font-medium text-gray-900">Privacy & Security</h3>
+                <p className="text-sm text-gray-500">Account security settings</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => setActiveModal('preferences')}
+        >
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <SettingsIcon className="w-5 h-5 text-gray-600" />
+              <div className="flex-1">
+                <h3 className="font-medium text-gray-900">Preferences</h3>
+                <p className="text-sm text-gray-500">Account preferences</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => setActiveModal('help')}
+        >
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <HelpCircle className="w-5 h-5 text-gray-600" />
+              <div className="flex-1">
+                <h3 className="font-medium text-gray-900">Help & Support</h3>
+                <p className="text-sm text-gray-500">Get help and contact support</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Logout Button */}
       <Card>
         <CardContent className="p-4">
           <Button 
             onClick={handleLogout}
-            variant="destructive"
-            className="w-full bg-red-500 hover:bg-red-600 text-white"
+            variant="destructive" 
+            className="w-full flex items-center gap-2"
           >
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
+            <LogOut className="w-4 w-4" />
+            Sign Out
           </Button>
         </CardContent>
       </Card>
 
-      {/* Modals */}
+      {/* Profile Settings Modal */}
       <ProfileSettingsModal
-        isOpen={showProfileModal}
-        onClose={() => setShowProfileModal(false)}
-        passenger={passenger}
-      />
-
-      <NotificationSettingsModal
-        isOpen={showNotificationModal}
-        onClose={() => setShowNotificationModal(false)}
+        isOpen={activeModal === 'profileSettings'}
+        onClose={() => setActiveModal(null)}
+        profile={passengerProfile}
+        onProfileUpdate={handleProfileSettingsUpdate}
       />
     </div>
   );
