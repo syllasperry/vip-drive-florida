@@ -17,6 +17,8 @@ interface BookingData {
   status?: string;
   pickup_location?: string;
   dropoff_location?: string;
+  passenger_id?: string;
+  driver_id?: string;
   [key: string]: any; // Allow other properties
 }
 
@@ -28,23 +30,47 @@ export const PassengerBookingsList = ({ onUpdate }: PassengerBookingsListProps) 
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      console.log('🔄 Fetching passenger bookings...');
+      console.log('🔄 PassengerBookingsList: Starting to fetch bookings...');
       
       const data = await getMyPassengerBookings();
       
-      console.log('✅ Bookings received:', data);
+      console.log('✅ PassengerBookingsList: Bookings received from API:', data);
+      console.log('📊 PassengerBookingsList: Data type:', typeof data, 'Array?', Array.isArray(data));
       
       // Ensure data is an array and has the right structure
       const bookingsArray = Array.isArray(data) ? data as BookingData[] : [];
       
-      console.log('📊 Processed bookings count:', bookingsArray.length);
+      console.log('📊 PassengerBookingsList: Final processed bookings count:', bookingsArray.length);
+      
+      // Log each booking for debugging
+      bookingsArray.forEach((booking, index) => {
+        console.log(`📋 Booking ${index + 1} in component:`, {
+          id: booking.id,
+          status: booking.status,
+          pickup_location: booking.pickup_location,
+          dropoff_location: booking.dropoff_location,
+          pickup_time: booking.pickup_time,
+          created_at: booking.created_at
+        });
+      });
       
       setBookings(bookingsArray);
     } catch (error) {
-      console.error('❌ Failed to fetch passenger bookings:', error);
+      console.error('❌ PassengerBookingsList: Failed to fetch bookings:', error);
+      
+      // Show specific error message
+      let errorMessage = "Failed to load your bookings. Please try again.";
+      if (error instanceof Error) {
+        if (error.message.includes('not authenticated')) {
+          errorMessage = "Please log in to view your bookings.";
+        } else {
+          errorMessage = `Error: ${error.message}`;
+        }
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to load your bookings. Please try again.",
+        description: errorMessage,
         variant: "destructive"
       });
       // Set empty array on error to prevent map() issues

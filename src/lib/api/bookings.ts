@@ -11,7 +11,9 @@ export async function getMyPassengerBookings() {
       throw new Error('User not authenticated');
     }
 
-    // Query bookings table with related data, using the correct column name
+    console.log('🔍 Fetching bookings for user:', user.id);
+
+    // Query bookings table with related data
     const { data, error } = await supabase
       .from('bookings')
       .select(`
@@ -37,19 +39,40 @@ export async function getMyPassengerBookings() {
         )
       `)
       .eq('passenger_id', user.id)
-      .order('created_at', { ascending: false }); // Use created_at instead of pickup_time for ordering
+      .order('created_at', { ascending: false });
     
     if (error) {
-      console.error('Error fetching passenger bookings:', error);
+      console.error('❌ Error fetching passenger bookings:', error);
       throw error;
     }
 
-    console.log('Passenger bookings fetched:', Array.isArray(data) ? data.length : 0, 'bookings');
-    console.log('Raw booking data:', data);
+    console.log('✅ Raw booking data from Supabase:', data);
+    console.log('📊 Bookings count:', Array.isArray(data) ? data.length : 0);
+    
+    // Log each booking for debugging
+    if (Array.isArray(data) && data.length > 0) {
+      data.forEach((booking, index) => {
+        console.log(`📋 Booking ${index + 1}:`, {
+          id: booking.id,
+          status: booking.status,
+          pickup_location: booking.pickup_location,
+          dropoff_location: booking.dropoff_location,
+          pickup_time: booking.pickup_time,
+          created_at: booking.created_at,
+          passenger_id: booking.passenger_id
+        });
+      });
+    }
     
     // Ensure we always return an array
-    if (!data) return [];
-    if (!Array.isArray(data)) return [];
+    if (!data) {
+      console.log('⚠️ No data returned from Supabase');
+      return [];
+    }
+    if (!Array.isArray(data)) {
+      console.log('⚠️ Data is not an array:', typeof data);
+      return [];
+    }
     
     // Sort by pickup_time when available, otherwise by created_at
     const sortedData = data.sort((a, b) => {
@@ -65,9 +88,10 @@ export async function getMyPassengerBookings() {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
     
+    console.log('🔄 Sorted data:', sortedData.length, 'bookings');
     return sortedData;
   } catch (error) {
-    console.error('Unexpected error in getMyPassengerBookings:', error);
+    console.error('💥 Unexpected error in getMyPassengerBookings:', error);
     throw error;
   }
 }
