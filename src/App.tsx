@@ -6,7 +6,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import SplashScreen from "./pages/SplashScreen";
 import OnboardingScreen from "./pages/OnboardingScreen";
-import HomeScreen from "./pages/HomeScreen";
 import PriceEstimate from "./pages/passenger/PriceEstimate";
 import PassengerLogin from "./pages/passenger/Login";
 import ForgotPassword from "./pages/passenger/ForgotPassword";
@@ -28,10 +27,9 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <Routes>
-            {/* Public entry flow */}
+            {/* App starts with animated logo presentation */}
             <Route path="/" element={<SplashScreen />} />
             <Route path="/onboarding" element={<OnboardingScreen />} />
-            <Route path="/home" element={<HomeScreen />} />
             
             {/* Booking flow - consolidated routes */}
             <Route path="/estimate" element={<PriceEstimate />} />
