@@ -82,7 +82,7 @@ const SplashScreen = () => {
           </h1>
         </div>
         
-        {/* Subtitle with corrected styling */}
+        {/* Subtitle adjusted to fit in one line */}
         <div 
           className="opacity-0 animate-fade-in" 
           style={{ 
@@ -91,7 +91,7 @@ const SplashScreen = () => {
             animationDuration: '1s'
           }}
         >
-          <p className="text-2xl md:text-3xl text-slate-100 font-light tracking-wide leading-relaxed px-4 mb-6">
+          <p className="text-xl md:text-2xl text-slate-100 font-light tracking-wide leading-relaxed px-4 mb-6 whitespace-nowrap">
             Chauffeur Service in South Florida
           </p>
           <div 
