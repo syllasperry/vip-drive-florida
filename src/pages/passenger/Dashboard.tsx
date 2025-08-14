@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
-import { PassengerBookingsList } from "@/components/passenger/PassengerBookingsList";
+import { PassengerBookingsList } from "@/components/dashboard/OrganizedBookingsList";
 import { ProfileHeader } from "@/components/dashboard/ProfileHeader";
-import { MessagesTab } from "@/components/passenger/MessagesTab";
-import { PaymentsTab } from "@/components/passenger/PaymentsTab";
+import { MessagesTab } from "@/components/dashboard/MessagesTab";
+import { PaymentsTab } from "@/components/dashboard/PaymentsTab";
 import { SettingsTab } from "@/components/passenger/SettingsTab";
 import { BottomNavigation } from "@/components/dashboard/BottomNavigation";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,8 +14,6 @@ export const PassengerDashboard: React.FC = () => {
   const [passenger, setPassenger] = useState<{
     full_name?: string;
     profile_photo_url?: string;
-    email?: string;
-    phone?: string;
   }>({});
   const navigate = useNavigate();
 
@@ -27,6 +24,10 @@ export const PassengerDashboard: React.FC = () => {
 
   const loadBookings = async () => {
     // Placeholder: Replace with actual data fetching logic
+    // For example:
+    // const bookingsData = await fetch('/api/bookings');
+    // const bookings = await bookingsData.json();
+    // setBookings(bookings);
     setBookings([
       {
         id: '1',
@@ -57,7 +58,7 @@ export const PassengerDashboard: React.FC = () => {
 
       const { data: passengerData, error } = await supabase
         .from('passengers')
-        .select('full_name, profile_photo_url, email, phone')
+        .select('full_name, profile_photo_url')
         .eq('auth_user_id', user.id)
         .single();
 
@@ -88,7 +89,7 @@ export const PassengerDashboard: React.FC = () => {
           </div>
         );
       case 'messages':
-        return <MessagesTab userType="passenger" userId="current-user" onSelectChat={() => {}} />;
+        return <MessagesTab />;
       case 'payments':
         return <PaymentsTab />;
       case 'settings':
