@@ -88,7 +88,7 @@ export const PassengerDashboard: React.FC = () => {
           </div>
         );
       case 'messages':
-        return <MessagesTab />;
+        return <MessagesTab userType="passenger" userId="current-user" onSelectChat={() => {}} />;
       case 'payments':
         return <PaymentsTab />;
       case 'settings':

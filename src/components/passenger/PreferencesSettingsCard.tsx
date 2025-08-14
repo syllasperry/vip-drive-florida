@@ -45,9 +45,9 @@ export const PreferencesSettingsCard = () => {
         .from('passengers')
         .select('preferred_temperature, music_preference, music_playlist_link, interaction_preference, trip_purpose, additional_notes')
         .eq('auth_user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (error) {
+      if (error && error.code !== 'PGRST116') {
         console.error('Error loading preferences:', error);
         return;
       }
