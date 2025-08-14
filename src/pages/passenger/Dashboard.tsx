@@ -8,18 +8,13 @@ import { SettingsTab } from '@/components/passenger/SettingsTab';
 import { PaymentsTab } from '@/components/passenger/PaymentsTab';
 import { FloatingActionButton } from '@/components/dashboard/FloatingActionButton';
 import { PassengerBookingsList } from '@/components/passenger/PassengerBookingsList';
-import { useRealtimeBookings } from '@/hooks/useRealtimeBookings';
 
 const PassengerDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('home');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  
-  // Use realtime bookings hook for live updates
-  const { bookings, loading, error, refetch } = useRealtimeBookings();
 
   const handleUpdate = () => {
     setRefreshTrigger(prev => prev + 1);
-    refetch();
   };
 
   const handleTabChange = (value: string) => {
@@ -69,20 +64,20 @@ const PassengerDashboard: React.FC = () => {
                   </p>
                 </div>
 
-                <PassengerBookingsList onUpdate={handleUpdate} />
+                <PassengerBookingsList key={refreshTrigger} onUpdate={handleUpdate} />
               </div>
             </TabsContent>
 
             <TabsContent value="messages" className="mt-0">
               <MessagesTab 
-                bookings={bookings || []}
+                bookings={[]}
                 currentUserId={mockCurrentUserId}
                 currentUserName={mockCurrentUserName}
               />
             </TabsContent>
 
             <TabsContent value="payments" className="mt-0">
-              <PaymentsTab bookings={bookings || []} />
+              <PaymentsTab bookings={[]} />
             </TabsContent>
 
             <TabsContent value="settings" className="mt-0">

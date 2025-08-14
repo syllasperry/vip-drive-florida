@@ -30,7 +30,7 @@ export const PassengerBookingsList = ({ onUpdate }: PassengerBookingsListProps) 
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      setError(null); // Clear previous errors
+      setError(null); // Clear any previous errors
       
       console.log('🔄 PassengerBookingsList: Starting fetch...');
       
@@ -44,6 +44,9 @@ export const PassengerBookingsList = ({ onUpdate }: PassengerBookingsListProps) 
       
       setBookings(bookingsArray);
       
+      // Clear any error state on successful fetch
+      setError(null);
+      
       // Only show success message if we actually have bookings
       if (bookingsArray.length > 0) {
         console.log(`✅ Successfully loaded ${bookingsArray.length} bookings`);
@@ -52,7 +55,7 @@ export const PassengerBookingsList = ({ onUpdate }: PassengerBookingsListProps) 
     } catch (error) {
       console.error('❌ PassengerBookingsList: Error fetching bookings:', error);
       
-      let errorMessage = "Failed to load your bookings. Please try again.";
+      let errorMessage = "Database connection error. Please try again.";
       
       if (error instanceof Error) {
         if (error.message.includes('Authentication') || error.message.includes('authenticated')) {
@@ -67,11 +70,8 @@ export const PassengerBookingsList = ({ onUpdate }: PassengerBookingsListProps) 
       setError(errorMessage);
       setBookings([]); // Ensure empty array on error
       
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive"
-      });
+      // Don't show toast notification to prevent duplicate error messages
+      console.error('Error set to state:', errorMessage);
       
     } finally {
       setLoading(false);
@@ -85,6 +85,11 @@ export const PassengerBookingsList = ({ onUpdate }: PassengerBookingsListProps) 
   const handleUpdate = () => {
     fetchBookings();
     onUpdate?.();
+  };
+
+  const handleRetry = () => {
+    console.log('🔄 Retry button clicked, refetching bookings...');
+    fetchBookings();
   };
 
   if (loading) {
@@ -111,7 +116,7 @@ export const PassengerBookingsList = ({ onUpdate }: PassengerBookingsListProps) 
                 <button
                   type="button"
                   className="bg-red-100 px-3 py-2 rounded-md text-sm font-medium text-red-800 hover:bg-red-200"
-                  onClick={fetchBookings}
+                  onClick={handleRetry}
                 >
                   Try again
                 </button>

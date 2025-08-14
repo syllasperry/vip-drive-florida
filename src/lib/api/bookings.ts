@@ -20,11 +20,39 @@ export async function getMyPassengerBookings() {
 
     console.log('✅ Authenticated user ID:', user.id);
 
-    // Query bookings table with related data
+    // Test basic Supabase connection first
+    const { data: testData, error: testError } = await supabase
+      .from('bookings')
+      .select('id')
+      .limit(1);
+    
+    if (testError) {
+      console.error('❌ Supabase connection test failed:', testError);
+      throw new Error(`Database connection failed: ${testError.message}`);
+    }
+
+    console.log('✅ Supabase connection test successful');
+
+    // Query bookings table with related data - simplified query first
     const { data, error } = await supabase
       .from('bookings')
       .select(`
-        *,
+        id,
+        pickup_location,
+        dropoff_location,
+        pickup_time,
+        passenger_count,
+        status,
+        ride_status,
+        payment_confirmation_status,
+        status_passenger,
+        status_driver,
+        estimated_price,
+        final_price,
+        created_at,
+        updated_at,
+        passenger_id,
+        driver_id,
         drivers (
           id,
           full_name,
