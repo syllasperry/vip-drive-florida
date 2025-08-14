@@ -3,11 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Clock, MapPin, Users, Calendar, Phone, Mail, Car } from "lucide-react";
+import { Clock, MapPin, Users, Calendar, Phone, Mail, Car, LogOut } from "lucide-react";
 import { BookingManagementModal } from "./BookingManagementModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { sendOffer } from "@/data/bookings";
+import { useNavigate } from "react-router-dom";
 
 interface Driver {
   id: string;
@@ -30,6 +31,16 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate('/');
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
+  };
 
   useEffect(() => {
     const loadDrivers = async () => {
@@ -56,7 +67,6 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
     try {
       console.log('🚀 Quick assigning driver to booking:', { booking_id: booking.id, driver_id: driverId });
       
-      // GUARD: Verificar payload antes de enviar
       const updatePayload = {
         driver_id: driverId,
         status: 'assigned',
@@ -68,7 +78,6 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
       
       console.log('[GUARD] payload to bookings update:', updatePayload);
       
-      // IMPORTANT: Only include driver_id when manually assigning (respecting constraint)
       const { error } = await supabase
         .from('bookings')
         .update(updatePayload)
@@ -105,7 +114,6 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
         price: price
       });
 
-      // Use the new sendOffer function
       const updatedBooking = await sendOffer(bookingId, driverId, price);
 
       console.log('[OFFER] Offer sent successfully via manager:', updatedBooking);
@@ -115,7 +123,6 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
         description: `Driver assigned and price offer of $${price} sent to passenger.`,
       });
 
-      // Trigger update and close modal
       onUpdate();
       setIsModalOpen(false);
       setSelectedBooking(null);
@@ -164,165 +171,192 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
   };
 
   return (
-    <div className="space-y-4">
-      {bookings.map((booking) => {
-        const { date, time } = formatDateTime(booking.pickup_time);
-        
-        return (
-          <Card key={booking.id} className="hover:shadow-md transition-shadow">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">
-                  Booking #{booking.id.slice(-8).toUpperCase()}
-                </CardTitle>
-                {getStatusBadge(booking)}
-              </div>
-              
-              {/* Passenger Information */}
-              {booking.passengers && (
-                <div className="flex items-center mt-2">
-                  <Avatar className="h-8 w-8 mr-2">
-                    <AvatarImage src={booking.passengers.profile_photo_url || '/default-avatar.png'} />
-                    <AvatarFallback>{booking.passengers.full_name?.[0] || 'P'}</AvatarFallback>
-                  </Avatar>
-                  <div className="text-sm font-medium text-gray-900">
-                    {booking.passengers.full_name}
-                  </div>
-                  {booking.passengers.phone && (
-                    <div className="ml-4 flex items-center text-sm text-gray-600">
-                      <Phone className="h-3 w-3 mr-1" />
-                      {booking.passengers.phone}
-                    </div>
-                  )}
-                  {booking.passengers.email && (
-                    <div className="ml-4 flex items-center text-sm text-gray-600">
-                      <Mail className="h-3 w-3 mr-1" />
-                      {booking.passengers.email}
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardHeader>
+    <div className="min-h-screen bg-background p-4">
+      {/* Header with title and logout button */}
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-foreground">VIP Dispatcher Dashboard</h1>
+        <Button
+          onClick={handleLogout}
+          variant="destructive"
+          size="sm"
+          className="flex items-center gap-2"
+        >
+          <LogOut className="h-4 w-4" />
+          Logout
+        </Button>
+      </div>
+
+      {/* Bookings content */}
+      <div className="space-y-4">
+        {bookings && bookings.length > 0 ? (
+          bookings.map((booking) => {
+            const { date, time } = formatDateTime(booking.pickup_time);
             
-            <CardContent className="space-y-4">
-              {/* Trip Details */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <div className="flex items-start space-x-2">
-                    <MapPin className="h-4 w-4 text-green-600 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium">Pickup</p>
-                      <p className="text-sm text-gray-600">{booking.pickup_location}</p>
-                    </div>
+            return (
+              <Card key={booking.id} className="hover:shadow-md transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">
+                      Booking #{booking.id.slice(-8).toUpperCase()}
+                    </CardTitle>
+                    {getStatusBadge(booking)}
                   </div>
-                  <div className="flex items-start space-x-2">
-                    <MapPin className="h-4 w-4 text-red-600 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium">Drop-off</p>
-                      <p className="text-sm text-gray-600">{booking.dropoff_location}</p>
+                  
+                  {/* Passenger Information */}
+                  {booking.passengers && (
+                    <div className="flex items-center mt-2">
+                      <Avatar className="h-8 w-8 mr-2">
+                        <AvatarImage src={booking.passengers.profile_photo_url || '/default-avatar.png'} />
+                        <AvatarFallback>{booking.passengers.full_name?.[0] || 'P'}</AvatarFallback>
+                      </Avatar>
+                      <div className="text-sm font-medium text-gray-900">
+                        {booking.passengers.full_name}
+                      </div>
+                      {booking.passengers.phone && (
+                        <div className="ml-4 flex items-center text-sm text-gray-600">
+                          <Phone className="h-3 w-3 mr-1" />
+                          {booking.passengers.phone}
+                        </div>
+                      )}
+                      {booking.passengers.email && (
+                        <div className="ml-4 flex items-center text-sm text-gray-600">
+                          <Mail className="h-3 w-3 mr-1" />
+                          {booking.passengers.email}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                </div>
+                  )}
+                </CardHeader>
                 
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="h-4 w-4 text-blue-600" />
-                    <div>
-                      <p className="text-sm font-medium">Date & Time</p>
-                      <p className="text-sm text-gray-600">{date} at {time}</p>
+                <CardContent className="space-y-4">
+                  {/* Trip Details */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div className="flex items-start space-x-2">
+                        <MapPin className="h-4 w-4 text-green-600 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium">Pickup</p>
+                          <p className="text-sm text-gray-600">{booking.pickup_location}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start space-x-2">
+                        <MapPin className="h-4 w-4 text-red-600 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium">Drop-off</p>
+                          <p className="text-sm text-gray-600">{booking.dropoff_location}</p>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Users className="h-4 w-4 text-purple-600" />
-                    <div>
-                      <p className="text-sm font-medium">Passengers</p>
-                      <p className="text-sm text-gray-600">{booking.passenger_count} passenger{booking.passenger_count !== 1 ? 's' : ''}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Vehicle Type */}
-              {booking.vehicle_type && (
-                <div className="flex items-center space-x-2">
-                  <Car className="h-4 w-4 text-gray-600" />
-                  <span className="text-sm text-gray-600">Vehicle: {booking.vehicle_type}</span>
-                </div>
-              )}
-
-              {booking.drivers && (
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  <p className="text-sm font-medium mb-2">Assigned Driver:</p>
-                  <div className="flex items-center space-x-2">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={booking.drivers.profile_photo_url} />
-                      <AvatarFallback>{booking.drivers.full_name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="text-sm font-medium">{booking.drivers.full_name}</p>
-                      <p className="text-xs text-gray-600">
-                        {booking.drivers.car_make} {booking.drivers.car_model} - {booking.drivers.license_plate}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-2 pt-2">
-                {!booking.driver_id ? (
-                  <>
-                    <Button
-                      onClick={() => openManageModal(booking)}
-                      variant="default"
-                      size="sm"
-                      className="flex-1"
-                    >
-                      Assign Driver & Set Price
-                    </Button>
                     
-                    <div className="flex gap-1">
-                      {drivers.slice(0, 2).map((driver) => (
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Calendar className="h-4 w-4 text-blue-600" />
+                        <div>
+                          <p className="text-sm font-medium">Date & Time</p>
+                          <p className="text-sm text-gray-600">{date} at {time}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Users className="h-4 w-4 text-purple-600" />
+                        <div>
+                          <p className="text-sm font-medium">Passengers</p>
+                          <p className="text-sm text-gray-600">{booking.passenger_count} passenger{booking.passenger_count !== 1 ? 's' : ''}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Vehicle Type */}
+                  {booking.vehicle_type && (
+                    <div className="flex items-center space-x-2">
+                      <Car className="h-4 w-4 text-gray-600" />
+                      <span className="text-sm text-gray-600">Vehicle: {booking.vehicle_type}</span>
+                    </div>
+                  )}
+
+                  {booking.drivers && (
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-sm font-medium mb-2">Assigned Driver:</p>
+                      <div className="flex items-center space-x-2">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={booking.drivers.profile_photo_url} />
+                          <AvatarFallback>{booking.drivers.full_name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-medium">{booking.drivers.full_name}</p>
+                          <p className="text-xs text-gray-600">
+                            {booking.drivers.car_make} {booking.drivers.car_model} - {booking.drivers.license_plate}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-2">
+                    {!booking.driver_id ? (
+                      <>
                         <Button
-                          key={driver.id}
-                          onClick={() => handleQuickAssign(booking, driver.id)}
+                          onClick={() => openManageModal(booking)}
+                          variant="default"
+                          size="sm"
+                          className="flex-1"
+                        >
+                          Assign Driver & Set Price
+                        </Button>
+                        
+                        <div className="flex gap-1">
+                          {drivers.slice(0, 2).map((driver) => (
+                            <Button
+                              key={driver.id}
+                              onClick={() => handleQuickAssign(booking, driver.id)}
+                              variant="outline"
+                              size="sm"
+                              className="text-xs px-2"
+                            >
+                              Quick: {driver.full_name.split(' ')[0]}
+                            </Button>
+                          ))}
+                        </div>
+                      </>
+                    ) : !booking.final_price ? (
+                      <Button
+                        onClick={() => openManageModal(booking)}
+                        variant="default"
+                        size="sm"
+                        className="flex-1"
+                      >
+                        Set Price & Send Offer
+                      </Button>
+                    ) : (
+                      <div className="flex gap-2 w-full">
+                        <Button
+                          onClick={() => openManageModal(booking)}
                           variant="outline"
                           size="sm"
-                          className="text-xs px-2"
+                          className="flex-1"
                         >
-                          Quick: {driver.full_name.split(' ')[0]}
+                          Edit Booking
                         </Button>
-                      ))}
-                    </div>
-                  </>
-                ) : !booking.final_price ? (
-                  <Button
-                    onClick={() => openManageModal(booking)}
-                    variant="default"
-                    size="sm"
-                    className="flex-1"
-                  >
-                    Set Price & Send Offer
-                  </Button>
-                ) : (
-                  <div className="flex gap-2 w-full">
-                    <Button
-                      onClick={() => openManageModal(booking)}
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                    >
-                      Edit Booking
-                    </Button>
-                    <Badge variant="secondary" className="px-3 py-1">
-                      {getPriceDisplay(booking)}
-                    </Badge>
+                        <Badge variant="secondary" className="px-3 py-1">
+                          {getPriceDisplay(booking)}
+                        </Badge>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })}
+                </CardContent>
+              </Card>
+            );
+          })
+        ) : (
+          <div className="flex flex-col items-center justify-center py-12">
+            <div className="text-center">
+              <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings available</h3>
+              <p className="text-gray-500">When new bookings are created, they will appear here.</p>
+            </div>
+          </div>
+        )}
+      </div>
 
       <BookingManagementModal
         isOpen={isModalOpen}

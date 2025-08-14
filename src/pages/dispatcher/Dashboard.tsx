@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,9 +24,16 @@ const DispatcherDashboard = () => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        navigate("/dispatcher/login");
+        navigate("/passenger/login");
         return;
       }
+      
+      // Verify dispatcher access
+      if (session.user.email !== 'syllasperry@gmail.com') {
+        navigate("/passenger/dashboard");
+        return;
+      }
+      
       setUser(session.user);
     };
 
@@ -38,9 +44,11 @@ const DispatcherDashboard = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
+        console.log('[DISPATCHER DASHBOARD] Fetching data...');
         
         // Fetch bookings
         const bookingsData = await getDispatcherBookings();
+        console.log('[DISPATCHER DASHBOARD] Bookings data:', bookingsData);
         setBookings(bookingsData || []);
 
         // Fetch drivers
@@ -138,6 +146,12 @@ const DispatcherDashboard = () => {
   };
 
   const renderTabContent = () => {
+    console.log('[DISPATCHER DASHBOARD] Rendering tab content:', { 
+      activeTab, 
+      loading, 
+      bookingsCount: bookings?.length || 0 
+    });
+
     if (loading) {
       return (
         <div className="flex items-center justify-center p-8">
