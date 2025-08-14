@@ -43,7 +43,10 @@ const PassengerDashboard: React.FC = () => {
         <ProfileHeader 
           userType="passenger" 
           userProfile={mockUserProfile}
-          onPhotoUpload={() => {}}
+          onPhotoUpload={async (file: File) => {
+            // Handle photo upload - placeholder for now
+            console.log('Photo upload:', file);
+          }}
         />
         
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
@@ -88,7 +91,7 @@ const PassengerDashboard: React.FC = () => {
           </div>
         </Tabs>
 
-        <FloatingActionButton />
+        <FloatingActionButton onClick={() => console.log('FAB clicked')} />
         <BottomNavigation 
           userType="passenger"
           activeTab={activeTab}
