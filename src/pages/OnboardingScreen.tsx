@@ -240,8 +240,8 @@ const OnboardingScreen = () => {
     setCurrentSlide((prev) => (prev - 1 + onboardingSlides.length) % onboardingSlides.length);
   };
 
-  const goToHome = () => {
-    navigate("/home");
+  const goToBooking = () => {
+    navigate("/estimate");
   };
 
   return (
@@ -362,10 +362,10 @@ const OnboardingScreen = () => {
         <Button 
           variant="luxury" 
           size="lg" 
-          onClick={goToHome}
-          className="w-full"
+          onClick={goToBooking}
+          className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
         >
-          Get Started
+          Book Your Ride
         </Button>
       </div>
     </div>

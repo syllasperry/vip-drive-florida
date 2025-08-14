@@ -51,7 +51,7 @@ export const BottomNavigation = ({ activeTab, onTabChange, userType, pendingActi
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
       <div className="max-w-md mx-auto">
-        <div className="grid grid-cols-4 h-18">
+        <div className={`grid h-18 ${finalTabs.length === 4 ? 'grid-cols-4' : 'grid-cols-5'}`}>
           {finalTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;

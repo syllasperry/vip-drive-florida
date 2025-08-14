@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BottomNavigation } from '@/components/dashboard/BottomNavigation';
@@ -66,7 +67,7 @@ const PassengerDashboard: React.FC = () => {
   };
 
   const handleNewBooking = () => {
-    navigate('/passenger/booking-form');
+    navigate('/passenger/price-estimate');
   };
 
   const mockCurrentUserId = 'passenger-user-id';
