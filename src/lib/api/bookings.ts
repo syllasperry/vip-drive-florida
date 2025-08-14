@@ -129,61 +129,26 @@ export async function getBookings(): Promise<BookingData[]> {
   }
 }
 
-export async function getDispatcherBookings(): Promise<DispatcherBookingData[]> {
+export async function getPassengerBookingsByAuth() {
   try {
-    console.log('Fetching dispatcher bookings from bookings table...');
-    const { data, error } = await supabase
-      .from('bookings')
-      .select(`
-        id,
-        status,
-        pickup_time,
-        created_at,
-        pickup_location,
-        dropoff_location,
-        estimated_price,
-        final_price,
-        passengers (
-          full_name,
-          phone
-        ),
-        drivers (
-          full_name,
-          phone
-        )
-      `)
-      .order('created_at', { ascending: false })
-      .limit(20);
-
+    console.log('Calling get_passenger_bookings_by_auth RPC function...');
+    const { data, error } = await supabase.rpc('get_passenger_bookings_by_auth');
+    
     if (error) {
-      console.error('Error fetching dispatcher bookings:', error);
+      console.error('Error calling get_passenger_bookings_by_auth:', error);
       throw error;
     }
-
-    console.log('Dispatcher bookings data:', data);
     
-    // Map to DispatcherBookingData format
-    const mappedData: DispatcherBookingData[] = (data || []).map(booking => ({
-      booking_id: booking.id,
-      status: booking.status,
-      pickup_time: booking.pickup_time,
-      passenger_name: booking.passengers?.full_name || 'Unknown',
-      passenger_phone: booking.passengers?.phone || '',
-      driver_name: booking.drivers?.full_name,
-      driver_phone: booking.drivers?.phone,
-      created_at: booking.created_at,
-      pickup_location: booking.pickup_location,
-      dropoff_location: booking.dropoff_location,
-      estimated_price: booking.estimated_price,
-      final_price: booking.final_price
-    }));
-
-    return mappedData;
+    console.log('Passenger bookings data:', data);
+    return data || [];
   } catch (error) {
-    console.error('Unexpected error in getDispatcherBookings:', error);
+    console.error('Unexpected error in getPassengerBookingsByAuth:', error);
     throw error;
   }
 }
+
+// For backwards compatibility
+export const fetchPassengerBookings = getPassengerBookingsByAuth;
 
 export const subscribeToBookingsAndPassengers = (callback: () => void) => {
   const channel = supabase
@@ -196,6 +161,41 @@ export const subscribeToBookingsAndPassengers = (callback: () => void) => {
     supabase.removeChannel(channel);
   };
 };
+
+export async function getDispatcherBookings(): Promise<DispatcherBookingData[]> {
+  try {
+    console.log('Fetching dispatcher bookings from dispatcher_full_bookings view...');
+    const { data, error } = await supabase
+      .from('dispatcher_full_bookings')
+      .select(`
+        booking_id,
+        status,
+        pickup_time,
+        passenger_name,
+        passenger_phone,
+        driver_name,
+        driver_phone,
+        created_at,
+        pickup_location,
+        dropoff_location,
+        estimated_price,
+        final_price
+      `)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (error) {
+      console.error('Error fetching dispatcher bookings:', error);
+      throw error;
+    }
+
+    console.log('Dispatcher bookings data:', data);
+    return data || [];
+  } catch (error) {
+    console.error('Unexpected error in getDispatcherBookings:', error);
+    throw error;
+  }
+}
 
 export const createBooking = async (bookingData: any) => {
   const { data, error } = await supabase
