@@ -1,4 +1,3 @@
-
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ProfileEditModal } from "@/components/ProfileEditModal";
@@ -7,7 +6,7 @@ import { useState } from "react";
 interface ProfileHeaderProps {
   userProfile: any;
   onPhotoUpload: (file: File) => Promise<void>;
-  userType: "passenger" | "driver" | "dispatcher";
+  userType: "passenger" | "driver";
   isOnline?: boolean;
   onProfileUpdate?: () => void;
 }
@@ -32,7 +31,7 @@ export const ProfileHeader = ({ userProfile, onPhotoUpload, userType, isOnline =
                 className="object-cover"
               />
               <AvatarFallback className="bg-primary text-primary-foreground text-xl font-semibold">
-                {userProfile?.full_name ? userProfile.full_name.charAt(0).toUpperCase() : (userType === "passenger" ? 'P' : userType === "driver" ? 'D' : 'A')}
+                {userProfile?.full_name ? userProfile.full_name.charAt(0).toUpperCase() : (userType === "passenger" ? 'P' : 'D')}
               </AvatarFallback>
             </Avatar>
             
@@ -63,10 +62,10 @@ export const ProfileHeader = ({ userProfile, onPhotoUpload, userType, isOnline =
               Welcome back!
             </h1>
             <p className="text-lg font-semibold text-primary">
-              {userProfile?.full_name || (userType === "passenger" ? "VIP Member" : userType === "driver" ? "Driver" : "Administrator")}
+              {userProfile?.full_name || (userType === "passenger" ? "VIP Member" : "Driver")}
             </p>
             <p className="text-sm text-muted-foreground">
-              {userType === "passenger" ? "Manage your rides and bookings" : userType === "driver" ? "Ready for your next ride" : "Manage operations and bookings"}
+              {userType === "passenger" ? "Manage your rides and bookings" : "Ready for your next ride"}
             </p>
           </div>
         </div>
