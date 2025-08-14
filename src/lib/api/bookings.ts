@@ -3,8 +3,33 @@ import { supabase } from "@/integrations/supabase/client";
 
 export async function getMyPassengerBookings() {
   try {
-    // Use manual RPC call since the function might not be in the generated types yet
-    const { data, error } = await supabase.rpc('get_my_passenger_bookings');
+    // Direct query to bookings table with related data
+    const { data, error } = await supabase
+      .from('bookings')
+      .select(`
+        *,
+        drivers (
+          id,
+          full_name,
+          profile_photo_url,
+          car_make,
+          car_model,
+          phone,
+          email
+        ),
+        passengers (
+          id,
+          full_name,
+          profile_photo_url,
+          preferred_temperature,
+          music_preference,
+          interaction_preference,
+          trip_purpose,
+          additional_notes
+        )
+      `)
+      .eq('passenger_id', (await supabase.auth.getUser()).data.user?.id)
+      .order('pickup_time', { ascending: true, nullsLast: true });
     
     if (error) {
       console.error('Error fetching passenger bookings:', error);
