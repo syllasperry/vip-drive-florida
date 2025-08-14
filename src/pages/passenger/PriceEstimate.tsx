@@ -1,298 +1,181 @@
 
-import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { MapPin, Calendar, Users, ArrowLeft, Calculator } from "lucide-react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useScrollToTop } from "@/hooks/useScrollToTop";
+import { MapPin, ArrowRight, Info, User, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import GoogleMapsAutocomplete from "@/components/GoogleMapsAutocomplete";
-import { MinimalDateTimePicker } from "@/components/MinimalDateTimePicker";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 
 const PriceEstimate = () => {
-  const [pickupLocation, setPickupLocation] = useState("");
-  const [dropoffLocation, setDropoffLocation] = useState("");
-  const [pickupCoordinates, setPickupCoordinates] = useState<{ lat: number; lng: number } | null>(null);
-  const [dropoffCoordinates, setDropoffCoordinates] = useState<{ lat: number; lng: number } | null>(null);
-  const [selectedDateTime, setSelectedDateTime] = useState<Date | null>(null);
-  const [passengerCount, setPassengerCount] = useState("1");
-  const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null);
-  const [loadingEstimate, setLoadingEstimate] = useState(false);
-  
+  const [pickup, setPickup] = useState("");
+  const [dropoff, setDropoff] = useState("");
+  const [estimatedPrice, setEstimatedPrice] = useState<string | null>(null);
+  const [isPickupValid, setIsPickupValid] = useState(true);
+  const [isDropoffValid, setIsDropoffValid] = useState(true);
   const navigate = useNavigate();
-  const location = useLocation();
-  const { toast } = useToast();
-
-  // Check authentication and preserve booking state
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) {
-          // Store current form state before redirecting to login
-          const currentPath = location.pathname + location.search;
-          const returnTo = encodeURIComponent(currentPath);
-          navigate(`/passenger/login?returnTo=${returnTo}`, { 
-            state: location.state 
-          });
-        }
-      } catch (error) {
-        console.error("Auth check error:", error);
-      }
-    };
-
-    checkAuth();
-  }, [navigate, location]);
-
-  // Restore draft on mount
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("estimateDraft");
-      if (raw) {
-        const draft = JSON.parse(raw);
-        if (!pickupLocation && draft?.pickup) setPickupLocation(draft.pickup);
-        if (!dropoffLocation && draft?.dropoff) setDropoffLocation(draft.dropoff);
-        localStorage.removeItem("estimateDraft");
-      }
-    } catch (error) {
-      console.error("Error restoring draft:", error);
-    }
-  }, []);
-
-  const handlePickupSelect = (value: string, placeDetails?: any) => {
-    setPickupLocation(value);
-    if (placeDetails?.geometry?.location) {
-      setPickupCoordinates({
-        lat: placeDetails.geometry.location.lat(),
-        lng: placeDetails.geometry.location.lng(),
-      });
+  
+  // Auto-scroll to top when this page loads
+  useScrollToTop();
+  
+  // Check if user is logged in
+  const isPassengerLoggedIn = localStorage.getItem("passenger_logged_in") === "true";
+  const isDriverLoggedIn = localStorage.getItem("driver_logged_in") === "true";
+  
+  const handleDashboardClick = () => {
+    if (isPassengerLoggedIn) {
+      navigate("/passenger/dashboard");
+    } else if (isDriverLoggedIn) {
+      navigate("/driver/dashboard");
+    } else {
+      navigate("/passenger/login");
     }
   };
 
-  const handleDropoffSelect = (value: string, placeDetails?: any) => {
-    setDropoffLocation(value);
-    if (placeDetails?.geometry?.location) {
-      setDropoffCoordinates({
-        lat: placeDetails.geometry.location.lat(),
-        lng: placeDetails.geometry.location.lng(),
-      });
-    }
+  const handleGoBack = () => {
+    navigate("/onboarding");
   };
 
-  const handleLoginShortcut = () => {
-    // Save current form state
-    const draft = {
-      pickup: pickupLocation,
-      dropoff: dropoffLocation,
-    };
-    try {
-      localStorage.setItem("estimateDraft", JSON.stringify(draft));
-    } catch (error) {
-      console.error("Error saving draft:", error);
-    }
-
-    const returnTo = encodeURIComponent(location.pathname + location.search);
-    navigate(`/passenger/login?returnTo=${returnTo}`);
-  };
-
-  const estimateRidePrice = async () => {
-    if (!pickupCoordinates || !dropoffCoordinates || !selectedDateTime || !passengerCount) {
-      toast({
-        title: "Error",
-        description: "Please fill in all the details to get an estimate.",
-        variant: "destructive",
-      });
+  const calculateEstimate = () => {
+    // Only require non-empty fields, allow manual input
+    if (!pickup.trim() || !dropoff.trim()) {
       return;
     }
-
-    setLoadingEstimate(true);
-    // Mocked price estimate logic
-    const basePrice = 20;
-    const distanceFactor = 1.5;
-    const passengerFactor = parseInt(passengerCount) * 0.5;
-    const timeFactor = selectedDateTime.getHours() >= 22 || selectedDateTime.getHours() < 6 ? 2 : 1; // Night time
     
-    // Calculate a "distance" between pickup and dropoff (mocked)
-    const distance = Math.abs(pickupCoordinates.lat - dropoffCoordinates.lat) + Math.abs(pickupCoordinates.lng - dropoffCoordinates.lng);
+    // Simple estimation logic - in real app this would call Google Distance Matrix API
+    const basePrice = 75;
+    const randomRange = Math.floor(Math.random() * 50) + 25;
+    const estimate = `$${basePrice + randomRange} - $${basePrice + randomRange + 50}`;
+    setEstimatedPrice(estimate);
     
-    let calculatedPrice = basePrice + (distance * distanceFactor) + passengerFactor + timeFactor;
-    
-    // Ensure the price is not negative
-    calculatedPrice = Math.max(calculatedPrice, basePrice);
-
-    // Round to 2 decimal places
-    setEstimatedPrice(parseFloat(calculatedPrice.toFixed(2)));
-    setLoadingEstimate(false);
+    console.log('💰 Price calculated for route:', { pickup, dropoff, estimate });
   };
 
-  const proceedToChooseVehicle = () => {
-    if (!pickupLocation || !dropoffLocation || !selectedDateTime || !passengerCount || !estimatedPrice) {
-      toast({
-        title: "Error",
-        description: "Please estimate the ride price first.",
-        variant: "destructive",
+  const handleContinue = () => {
+    // Check if user is already logged in (in real app, this would check actual auth state)
+    const isLoggedIn = localStorage.getItem("passenger_logged_in") === "true";
+    
+    if (isLoggedIn) {
+      // If logged in, go directly to choose vehicle
+      navigate("/cars", { 
+        state: { pickup, dropoff, estimatedPrice } 
       });
-      return;
+    } else {
+      // If not logged in, go to login first
+      navigate("/passenger/login", { 
+        state: { pickup, dropoff, estimatedPrice } 
+      });
     }
-
-    navigate("/passenger/choose-vehicle", {
-      state: {
-        pickupLocation,
-        dropoffLocation,
-        pickupCoordinates,
-        dropoffCoordinates,
-        selectedDateTime,
-        passengerCount,
-        estimatedPrice,
-      },
-    });
   };
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => navigate("/home")}
-        className="text-muted-foreground hover:text-foreground text-base mb-4"
-      >
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Go Back
-      </Button>
-
-      <Card className="max-w-md mx-auto bg-card shadow-lg rounded-lg">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-foreground">
-            Book Your Ride
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="pickup">
-              <MapPin className="inline h-4 w-4 mr-2" />
-              Pickup Location
-            </Label>
-            <GoogleMapsAutocomplete 
-              value={pickupLocation}
-              onChange={handlePickupSelect}
-              id="pickup" 
-            />
-            {pickupLocation && (
-              <p className="text-sm text-muted-foreground mt-1">
-                Selected: {pickupLocation}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="dropoff">
-              <MapPin className="inline h-4 w-4 mr-2" />
-              Dropoff Location
-            </Label>
-            <GoogleMapsAutocomplete 
-              value={dropoffLocation}
-              onChange={handleDropoffSelect}
-              id="dropoff" 
-            />
-            {dropoffLocation && (
-              <p className="text-sm text-muted-foreground mt-1">
-                Selected: {dropoffLocation}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="datetime">
-              <Calendar className="inline h-4 w-4 mr-2" />
-              Date and Time
-            </Label>
-            <MinimalDateTimePicker
-              value={selectedDateTime || new Date()}
-              onChange={(date: Date) => setSelectedDateTime(date)}
-            />
-            {selectedDateTime && (
-              <p className="text-sm text-muted-foreground mt-1">
-                Selected: {selectedDateTime.toLocaleString()}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="passengers">
-              <Users className="inline h-4 w-4 mr-2" />
-              Number of Passengers
-            </Label>
-            <Select value={passengerCount} onValueChange={(value) => setPassengerCount(value)}>
-              <SelectTrigger className="h-10">
-                <SelectValue placeholder="Select passenger count" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1">1 Passenger</SelectItem>
-                <SelectItem value="2">2 Passengers</SelectItem>
-                <SelectItem value="3">3 Passengers</SelectItem>
-                <SelectItem value="4">4 Passengers</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4">
+      <div className="max-w-md mx-auto pt-8">
+        {/* Go Back and Dashboard buttons */}
+        <div className="flex justify-between items-center mb-4">
           <Button
-            variant="secondary"
-            className="w-full h-11 flex items-center justify-center"
-            onClick={estimateRidePrice}
-            disabled={loadingEstimate}
+            variant="ghost"
+            size="sm"
+            onClick={handleGoBack}
+            className="text-muted-foreground hover:text-foreground text-base"
           >
-            {loadingEstimate ? (
-              <div className="flex items-center">
-                <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Estimating Price...
-              </div>
-            ) : (
-              <>
-                <Calculator className="h-4 w-4 mr-2" />
-                Estimate Ride Price
-              </>
-            )}
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Go Back
           </Button>
-
-          {/* Login shortcut */}
-          <p className="text-center mt-3">
-            <button
-              type="button"
-              onClick={handleLoginShortcut}
-              className="bg-transparent border-none text-muted-foreground text-sm underline cursor-pointer hover:text-foreground transition-colors"
-              aria-label="Log in"
+          
+          {(isPassengerLoggedIn || isDriverLoggedIn) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDashboardClick}
+              className="text-muted-foreground hover:text-foreground"
             >
-              Already have an account? Log in
-            </button>
-          </p>
+              <User className="h-4 w-4 mr-2" />
+              Dashboard
+            </Button>
+          )}
+        </div>
+        
+        <div className="text-center mb-8 space-y-2">
+          <h1 className="text-3xl font-bold text-foreground">Get Price Estimate</h1>
+          <p className="text-muted-foreground">Plan your premium journey</p>
+        </div>
 
-          {estimatedPrice !== null && (
-            <div className="text-center mt-4">
-              <h3 className="text-lg font-semibold text-foreground">
-                Estimated Price:
-              </h3>
-              <p className="text-2xl font-bold text-primary">
-                ${estimatedPrice}
-              </p>
+        <div className="bg-card p-6 rounded-xl shadow-lg space-y-6">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="pickup" className="text-base font-medium">
+                <MapPin className="inline h-4 w-4 mr-2" />
+                Pickup Location
+              </Label>
+              <GoogleMapsAutocomplete
+                id="pickup-location"
+                placeholder="Enter pickup location (e.g., MIA, Fort Lauderdale Airport)"
+                value={pickup}
+                onChange={(value) => setPickup(value)}
+                onValidationChange={setIsPickupValid}
+                className="h-12"
+                required={false}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="dropoff" className="text-base font-medium">
+                <MapPin className="inline h-4 w-4 mr-2" />
+                Drop-off Location
+              </Label>
+              <GoogleMapsAutocomplete
+                id="dropoff-location"
+                placeholder="Enter destination (e.g., Miami, 2911 NE 10th Ter)"
+                value={dropoff}
+                onChange={(value) => setDropoff(value)}
+                onValidationChange={setIsDropoffValid}
+                className="h-12"
+                required={false}
+              />
+            </div>
+
+            <Button 
+              onClick={calculateEstimate}
+              disabled={!pickup.trim() || !dropoff.trim()}
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+              size="lg"
+            >
+              Calculate Estimate
+            </Button>
+          </div>
+
+          {estimatedPrice && (
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-3 animate-slide-up">
+              <div className="text-center">
+                <h3 className="text-xl font-bold text-foreground">Estimated Price</h3>
+                <p className="text-3xl font-bold text-primary mt-2">{estimatedPrice}</p>
+              </div>
+              
+              <div className="flex items-start space-x-2 text-sm text-muted-foreground">
+                <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <p>This is an estimate. Final price will be confirmed by your driver based on actual distance, time, and service requirements.</p>
+              </div>
+
+              <Button 
+                onClick={handleContinue}
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+                size="lg"
+              >
+                Continue to Book Your Ride
+                <ArrowRight className="h-5 w-5 ml-2" />
+              </Button>
             </div>
           )}
+        </div>
 
-          <Button
-            variant="luxury"
-            className="w-full h-12"
-            onClick={proceedToChooseVehicle}
-            disabled={estimatedPrice === null}
-          >
-            Choose Vehicle
-          </Button>
-        </CardContent>
-      </Card>
+        <div className="text-center mt-6">
+          <p className="text-sm text-muted-foreground">
+            Minimum booking: 6 hours in advance
+          </p>
+        </div>
+      </div>
     </div>
   );
 };

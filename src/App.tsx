@@ -4,10 +4,6 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { routeAfterAuth } from "@/lib/authRouting";
 import SplashScreen from "./pages/SplashScreen";
 import OnboardingScreen from "./pages/OnboardingScreen";
 import HomeScreen from "./pages/HomeScreen";
@@ -24,28 +20,6 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const AuthChecker = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  useEffect(() => {
-    const checkInitialAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user && location.pathname === "/") {
-          await routeAfterAuth(navigate, location);
-        }
-      } catch (error) {
-        console.error("Initial auth check error:", error);
-      }
-    };
-
-    checkInitialAuth();
-  }, [navigate, location]);
-
-  return null;
-};
-
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
@@ -53,7 +27,6 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <AuthChecker />
           <Routes>
             {/* Public entry flow */}
             <Route path="/" element={<SplashScreen />} />

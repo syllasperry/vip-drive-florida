@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Star } from "lucide-react";
@@ -239,10 +240,6 @@ const OnboardingScreen = () => {
     navigate("/estimate");
   };
 
-  const goToLogin = () => {
-    navigate("/passenger/login");
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
       {/* Onboarding Slides */}
@@ -365,17 +362,6 @@ const OnboardingScreen = () => {
         >
           Get Started
         </Button>
-        
-        {/* Login shortcut */}
-        <div className="text-center mt-3">
-          <button
-            type="button"
-            onClick={goToLogin}
-            className="text-sm text-muted-foreground hover:text-foreground underline bg-transparent border-none cursor-pointer"
-          >
-            Already have an account? Log in
-          </button>
-        </div>
       </div>
     </div>
   );
