@@ -20,8 +20,8 @@ export const normalizeBookingStatus = (booking: any) => {
   return 'booking_requested';
 };
 
-// Type for the RPC response
-interface PassengerBookingRPC {
+// Type for the passenger bookings response
+interface PassengerBookingResponse {
   booking_id: string;
   status: string;
   pickup_location: string;
@@ -47,41 +47,69 @@ interface PassengerBookingRPC {
   ride_status: string;
 }
 
-export const fetchPassengerBookings = async (): Promise<PassengerBookingRPC[]> => {
+export const fetchPassengerBookings = async (): Promise<PassengerBookingResponse[]> => {
   try {
-    const { data, error } = await supabase.rpc("get_passenger_bookings_by_auth");
+    // Use direct query instead of RPC since it's not in the types
+    const { data, error } = await supabase
+      .from('bookings')
+      .select(`
+        id,
+        status,
+        pickup_location,
+        dropoff_location,
+        pickup_time,
+        created_at,
+        passenger_id,
+        driver_id,
+        estimated_price,
+        final_price,
+        payment_confirmation_status,
+        ride_status,
+        passengers:passenger_id(
+          full_name,
+          phone,
+          email,
+          profile_photo_url
+        ),
+        drivers:driver_id(
+          full_name,
+          phone,
+          profile_photo_url,
+          car_make,
+          car_model,
+          car_color,
+          license_plate
+        )
+      `)
+      .eq('passenger_id', (await supabase.auth.getUser()).data.user?.id)
+      .order('pickup_time', { ascending: false });
     
     if (error) {
       console.error("Error fetching passenger bookings:", error);
       throw error;
     }
 
-    // Type guard to ensure data is an array
-    if (!Array.isArray(data)) {
-      console.warn("RPC returned non-array data:", data);
-      return [];
-    }
-
-    return data.map((booking: any) => ({
-      booking_id: booking.booking_id || '',
+    // Transform the data to match the expected format
+    return (data || []).map((booking: any) => ({
+      booking_id: booking.id || '',
       status: booking.status || 'pending',
       pickup_location: booking.pickup_location || '',
       dropoff_location: booking.dropoff_location || '',
       pickup_time: booking.pickup_time || '',
       created_at: booking.created_at || '',
       passenger_id: booking.passenger_id || '',
-      passenger_name: booking.passenger_name || '',
-      passenger_phone: booking.passenger_phone || '',
-      passenger_email: booking.passenger_email || '',
-      passenger_photo_url: booking.passenger_photo_url,
+      passenger_name: booking.passengers?.full_name || '',
+      passenger_phone: booking.passengers?.phone || '',
+      passenger_email: booking.passengers?.email || '',
+      passenger_photo_url: booking.passengers?.profile_photo_url,
       driver_id: booking.driver_id,
-      driver_name: booking.driver_name,
-      driver_phone: booking.driver_phone,
-      driver_photo_url: booking.driver_photo_url,
-      driver_car_make: booking.driver_car_make,
-      driver_car_model: booking.driver_car_model,
-      driver_car_color: booking.driver_car_color,
-      driver_license_plate: booking.driver_license_plate,
+      driver_name: booking.drivers?.full_name,
+      driver_phone: booking.drivers?.phone,
+      driver_photo_url: booking.drivers?.profile_photo_url,
+      driver_car_make: booking.drivers?.car_make,
+      driver_car_model: booking.drivers?.car_model,
+      driver_car_color: booking.drivers?.car_color,
+      driver_license_plate: booking.drivers?.license_plate,
       estimated_price: booking.estimated_price,
       final_price: booking.final_price,
       payment_confirmation_status: booking.payment_confirmation_status || 'waiting_for_offer',
@@ -339,7 +367,7 @@ export const sendOffer = async (bookingId: string, driverId: string, finalPrice:
   try {
     console.log('[SEND_OFFER] Starting offer process', { bookingId, driverId, finalPrice });
 
-    // Use manual RPC call since the function isn't in types yet
+    // Use the RPC function that exists in the types
     const { data, error } = await supabase.rpc('assign_driver_and_send_offer', {
       p_booking_id: bookingId,
       p_driver_id: driverId,
