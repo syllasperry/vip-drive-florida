@@ -1,15 +1,19 @@
 
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, MapPin, User, Phone, Car } from "lucide-react";
-import { getDispatcherBookings, type DispatcherBookingData } from "@/lib/api/bookings";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { getDispatcherBookings, DispatcherBookingData } from "@/lib/api/bookings";
+import { useNavigate } from "react-router-dom";
+import { LogOut } from "lucide-react";
 
 export const DispatcherBookingManager = () => {
   const [bookings, setBookings] = useState<DispatcherBookingData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const loadBookings = async () => {
     try {
@@ -17,9 +21,9 @@ export const DispatcherBookingManager = () => {
       setError(null);
       const data = await getDispatcherBookings();
       setBookings(data);
-    } catch (error) {
-      console.error('Error loading dispatcher bookings:', error);
-      setError('Failed to load bookings');
+    } catch (err: any) {
+      console.error('Error loading dispatcher bookings:', err);
+      setError(err.message || 'Failed to load bookings');
     } finally {
       setLoading(false);
     }
@@ -29,168 +33,148 @@ export const DispatcherBookingManager = () => {
     loadBookings();
   }, []);
 
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'pending':
-        return 'secondary';
-      case 'confirmed':
-      case 'all_set':
-        return 'default';
-      case 'completed':
-        return 'default';
-      case 'cancelled':
-        return 'destructive';
-      default:
-        return 'secondary';
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
     }
   };
 
-  const formatDateTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString();
   };
 
-  const formatPrice = (price?: number) => {
-    if (!price) return 'TBD';
-    return `$${price.toFixed(2)}`;
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return 'default';
+      case 'in_progress':
+      case 'all_set':
+        return 'secondary';
+      case 'pending':
+        return 'outline';
+      case 'cancelled':
+        return 'destructive';
+      default:
+        return 'outline';
+    }
   };
 
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Bookings</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="animate-pulse">
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-2/3"></div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">VIP Dispatcher Dashboard</h1>
+          <Button variant="outline" onClick={handleLogout}>
+            <LogOut className="w-4 h-4 mr-2" />
+            Logout
+          </Button>
+        </div>
+        <div className="text-center py-8">Loading bookings...</div>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Bookings</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-6">
-            <p className="text-red-600 mb-4">{error}</p>
-            <Button onClick={loadBookings} variant="outline">
-              Try Again
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">VIP Dispatcher Dashboard</h1>
+          <Button variant="outline" onClick={handleLogout}>
+            <LogOut className="w-4 h-4 mr-2" />
+            Logout
+          </Button>
+        </div>
+        <div className="text-center py-8 text-red-600">
+          Error: {error}
+          <Button onClick={loadBookings} className="ml-4">
+            Retry
+          </Button>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Recent Bookings</CardTitle>
-        <Button onClick={loadBookings} variant="outline" size="sm">
-          Refresh
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">VIP Dispatcher Dashboard</h1>
+        <Button variant="outline" onClick={handleLogout}>
+          <LogOut className="w-4 h-4 mr-2" />
+          Logout
         </Button>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {bookings.length === 0 ? (
-            <div className="text-center py-6">
-              <Car className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <p className="text-gray-500">No bookings available</p>
+      </div>
+
+      {/* Content */}
+      {bookings.length === 0 ? (
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center text-gray-500">
+              No bookings available
             </div>
-          ) : (
-            bookings.map((booking) => (
-              <div key={booking.booking_id} className="border rounded-lg p-4 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <Badge variant={getStatusBadgeVariant(booking.status)}>
-                      {booking.status?.replace('_', ' ').toUpperCase()}
-                    </Badge>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-semibold text-green-600">
-                      {formatPrice(booking.final_price || booking.estimated_price)}
-                    </div>
-                  </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold">Recent Bookings ({bookings.length})</h2>
+          {bookings.map((booking) => (
+            <Card key={booking.booking_id}>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">
+                    Booking #{booking.booking_id.slice(0, 8)}
+                  </CardTitle>
+                  <Badge variant={getStatusBadgeVariant(booking.status)}>
+                    {booking.status}
+                  </Badge>
                 </div>
-
-                {/* Route */}
-                <div className="space-y-2">
-                  <div className="flex items-start gap-2">
-                    <MapPin className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                    <div className="text-sm">
-                      <div className="font-medium text-gray-900">{booking.pickup_location}</div>
-                    </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="font-medium text-sm text-gray-700">Passenger</h4>
+                    <p className="text-sm">{booking.passenger_name}</p>
+                    <p className="text-sm text-gray-600">{booking.passenger_phone}</p>
                   </div>
-                  <div className="flex items-start gap-2">
-                    <MapPin className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
-                    <div className="text-sm">
-                      <div className="font-medium text-gray-900">{booking.dropoff_location}</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Passenger Info */}
-                <div className="bg-blue-50 rounded-lg p-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <User className="h-4 w-4 text-blue-600" />
-                    <span className="font-medium text-blue-900">Passenger</span>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="font-medium">{booking.passenger_name}</div>
-                    <div className="flex items-center gap-1 text-sm text-gray-600">
-                      <Phone className="h-3 w-3" />
-                      {booking.passenger_phone}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Driver Info */}
-                <div className="bg-green-50 rounded-lg p-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Car className="h-4 w-4 text-green-600" />
-                    <span className="font-medium text-green-900">Driver</span>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="font-medium">
-                      {booking.driver_name || "No driver assigned"}
-                    </div>
-                    {booking.driver_phone && (
-                      <div className="flex items-center gap-1 text-sm text-gray-600">
-                        <Phone className="h-3 w-3" />
-                        {booking.driver_phone}
-                      </div>
+                  <div>
+                    <h4 className="font-medium text-sm text-gray-700">Driver</h4>
+                    {booking.driver_name ? (
+                      <>
+                        <p className="text-sm">{booking.driver_name}</p>
+                        <p className="text-sm text-gray-600">{booking.driver_phone}</p>
+                      </>
+                    ) : (
+                      <p className="text-sm text-gray-500">No driver assigned</p>
                     )}
                   </div>
                 </div>
-
-                {/* Booking Details */}
-                <div className="flex items-center gap-4 text-sm text-gray-600">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    {formatDateTime(booking.pickup_time)}
+                <Separator />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="font-medium text-sm text-gray-700">Pickup Time</h4>
+                    <p className="text-sm">{formatDate(booking.pickup_time)}</p>
                   </div>
+                  {booking.final_price && (
+                    <div>
+                      <h4 className="font-medium text-sm text-gray-700">Price</h4>
+                      <p className="text-sm">${booking.final_price}</p>
+                    </div>
+                  )}
                 </div>
-
-                <div className="text-xs text-gray-500">
-                  Booked on {formatDateTime(booking.created_at)}
+                <div>
+                  <h4 className="font-medium text-sm text-gray-700">Route</h4>
+                  <p className="text-sm">{booking.pickup_location} → {booking.dropoff_location}</p>
                 </div>
-              </div>
-            ))
-          )}
+              </CardContent>
+            </Card>
+          ))}
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
 };

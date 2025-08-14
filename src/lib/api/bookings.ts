@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface BookingData {
@@ -68,16 +67,18 @@ export async function getBookings(): Promise<BookingData[]> {
         passenger_id,
         driver_id,
         passengers (
-          full_name,
+          first_name,
+          last_name,
           phone,
           email,
-          profile_photo_url
+          avatar_url
         ),
         drivers (
-          full_name,
+          first_name,
+          last_name,
           phone,
           email,
-          profile_photo_url,
+          avatar_url,
           car_make,
           car_model,
           license_plate
@@ -92,7 +93,7 @@ export async function getBookings(): Promise<BookingData[]> {
     }
 
     // Enhanced type safety: Map the data to the BookingData type
-    const typedBookings: BookingData[] = (bookings || []).map(booking => ({
+    const typedBookings: BookingData[] = bookings.map(booking => ({
       id: booking.id,
       pickup_location: booking.pickup_location,
       dropoff_location: booking.dropoff_location,
@@ -109,14 +110,14 @@ export async function getBookings(): Promise<BookingData[]> {
       updated_at: booking.updated_at,
       passenger_id: booking.passenger_id,
       driver_id: booking.driver_id,
-      passenger_name: booking.passengers?.full_name,
+      passenger_name: booking.passengers?.first_name,
       passenger_email: booking.passengers?.email,
       passenger_phone: booking.passengers?.phone,
-      passenger_photo_url: booking.passengers?.profile_photo_url,
-      driver_name: booking.drivers?.full_name,
+      passenger_photo_url: booking.passengers?.avatar_url,
+      driver_name: booking.drivers?.first_name,
       driver_phone: booking.drivers?.phone,
       driver_email: booking.drivers?.email,
-      driver_photo_url: booking.drivers?.profile_photo_url,
+      driver_photo_url: booking.drivers?.avatar_url,
       driver_car_make: booking.drivers?.car_make,
       driver_car_model: booking.drivers?.car_model,
       driver_license_plate: booking.drivers?.license_plate,
@@ -150,60 +151,24 @@ export async function getPassengerBookingsByAuth() {
 export async function getDispatcherBookings(): Promise<DispatcherBookingData[]> {
   try {
     console.log('Fetching dispatcher bookings from dispatcher_full_bookings view...');
-    
-    // Use raw SQL query since the view might not be in the generated types
     const { data, error } = await supabase
-      .rpc('get_complete_schema')
-      .then(() => {
-        // Fallback to direct query if RPC doesn't work
-        return supabase
-          .from('bookings')
-          .select(`
-            id,
-            status,
-            pickup_time,
-            pickup_location,
-            dropoff_location,
-            estimated_price,
-            final_price,
-            created_at,
-            passengers!inner(
-              full_name,
-              phone
-            ),
-            drivers(
-              full_name,
-              phone
-            )
-          `)
-          .order('created_at', { ascending: false })
-          .limit(20);
-      })
-      .catch(() => {
-        // Direct query as fallback
-        return supabase
-          .from('bookings')
-          .select(`
-            id,
-            status,
-            pickup_time,
-            pickup_location,
-            dropoff_location,
-            estimated_price,
-            final_price,
-            created_at,
-            passengers!inner(
-              full_name,
-              phone
-            ),
-            drivers(
-              full_name,
-              phone
-            )
-          `)
-          .order('created_at', { ascending: false })
-          .limit(20);
-      });
+      .from('dispatcher_full_bookings')
+      .select(`
+        booking_id,
+        status,
+        pickup_time,
+        passenger_name,
+        passenger_phone,
+        driver_name,
+        driver_phone,
+        created_at,
+        pickup_location,
+        dropoff_location,
+        estimated_price,
+        final_price
+      `)
+      .order('created_at', { ascending: false })
+      .limit(20);
 
     if (error) {
       console.error('Error fetching dispatcher bookings:', error);
@@ -211,24 +176,7 @@ export async function getDispatcherBookings(): Promise<DispatcherBookingData[]> 
     }
 
     console.log('Dispatcher bookings data:', data);
-    
-    // Map to expected format
-    const mappedData: DispatcherBookingData[] = (data || []).map(booking => ({
-      booking_id: booking.id,
-      status: booking.status,
-      pickup_time: booking.pickup_time,
-      passenger_name: booking.passengers?.full_name || 'Unknown',
-      passenger_phone: booking.passengers?.phone || 'N/A',
-      driver_name: booking.drivers?.full_name || null,
-      driver_phone: booking.drivers?.phone || null,
-      created_at: booking.created_at,
-      pickup_location: booking.pickup_location,
-      dropoff_location: booking.dropoff_location,
-      estimated_price: booking.estimated_price,
-      final_price: booking.final_price,
-    }));
-    
-    return mappedData;
+    return data || [];
   } catch (error) {
     console.error('Unexpected error in getDispatcherBookings:', error);
     throw error;
@@ -271,17 +219,4 @@ export const getBookingById = async (bookingId: string) => {
 
   if (error) throw error;
   return data;
-};
-
-// Helper function to subscribe to real-time changes
-export const subscribeToBookingsAndPassengers = (callback: () => void) => {
-  return supabase
-    .channel('dashboard-updates')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
-      callback();
-    })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'passengers' }, () => {
-      callback();
-    })
-    .subscribe();
 };
