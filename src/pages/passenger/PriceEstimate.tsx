@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { MapPin, Calendar, Users, ArrowLeft, Calculator } from "lucide-react";
@@ -6,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { GoogleMapsAutocomplete } from "@/components/GoogleMapsAutocomplete";
+import GoogleMapsAutocomplete from "@/components/GoogleMapsAutocomplete";
 import { MinimalDateTimePicker } from "@/components/MinimalDateTimePicker";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -45,6 +46,25 @@ const PriceEstimate = () => {
 
     checkAuth();
   }, [navigate, location]);
+
+  // Restore form state from localStorage on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("estimateDraft");
+      if (raw) {
+        const draft = JSON.parse(raw);
+        if (!pickupLocation && draft?.pickup) {
+          setPickupLocation(draft.pickup);
+        }
+        if (!dropoffLocation && draft?.dropoff) {
+          setDropoffLocation(draft.dropoff);
+        }
+        localStorage.removeItem("estimateDraft");
+      }
+    } catch (error) {
+      console.error("Error restoring draft:", error);
+    }
+  }, []);
 
   const handlePickupSelect = (place: any) => {
     setPickupLocation(place.formatted_address);
@@ -115,17 +135,48 @@ const PriceEstimate = () => {
     });
   };
 
+  const handleLoginShortcut = () => {
+    try {
+      const draft = {
+        pickup: pickupLocation,
+        dropoff: dropoffLocation,
+      };
+      localStorage.setItem("estimateDraft", JSON.stringify(draft));
+    } catch (error) {
+      console.error("Error saving draft:", error);
+    }
+    const returnTo = encodeURIComponent(location.pathname + location.search);
+    navigate(`/passenger/login?returnTo=${returnTo}`);
+  };
+
   return (
     <div className="min-h-screen bg-background p-4">
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => navigate("/home")}
-        className="text-muted-foreground hover:text-foreground text-base mb-4"
-      >
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Go Back
-      </Button>
+      <div className="relative">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate("/home")}
+          className="text-muted-foreground hover:text-foreground text-base mb-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Go Back
+        </Button>
+        
+        <button
+          type="button"
+          onClick={handleLoginShortcut}
+          aria-label="Log in"
+          className="absolute top-0 right-0 bg-transparent border-none text-muted-foreground hover:text-foreground text-sm underline p-2"
+          style={{
+            fontSize: '14px',
+            lineHeight: 1,
+            minWidth: '32px',
+            minHeight: '32px'
+          }}
+        >
+          Log in
+        </button>
+      </div>
 
       <Card className="max-w-md mx-auto bg-card shadow-lg rounded-lg">
         <CardHeader>
@@ -139,7 +190,7 @@ const PriceEstimate = () => {
               <MapPin className="inline h-4 w-4 mr-2" />
               Pickup Location
             </Label>
-            <GoogleMapsAutocomplete onSelect={handlePickupSelect} id="pickup" />
+            <GoogleMapsAutocomplete onSelect={handlePickupSelect} />
             {pickupLocation && (
               <p className="text-sm text-muted-foreground mt-1">
                 Selected: {pickupLocation}
@@ -152,7 +203,7 @@ const PriceEstimate = () => {
               <MapPin className="inline h-4 w-4 mr-2" />
               Dropoff Location
             </Label>
-            <GoogleMapsAutocomplete onSelect={handleDropoffSelect} id="dropoff" />
+            <GoogleMapsAutocomplete onSelect={handleDropoffSelect} />
             {dropoffLocation && (
               <p className="text-sm text-muted-foreground mt-1">
                 Selected: {dropoffLocation}
@@ -166,7 +217,6 @@ const PriceEstimate = () => {
               Date and Time
             </Label>
             <MinimalDateTimePicker
-              id="datetime"
               onChange={(date: Date | null) => setSelectedDateTime(date)}
             />
             {selectedDateTime && (
