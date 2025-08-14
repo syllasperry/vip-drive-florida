@@ -1,138 +1,152 @@
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BottomNavigation } from '@/components/dashboard/BottomNavigation';
-import { ProfileHeader } from '@/components/dashboard/ProfileHeader';
-import { MessagesTab } from '@/components/passenger/MessagesTab';
-import { SettingsTab } from '@/components/passenger/SettingsTab';
-import { PaymentsTab } from '@/components/passenger/PaymentsTab';
-import { PassengerBookingsList } from '@/components/passenger/PassengerBookingsList';
-import { fetchPassengerBookings, subscribeToBookingsAndPassengers } from '@/lib/api/bookings';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
+import { Button } from "@/components/ui/button";
+import { Bell, MessageSquare, CreditCard, Settings, Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { PassengerBookingsList } from "@/components/passenger/PassengerBookingsList";
+import { MessagesTab } from "@/components/passenger/MessagesTab";
+import { PaymentsTab } from "@/components/passenger/PaymentsTab";
+import { SettingsTab } from "@/components/passenger/SettingsTab";
+import { getPassengerBookingsByAuth, subscribeToBookingsAndPassengers } from "@/lib/api/bookings";
+import { supabase } from "@/integrations/supabase/client";
 
-const PassengerDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('bookings');
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [passengerInfo, setPassengerInfo] = useState({
-    full_name: 'Passenger User',
-    profile_photo_url: null,
-    phone: null,
-    email: null
-  });
+const PassengerDashboard = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const [passengerInfo, setPassengerInfo] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Load passenger info from bookings using RPC
-  useEffect(() => {
-    const loadPassengerInfo = async () => {
-      try {
-        console.log('🔄 Loading passenger info using RPC...');
-        const bookings = await fetchPassengerBookings();
-        if (bookings.length > 0 && bookings[0].passenger_name) {
-          setPassengerInfo(prev => ({
-            ...prev,
-            full_name: bookings[0].passenger_name || 'Passenger User',
-            profile_photo_url: bookings[0].passenger_photo_url,
-            phone: bookings[0].passenger_phone,
-            email: bookings[0].passenger_email
-          }));
-          console.log('✅ Passenger info loaded successfully');
+  const fetchPassengerInfo = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: passenger, error } = await supabase
+          .from('passengers')
+          .select('*')
+          .eq('auth_user_id', user.id)
+          .single();
+
+        if (!error && passenger) {
+          setPassengerInfo(passenger);
         }
-      } catch (error) {
-        console.error('❌ Failed to load passenger info:', error);
-        toast({
-          title: "Warning",
-          description: "Could not load passenger information. Please check your connection.",
-          variant: "destructive",
-        });
       }
-    };
+    } catch (error) {
+      console.error('Error fetching passenger info:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    loadPassengerInfo();
-  }, [refreshTrigger, toast]);
-
-  // Set up realtime subscription
   useEffect(() => {
-    const unsubscribe = subscribeToBookingsAndPassengers(() => {
-      console.log('🔄 Real-time update in Dashboard - refreshing passenger info...');
-      setRefreshTrigger(prev => prev + 1);
+    fetchPassengerInfo();
+
+    // Set up real-time subscription
+    const subscription = subscribeToBookingsAndPassengers(() => {
+      console.log('Real-time update detected, refetching passenger info...');
+      fetchPassengerInfo();
     });
 
     return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
+      subscription.unsubscribe();
     };
   }, []);
 
-  const handleUpdate = () => {
-    setRefreshTrigger(prev => prev + 1);
-  };
-
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
-  };
-
   const handleNewBooking = () => {
-    navigate('/passenger/price-estimate');
+    navigate('/passenger/booking');
   };
 
-  const mockCurrentUserId = 'passenger-user-id';
-  const mockCurrentUserName = passengerInfo.full_name || 'Passenger User';
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-4">
+        <div className="max-w-md mx-auto">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-32 bg-gray-200 rounded"></div>
+            <div className="h-48 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-md mx-auto bg-white min-h-screen shadow-lg">
-        <ProfileHeader 
-          userType="passenger" 
-          userProfile={passengerInfo}
-          onPhotoUpload={async (file: File) => {
-            console.log('Photo upload:', file);
-            setRefreshTrigger(prev => prev + 1);
-          }}
-        />
-        
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <div className="px-4 pb-20">
-            <TabsContent value="bookings" className="mt-0">
-              <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-gray-900">My Bookings</h1>
-                <Button
-                  onClick={handleNewBooking}
-                  className="bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-2 rounded-lg"
-                >
-                  New Booking
-                </Button>
-              </div>
-
-              <PassengerBookingsList key={refreshTrigger} onUpdate={handleUpdate} />
-            </TabsContent>
-
-            <TabsContent value="messages" className="mt-0">
-              <MessagesTab 
-                bookings={[]}
-                currentUserId={mockCurrentUserId}
-                currentUserName={mockCurrentUserName}
-              />
-            </TabsContent>
-
-            <TabsContent value="payments" className="mt-0">
-              <PaymentsTab bookings={[]} />
-            </TabsContent>
-
-            <TabsContent value="settings" className="mt-0">
-              <SettingsTab passengerInfo={passengerInfo} />
-            </TabsContent>
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-md mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-semibold text-gray-900">
+                Welcome back{passengerInfo?.first_name ? `, ${passengerInfo.first_name}` : ''}
+              </h1>
+              <p className="text-sm text-gray-500">Ready for your next ride?</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline">
+                <Bell className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
-        </Tabs>
+        </div>
+      </div>
 
-        <BottomNavigation 
-          userType="passenger"
-          activeTab={activeTab}
-          onTabChange={handleTabChange}
-        />
+      {/* Main Content */}
+      <div className="max-w-md mx-auto px-4 py-6">
+        {/* Quick Book Button */}
+        <Card className="mb-6">
+          <CardContent className="p-4">
+            <Button 
+              onClick={handleNewBooking}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              size="lg"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Book a New Ride
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Dashboard Tabs */}
+        <Tabs defaultValue="bookings" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="bookings" className="flex flex-col items-center gap-1 py-2">
+              <div className="w-5 h-5">📅</div>
+              <span className="text-xs">Bookings</span>
+            </TabsTrigger>
+            <TabsTrigger value="messages" className="flex flex-col items-center gap-1 py-2">
+              <MessageSquare className="w-4 h-4" />
+              <span className="text-xs">Messages</span>
+            </TabsTrigger>
+            <TabsTrigger value="payments" className="flex flex-col items-center gap-1 py-2">
+              <CreditCard className="w-4 h-4" />
+              <span className="text-xs">Payments</span>
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex flex-col items-center gap-1 py-2">
+              <Settings className="w-4 h-4" />
+              <span className="text-xs">Settings</span>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="bookings" className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Your Bookings</h2>
+              <PassengerBookingsList />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="messages" className="space-y-4">
+            <MessagesTab />
+          </TabsContent>
+
+          <TabsContent value="payments" className="space-y-4">
+            <PaymentsTab />
+          </TabsContent>
+
+          <TabsContent value="settings" className="space-y-4">
+            <SettingsTab passengerInfo={passengerInfo} />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
