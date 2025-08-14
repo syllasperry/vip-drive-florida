@@ -11,7 +11,7 @@ const SplashScreen = () => {
     const timer = setTimeout(() => {
       setIsVisible(false);
       setTimeout(() => navigate("/onboarding"), 500);
-    }, 7000); // Extended to 7 seconds for better experience
+    }, 7000); // 7 segundos conforme solicitado
 
     return () => clearTimeout(timer);
   }, [navigate]);
@@ -32,35 +32,35 @@ const SplashScreen = () => {
             className="w-8 h-8 text-yellow-400 fill-yellow-400 animate-bounce" 
             style={{ 
               animationDelay: '0ms',
-              animationDuration: '1.5s'
+              animationDuration: '2s'
             }} 
           />
           <Star 
             className="w-10 h-10 text-yellow-400 fill-yellow-400 animate-bounce" 
             style={{ 
-              animationDelay: '200ms',
-              animationDuration: '1.5s'
+              animationDelay: '300ms',
+              animationDuration: '2s'
             }} 
           />
           <Star 
             className="w-12 h-12 text-yellow-400 fill-yellow-400 animate-bounce" 
             style={{ 
-              animationDelay: '400ms',
-              animationDuration: '1.5s'
+              animationDelay: '600ms',
+              animationDuration: '2s'
             }} 
           />
           <Star 
             className="w-10 h-10 text-yellow-400 fill-yellow-400 animate-bounce" 
             style={{ 
-              animationDelay: '600ms',
-              animationDuration: '1.5s'
+              animationDelay: '900ms',
+              animationDuration: '2s'
             }} 
           />
           <Star 
             className="w-8 h-8 text-yellow-400 fill-yellow-400 animate-bounce" 
             style={{ 
-              animationDelay: '800ms',
-              animationDuration: '1.5s'
+              animationDelay: '1200ms',
+              animationDuration: '2s'
             }} 
           />
         </div>
@@ -72,9 +72,9 @@ const SplashScreen = () => {
               className="bg-gradient-to-b from-yellow-300 via-yellow-400 to-yellow-600 bg-clip-text text-transparent 
                          drop-shadow-2xl relative z-10 animate-pulse"
               style={{
-                animationDuration: '2s',
+                animationDuration: '3s',
                 transform: 'scale(1)',
-                transition: 'transform 0.5s ease-out'
+                transition: 'transform 0.8s ease-out'
               }}
             >
               VIP
@@ -82,18 +82,30 @@ const SplashScreen = () => {
           </h1>
         </div>
         
-        {/* Fixed subtitle with proper styling */}
-        <div className="opacity-0 animate-fade-in" style={{ animationDelay: '1.5s', animationFillMode: 'forwards' }}>
-          <p className="text-2xl md:text-3xl text-slate-200 font-light tracking-wide leading-relaxed px-4">
+        {/* Subtitle with corrected styling */}
+        <div 
+          className="opacity-0 animate-fade-in" 
+          style={{ 
+            animationDelay: '2s', 
+            animationFillMode: 'forwards',
+            animationDuration: '1s'
+          }}
+        >
+          <p className="text-2xl md:text-3xl text-slate-100 font-light tracking-wide leading-relaxed px-4 mb-6">
             Chauffeur Service in South Florida
           </p>
-          <div className="w-32 h-0.5 bg-gradient-to-r from-transparent via-yellow-400 to-transparent mx-auto mt-6 opacity-0 animate-fade-in" 
-               style={{ animationDelay: '2s', animationFillMode: 'forwards' }}>
-          </div>
+          <div 
+            className="w-32 h-0.5 bg-gradient-to-r from-transparent via-yellow-400 to-transparent mx-auto opacity-0 animate-fade-in" 
+            style={{ 
+              animationDelay: '3s', 
+              animationFillMode: 'forwards',
+              animationDuration: '1s'
+            }}
+          />
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes fade-in {
           from {
             opacity: 0;
