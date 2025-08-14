@@ -9,8 +9,16 @@ interface PassengerBookingsListProps {
   onUpdate?: () => void;
 }
 
+// Define a basic booking interface for the data we expect
+interface BookingData {
+  id: string;
+  pickup_time?: string;
+  created_at: string;
+  [key: string]: any; // Allow other properties
+}
+
 export const PassengerBookingsList = ({ onUpdate }: PassengerBookingsListProps) => {
-  const [bookings, setBookings] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<BookingData[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -19,19 +27,22 @@ export const PassengerBookingsList = ({ onUpdate }: PassengerBookingsListProps) 
       setLoading(true);
       const data = await getMyPassengerBookings();
       
-      // Ensure data is an array and sort it
-      const bookingsArray = Array.isArray(data) ? data : [];
+      // Ensure data is an array and has the right structure
+      const bookingsArray = Array.isArray(data) ? data as BookingData[] : [];
       
       // Sort by pickup_time ascending when present, otherwise created_at desc
       const sortedBookings = bookingsArray.sort((a, b) => {
-        if (a.pickup_time && b.pickup_time) {
-          return new Date(a.pickup_time).getTime() - new Date(b.pickup_time).getTime();
+        const aBooking = a as BookingData;
+        const bBooking = b as BookingData;
+        
+        if (aBooking.pickup_time && bBooking.pickup_time) {
+          return new Date(aBooking.pickup_time).getTime() - new Date(bBooking.pickup_time).getTime();
         }
-        if (a.pickup_time && !b.pickup_time) return -1;
-        if (!a.pickup_time && b.pickup_time) return 1;
+        if (aBooking.pickup_time && !bBooking.pickup_time) return -1;
+        if (!aBooking.pickup_time && bBooking.pickup_time) return 1;
         
         // Both don't have pickup_time, sort by created_at desc
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        return new Date(bBooking.created_at).getTime() - new Date(aBooking.created_at).getTime();
       });
       
       setBookings(sortedBookings);
