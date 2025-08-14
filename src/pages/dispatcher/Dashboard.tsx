@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { getDispatcherBookings, sendOffer } from "../../data/bookings";
+import { subscribeToBookingsAndPassengers } from "@/lib/api/bookings";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -58,8 +59,15 @@ const DispatcherDashboard = () => {
       )
       .subscribe();
 
+    // Also subscribe to the shared real-time invalidation
+    const sharedUnsubscribe = subscribeToBookingsAndPassengers(() => {
+      console.log('🔄 Dispatcher: shared real-time invalidation - reloading bookings...');
+      loadBookings();
+    });
+
     return () => {
       supabase.removeChannel(channel);
+      sharedUnsubscribe();
     };
   };
 

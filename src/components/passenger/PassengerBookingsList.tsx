@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { getMyPassengerBookings } from '@/lib/api/bookings';
+import { getMyPassengerBookings, subscribeToBookingsAndPassengers } from '@/lib/api/bookings';
 import { BookingCard } from '@/components/dashboard/BookingCard';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
@@ -79,7 +79,22 @@ export const PassengerBookingsList = ({ onUpdate }: PassengerBookingsListProps) 
   };
 
   useEffect(() => {
+    let unsubscribe: (() => void) | null = null;
+
+    // Initial fetch
     fetchBookings();
+
+    // Set up real-time subscription
+    unsubscribe = subscribeToBookingsAndPassengers(() => {
+      console.log('🔄 Real-time invalidation - reloading passenger bookings...');
+      fetchBookings();
+    });
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
   const handleUpdate = () => {
