@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChevronRight, User, Bell, Shield, HelpCircle, LogOut, Heart } from 'lucide-react';
 import { ProfileSettingsModal } from './ProfileSettingsModal';
-import { NotificationSettingsModal } from '@/components/NotificationSettingsModal';
 import { PreferencesSettingsCard } from './PreferencesSettingsCard';
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -161,12 +160,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ passenger }) => {
       <ProfileSettingsModal
         isOpen={showProfileModal}
         onClose={() => setShowProfileModal(false)}
-        passenger={passenger}
-      />
-
-      <NotificationSettingsModal
-        isOpen={showNotificationModal}
-        onClose={() => setShowNotificationModal(false)}
       />
     </div>
   );

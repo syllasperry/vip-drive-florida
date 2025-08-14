@@ -40,66 +40,56 @@ export const DispatcherBookingManager = () => {
     try {
       setLoading(true);
       
-      // First try the dispatcher_full_bookings view
-      let { data, error } = await supabase
-        .from("dispatcher_full_bookings")
-        .select("booking_id, status, pickup_time, pickup_location, dropoff_location, passenger_name, passenger_phone, passenger_email, passenger_image, driver_name, driver_phone, driver_email, driver_image, created_at, final_price")
+      // Query the bookings table with proper joins
+      const { data, error } = await supabase
+        .from("bookings")
+        .select(`
+          id,
+          status,
+          pickup_time,
+          pickup_location,
+          dropoff_location,
+          final_price,
+          created_at,
+          passengers!inner (
+            full_name,
+            phone,
+            email,
+            profile_photo_url
+          ),
+          drivers (
+            full_name,
+            phone,
+            email,
+            profile_photo_url
+          )
+        `)
         .order("created_at", { ascending: false });
 
-      // If view doesn't exist or fails, fallback to bookings table
-      if (error || !data) {
-        console.warn("View failed, falling back to bookings table:", error?.message);
-        
-        const fallback = await supabase
-          .from("bookings")
-          .select(`
-            id,
-            status,
-            pickup_time,
-            pickup_location,
-            dropoff_location,
-            final_price,
-            created_at,
-            passengers!inner (
-              full_name,
-              phone,
-              email,
-              profile_photo_url
-            ),
-            drivers (
-              full_name,
-              phone,
-              email,
-              profile_photo_url
-            )
-          `)
-          .order("created_at", { ascending: false });
-
-        if (fallback.error) {
-          throw fallback.error;
-        }
-
-        // Map fallback data to expected format
-        data = fallback.data?.map(booking => ({
-          booking_id: booking.id,
-          status: booking.status,
-          pickup_time: booking.pickup_time,
-          pickup_location: booking.pickup_location,
-          dropoff_location: booking.dropoff_location,
-          passenger_name: booking.passengers?.full_name || 'Unknown',
-          passenger_phone: booking.passengers?.phone || '',
-          passenger_email: booking.passengers?.email,
-          passenger_image: booking.passengers?.profile_photo_url,
-          driver_name: booking.drivers?.full_name,
-          driver_phone: booking.drivers?.phone,
-          driver_email: booking.drivers?.email,
-          driver_image: booking.drivers?.profile_photo_url,
-          created_at: booking.created_at,
-          final_price: booking.final_price
-        })) || [];
+      if (error) {
+        throw error;
       }
 
-      setBookings(data || []);
+      // Map data to expected format
+      const mappedData: DispatcherBooking[] = (data || []).map(booking => ({
+        booking_id: booking.id,
+        status: booking.status,
+        pickup_time: booking.pickup_time,
+        pickup_location: booking.pickup_location,
+        dropoff_location: booking.dropoff_location,
+        passenger_name: booking.passengers?.full_name || 'Unknown',
+        passenger_phone: booking.passengers?.phone || '',
+        passenger_email: booking.passengers?.email,
+        passenger_image: booking.passengers?.profile_photo_url,
+        driver_name: booking.drivers?.full_name,
+        driver_phone: booking.drivers?.phone,
+        driver_email: booking.drivers?.email,
+        driver_image: booking.drivers?.profile_photo_url,
+        created_at: booking.created_at,
+        final_price: booking.final_price
+      }));
+
+      setBookings(mappedData);
     } catch (error) {
       console.error('Error loading dispatcher bookings:', error);
       toast({
