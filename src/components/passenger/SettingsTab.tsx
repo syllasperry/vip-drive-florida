@@ -156,7 +156,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ passenger }) => {
         </CardContent>
       </Card>
 
-      {/* Modals */}
+      {/* Profile Settings Modal */}
       <ProfileSettingsModal
         isOpen={showProfileModal}
         onClose={() => setShowProfileModal(false)}
