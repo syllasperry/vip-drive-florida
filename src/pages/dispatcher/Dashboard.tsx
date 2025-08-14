@@ -1,5 +1,5 @@
-
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DispatcherBookingManager } from "@/components/dispatcher/DispatcherBookingManager";
 import { DriverManagement } from "@/components/dispatcher/DriverManagement";
@@ -7,129 +7,135 @@ import { PaymentsSection } from "@/components/dispatcher/PaymentsSection";
 import { DispatcherMessaging } from "@/components/dispatcher/DispatcherMessaging";
 import { DispatcherSettings } from "@/components/dispatcher/DispatcherSettings";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { getDispatcherBookings } from "@/lib/api/bookings";
 
-const Dashboard = () => {
-  const [bookings, setBookings] = useState<any[]>([]);
+const DispatcherDashboard = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isAuthorized, setIsAuthorized] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
 
-  const fetchBookings = async () => {
+  useEffect(() => {
+    checkAuthentication();
+  }, []);
+
+  const checkAuthentication = async () => {
     try {
-      console.log('🔄 Fetching dispatcher bookings...');
-      const data = await getDispatcherBookings();
-      setBookings(data);
-      console.log('✅ Dispatcher bookings loaded:', data.length);
+      const { data: { user }, error } = await supabase.auth.getUser();
+      
+      if (error) {
+        console.error('Auth error:', error);
+        setIsAuthenticated(false);
+        setLoading(false);
+        return;
+      }
+
+      if (!user) {
+        console.log('No authenticated user found');
+        setIsAuthenticated(false);
+        setLoading(false);
+        return;
+      }
+
+      const userEmail = user.email?.toLowerCase();
+      console.log('Checking dispatcher access for user:', userEmail);
+
+      // Special case for syllasperry@gmail.com - always allow dispatcher access
+      if (userEmail === 'syllasperry@gmail.com') {
+        console.log('Granting dispatcher access to syllasperry@gmail.com');
+        setIsAuthenticated(true);
+        setLoading(false);
+        return;
+      }
+
+      // Check if user is in dispatchers table
+      const { data: dispatcher, error: dispatcherError } = await supabase
+        .from('dispatchers')
+        .select('id, email')
+        .eq('email', userEmail)
+        .single();
+
+      if (dispatcherError) {
+        console.error('Error checking dispatcher status:', dispatcherError);
+        
+        // If no dispatcher found, deny access
+        if (dispatcherError.code === 'PGRST116') {
+          console.log('User not found in dispatchers table');
+          setIsAuthenticated(false);
+        } else {
+          // Other errors, deny access for safety
+          setIsAuthenticated(false);
+        }
+      } else if (dispatcher) {
+        console.log('Dispatcher found:', dispatcher);
+        setIsAuthenticated(true);
+      } else {
+        console.log('No dispatcher record found');
+        setIsAuthenticated(false);
+      }
     } catch (error) {
-      console.error('❌ Error fetching dispatcher bookings:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load bookings. Please try again.",
-        variant: "destructive",
-      });
+      console.error('Unexpected error in checkAuthentication:', error);
+      setIsAuthenticated(false);
+    } finally {
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    const checkAuthAndLoadData = async () => {
-      try {
-        setLoading(true);
-        
-        // Check authentication
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        
-        if (authError || !user) {
-          console.log('❌ No authenticated user, redirecting to login');
-          navigate('/passenger/login', { replace: true });
-          return;
-        }
-
-        console.log('✅ Authenticated user:', user.email);
-
-        // Check if user is authorized dispatcher
-        if (user.email !== 'syllasperry@gmail.com') {
-          console.log('❌ Unauthorized email:', user.email, 'Expected: syllasperry@gmail.com');
-          toast({
-            title: "Access Denied",
-            description: "You don't have permission to access the dispatcher dashboard.",
-            variant: "destructive",
-          });
-          navigate('/passenger/dashboard', { replace: true });
-          return;
-        }
-
-        console.log('✅ Authorized dispatcher access for:', user.email);
-        setIsAuthorized(true);
-        
-        // Load bookings data
-        await fetchBookings();
-        
-      } catch (error) {
-        console.error('❌ Error in auth/data loading:', error);
-        navigate('/passenger/login', { replace: true });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAuthAndLoadData();
-  }, [navigate, toast]);
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p>Loading dispatcher dashboard...</p>
+        </div>
       </div>
     );
   }
 
-  if (!isAuthorized) {
+  if (!isAuthenticated) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Denied</h2>
-          <p className="text-gray-600">Redirecting...</p>
+          <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+          <p className="text-gray-600 mb-4">You don't have permission to access the dispatcher dashboard.</p>
+          <button 
+            onClick={() => navigate('/')}
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Go Home
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto p-4">
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 py-6">
         <Tabs defaultValue="bookings" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-6">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="bookings">Bookings</TabsTrigger>
             <TabsTrigger value="drivers">Drivers</TabsTrigger>
             <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="messages">Messages</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
-
-          <TabsContent value="bookings">
-            <DispatcherBookingManager 
-              bookings={bookings} 
-              onUpdate={fetchBookings}
-            />
+          
+          <TabsContent value="bookings" className="mt-6">
+            <DispatcherBookingManager />
           </TabsContent>
-
-          <TabsContent value="drivers">
-            <DriverManagement />
+          
+          <TabsContent value="drivers" className="mt-6">
+            <DriverManagement drivers={[]} onDriverUpdate={() => {}} />
           </TabsContent>
-
-          <TabsContent value="payments">
+          
+          <TabsContent value="payments" className="mt-6">
             <PaymentsSection />
           </TabsContent>
-
-          <TabsContent value="messages">
-            <DispatcherMessaging />
+          
+          <TabsContent value="messages" className="mt-6">
+            <DispatcherMessaging bookings={[]} />
           </TabsContent>
-
-          <TabsContent value="settings">
+          
+          <TabsContent value="settings" className="mt-6">
             <DispatcherSettings />
           </TabsContent>
         </Tabs>
@@ -138,4 +144,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default DispatcherDashboard;
