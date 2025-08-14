@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
@@ -37,6 +36,10 @@ const PriceEstimate = () => {
     navigate("/onboarding");
   };
 
+  const handleLoginClick = () => {
+    navigate("/passenger/login");
+  };
+
   const calculateEstimate = () => {
     // Only require non-empty fields, allow manual input
     if (!pickup.trim() || !dropoff.trim()) {
@@ -73,7 +76,7 @@ const PriceEstimate = () => {
     <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4">
       <div className="max-w-md mx-auto pt-8">
         {/* Go Back and Dashboard buttons */}
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center mb-4 relative">
           <Button
             variant="ghost"
             size="sm"
@@ -83,6 +86,13 @@ const PriceEstimate = () => {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Go Back
           </Button>
+          
+          <button
+            onClick={handleLoginClick}
+            className="absolute top-0 right-0 text-sm text-muted-foreground hover:text-foreground hover:underline bg-transparent border-none cursor-pointer"
+          >
+            Log in
+          </button>
           
           {(isPassengerLoggedIn || isDriverLoggedIn) && (
             <Button
