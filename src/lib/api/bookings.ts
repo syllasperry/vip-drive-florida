@@ -32,7 +32,7 @@ export async function getMyPassengerBookings() {
     console.log('📊 Number of bookings found:', data?.length || 0);
     
     // Ensure we always return an array
-    const bookings = data || [];
+    const bookings = Array.isArray(data) ? data : [];
     
     // Log each booking for debugging
     bookings.forEach((booking, index) => {
@@ -114,9 +114,14 @@ export async function getMyPassengerBookings() {
 }
 
 export async function fetchPassengerBookings() {
-  const { data, error } = await supabase.rpc("get_passenger_bookings_by_auth");
-  if (error) throw error;
-  return data ?? [];
+  try {
+    const { data, error } = await supabase.rpc("get_passenger_bookings_by_auth" as any);
+    if (error) throw error;
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error('Error fetching passenger bookings:', error);
+    throw error;
+  }
 }
 
 /**
@@ -146,7 +151,7 @@ export function subscribeToBookingsAndPassengers(onInvalidate?: () => void) {
 
   return () => {
     try { 
-      channel.unsubscribe(); 
+      supabase.removeChannel(channel); 
       console.log('🔄 Real-time: unsubscribed from bookings and passengers');
     } catch { 
       /* no-op */ 

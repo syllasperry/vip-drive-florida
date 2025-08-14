@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { getMyPassengerBookings, subscribeToBookingsAndPassengers } from '@/lib/api/bookings';
+import { fetchPassengerBookings, subscribeToBookingsAndPassengers } from '@/lib/api/bookings';
 import { BookingCard } from '@/components/dashboard/BookingCard';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
@@ -10,7 +10,7 @@ interface PassengerBookingsListProps {
 }
 
 interface BookingData {
-  id: string;
+  booking_id: string;
   pickup_time?: string;
   created_at: string;
   status?: string;
@@ -18,6 +18,14 @@ interface BookingData {
   dropoff_location?: string;
   passenger_id?: string;
   driver_id?: string;
+  passenger_name?: string;
+  driver_name?: string;
+  driver_car_make?: string;
+  driver_car_model?: string;
+  driver_photo_url?: string;
+  passenger_photo_url?: string;
+  estimated_price?: number;
+  final_price?: number;
   [key: string]: any;
 }
 
@@ -30,30 +38,61 @@ export const PassengerBookingsList = ({ onUpdate }: PassengerBookingsListProps) 
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      setError(null); // Clear any previous errors
-      
-      console.log('🔄 PassengerBookingsList: Starting fetch...');
-      
-      const data = await getMyPassengerBookings();
-      
-      console.log('✅ PassengerBookingsList: Data received:', data);
-      console.log('📊 PassengerBookingsList: Data length:', data?.length || 0);
-      
-      // Ensure data is an array
-      const bookingsArray = Array.isArray(data) ? data as BookingData[] : [];
-      
-      setBookings(bookingsArray);
-      
-      // Clear any error state on successful fetch
       setError(null);
       
-      // Only show success message if we actually have bookings
-      if (bookingsArray.length > 0) {
-        console.log(`✅ Successfully loaded ${bookingsArray.length} bookings`);
+      console.log('🔄 PassengerBookingsList: Starting fetch via RPC...');
+      
+      const data = await fetchPassengerBookings();
+      
+      console.log('✅ PassengerBookingsList: RPC data received:', data);
+      console.log('📊 PassengerBookingsList: Data length:', data?.length || 0);
+      
+      // Transform RPC data to expected format
+      const transformedBookings = data.map((booking: any) => ({
+        id: booking.booking_id,
+        pickup_location: booking.pickup_location,
+        dropoff_location: booking.dropoff_location,
+        pickup_time: booking.pickup_time,
+        passenger_count: booking.passenger_count,
+        status: booking.status,
+        ride_status: booking.ride_status,
+        payment_confirmation_status: booking.payment_confirmation_status,
+        status_passenger: booking.status_passenger,
+        status_driver: booking.status_driver,
+        estimated_price: booking.estimated_price,
+        final_price: booking.final_price,
+        created_at: booking.created_at,
+        updated_at: booking.updated_at,
+        passenger_id: booking.passenger_id,
+        driver_id: booking.driver_id,
+        drivers: booking.driver_name ? {
+          id: booking.driver_id,
+          full_name: booking.driver_name,
+          profile_photo_url: booking.driver_photo_url,
+          car_make: booking.driver_car_make,
+          car_model: booking.driver_car_model,
+          phone: booking.driver_phone,
+          email: booking.driver_email,
+          license_plate: booking.driver_license_plate
+        } : null,
+        passengers: {
+          id: booking.passenger_id,
+          full_name: booking.passenger_name,
+          profile_photo_url: booking.passenger_photo_url,
+          phone: booking.passenger_phone,
+          email: booking.passenger_email
+        }
+      }));
+      
+      setBookings(transformedBookings);
+      setError(null);
+      
+      if (transformedBookings.length > 0) {
+        console.log(`✅ Successfully loaded ${transformedBookings.length} bookings via RPC`);
       }
       
     } catch (error) {
-      console.error('❌ PassengerBookingsList: Error fetching bookings:', error);
+      console.error('❌ PassengerBookingsList: Error fetching bookings via RPC:', error);
       
       let errorMessage = "Database connection error. Please try again.";
       
@@ -68,9 +107,8 @@ export const PassengerBookingsList = ({ onUpdate }: PassengerBookingsListProps) 
       }
       
       setError(errorMessage);
-      setBookings([]); // Ensure empty array on error
+      setBookings([]);
       
-      // Don't show toast notification to prevent duplicate error messages
       console.error('Error set to state:', errorMessage);
       
     } finally {
@@ -116,7 +154,6 @@ export const PassengerBookingsList = ({ onUpdate }: PassengerBookingsListProps) 
     );
   }
 
-  // Show error message if there's an error
   if (error) {
     return (
       <div className="space-y-4">
@@ -143,7 +180,6 @@ export const PassengerBookingsList = ({ onUpdate }: PassengerBookingsListProps) 
     );
   }
 
-  // Show empty state only when there are truly no bookings and no error
   if (bookings.length === 0) {
     return (
       <div className="text-center py-8">
