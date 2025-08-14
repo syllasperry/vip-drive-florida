@@ -4,33 +4,29 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-interface PreferencesData {
-  preferred_temperature?: number;
-  music_preference?: string;
-  music_playlist_link?: string;
-  interaction_preference?: string;
-  trip_purpose?: string;
-  additional_notes?: string;
+interface PassengerPreferences {
+  preferred_temperature: number;
+  music_preference: string;
+  music_playlist_link: string;
+  interaction_preference: string;
+  trip_purpose: string;
+  additional_notes: string;
 }
 
-interface PreferencesSettingsCardProps {
-  onClose: () => void;
-}
-
-export const PreferencesSettingsCard = ({ onClose }: PreferencesSettingsCardProps) => {
-  const [preferences, setPreferences] = useState<PreferencesData>({
+export const PreferencesSettingsCard = () => {
+  const [preferences, setPreferences] = useState<PassengerPreferences>({
     preferred_temperature: 72,
-    music_preference: 'off',
-    music_playlist_link: '',
-    interaction_preference: 'no_preference',
-    trip_purpose: 'leisure',
-    additional_notes: ''
+    music_preference: "off",
+    music_playlist_link: "",
+    interaction_preference: "no_preference",
+    trip_purpose: "leisure",
+    additional_notes: ""
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -42,40 +38,39 @@ export const PreferencesSettingsCard = ({ onClose }: PreferencesSettingsCardProp
 
   const loadPreferences = async () => {
     try {
-      setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error('No authenticated user');
-      }
+      if (!user) return;
 
       const { data, error } = await supabase
         .from('passengers')
-        .select('preferred_temperature, music_preference, music_playlist_link, interaction_preference, trip_purpose, additional_notes')
+        .select(`
+          preferred_temperature,
+          music_preference,
+          music_playlist_link,
+          interaction_preference,
+          trip_purpose,
+          additional_notes
+        `)
         .eq('auth_user_id', user.id)
         .single();
 
-      if (error && error.code !== 'PGRST116') {
-        throw error;
+      if (error) {
+        console.error('Error loading preferences:', error);
+        return;
       }
 
       if (data) {
         setPreferences({
           preferred_temperature: data.preferred_temperature || 72,
-          music_preference: data.music_preference || 'off',
-          music_playlist_link: data.music_playlist_link || '',
-          interaction_preference: data.interaction_preference || 'no_preference',
-          trip_purpose: data.trip_purpose || 'leisure',
-          additional_notes: data.additional_notes || ''
+          music_preference: data.music_preference || "off",
+          music_playlist_link: data.music_playlist_link || "",
+          interaction_preference: data.interaction_preference || "no_preference",
+          trip_purpose: data.trip_purpose || "leisure",
+          additional_notes: data.additional_notes || ""
         });
       }
     } catch (error) {
       console.error('Error loading preferences:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load preferences",
-        variant: "destructive",
-      });
     } finally {
       setLoading(false);
     }
@@ -85,10 +80,7 @@ export const PreferencesSettingsCard = ({ onClose }: PreferencesSettingsCardProp
     try {
       setSaving(true);
       const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error('No authenticated user');
-      }
+      if (!user) return;
 
       const { error } = await supabase
         .from('passengers')
@@ -135,76 +127,58 @@ export const PreferencesSettingsCard = ({ onClose }: PreferencesSettingsCardProp
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Account Preferences</CardTitle>
+        <CardTitle>Preferences</CardTitle>
+        <p className="text-sm text-muted-foreground">Account preferences</p>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Temperature */}
         <div className="space-y-2">
-          <Label>Preferred Temperature (°F)</Label>
-          <div className="px-4">
-            <Slider
-              value={[preferences.preferred_temperature || 72]}
-              onValueChange={(value) => 
-                setPreferences(prev => ({ ...prev, preferred_temperature: value[0] }))
-              }
-              max={80}
-              min={60}
-              step={1}
-              className="w-full"
-            />
-            <div className="flex justify-between text-sm text-gray-500 mt-1">
-              <span>60°F</span>
-              <span className="font-medium">{preferences.preferred_temperature}°F</span>
-              <span>80°F</span>
-            </div>
-          </div>
+          <Label>Preferred Temperature ({preferences.preferred_temperature}°F)</Label>
+          <Slider
+            value={[preferences.preferred_temperature]}
+            onValueChange={(value) => setPreferences(prev => ({ ...prev, preferred_temperature: value[0] }))}
+            min={60}
+            max={80}
+            step={1}
+            className="w-full"
+          />
         </div>
 
-        {/* Music Preference */}
         <div className="space-y-2">
           <Label>Music Preference</Label>
           <Select 
             value={preferences.music_preference} 
-            onValueChange={(value) => 
-              setPreferences(prev => ({ ...prev, music_preference: value }))
-            }
+            onValueChange={(value) => setPreferences(prev => ({ ...prev, music_preference: value }))}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select music preference" />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="on">On</SelectItem>
-              <SelectItem value="off">Off</SelectItem>
+              <SelectItem value="on">Music On</SelectItem>
+              <SelectItem value="off">Music Off</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
-        {/* Playlist Link */}
-        {preferences.music_preference === 'on' && (
+        {preferences.music_preference === "on" && (
           <div className="space-y-2">
-            <Label>Playlist Link (Optional)</Label>
+            <Label>Music Playlist Link</Label>
             <Input
               type="url"
-              placeholder="https://..."
               value={preferences.music_playlist_link}
-              onChange={(e) => 
-                setPreferences(prev => ({ ...prev, music_playlist_link: e.target.value }))
-              }
+              onChange={(e) => setPreferences(prev => ({ ...prev, music_playlist_link: e.target.value }))}
+              placeholder="https://open.spotify.com/playlist/..."
             />
           </div>
         )}
 
-        {/* Conversation Preference */}
         <div className="space-y-2">
-          <Label>Conversation Preference</Label>
+          <Label>Interaction Preference</Label>
           <Select 
             value={preferences.interaction_preference} 
-            onValueChange={(value) => 
-              setPreferences(prev => ({ ...prev, interaction_preference: value }))
-            }
+            onValueChange={(value) => setPreferences(prev => ({ ...prev, interaction_preference: value }))}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select conversation preference" />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="talkative">Talkative</SelectItem>
@@ -214,17 +188,14 @@ export const PreferencesSettingsCard = ({ onClose }: PreferencesSettingsCardProp
           </Select>
         </div>
 
-        {/* Trip Purpose */}
         <div className="space-y-2">
           <Label>Trip Purpose</Label>
           <Select 
             value={preferences.trip_purpose} 
-            onValueChange={(value) => 
-              setPreferences(prev => ({ ...prev, trip_purpose: value }))
-            }
+            onValueChange={(value) => setPreferences(prev => ({ ...prev, trip_purpose: value }))}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select trip purpose" />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="business">Business</SelectItem>
@@ -234,28 +205,23 @@ export const PreferencesSettingsCard = ({ onClose }: PreferencesSettingsCardProp
           </Select>
         </div>
 
-        {/* Additional Notes */}
         <div className="space-y-2">
           <Label>Additional Notes</Label>
           <Textarea
-            placeholder="Any special requests or preferences..."
             value={preferences.additional_notes}
-            onChange={(e) => 
-              setPreferences(prev => ({ ...prev, additional_notes: e.target.value }))
-            }
+            onChange={(e) => setPreferences(prev => ({ ...prev, additional_notes: e.target.value }))}
+            placeholder="Any special requests or preferences..."
             rows={3}
           />
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-2 pt-4">
-          <Button variant="outline" onClick={onClose} className="flex-1">
-            Back
-          </Button>
-          <Button onClick={savePreferences} disabled={saving} className="flex-1">
-            {saving ? "Saving..." : "Save Preferences"}
-          </Button>
-        </div>
+        <Button 
+          onClick={savePreferences} 
+          disabled={saving}
+          className="w-full"
+        >
+          {saving ? "Saving..." : "Save Preferences"}
+        </Button>
       </CardContent>
     </Card>
   );
