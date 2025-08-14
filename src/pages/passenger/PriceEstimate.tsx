@@ -47,18 +47,14 @@ const PriceEstimate = () => {
     checkAuth();
   }, [navigate, location]);
 
-  // Restore form state from localStorage on mount
+  // Restore draft on mount
   useEffect(() => {
     try {
       const raw = localStorage.getItem("estimateDraft");
       if (raw) {
         const draft = JSON.parse(raw);
-        if (!pickupLocation && draft?.pickup) {
-          setPickupLocation(draft.pickup);
-        }
-        if (!dropoffLocation && draft?.dropoff) {
-          setDropoffLocation(draft.dropoff);
-        }
+        if (!pickupLocation && draft?.pickup) setPickupLocation(draft.pickup);
+        if (!dropoffLocation && draft?.dropoff) setDropoffLocation(draft.dropoff);
         localStorage.removeItem("estimateDraft");
       }
     } catch (error) {
@@ -66,20 +62,40 @@ const PriceEstimate = () => {
     }
   }, []);
 
-  const handlePickupSelect = (place: any) => {
-    setPickupLocation(place.formatted_address);
-    setPickupCoordinates({
-      lat: place.geometry.location.lat(),
-      lng: place.geometry.location.lng(),
-    });
+  const handlePickupSelect = (value: string, placeDetails?: any) => {
+    setPickupLocation(value);
+    if (placeDetails?.geometry?.location) {
+      setPickupCoordinates({
+        lat: placeDetails.geometry.location.lat(),
+        lng: placeDetails.geometry.location.lng(),
+      });
+    }
   };
 
-  const handleDropoffSelect = (place: any) => {
-    setDropoffLocation(place.formatted_address);
-    setDropoffCoordinates({
-      lat: place.geometry.location.lat(),
-      lng: place.geometry.location.lng(),
-    });
+  const handleDropoffSelect = (value: string, placeDetails?: any) => {
+    setDropoffLocation(value);
+    if (placeDetails?.geometry?.location) {
+      setDropoffCoordinates({
+        lat: placeDetails.geometry.location.lat(),
+        lng: placeDetails.geometry.location.lng(),
+      });
+    }
+  };
+
+  const handleLoginShortcut = () => {
+    // Save current form state
+    const draft = {
+      pickup: pickupLocation,
+      dropoff: dropoffLocation,
+    };
+    try {
+      localStorage.setItem("estimateDraft", JSON.stringify(draft));
+    } catch (error) {
+      console.error("Error saving draft:", error);
+    }
+
+    const returnTo = encodeURIComponent(location.pathname + location.search);
+    navigate(`/passenger/login?returnTo=${returnTo}`);
   };
 
   const estimateRidePrice = async () => {
@@ -135,48 +151,17 @@ const PriceEstimate = () => {
     });
   };
 
-  const handleLoginShortcut = () => {
-    try {
-      const draft = {
-        pickup: pickupLocation,
-        dropoff: dropoffLocation,
-      };
-      localStorage.setItem("estimateDraft", JSON.stringify(draft));
-    } catch (error) {
-      console.error("Error saving draft:", error);
-    }
-    const returnTo = encodeURIComponent(location.pathname + location.search);
-    navigate(`/passenger/login?returnTo=${returnTo}`);
-  };
-
   return (
     <div className="min-h-screen bg-background p-4">
-      <div className="relative">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate("/home")}
-          className="text-muted-foreground hover:text-foreground text-base mb-4"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Go Back
-        </Button>
-        
-        <button
-          type="button"
-          onClick={handleLoginShortcut}
-          aria-label="Log in"
-          className="absolute top-0 right-0 bg-transparent border-none text-muted-foreground hover:text-foreground text-sm underline p-2"
-          style={{
-            fontSize: '14px',
-            lineHeight: 1,
-            minWidth: '32px',
-            minHeight: '32px'
-          }}
-        >
-          Log in
-        </button>
-      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => navigate("/home")}
+        className="text-muted-foreground hover:text-foreground text-base mb-4"
+      >
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Go Back
+      </Button>
 
       <Card className="max-w-md mx-auto bg-card shadow-lg rounded-lg">
         <CardHeader>
@@ -190,7 +175,11 @@ const PriceEstimate = () => {
               <MapPin className="inline h-4 w-4 mr-2" />
               Pickup Location
             </Label>
-            <GoogleMapsAutocomplete onSelect={handlePickupSelect} />
+            <GoogleMapsAutocomplete 
+              value={pickupLocation}
+              onChange={handlePickupSelect}
+              id="pickup" 
+            />
             {pickupLocation && (
               <p className="text-sm text-muted-foreground mt-1">
                 Selected: {pickupLocation}
@@ -203,7 +192,11 @@ const PriceEstimate = () => {
               <MapPin className="inline h-4 w-4 mr-2" />
               Dropoff Location
             </Label>
-            <GoogleMapsAutocomplete onSelect={handleDropoffSelect} />
+            <GoogleMapsAutocomplete 
+              value={dropoffLocation}
+              onChange={handleDropoffSelect}
+              id="dropoff" 
+            />
             {dropoffLocation && (
               <p className="text-sm text-muted-foreground mt-1">
                 Selected: {dropoffLocation}
@@ -217,7 +210,8 @@ const PriceEstimate = () => {
               Date and Time
             </Label>
             <MinimalDateTimePicker
-              onChange={(date: Date | null) => setSelectedDateTime(date)}
+              value={selectedDateTime || new Date()}
+              onChange={(date: Date) => setSelectedDateTime(date)}
             />
             {selectedDateTime && (
               <p className="text-sm text-muted-foreground mt-1">
@@ -265,6 +259,18 @@ const PriceEstimate = () => {
               </>
             )}
           </Button>
+
+          {/* Login shortcut */}
+          <p className="text-center mt-3">
+            <button
+              type="button"
+              onClick={handleLoginShortcut}
+              className="bg-transparent border-none text-muted-foreground text-sm underline cursor-pointer hover:text-foreground transition-colors"
+              aria-label="Log in"
+            >
+              Already have an account? Log in
+            </button>
+          </p>
 
           {estimatedPrice !== null && (
             <div className="text-center mt-4">
