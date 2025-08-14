@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export interface BookingData {
@@ -128,76 +129,6 @@ export async function getBookings(): Promise<BookingData[]> {
   }
 }
 
-export async function getPassengerBookingsByAuth() {
-  try {
-    console.log('Calling getPassengerBookingsByAuth...');
-    const { data, error } = await supabase
-      .from('bookings')
-      .select(`
-        id,
-        pickup_location,
-        dropoff_location,
-        pickup_time,
-        passenger_count,
-        status,
-        ride_status,
-        payment_confirmation_status,
-        status_passenger,
-        status_driver,
-        estimated_price,
-        final_price,
-        created_at,
-        updated_at,
-        passenger_id,
-        driver_id,
-        passengers!inner (
-          full_name,
-          phone,
-          email,
-          profile_photo_url,
-          auth_user_id
-        ),
-        drivers (
-          full_name,
-          phone,
-          email,
-          profile_photo_url,
-          car_make,
-          car_model,
-          license_plate
-        )
-      `)
-      .eq('passengers.auth_user_id', (await supabase.auth.getUser()).data.user?.id)
-      .order('pickup_time', { ascending: true });
-    
-    if (error) {
-      console.error('Error calling getPassengerBookingsByAuth:', error);
-      throw error;
-    }
-    
-    console.log('Passenger bookings data:', data);
-    return data || [];
-  } catch (error) {
-    console.error('Unexpected error in getPassengerBookingsByAuth:', error);
-    throw error;
-  }
-}
-
-// For backwards compatibility
-export const fetchPassengerBookings = getPassengerBookingsByAuth;
-
-export const subscribeToBookingsAndPassengers = (callback: () => void) => {
-  const channel = supabase
-    .channel('bookings_changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, callback)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'passengers' }, callback)
-    .subscribe();
-
-  return () => {
-    supabase.removeChannel(channel);
-  };
-};
-
 export async function getDispatcherBookings(): Promise<DispatcherBookingData[]> {
   try {
     console.log('Fetching dispatcher bookings from bookings table...');
@@ -222,13 +153,15 @@ export async function getDispatcherBookings(): Promise<DispatcherBookingData[]> 
         )
       `)
       .order('created_at', { ascending: false })
-      .limit(50);
+      .limit(20);
 
     if (error) {
       console.error('Error fetching dispatcher bookings:', error);
       throw error;
     }
 
+    console.log('Dispatcher bookings data:', data);
+    
     // Map to DispatcherBookingData format
     const mappedData: DispatcherBookingData[] = (data || []).map(booking => ({
       booking_id: booking.id,
@@ -236,22 +169,33 @@ export async function getDispatcherBookings(): Promise<DispatcherBookingData[]> 
       pickup_time: booking.pickup_time,
       passenger_name: booking.passengers?.full_name || 'Unknown',
       passenger_phone: booking.passengers?.phone || '',
-      driver_name: booking.drivers?.full_name || null,
-      driver_phone: booking.drivers?.phone || null,
+      driver_name: booking.drivers?.full_name,
+      driver_phone: booking.drivers?.phone,
       created_at: booking.created_at,
       pickup_location: booking.pickup_location,
       dropoff_location: booking.dropoff_location,
       estimated_price: booking.estimated_price,
-      final_price: booking.final_price,
+      final_price: booking.final_price
     }));
 
-    console.log('Dispatcher bookings mapped:', mappedData);
     return mappedData;
   } catch (error) {
     console.error('Unexpected error in getDispatcherBookings:', error);
     throw error;
   }
 }
+
+export const subscribeToBookingsAndPassengers = (callback: () => void) => {
+  const channel = supabase
+    .channel('bookings_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, callback)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'passengers' }, callback)
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+};
 
 export const createBooking = async (bookingData: any) => {
   const { data, error } = await supabase

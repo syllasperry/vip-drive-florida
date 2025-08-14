@@ -1,127 +1,128 @@
 
 import React, { useState, useEffect } from 'react';
 import { PassengerBookingsList } from "@/components/passenger/PassengerBookingsList";
-import { SettingsTab } from "@/components/passenger/SettingsTab";
+import { ProfileHeader } from "@/components/dashboard/ProfileHeader";
 import { MessagesTab } from "@/components/passenger/MessagesTab";
 import { PaymentsTab } from "@/components/passenger/PaymentsTab";
-import { ProfileHeader } from "@/components/dashboard/ProfileHeader";
+import { SettingsTab } from "@/components/passenger/SettingsTab";
 import { BottomNavigation } from "@/components/dashboard/BottomNavigation";
-import { Card, CardContent } from "@/components/ui/card";
-import { getPassengerBookingsByAuth } from "@/lib/api/bookings";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
-const PassengerDashboard: React.FC = () => {
+export const PassengerDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('bookings');
-  const [bookings, setBookings] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [userProfile, setUserProfile] = useState<any>(null);
-  const { toast } = useToast();
+  const [bookings, setBookings] = useState([]);
+  const [passenger, setPassenger] = useState<{
+    full_name?: string;
+    profile_photo_url?: string;
+    email?: string;
+    phone?: string;
+  }>({});
+  const navigate = useNavigate();
 
   useEffect(() => {
-    loadUserProfile();
     loadBookings();
+    loadPassengerData();
   }, []);
 
-  const loadUserProfile = async () => {
+  const loadBookings = async () => {
+    // Placeholder: Replace with actual data fetching logic
+    setBookings([
+      {
+        id: '1',
+        pickup_location: '123 Main St',
+        dropoff_location: '456 Elm St',
+        pickup_time: '2024-07-15T10:00:00',
+        passenger_count: 2,
+        status: 'confirmed'
+      },
+      {
+        id: '2',
+        pickup_location: '789 Oak St',
+        dropoff_location: '101 Pine St',
+        pickup_time: '2024-07-16T14:00:00',
+        passenger_count: 1,
+        status: 'pending'
+      }
+    ]);
+  };
+
+  const loadPassengerData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: passenger } = await supabase
-          .from('passengers')
-          .select('*')
-          .eq('auth_user_id', user.id)
-          .single();
-        
-        setUserProfile(passenger || {
-          full_name: user.user_metadata?.full_name || 'Passenger',
-          email: user.email,
-          phone: '',
-          profile_photo_url: null
-        });
+      if (!user) {
+        navigate('/passenger/login');
+        return;
       }
+
+      const { data: passengerData, error } = await supabase
+        .from('passengers')
+        .select('full_name, profile_photo_url, email, phone')
+        .eq('auth_user_id', user.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching passenger data:', error);
+        return;
+      }
+
+      setPassenger(passengerData || {});
     } catch (error) {
-      console.error('Error loading user profile:', error);
+      console.error('Error loading passenger data:', error);
     }
   };
 
-  const loadBookings = async () => {
-    try {
-      setLoading(true);
-      const data = await getPassengerBookingsByAuth();
-      if (Array.isArray(data)) {
-        setBookings(data);
-        console.log('Loaded passenger bookings:', data.length);
-      } else {
-        setBookings([]);
-      }
-    } catch (error) {
-      console.error('Error loading bookings:', error);
-      setBookings([]);
-      toast({
-        title: "Error",
-        description: "Failed to load bookings",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const renderTabContent = () => {
+  const renderContent = () => {
     switch (activeTab) {
       case 'bookings':
-        return <PassengerBookingsList />;
-      case 'messages':
         return (
-          <MessagesTab 
-            userType="passenger"
-            userId={userProfile?.id || ''}
-            onSelectChat={() => {}}
-          />
+          <div className="space-y-6">
+            <ProfileHeader 
+              full_name={passenger?.full_name}
+              profile_photo_url={passenger?.profile_photo_url}
+            />
+            <PassengerBookingsList 
+              bookings={bookings}
+              onUpdate={loadBookings}
+            />
+          </div>
         );
+      case 'messages':
+        return <MessagesTab />;
       case 'payments':
-        return <PaymentsTab bookings={bookings} />;
+        return <PaymentsTab />;
       case 'settings':
-        return <SettingsTab />;
+        return <SettingsTab passenger={passenger} />;
       default:
-        return <PassengerBookingsList />;
+        return (
+          <div className="space-y-6">
+            <ProfileHeader 
+              full_name={passenger?.full_name}
+              profile_photo_url={passenger?.profile_photo_url}
+            />
+            <PassengerBookingsList 
+              bookings={bookings}
+              onUpdate={loadBookings}
+            />
+          </div>
+        );
     }
   };
-
-  if (loading && !userProfile) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-center">Loading dashboard...</div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <div className="max-w-md mx-auto">
-        <ProfileHeader 
-          userType="passenger" 
-          userProfile={userProfile || {}}
-          onPhotoUpload={async (file: File) => {
-            console.log('Photo upload for passenger:', file);
-          }}
-        />
-        
-        <div className="px-4 py-4">
-          {renderTabContent()}
+      <div className="max-w-7xl mx-auto">
+        <div className="px-6 py-4">
+          {renderContent()}
         </div>
-
-        <BottomNavigation
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          userType="passenger"
-        />
       </div>
+
+      <BottomNavigation 
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        userType="passenger"
+        pendingActionsCount={0}
+      />
     </div>
   );
 };
