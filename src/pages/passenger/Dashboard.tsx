@@ -8,7 +8,8 @@ import { SettingsTab } from '@/components/passenger/SettingsTab';
 import { PaymentsTab } from '@/components/passenger/PaymentsTab';
 import { FloatingActionButton } from '@/components/dashboard/FloatingActionButton';
 import { PassengerBookingsList } from '@/components/passenger/PassengerBookingsList';
-import { fetchPassengerBookings } from '@/lib/api/bookings';
+import { fetchPassengerBookings, subscribeToBookingsAndPassengers } from '@/lib/api/bookings';
+import { useNavigate } from 'react-router-dom';
 
 const PassengerDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('home');
@@ -19,6 +20,7 @@ const PassengerDashboard: React.FC = () => {
     phone: null,
     email: null
   });
+  const navigate = useNavigate();
 
   // Load passenger info from bookings
   useEffect(() => {
@@ -28,7 +30,7 @@ const PassengerDashboard: React.FC = () => {
         if (bookings.length > 0 && bookings[0].passenger_name) {
           setPassengerInfo(prev => ({
             ...prev,
-            full_name: bookings[0].passenger_name,
+            full_name: bookings[0].passenger_name || 'Passenger User',
             profile_photo_url: bookings[0].passenger_photo_url,
             phone: bookings[0].passenger_phone,
             email: bookings[0].passenger_email
@@ -42,12 +44,30 @@ const PassengerDashboard: React.FC = () => {
     loadPassengerInfo();
   }, [refreshTrigger]);
 
+  // Set up realtime subscription
+  useEffect(() => {
+    const unsubscribe = subscribeToBookingsAndPassengers(() => {
+      console.log('🔄 Real-time update in Dashboard - refreshing passenger info...');
+      setRefreshTrigger(prev => prev + 1);
+    });
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, []);
+
   const handleUpdate = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
+  };
+
+  const handleNewBooking = () => {
+    navigate('/passenger/booking-form');
   };
 
   const mockCurrentUserId = 'passenger-user-id';
@@ -62,6 +82,8 @@ const PassengerDashboard: React.FC = () => {
           onPhotoUpload={async (file: File) => {
             // Handle photo upload - placeholder for now
             console.log('Photo upload:', file);
+            // After successful upload, refresh the info
+            setRefreshTrigger(prev => prev + 1);
           }}
         />
         
@@ -84,7 +106,7 @@ const PassengerDashboard: React.FC = () => {
                     Welcome back!
                   </h2>
                   <p className="text-gray-600 mb-6">
-                    Here are your recent ride bookings and updates, {passengerInfo.full_name || 'Passenger'}.
+                    Here are your recent ride bookings and updates, {passengerInfo.full_name}.
                   </p>
                 </div>
 
@@ -110,7 +132,7 @@ const PassengerDashboard: React.FC = () => {
           </div>
         </Tabs>
 
-        <FloatingActionButton onClick={() => console.log('FAB clicked')} />
+        <FloatingActionButton onClick={handleNewBooking} />
         <BottomNavigation 
           userType="passenger"
           activeTab={activeTab}

@@ -1,5 +1,60 @@
-
 import { supabase } from "@/integrations/supabase/client";
+
+// Define the expected RPC response type
+interface PassengerBookingRPC {
+  booking_id: string;
+  pickup_location: string | null;
+  dropoff_location: string | null;
+  pickup_time: string | null;
+  passenger_count: number | null;
+  status: string | null;
+  ride_status: string | null;
+  payment_confirmation_status: string | null;
+  status_passenger: string | null;
+  status_driver: string | null;
+  estimated_price: number | null;
+  final_price: number | null;
+  created_at: string;
+  updated_at: string | null;
+  passenger_id: string;
+  driver_id: string | null;
+  passenger_name: string | null;
+  passenger_email: string | null;
+  passenger_phone: string | null;
+  passenger_photo_url: string | null;
+  driver_name: string | null;
+  driver_phone: string | null;
+  driver_email: string | null;
+  driver_photo_url: string | null;
+  driver_car_make: string | null;
+  driver_car_model: string | null;
+  driver_license_plate: string | null;
+}
+
+export async function fetchPassengerBookings(): Promise<PassengerBookingRPC[]> {
+  try {
+    console.log('🔄 Fetching passenger bookings via RPC...');
+    
+    const { data, error } = await supabase.rpc("get_passenger_bookings_by_auth");
+    
+    if (error) {
+      console.error('❌ RPC Error:', error);
+      throw error;
+    }
+
+    console.log('✅ RPC Data received:', data);
+    
+    // Ensure we return an array
+    const bookings = Array.isArray(data) ? data as PassengerBookingRPC[] : [];
+    
+    console.log(`📊 Number of bookings: ${bookings.length}`);
+    
+    return bookings;
+  } catch (error) {
+    console.error('💥 Error in fetchPassengerBookings:', error);
+    throw error;
+  }
+}
 
 export async function getMyPassengerBookings() {
   try {
@@ -110,17 +165,6 @@ export async function getMyPassengerBookings() {
     } else {
       throw new Error('Unknown error occurred while fetching bookings');
     }
-  }
-}
-
-export async function fetchPassengerBookings() {
-  try {
-    const { data, error } = await supabase.rpc("get_passenger_bookings_by_auth" as any);
-    if (error) throw error;
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error('Error fetching passenger bookings:', error);
-    throw error;
   }
 }
 
