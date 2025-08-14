@@ -26,10 +26,25 @@ const PassengerDashboard: React.FC = () => {
     setActiveTab(value);
   };
 
+  // Mock user data - in a real app, this would come from auth/profile
+  const mockUserProfile = {
+    full_name: 'Passenger User',
+    profile_photo_url: null,
+    phone: null,
+    email: null
+  };
+
+  const mockCurrentUserId = 'passenger-user-id';
+  const mockCurrentUserName = 'Passenger User';
+
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <div className="max-w-md mx-auto bg-white min-h-screen shadow-lg">
-        <ProfileHeader userType="passenger" />
+        <ProfileHeader 
+          userType="passenger" 
+          userProfile={mockUserProfile}
+          onPhotoUpload={() => {}}
+        />
         
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="grid w-full grid-cols-4 sticky top-0 z-10 bg-white border-b">
@@ -56,21 +71,29 @@ const PassengerDashboard: React.FC = () => {
             </TabsContent>
 
             <TabsContent value="messages" className="mt-0">
-              <MessagesTab />
+              <MessagesTab 
+                bookings={bookings || []}
+                currentUserId={mockCurrentUserId}
+                currentUserName={mockCurrentUserName}
+              />
             </TabsContent>
 
             <TabsContent value="payments" className="mt-0">
-              <PaymentsTab />
+              <PaymentsTab bookings={bookings || []} />
             </TabsContent>
 
             <TabsContent value="settings" className="mt-0">
-              <SettingsTab />
+              <SettingsTab passengerInfo={mockUserProfile} />
             </TabsContent>
           </div>
         </Tabs>
 
-        <FloatingActionButton userType="passenger" />
-        <BottomNavigation userType="passenger" />
+        <FloatingActionButton />
+        <BottomNavigation 
+          userType="passenger"
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+        />
       </div>
     </div>
   );

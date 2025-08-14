@@ -19,8 +19,11 @@ export const PassengerBookingsList = ({ onUpdate }: PassengerBookingsListProps) 
       setLoading(true);
       const data = await getMyPassengerBookings();
       
+      // Ensure data is an array and sort it
+      const bookingsArray = Array.isArray(data) ? data : [];
+      
       // Sort by pickup_time ascending when present, otherwise created_at desc
-      const sortedBookings = data.sort((a, b) => {
+      const sortedBookings = bookingsArray.sort((a, b) => {
         if (a.pickup_time && b.pickup_time) {
           return new Date(a.pickup_time).getTime() - new Date(b.pickup_time).getTime();
         }
