@@ -20,7 +20,7 @@ export const normalizeBookingStatus = (booking: any) => {
   return 'booking_requested';
 };
 
-// Type for the passenger bookings response
+// Type for the passenger bookings response from RPC
 interface PassengerBookingResponse {
   booking_id: string;
   status: string;
@@ -49,86 +49,53 @@ interface PassengerBookingResponse {
 
 export const fetchPassengerBookings = async (): Promise<PassengerBookingResponse[]> => {
   try {
-    // Use direct query instead of RPC since it's not in the types
-    const { data, error } = await supabase
-      .from('bookings')
-      .select(`
-        id,
-        status,
-        pickup_location,
-        dropoff_location,
-        pickup_time,
-        created_at,
-        passenger_id,
-        driver_id,
-        estimated_price,
-        final_price,
-        payment_confirmation_status,
-        ride_status,
-        passengers:passenger_id(
-          full_name,
-          phone,
-          email,
-          profile_photo_url
-        ),
-        drivers:driver_id(
-          full_name,
-          phone,
-          profile_photo_url,
-          car_make,
-          car_model,
-          car_color,
-          license_plate
-        )
-      `)
-      .eq('passenger_id', (await supabase.auth.getUser()).data.user?.id)
-      .order('pickup_time', { ascending: false });
+    console.log('🔄 Fetching passenger bookings using RPC function...');
+    
+    // Use the RPC function to get bookings
+    const { data, error } = await supabase.rpc('get_passenger_bookings_by_auth');
     
     if (error) {
-      console.error("Error fetching passenger bookings:", error);
+      console.error("❌ Error fetching passenger bookings:", error);
       throw error;
     }
 
-    // Transform the data to match the expected format
-    return (data || []).map((booking: any) => ({
-      booking_id: booking.id || '',
-      status: booking.status || 'pending',
-      pickup_location: booking.pickup_location || '',
-      dropoff_location: booking.dropoff_location || '',
-      pickup_time: booking.pickup_time || '',
-      created_at: booking.created_at || '',
-      passenger_id: booking.passenger_id || '',
-      passenger_name: booking.passengers?.full_name || '',
-      passenger_phone: booking.passengers?.phone || '',
-      passenger_email: booking.passengers?.email || '',
-      passenger_photo_url: booking.passengers?.profile_photo_url,
-      driver_id: booking.driver_id,
-      driver_name: booking.drivers?.full_name,
-      driver_phone: booking.drivers?.phone,
-      driver_photo_url: booking.drivers?.profile_photo_url,
-      driver_car_make: booking.drivers?.car_make,
-      driver_car_model: booking.drivers?.car_model,
-      driver_car_color: booking.drivers?.car_color,
-      driver_license_plate: booking.drivers?.license_plate,
-      estimated_price: booking.estimated_price,
-      final_price: booking.final_price,
-      payment_confirmation_status: booking.payment_confirmation_status || 'waiting_for_offer',
-      ride_status: booking.ride_status || 'pending'
-    }));
+    console.log('✅ Passenger bookings fetched successfully:', data?.length || 0, 'bookings');
+    return data || [];
   } catch (error) {
-    console.error("Unexpected error fetching passenger bookings:", error);
+    console.error("❌ Unexpected error fetching passenger bookings:", error);
     return [];
   }
 };
 
 export const subscribeToBookingsAndPassengers = (onInvalidate?: () => void) => {
-  const channel = supabase
-    .channel("bookings-and-passengers")
-    .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () => onInvalidate?.())
-    .on("postgres_changes", { event: "*", schema: "public", table: "passengers" }, () => onInvalidate?.())
-    .subscribe();
+  console.log('📡 Setting up real-time subscription for bookings and passengers...');
   
-  return () => supabase.removeChannel(channel);
+  const channel = supabase
+    .channel("dashboard-updates")
+    .on("postgres_changes", { 
+      event: "*", 
+      schema: "public", 
+      table: "bookings" 
+    }, (payload) => {
+      console.log('📡 Real-time bookings update received:', payload);
+      onInvalidate?.();
+    })
+    .on("postgres_changes", { 
+      event: "*", 
+      schema: "public", 
+      table: "passengers" 
+    }, (payload) => {
+      console.log('📡 Real-time passengers update received:', payload);
+      onInvalidate?.();
+    })
+    .subscribe((status) => {
+      console.log('📡 Real-time subscription status:', status);
+    });
+  
+  return () => {
+    console.log('🧹 Cleaning up real-time subscription');
+    supabase.removeChannel(channel);
+  };
 };
 
 export const getBookings = async () => {

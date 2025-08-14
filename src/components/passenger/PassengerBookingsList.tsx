@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -20,12 +19,29 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const refetchBookings = async () => {
+    try {
+      console.log('🔄 Refetching passenger bookings...');
+      const data = await fetchPassengerBookings();
+      setBookings(data);
+      console.log('✅ Bookings updated:', data.length);
+    } catch (error) {
+      console.error('❌ Failed to refetch bookings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to refresh bookings. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const loadBookings = async () => {
     try {
+      setLoading(true);
       const data = await fetchPassengerBookings();
       setBookings(data);
     } catch (error) {
-      console.error('Failed to load bookings:', error);
+      console.error('❌ Failed to load bookings:', error);
       toast({
         title: "Error",
         description: "Failed to load bookings. Please try again.",
@@ -44,7 +60,7 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
   useEffect(() => {
     const unsubscribe = subscribeToBookingsAndPassengers(() => {
       console.log('🔄 Real-time update - refreshing bookings...');
-      loadBookings();
+      refetchBookings();
       onUpdate?.();
     });
 
@@ -92,7 +108,7 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
     // This would typically open the Stripe checkout
     // For now, just show a toast and refresh
     setTimeout(() => {
-      loadBookings();
+      refetchBookings();
     }, 2000);
   };
 

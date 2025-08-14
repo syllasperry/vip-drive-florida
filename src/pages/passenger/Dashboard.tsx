@@ -10,6 +10,7 @@ import { PassengerBookingsList } from '@/components/passenger/PassengerBookingsL
 import { fetchPassengerBookings, subscribeToBookingsAndPassengers } from '@/lib/api/bookings';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 const PassengerDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('bookings');
@@ -21,11 +22,13 @@ const PassengerDashboard: React.FC = () => {
     email: null
   });
   const navigate = useNavigate();
+  const { toast } = useToast();
 
-  // Load passenger info from bookings
+  // Load passenger info from bookings using RPC
   useEffect(() => {
     const loadPassengerInfo = async () => {
       try {
+        console.log('🔄 Loading passenger info using RPC...');
         const bookings = await fetchPassengerBookings();
         if (bookings.length > 0 && bookings[0].passenger_name) {
           setPassengerInfo(prev => ({
@@ -35,14 +38,20 @@ const PassengerDashboard: React.FC = () => {
             phone: bookings[0].passenger_phone,
             email: bookings[0].passenger_email
           }));
+          console.log('✅ Passenger info loaded successfully');
         }
       } catch (error) {
-        console.error('Failed to load passenger info:', error);
+        console.error('❌ Failed to load passenger info:', error);
+        toast({
+          title: "Warning",
+          description: "Could not load passenger information. Please check your connection.",
+          variant: "destructive",
+        });
       }
     };
 
     loadPassengerInfo();
-  }, [refreshTrigger]);
+  }, [refreshTrigger, toast]);
 
   // Set up realtime subscription
   useEffect(() => {
