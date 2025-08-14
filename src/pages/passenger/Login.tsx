@@ -53,6 +53,13 @@ const PassengerLogin = () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
+          // Check if user is dispatcher
+          if (session.user.email === 'syllasperry@gmail.com') {
+            navigate('/dispatcher/dashboard');
+            return;
+          }
+          
+          // Otherwise navigate to passenger dashboard or continue booking
           navigate(bookingData ? "/passenger/choose-vehicle" : "/passenger/dashboard", 
                  { state: bookingData });
         }
@@ -82,11 +89,19 @@ const PassengerLogin = () => {
           description: "You've been successfully signed in.",
         });
 
-        // Use setTimeout to ensure toast shows briefly before navigation
-        setTimeout(() => {
-          navigate(bookingData ? "/passenger/choose-vehicle" : "/passenger/dashboard", 
-                 { state: bookingData, replace: true });
-        }, 100);
+        // Check if user is dispatcher based on email
+        if (data.user?.email === 'syllasperry@gmail.com') {
+          console.log('Dispatcher detected, redirecting to dispatcher dashboard');
+          setTimeout(() => {
+            navigate('/dispatcher/dashboard', { replace: true });
+          }, 100);
+        } else {
+          // Regular passenger login
+          setTimeout(() => {
+            navigate(bookingData ? "/passenger/choose-vehicle" : "/passenger/dashboard", 
+                   { state: bookingData, replace: true });
+          }, 100);
+        }
       } else {
         // Check if email already exists in passengers table
         const { data: existingPassenger } = await supabase
@@ -159,8 +174,13 @@ const PassengerLogin = () => {
             description: "Welcome to VIP! Your account has been created.",
           });
 
-          navigate(bookingData ? "/passenger/choose-vehicle" : "/passenger/dashboard", 
-                 { state: bookingData });
+          // Check if new user is dispatcher (shouldn't happen in signup, but just in case)
+          if (data.user.email === 'syllasperry@gmail.com') {
+            navigate('/dispatcher/dashboard');
+          } else {
+            navigate(bookingData ? "/passenger/choose-vehicle" : "/passenger/dashboard", 
+                   { state: bookingData });
+          }
         }
       }
     } catch (error: any) {

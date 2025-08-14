@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,13 +16,17 @@ const HomeScreen = () => {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user?.email) {
-        // Check if user is dispatcher
+        console.log('User found:', user.email);
+        
+        // Check if user is dispatcher - exact email match
         if (user.email === 'syllasperry@gmail.com') {
+          console.log('Dispatcher detected, redirecting to dispatcher dashboard');
           navigate('/dispatcher/dashboard');
           return;
         }
         
         // Otherwise, redirect to passenger dashboard
+        console.log('Regular user, redirecting to passenger dashboard');
         navigate('/passenger/dashboard');
       }
     } catch (error) {
