@@ -29,7 +29,7 @@ export async function getMyPassengerBookings() {
         )
       `)
       .eq('passenger_id', (await supabase.auth.getUser()).data.user?.id)
-      .order('pickup_time', { ascending: true, nullsLast: true });
+      .order('pickup_time', { ascending: true, nullsFirst: false });
     
     if (error) {
       console.error('Error fetching passenger bookings:', error);
