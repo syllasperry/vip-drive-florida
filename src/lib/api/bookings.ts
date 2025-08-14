@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export interface BookingData {
@@ -67,18 +68,16 @@ export async function getBookings(): Promise<BookingData[]> {
         passenger_id,
         driver_id,
         passengers (
-          first_name,
-          last_name,
+          full_name,
           phone,
           email,
-          avatar_url
+          profile_photo_url
         ),
         drivers (
-          first_name,
-          last_name,
+          full_name,
           phone,
           email,
-          avatar_url,
+          profile_photo_url,
           car_make,
           car_model,
           license_plate
@@ -110,14 +109,14 @@ export async function getBookings(): Promise<BookingData[]> {
       updated_at: booking.updated_at,
       passenger_id: booking.passenger_id,
       driver_id: booking.driver_id,
-      passenger_name: booking.passengers?.first_name,
+      passenger_name: booking.passengers?.full_name,
       passenger_email: booking.passengers?.email,
       passenger_phone: booking.passengers?.phone,
-      passenger_photo_url: booking.passengers?.avatar_url,
-      driver_name: booking.drivers?.first_name,
+      passenger_photo_url: booking.passengers?.profile_photo_url,
+      driver_name: booking.drivers?.full_name,
       driver_phone: booking.drivers?.phone,
       driver_email: booking.drivers?.email,
-      driver_photo_url: booking.drivers?.avatar_url,
+      driver_photo_url: booking.drivers?.profile_photo_url,
       driver_car_make: booking.drivers?.car_make,
       driver_car_model: booking.drivers?.car_model,
       driver_license_plate: booking.drivers?.license_plate,
@@ -147,6 +146,21 @@ export async function getPassengerBookingsByAuth() {
     throw error;
   }
 }
+
+// For backwards compatibility
+export const fetchPassengerBookings = getPassengerBookingsByAuth;
+
+export const subscribeToBookingsAndPassengers = (callback: () => void) => {
+  const channel = supabase
+    .channel('bookings_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, callback)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'passengers' }, callback)
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+};
 
 export async function getDispatcherBookings(): Promise<DispatcherBookingData[]> {
   try {
