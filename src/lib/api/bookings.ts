@@ -51,16 +51,16 @@ export const fetchPassengerBookings = async (): Promise<PassengerBookingResponse
   try {
     console.log('🔄 Fetching passenger bookings using RPC function...');
     
-    // Use the RPC function to get bookings
-    const { data, error } = await supabase.rpc('get_passenger_bookings_by_auth');
+    // Use the RPC function to get bookings - manual call since it's not in types yet
+    const { data, error } = await supabase.rpc('get_passenger_bookings_by_auth' as any);
     
     if (error) {
       console.error("❌ Error fetching passenger bookings:", error);
       throw error;
     }
 
-    console.log('✅ Passenger bookings fetched successfully:', data?.length || 0, 'bookings');
-    return data || [];
+    console.log('✅ Passenger bookings fetched successfully:', Array.isArray(data) ? data.length : 0, 'bookings');
+    return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error("❌ Unexpected error fetching passenger bookings:", error);
     return [];
@@ -229,43 +229,26 @@ export const getDriverBookings = async (driverId: string) => {
   }
 };
 
+// Nova função para buscar bookings da view dispatcher_full_bookings
 export const getDispatcherBookings = async () => {
   try {
+    console.log('🔄 Fetching dispatcher bookings from view...');
+    
     const { data, error } = await supabase
-      .from('bookings')
-      .select(`
-        *,
-        passengers (
-          id,
-          full_name,
-          phone,
-          profile_photo_url,
-          preferred_temperature,
-          music_preference,
-          interaction_preference,
-          trip_purpose,
-          additional_notes
-        ),
-        drivers (
-          full_name,
-          phone,
-          profile_photo_url,
-          car_make,
-          car_model,
-          car_color,
-          license_plate
-        )
-      `)
-      .order('pickup_time', { ascending: false });
+      .from('dispatcher_full_bookings')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(20);
 
     if (error) {
-      console.error("Error fetching dispatcher bookings:", error);
+      console.error("❌ Error fetching dispatcher bookings:", error);
       return [];
     }
 
+    console.log('✅ Dispatcher bookings fetched successfully:', Array.isArray(data) ? data.length : 0, 'bookings');
     return Array.isArray(data) ? data : [];
   } catch (error) {
-    console.error("Unexpected error fetching dispatcher bookings:", error);
+    console.error("❌ Unexpected error fetching dispatcher bookings:", error);
     return [];
   }
 };
