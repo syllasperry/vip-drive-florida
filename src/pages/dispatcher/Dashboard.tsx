@@ -106,7 +106,7 @@ const DispatcherDashboard: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto">
         <ProfileHeader 
-          userType="dispatcher" 
+          userType="passenger"
           userProfile={mockDispatcherProfile}
           onPhotoUpload={async (file: File) => {
             console.log('Photo upload for dispatcher:', file);

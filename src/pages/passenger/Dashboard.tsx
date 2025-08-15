@@ -9,6 +9,7 @@ import { ProfileHeader } from "@/components/dashboard/ProfileHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { getPassengerBookings } from "@/lib/api/bookings";
 
 const PassengerDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('bookings');
@@ -57,14 +58,8 @@ const PassengerDashboard: React.FC = () => {
   const loadBookings = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.rpc('get_my_passenger_bookings');
-      
-      if (error) {
-        console.error('Error loading bookings:', error);
-        setBookings([]);
-      } else {
-        setBookings(Array.isArray(data) ? data : []);
-      }
+      const data = await getPassengerBookings();
+      setBookings(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error loading bookings:', error);
       setBookings([]);
@@ -92,11 +87,13 @@ const PassengerDashboard: React.FC = () => {
         .from('avatars')
         .getPublicUrl(filePath);
 
-      // Update passenger profile
+      // Update passenger profile - use correct upsert syntax
       await supabase
         .from('passengers')
         .upsert({
           id: user.id,
+          full_name: user.user_metadata?.full_name || user.email || 'User',
+          email: user.email || '',
           profile_photo_url: data.publicUrl
         });
 
@@ -140,7 +137,11 @@ const PassengerDashboard: React.FC = () => {
               </TabsContent>
 
               <TabsContent value="messages" className="mt-0">
-                <MessagesTab />
+                <MessagesTab 
+                  bookings={bookings}
+                  currentUserId={userProfile?.id || ''}
+                  currentUserName={userProfile?.full_name || 'User'}
+                />
               </TabsContent>
 
               <TabsContent value="payments" className="mt-0">
@@ -148,7 +149,7 @@ const PassengerDashboard: React.FC = () => {
               </TabsContent>
 
               <TabsContent value="settings" className="mt-0">
-                <SettingsTab />
+                <SettingsTab passengerInfo={userProfile} />
               </TabsContent>
             </div>
           </Tabs>

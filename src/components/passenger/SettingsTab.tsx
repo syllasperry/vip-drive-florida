@@ -105,7 +105,6 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
         </Button>
         <NotificationSettingsCard 
           userId={currentPassengerInfo?.id} 
-          onClose={() => setActiveModal(null)} 
         />
       </div>
     );
@@ -121,7 +120,7 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
         >
           ← Back to Settings
         </Button>
-        <PrivacySecurityCard onClose={() => setActiveModal(null)} />
+        <PrivacySecurityCard />
       </div>
     );
   }
@@ -136,7 +135,7 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
         >
           ← Back to Settings
         </Button>
-        <HelpSupportCard onClose={() => setActiveModal(null)} />
+        <HelpSupportCard />
       </div>
     );
   }
@@ -151,7 +150,7 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
         >
           ← Back to Settings
         </Button>
-        <PreferencesSettingsCard onClose={() => setActiveModal(null)} />
+        <PreferencesSettingsCard />
       </div>
     );
   }
