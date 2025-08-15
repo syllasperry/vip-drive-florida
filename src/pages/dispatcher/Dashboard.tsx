@@ -1,141 +1,225 @@
-
 import { useState, useEffect } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { BottomNavigation } from "@/components/dashboard/BottomNavigation";
 import { DispatcherBookingManager } from "@/components/dispatcher/DispatcherBookingManager";
 import { DriverManagement } from "@/components/dispatcher/DriverManagement";
 import { PaymentsSection } from "@/components/dispatcher/PaymentsSection";
 import { DispatcherMessaging } from "@/components/dispatcher/DispatcherMessaging";
 import { DispatcherSettings } from "@/components/dispatcher/DispatcherSettings";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { getDispatcherBookings } from "@/lib/api/bookings";
 
-const Dashboard = () => {
+const DispatcherDashboard = () => {
+  const [activeTab, setActiveTab] = useState("bookings");
+  const [pendingActionsCount, setPendingActionsCount] = useState(0);
+  const [user, setUser] = useState<any>(null);
   const [bookings, setBookings] = useState<any[]>([]);
+  const [drivers, setDrivers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isAuthorized, setIsAuthorized] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const fetchBookings = async () => {
-    try {
-      console.log('🔄 Fetching dispatcher bookings...');
-      const data = await getDispatcherBookings();
-      setBookings(data);
-      console.log('✅ Dispatcher bookings loaded:', data.length);
-    } catch (error) {
-      console.error('❌ Error fetching dispatcher bookings:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load bookings. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate("/passenger/login");
+        return;
+      }
+      
+      // Verify dispatcher access
+      if (session.user.email !== 'syllasperry@gmail.com') {
+        navigate("/passenger/dashboard");
+        return;
+      }
+      
+      setUser(session.user);
+    };
+
+    checkAuth();
+  }, [navigate]);
 
   useEffect(() => {
-    const checkAuthAndLoadData = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
+        console.log('[DISPATCHER DASHBOARD] Fetching data...');
         
-        // Check authentication
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        
-        if (authError || !user) {
-          console.log('❌ No authenticated user, redirecting to login');
-          navigate('/passenger/login', { replace: true });
-          return;
+        // Fetch bookings
+        const bookingsData = await getDispatcherBookings();
+        console.log('[DISPATCHER DASHBOARD] Bookings data:', bookingsData);
+        setBookings(bookingsData || []);
+
+        // Fetch drivers
+        const { data: driversData, error: driversError } = await supabase
+          .from('drivers')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (driversError) {
+          console.error('Error fetching drivers:', driversError);
+        } else {
+          setDrivers(driversData || []);
         }
 
-        console.log('✅ Authenticated user:', user.email);
+        // Count pending actions
+        const pendingCount = (bookingsData || []).filter(
+          (booking: any) => 
+            booking.status === 'pending' || 
+            booking.payment_confirmation_status === 'waiting_for_offer'
+        ).length;
+        setPendingActionsCount(pendingCount);
 
-        // Check if user is authorized dispatcher
-        if (user.email !== 'syllasperry@gmail.com') {
-          console.log('❌ Unauthorized email:', user.email, 'Expected: syllasperry@gmail.com');
-          toast({
-            title: "Access Denied",
-            description: "You don't have permission to access the dispatcher dashboard.",
-            variant: "destructive",
-          });
-          navigate('/passenger/dashboard', { replace: true });
-          return;
-        }
-
-        console.log('✅ Authorized dispatcher access for:', user.email);
-        setIsAuthorized(true);
-        
-        // Load bookings data
-        await fetchBookings();
-        
       } catch (error) {
-        console.error('❌ Error in auth/data loading:', error);
-        navigate('/passenger/login', { replace: true });
+        console.error('Error fetching dispatcher data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load dashboard data",
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }
     };
 
-    checkAuthAndLoadData();
-  }, [navigate, toast]);
+    if (user) {
+      fetchData();
+    }
+  }, [user, toast]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    // Subscribe to booking changes
+    const channel = supabase
+      .channel('dispatcher-bookings')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'bookings' },
+        () => {
+          // Refetch data when bookings change
+          if (user) {
+            fetchDispatcherData();
+          }
+        }
+      )
+      .subscribe();
 
-  if (!isAuthorized) {
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
+  const fetchDispatcherData = async () => {
+    try {
+      const bookingsData = await getDispatcherBookings();
+      setBookings(bookingsData || []);
+      
+      const pendingCount = (bookingsData || []).filter(
+        (booking: any) => 
+          booking.status === 'pending' || 
+          booking.payment_confirmation_status === 'waiting_for_offer'
+      ).length;
+      setPendingActionsCount(pendingCount);
+    } catch (error) {
+      console.error('Error refetching dispatcher data:', error);
+    }
+  };
+
+  const handleUpdate = () => {
+    fetchDispatcherData();
+  };
+
+  const handleDriverUpdate = async () => {
+    try {
+      const { data: driversData, error } = await supabase
+        .from('drivers')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching drivers:', error);
+      } else {
+        setDrivers(driversData || []);
+      }
+    } catch (error) {
+      console.error('Error updating drivers:', error);
+    }
+  };
+
+  const renderTabContent = () => {
+    console.log('[DISPATCHER DASHBOARD] Rendering tab content:', { 
+      activeTab, 
+      loading, 
+      bookingsCount: bookings?.length || 0 
+    });
+
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      );
+    }
+
+    switch (activeTab) {
+      case "bookings":
+        return (
+          <DispatcherBookingManager 
+            bookings={bookings} 
+            onUpdate={handleUpdate}
+          />
+        );
+      case "drivers":
+        return (
+          <DriverManagement 
+            drivers={drivers} 
+            onDriverUpdate={handleDriverUpdate}
+          />
+        );
+      case "payments":
+        return <PaymentsSection />;
+      case "messages":
+        return (
+          <DispatcherMessaging 
+            bookings={bookings}
+          />
+        );
+      case "settings":
+        return <DispatcherSettings />;
+      default:
+        return (
+          <DispatcherBookingManager 
+            bookings={bookings} 
+            onUpdate={handleUpdate}
+          />
+        );
+    }
+  };
+
+  if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Denied</h2>
-          <p className="text-gray-600">Redirecting...</p>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading dispatcher dashboard...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto p-4">
-        <Tabs defaultValue="bookings" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-6">
-            <TabsTrigger value="bookings">Bookings</TabsTrigger>
-            <TabsTrigger value="drivers">Drivers</TabsTrigger>
-            <TabsTrigger value="payments">Payments</TabsTrigger>
-            <TabsTrigger value="messages">Messages</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="bookings">
-            <DispatcherBookingManager 
-              bookings={bookings} 
-              onUpdate={fetchBookings}
-            />
-          </TabsContent>
-
-          <TabsContent value="drivers">
-            <DriverManagement />
-          </TabsContent>
-
-          <TabsContent value="payments">
-            <PaymentsSection />
-          </TabsContent>
-
-          <TabsContent value="messages">
-            <DispatcherMessaging />
-          </TabsContent>
-
-          <TabsContent value="settings">
-            <DispatcherSettings />
-          </TabsContent>
-        </Tabs>
+    <div className="min-h-screen bg-background pb-20">
+      <div className="max-w-md mx-auto">
+        {renderTabContent()}
+        
+        <BottomNavigation
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          userType="dispatcher"
+          pendingActionsCount={pendingActionsCount}
+        />
       </div>
     </div>
   );
 };
 
-export default Dashboard;
+export default DispatcherDashboard;

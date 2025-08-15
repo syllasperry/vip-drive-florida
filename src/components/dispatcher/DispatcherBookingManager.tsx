@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,7 @@ import { Clock, MapPin, Users, Calendar, Phone, Mail, Car, LogOut } from "lucide
 import { BookingManagementModal } from "./BookingManagementModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { sendOffer, getDispatcherBookings } from "@/lib/api/bookings";
+import { sendOffer } from "@/data/bookings";
 import { useNavigate } from "react-router-dom";
 
 interface Driver {
@@ -31,8 +30,6 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [dispatcherBookings, setDispatcherBookings] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -44,30 +41,6 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
       console.error('Error during logout:', error);
     }
   };
-
-  // Carregar bookings da view dispatcher_full_bookings
-  const loadDispatcherBookings = async () => {
-    try {
-      setLoading(true);
-      console.log('🔄 Loading dispatcher bookings from view...');
-      const data = await getDispatcherBookings();
-      setDispatcherBookings(data);
-      console.log('✅ Dispatcher bookings loaded:', data.length);
-    } catch (error) {
-      console.error('❌ Error loading dispatcher bookings:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load bookings. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadDispatcherBookings();
-  }, []);
 
   useEffect(() => {
     const loadDrivers = async () => {
@@ -92,7 +65,7 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
 
   const handleQuickAssign = async (booking: any, driverId: string) => {
     try {
-      console.log('🚀 Quick assigning driver to booking:', { booking_id: booking.booking_id, driver_id: driverId });
+      console.log('🚀 Quick assigning driver to booking:', { booking_id: booking.id, driver_id: driverId });
       
       const updatePayload = {
         driver_id: driverId,
@@ -108,7 +81,7 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
       const { error } = await supabase
         .from('bookings')
         .update(updatePayload)
-        .eq('id', booking.booking_id);
+        .eq('id', booking.id);
 
       if (error) {
         console.error('❌ Error in quick assign:', error);
@@ -122,7 +95,6 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
         description: "Driver has been successfully assigned to this booking.",
       });
 
-      loadDispatcherBookings();
       onUpdate();
     } catch (error) {
       console.error('❌ Error assigning driver:', error);
@@ -151,7 +123,6 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
         description: `Driver assigned and price offer of $${price} sent to passenger.`,
       });
 
-      loadDispatcherBookings();
       onUpdate();
       setIsModalOpen(false);
       setSelectedBooking(null);
@@ -167,7 +138,7 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
   };
 
   const openManageModal = (booking: any) => {
-    console.log('📝 Opening booking management modal for:', booking.booking_id);
+    console.log('📝 Opening booking management modal for:', booking.id);
     setSelectedBooking(booking);
     setIsModalOpen(true);
   };
@@ -199,28 +170,6 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
     return "Price pending";
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background p-4">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-foreground">VIP Dispatcher Dashboard</h1>
-          <Button
-            onClick={handleLogout}
-            variant="destructive"
-            size="sm"
-            className="flex items-center gap-2"
-          >
-            <LogOut className="h-4 w-4" />
-            Logout
-          </Button>
-        </div>
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background p-4">
       {/* Header with title and logout button */}
@@ -239,42 +188,44 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
 
       {/* Bookings content */}
       <div className="space-y-4">
-        {dispatcherBookings && dispatcherBookings.length > 0 ? (
-          dispatcherBookings.map((booking) => {
+        {bookings && bookings.length > 0 ? (
+          bookings.map((booking) => {
             const { date, time } = formatDateTime(booking.pickup_time);
             
             return (
-              <Card key={booking.booking_id} className="hover:shadow-md transition-shadow">
+              <Card key={booking.id} className="hover:shadow-md transition-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">
-                      Booking #{booking.booking_id.slice(-8).toUpperCase()}
+                      Booking #{booking.id.slice(-8).toUpperCase()}
                     </CardTitle>
                     {getStatusBadge(booking)}
                   </div>
                   
                   {/* Passenger Information */}
-                  <div className="flex items-center mt-2">
-                    <Avatar className="h-8 w-8 mr-2">
-                      <AvatarImage src={booking.passenger_image || '/default-avatar.png'} />
-                      <AvatarFallback>{booking.passenger_name?.[0] || 'P'}</AvatarFallback>
-                    </Avatar>
-                    <div className="text-sm font-medium text-gray-900">
-                      {booking.passenger_name || 'Unknown Passenger'}
+                  {booking.passengers && (
+                    <div className="flex items-center mt-2">
+                      <Avatar className="h-8 w-8 mr-2">
+                        <AvatarImage src={booking.passengers.profile_photo_url || '/default-avatar.png'} />
+                        <AvatarFallback>{booking.passengers.full_name?.[0] || 'P'}</AvatarFallback>
+                      </Avatar>
+                      <div className="text-sm font-medium text-gray-900">
+                        {booking.passengers.full_name}
+                      </div>
+                      {booking.passengers.phone && (
+                        <div className="ml-4 flex items-center text-sm text-gray-600">
+                          <Phone className="h-3 w-3 mr-1" />
+                          {booking.passengers.phone}
+                        </div>
+                      )}
+                      {booking.passengers.email && (
+                        <div className="ml-4 flex items-center text-sm text-gray-600">
+                          <Mail className="h-3 w-3 mr-1" />
+                          {booking.passengers.email}
+                        </div>
+                      )}
                     </div>
-                    {booking.passenger_phone && (
-                      <div className="ml-4 flex items-center text-sm text-gray-600">
-                        <Phone className="h-3 w-3 mr-1" />
-                        {booking.passenger_phone}
-                      </div>
-                    )}
-                    {booking.passenger_email && (
-                      <div className="ml-4 flex items-center text-sm text-gray-600">
-                        <Mail className="h-3 w-3 mr-1" />
-                        {booking.passenger_email}
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </CardHeader>
                 
                 <CardContent className="space-y-4">
@@ -309,37 +260,35 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
                         <Users className="h-4 w-4 text-purple-600" />
                         <div>
                           <p className="text-sm font-medium">Passengers</p>
-                          <p className="text-sm text-gray-600">{booking.passenger_count || 1} passenger{(booking.passenger_count || 1) !== 1 ? 's' : ''}</p>
+                          <p className="text-sm text-gray-600">{booking.passenger_count} passenger{booking.passenger_count !== 1 ? 's' : ''}</p>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Driver Info - agora usando dados da view */}
-                  {booking.driver_name ? (
+                  {/* Vehicle Type */}
+                  {booking.vehicle_type && (
+                    <div className="flex items-center space-x-2">
+                      <Car className="h-4 w-4 text-gray-600" />
+                      <span className="text-sm text-gray-600">Vehicle: {booking.vehicle_type}</span>
+                    </div>
+                  )}
+
+                  {booking.drivers && (
                     <div className="bg-gray-50 p-3 rounded-lg">
                       <p className="text-sm font-medium mb-2">Assigned Driver:</p>
                       <div className="flex items-center space-x-2">
                         <Avatar className="h-8 w-8">
-                          <AvatarImage src={booking.driver_image} />
-                          <AvatarFallback>{booking.driver_name.charAt(0)}</AvatarFallback>
+                          <AvatarImage src={booking.drivers.profile_photo_url} />
+                          <AvatarFallback>{booking.drivers.full_name.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="text-sm font-medium">{booking.driver_name}</p>
+                          <p className="text-sm font-medium">{booking.drivers.full_name}</p>
                           <p className="text-xs text-gray-600">
-                            {booking.driver_phone || 'No phone provided'}
+                            {booking.drivers.car_make} {booking.drivers.car_model} - {booking.drivers.license_plate}
                           </p>
-                          {booking.driver_car_make && booking.driver_car_model && (
-                            <p className="text-xs text-gray-600">
-                              {booking.driver_car_make} {booking.driver_car_model} - {booking.driver_license_plate || 'No plate'}
-                            </p>
-                          )}
                         </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <p className="text-sm text-gray-600">No driver assigned</p>
                     </div>
                   )}
 
@@ -413,12 +362,9 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         booking={selectedBooking}
-        bookingId={selectedBooking?.booking_id || ""}
+        bookingId={selectedBooking?.id || ""}
         drivers={drivers}
-        onUpdate={() => {
-          loadDispatcherBookings();
-          onUpdate();
-        }}
+        onUpdate={onUpdate}
         onSendOffer={handleSendOffer}
       />
     </div>
