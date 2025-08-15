@@ -1,236 +1,85 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
-export interface BookingData {
-  id: string;
-  pickup_location: string;
-  dropoff_location: string;
-  pickup_time: string;
-  passenger_count: number;
-  status: string;
-  ride_status?: string;
-  payment_confirmation_status?: string;
-  status_passenger?: string;
-  status_driver?: string;
-  estimated_price?: number;
-  final_price?: number;
-  created_at: string;
-  updated_at: string;
-  passenger_id: string;
-  driver_id?: string;
-  passenger_name?: string;
-  passenger_email?: string;
-  passenger_phone?: string;
-  passenger_photo_url?: string;
-  driver_name?: string;
-  driver_phone?: string;
-  driver_email?: string;
-  driver_photo_url?: string;
-  driver_car_make?: string;
-  driver_car_model?: string;
-  driver_license_plate?: string;
-}
-
 export interface DispatcherBookingData {
   booking_id: string;
   status: string;
   pickup_time: string;
+  pickup_location: string;
+  dropoff_location: string;
   passenger_name: string;
   passenger_phone: string;
   driver_name?: string;
   driver_phone?: string;
-  created_at: string;
-  pickup_location: string;
-  dropoff_location: string;
-  estimated_price?: number;
   final_price?: number;
 }
 
-export async function getBookings(): Promise<BookingData[]> {
+export const getDispatcherBookings = async (): Promise<DispatcherBookingData[]> => {
   try {
-    const { data: bookings, error } = await supabase
+    // Try to use the RPC function first
+    const { data: rpcData, error: rpcError } = await supabase.rpc('get_dispatcher_bookings_by_auth');
+    
+    if (!rpcError && rpcData) {
+      return rpcData as DispatcherBookingData[];
+    }
+
+    // Fallback to direct query with joins
+    const { data, error } = await supabase
       .from('bookings')
       .select(`
         id,
+        status,
+        pickup_time,
         pickup_location,
         dropoff_location,
-        pickup_time,
-        passenger_count,
-        status,
-        ride_status,
-        payment_confirmation_status,
-        status_passenger,
-        status_driver,
-        estimated_price,
         final_price,
-        created_at,
-        updated_at,
-        passenger_id,
-        driver_id,
-        passengers (
+        passengers!inner (
           full_name,
-          phone,
-          email,
-          profile_photo_url
+          phone
         ),
         drivers (
           full_name,
-          phone,
-          email,
-          profile_photo_url,
-          car_make,
-          car_model,
-          license_plate
+          phone
         )
       `)
       .order('created_at', { ascending: false })
-      .limit(10);
-
-    if (error) {
-      console.error('Error fetching bookings:', error);
-      throw error;
-    }
-
-    // Enhanced type safety: Map the data to the BookingData type
-    const typedBookings: BookingData[] = bookings.map(booking => ({
-      id: booking.id,
-      pickup_location: booking.pickup_location,
-      dropoff_location: booking.dropoff_location,
-      pickup_time: booking.pickup_time,
-      passenger_count: booking.passenger_count,
-      status: booking.status,
-      ride_status: booking.ride_status,
-      payment_confirmation_status: booking.payment_confirmation_status,
-      status_passenger: booking.status_passenger,
-      status_driver: booking.status_driver,
-      estimated_price: booking.estimated_price,
-      final_price: booking.final_price,
-      created_at: booking.created_at,
-      updated_at: booking.updated_at,
-      passenger_id: booking.passenger_id,
-      driver_id: booking.driver_id,
-      passenger_name: booking.passengers?.full_name,
-      passenger_email: booking.passengers?.email,
-      passenger_phone: booking.passengers?.phone,
-      passenger_photo_url: booking.passengers?.profile_photo_url,
-      driver_name: booking.drivers?.full_name,
-      driver_phone: booking.drivers?.phone,
-      driver_email: booking.drivers?.email,
-      driver_photo_url: booking.drivers?.profile_photo_url,
-      driver_car_make: booking.drivers?.car_make,
-      driver_car_model: booking.drivers?.car_model,
-      driver_license_plate: booking.drivers?.license_plate,
-    }));
-
-    return typedBookings;
-  } catch (error) {
-    console.error('Unexpected error in getBookings:', error);
-    throw error;
-  }
-}
-
-export async function getPassengerBookingsByAuth() {
-  try {
-    console.log('Calling get_passenger_bookings_by_auth RPC function...');
-    const { data, error } = await supabase.rpc('get_passenger_bookings_by_auth');
-    
-    if (error) {
-      console.error('Error calling get_passenger_bookings_by_auth:', error);
-      throw error;
-    }
-    
-    console.log('Passenger bookings data:', data);
-    return data || [];
-  } catch (error) {
-    console.error('Unexpected error in getPassengerBookingsByAuth:', error);
-    throw error;
-  }
-}
-
-// For backwards compatibility
-export const fetchPassengerBookings = getPassengerBookingsByAuth;
-
-export const subscribeToBookingsAndPassengers = (callback: () => void) => {
-  const channel = supabase
-    .channel('bookings_changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, callback)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'passengers' }, callback)
-    .subscribe();
-
-  return () => {
-    supabase.removeChannel(channel);
-  };
-};
-
-export async function getDispatcherBookings(): Promise<DispatcherBookingData[]> {
-  try {
-    console.log('Fetching dispatcher bookings from dispatcher_full_bookings view...');
-    const { data, error } = await supabase
-      .from('dispatcher_full_bookings')
-      .select(`
-        booking_id,
-        status,
-        pickup_time,
-        passenger_name,
-        passenger_phone,
-        driver_name,
-        driver_phone,
-        created_at,
-        pickup_location,
-        dropoff_location,
-        estimated_price,
-        final_price
-      `)
-      .order('created_at', { ascending: false })
-      .limit(20);
+      .limit(50);
 
     if (error) {
       console.error('Error fetching dispatcher bookings:', error);
       throw error;
     }
 
-    console.log('Dispatcher bookings data:', data);
+    return (data || []).map(booking => ({
+      booking_id: booking.id,
+      status: booking.status || 'pending',
+      pickup_time: booking.pickup_time,
+      pickup_location: booking.pickup_location,
+      dropoff_location: booking.dropoff_location,
+      passenger_name: booking.passengers?.full_name || 'Unknown',
+      passenger_phone: booking.passengers?.phone || '',
+      driver_name: booking.drivers?.full_name || null,
+      driver_phone: booking.drivers?.phone || null,
+      final_price: booking.final_price
+    }));
+  } catch (error) {
+    console.error('Error in getDispatcherBookings:', error);
+    return [];
+  }
+};
+
+export const getPassengerBookings = async () => {
+  try {
+    const { data, error } = await supabase.rpc('get_my_passenger_bookings');
+    
+    if (error) {
+      console.error('Error fetching passenger bookings:', error);
+      throw error;
+    }
+
     return data || [];
   } catch (error) {
-    console.error('Unexpected error in getDispatcherBookings:', error);
-    throw error;
+    console.error('Error in getPassengerBookings:', error);
+    return [];
   }
-}
-
-export const createBooking = async (bookingData: any) => {
-  const { data, error } = await supabase
-    .from('bookings')
-    .insert([bookingData])
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-};
-
-export const updateBookingStatus = async (bookingId: string, status: string) => {
-  const { data, error } = await supabase
-    .from('bookings')
-    .update({ status })
-    .eq('id', bookingId)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-};
-
-export const getBookingById = async (bookingId: string) => {
-  const { data, error } = await supabase
-    .from('bookings')
-    .select(`
-      *,
-      passengers(*),
-      drivers(*)
-    `)
-    .eq('id', bookingId)
-    .single();
-
-  if (error) throw error;
-  return data;
 };

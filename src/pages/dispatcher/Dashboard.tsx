@@ -22,13 +22,14 @@ const DispatcherDashboard: React.FC = () => {
     activeDrivers: 0,
     completionRate: 0
   });
+  const [drivers, setDrivers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
     checkDispatcherAccess();
-    loadDashboardStats();
+    loadDashboardData();
   }, []);
 
   const checkDispatcherAccess = async () => {
@@ -61,32 +62,37 @@ const DispatcherDashboard: React.FC = () => {
     }
   };
 
-  const loadDashboardStats = async () => {
+  const loadDashboardData = async () => {
     try {
       setLoading(true);
       
-      // Load basic stats - you can expand this with real queries
+      // Load basic stats
       const { data: bookings } = await supabase
         .from('bookings')
         .select('id, final_price, status')
         .limit(100);
 
-      const { data: drivers } = await supabase
+      const { data: driversData } = await supabase
         .from('drivers')
-        .select('id, status')
+        .select('*')
         .eq('status', 'active');
 
+      setDrivers(driversData || []);
       setStats({
         totalBookings: bookings?.length || 0,
         totalRevenue: bookings?.reduce((sum, booking) => sum + (booking.final_price || 0), 0) || 0,
-        activeDrivers: drivers?.length || 0,
+        activeDrivers: driversData?.length || 0,
         completionRate: 85 // Placeholder - calculate based on actual data
       });
     } catch (error) {
-      console.error('Error loading dashboard stats:', error);
+      console.error('Error loading dashboard data:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const onDriverUpdate = async () => {
+    await loadDashboardData();
   };
 
   const mockDispatcherProfile = {
@@ -107,58 +113,8 @@ const DispatcherDashboard: React.FC = () => {
           }}
         />
         
-        {/* Dashboard Stats */}
+        {/* Dashboard Content */}
         <div className="px-6 py-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Total Bookings</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.totalBookings}</p>
-                  </div>
-                  <Calendar className="h-8 w-8 text-blue-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                    <p className="text-2xl font-bold text-gray-900">${stats.totalRevenue.toLocaleString()}</p>
-                  </div>
-                  <DollarSign className="h-8 w-8 text-green-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Active Drivers</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.activeDrivers}</p>
-                  </div>
-                  <Users className="h-8 w-8 text-purple-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Completion Rate</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.completionRate}%</p>
-                  </div>
-                  <TrendingUp className="h-8 w-8 text-orange-600" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="bookings">Bookings</TabsTrigger>
@@ -175,15 +131,65 @@ const DispatcherDashboard: React.FC = () => {
               </TabsContent>
 
               <TabsContent value="drivers" className="mt-0">
-                <DriverManagement />
+                <DriverManagement drivers={drivers} onDriverUpdate={onDriverUpdate} />
               </TabsContent>
 
               <TabsContent value="payments" className="mt-0">
+                {/* Dashboard Stats - Only show in Payments tab */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">Total Bookings</p>
+                          <p className="text-2xl font-bold text-gray-900">{stats.totalBookings}</p>
+                        </div>
+                        <Calendar className="h-8 w-8 text-blue-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+                          <p className="text-2xl font-bold text-gray-900">${stats.totalRevenue.toLocaleString()}</p>
+                        </div>
+                        <DollarSign className="h-8 w-8 text-green-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">Active Drivers</p>
+                          <p className="text-2xl font-bold text-gray-900">{stats.activeDrivers}</p>
+                        </div>
+                        <Users className="h-8 w-8 text-purple-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">Completion Rate</p>
+                          <p className="text-2xl font-bold text-gray-900">{stats.completionRate}%</p>
+                        </div>
+                        <TrendingUp className="h-8 w-8 text-orange-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
                 <PaymentsSection />
               </TabsContent>
 
               <TabsContent value="messages" className="mt-0">
-                <DispatcherMessaging />
+                <DispatcherMessaging bookings={[]} />
               </TabsContent>
 
               <TabsContent value="reports" className="mt-0">

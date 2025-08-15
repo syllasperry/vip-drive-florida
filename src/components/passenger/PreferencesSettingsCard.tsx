@@ -2,36 +2,28 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Settings, Thermometer, Radio, MessageCircle, MapPin } from "lucide-react";
 
 interface PreferencesData {
+  air_conditioning?: boolean;
   preferred_temperature?: number;
-  music_preference?: string;
-  music_playlist_link?: string;
-  interaction_preference?: string;
+  temperature_unit?: string;
+  radio_on?: boolean;
+  preferred_music?: string;
+  conversation_preference?: string;
   trip_purpose?: string;
-  additional_notes?: string;
+  trip_notes?: string;
 }
 
-interface PreferencesSettingsCardProps {
-  onClose: () => void;
-}
-
-export const PreferencesSettingsCard = ({ onClose }: PreferencesSettingsCardProps) => {
-  const [preferences, setPreferences] = useState<PreferencesData>({
-    preferred_temperature: 72,
-    music_preference: 'off',
-    music_playlist_link: '',
-    interaction_preference: 'no_preference',
-    trip_purpose: 'leisure',
-    additional_notes: ''
-  });
+export const PreferencesSettingsCard = () => {
+  const [preferences, setPreferences] = useState<PreferencesData>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
@@ -43,39 +35,18 @@ export const PreferencesSettingsCard = ({ onClose }: PreferencesSettingsCardProp
   const loadPreferences = async () => {
     try {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data, error } = await supabase.rpc('get_my_passenger_preferences').maybeSingle();
       
-      if (!user) {
-        throw new Error('No authenticated user');
-      }
-
-      const { data, error } = await supabase
-        .from('passengers')
-        .select('preferred_temperature, music_preference, music_playlist_link, interaction_preference, trip_purpose, additional_notes')
-        .eq('auth_user_id', user.id)
-        .single();
-
       if (error && error.code !== 'PGRST116') {
-        throw error;
+        console.error('Error loading preferences:', error);
+        return;
       }
 
       if (data) {
-        setPreferences({
-          preferred_temperature: data.preferred_temperature || 72,
-          music_preference: data.music_preference || 'off',
-          music_playlist_link: data.music_playlist_link || '',
-          interaction_preference: data.interaction_preference || 'no_preference',
-          trip_purpose: data.trip_purpose || 'leisure',
-          additional_notes: data.additional_notes || ''
-        });
+        setPreferences(data);
       }
     } catch (error) {
       console.error('Error loading preferences:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load preferences",
-        variant: "destructive",
-      });
     } finally {
       setLoading(false);
     }
@@ -84,27 +55,18 @@ export const PreferencesSettingsCard = ({ onClose }: PreferencesSettingsCardProp
   const savePreferences = async () => {
     try {
       setSaving(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error('No authenticated user');
-      }
+      const { error } = await supabase.rpc('upsert_my_passenger_preferences', {
+        _air_conditioning: preferences.air_conditioning || false,
+        _preferred_temperature: preferences.preferred_temperature || 72,
+        _temperature_unit: preferences.temperature_unit || 'F',
+        _radio_on: preferences.radio_on || false,
+        _preferred_music: preferences.preferred_music || '',
+        _conversation_preference: preferences.conversation_preference || '',
+        _trip_purpose: preferences.trip_purpose || '',
+        _trip_notes: preferences.trip_notes || ''
+      });
 
-      const { error } = await supabase
-        .from('passengers')
-        .update({
-          preferred_temperature: preferences.preferred_temperature,
-          music_preference: preferences.music_preference,
-          music_playlist_link: preferences.music_playlist_link,
-          interaction_preference: preferences.interaction_preference,
-          trip_purpose: preferences.trip_purpose,
-          additional_notes: preferences.additional_notes
-        })
-        .eq('auth_user_id', user.id);
-
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       toast({
         title: "Success",
@@ -135,127 +97,169 @@ export const PreferencesSettingsCard = ({ onClose }: PreferencesSettingsCardProp
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Account Preferences</CardTitle>
+        <CardTitle className="flex items-center space-x-2">
+          <Settings className="h-5 w-5" />
+          <span>Ride Preferences</span>
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Temperature */}
-        <div className="space-y-2">
-          <Label>Preferred Temperature (°F)</Label>
-          <div className="px-4">
-            <Slider
-              value={[preferences.preferred_temperature || 72]}
-              onValueChange={(value) => 
-                setPreferences(prev => ({ ...prev, preferred_temperature: value[0] }))
+        {/* Climate Control */}
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <Thermometer className="h-4 w-4" />
+            <Label className="text-base font-medium">Climate Control</Label>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <Label htmlFor="ac">Air Conditioning</Label>
+            <Switch
+              id="ac"
+              checked={preferences.air_conditioning || false}
+              onCheckedChange={(checked) => 
+                setPreferences(prev => ({ ...prev, air_conditioning: checked }))
               }
-              max={80}
-              min={60}
-              step={1}
-              className="w-full"
             />
-            <div className="flex justify-between text-sm text-gray-500 mt-1">
-              <span>60°F</span>
-              <span className="font-medium">{preferences.preferred_temperature}°F</span>
-              <span>80°F</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="temp">Preferred Temperature</Label>
+              <Input
+                id="temp"
+                type="number"
+                value={preferences.preferred_temperature || 72}
+                onChange={(e) => 
+                  setPreferences(prev => ({ ...prev, preferred_temperature: parseInt(e.target.value) }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="unit">Unit</Label>
+              <Select 
+                value={preferences.temperature_unit || 'F'} 
+                onValueChange={(value) => 
+                  setPreferences(prev => ({ ...prev, temperature_unit: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="F">Fahrenheit</SelectItem>
+                  <SelectItem value="C">Celsius</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
 
-        {/* Music Preference */}
-        <div className="space-y-2">
-          <Label>Music Preference</Label>
-          <Select 
-            value={preferences.music_preference} 
-            onValueChange={(value) => 
-              setPreferences(prev => ({ ...prev, music_preference: value }))
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select music preference" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="on">On</SelectItem>
-              <SelectItem value="off">Off</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Playlist Link */}
-        {preferences.music_preference === 'on' && (
-          <div className="space-y-2">
-            <Label>Playlist Link (Optional)</Label>
-            <Input
-              type="url"
-              placeholder="https://..."
-              value={preferences.music_playlist_link}
-              onChange={(e) => 
-                setPreferences(prev => ({ ...prev, music_playlist_link: e.target.value }))
+        {/* Entertainment */}
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <Radio className="h-4 w-4" />
+            <Label className="text-base font-medium">Entertainment</Label>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <Label htmlFor="radio">Radio/Music</Label>
+            <Switch
+              id="radio"
+              checked={preferences.radio_on || false}
+              onCheckedChange={(checked) => 
+                setPreferences(prev => ({ ...prev, radio_on: checked }))
               }
             />
           </div>
-        )}
 
-        {/* Conversation Preference */}
-        <div className="space-y-2">
-          <Label>Conversation Preference</Label>
-          <Select 
-            value={preferences.interaction_preference} 
-            onValueChange={(value) => 
-              setPreferences(prev => ({ ...prev, interaction_preference: value }))
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select conversation preference" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="talkative">Talkative</SelectItem>
-              <SelectItem value="quiet">Quiet</SelectItem>
-              <SelectItem value="no_preference">No Preference</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="space-y-2">
+            <Label htmlFor="music">Preferred Music</Label>
+            <Input
+              id="music"
+              value={preferences.preferred_music || ''}
+              onChange={(e) => 
+                setPreferences(prev => ({ ...prev, preferred_music: e.target.value }))
+              }
+              placeholder="e.g., Jazz, Classical, No preference"
+            />
+          </div>
         </div>
 
-        {/* Trip Purpose */}
-        <div className="space-y-2">
-          <Label>Trip Purpose</Label>
-          <Select 
-            value={preferences.trip_purpose} 
-            onValueChange={(value) => 
-              setPreferences(prev => ({ ...prev, trip_purpose: value }))
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select trip purpose" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="business">Business</SelectItem>
-              <SelectItem value="leisure">Leisure</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
-            </SelectContent>
-          </Select>
+        {/* Communication */}
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <MessageCircle className="h-4 w-4" />
+            <Label className="text-base font-medium">Communication</Label>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="conversation">Conversation Preference</Label>
+            <Select 
+              value={preferences.conversation_preference || ''} 
+              onValueChange={(value) => 
+                setPreferences(prev => ({ ...prev, conversation_preference: value }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select preference" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="chatty">I enjoy conversation</SelectItem>
+                <SelectItem value="quiet">I prefer quiet rides</SelectItem>
+                <SelectItem value="no_preference">No preference</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
-        {/* Additional Notes */}
-        <div className="space-y-2">
-          <Label>Additional Notes</Label>
-          <Textarea
-            placeholder="Any special requests or preferences..."
-            value={preferences.additional_notes}
-            onChange={(e) => 
-              setPreferences(prev => ({ ...prev, additional_notes: e.target.value }))
-            }
-            rows={3}
-          />
+        {/* Trip Details */}
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <MapPin className="h-4 w-4" />
+            <Label className="text-base font-medium">Trip Details</Label>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="purpose">Trip Purpose</Label>
+            <Select 
+              value={preferences.trip_purpose || ''} 
+              onValueChange={(value) => 
+                setPreferences(prev => ({ ...prev, trip_purpose: value }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select purpose" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="business">Business</SelectItem>
+                <SelectItem value="leisure">Leisure</SelectItem>
+                <SelectItem value="airport">Airport Transfer</SelectItem>
+                <SelectItem value="event">Special Event</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="notes">Additional Notes</Label>
+            <Textarea
+              id="notes"
+              value={preferences.trip_notes || ''}
+              onChange={(e) => 
+                setPreferences(prev => ({ ...prev, trip_notes: e.target.value }))
+              }
+              placeholder="Any special requests or preferences..."
+              rows={3}
+            />
+          </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-2 pt-4">
-          <Button variant="outline" onClick={onClose} className="flex-1">
-            Back
-          </Button>
-          <Button onClick={savePreferences} disabled={saving} className="flex-1">
-            {saving ? "Saving..." : "Save Preferences"}
-          </Button>
-        </div>
+        <Button 
+          onClick={savePreferences} 
+          disabled={saving}
+          className="w-full"
+        >
+          {saving ? 'Saving...' : 'Save Preferences'}
+        </Button>
       </CardContent>
     </Card>
   );

@@ -1,138 +1,158 @@
 
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BottomNavigation } from '@/components/dashboard/BottomNavigation';
-import { ProfileHeader } from '@/components/dashboard/ProfileHeader';
-import { MessagesTab } from '@/components/passenger/MessagesTab';
-import { SettingsTab } from '@/components/passenger/SettingsTab';
-import { PaymentsTab } from '@/components/passenger/PaymentsTab';
-import { PassengerBookingsList } from '@/components/passenger/PassengerBookingsList';
-import { fetchPassengerBookings, subscribeToBookingsAndPassengers } from '@/lib/api/bookings';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
+import { PassengerBookingsList } from "@/components/passenger/PassengerBookingsList";
+import { MessagesTab } from "@/components/passenger/MessagesTab";
+import { PaymentsTab } from "@/components/passenger/PaymentsTab";
+import { SettingsTab } from "@/components/passenger/SettingsTab";
+import { ProfileHeader } from "@/components/dashboard/ProfileHeader";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 const PassengerDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('bookings');
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [passengerInfo, setPassengerInfo] = useState({
-    full_name: 'Passenger User',
-    profile_photo_url: null,
-    phone: null,
-    email: null
-  });
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Load passenger info from bookings using RPC
   useEffect(() => {
-    const loadPassengerInfo = async () => {
-      try {
-        console.log('🔄 Loading passenger info using RPC...');
-        const bookings = await fetchPassengerBookings();
-        if (bookings.length > 0 && bookings[0].passenger_name) {
-          setPassengerInfo(prev => ({
-            ...prev,
-            full_name: bookings[0].passenger_name || 'Passenger User',
-            profile_photo_url: bookings[0].passenger_photo_url,
-            phone: bookings[0].passenger_phone,
-            email: bookings[0].passenger_email
-          }));
-          console.log('✅ Passenger info loaded successfully');
-        }
-      } catch (error) {
-        console.error('❌ Failed to load passenger info:', error);
-        toast({
-          title: "Warning",
-          description: "Could not load passenger information. Please check your connection.",
-          variant: "destructive",
-        });
-      }
-    };
-
-    loadPassengerInfo();
-  }, [refreshTrigger, toast]);
-
-  // Set up realtime subscription
-  useEffect(() => {
-    const unsubscribe = subscribeToBookingsAndPassengers(() => {
-      console.log('🔄 Real-time update in Dashboard - refreshing passenger info...');
-      setRefreshTrigger(prev => prev + 1);
-    });
-
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
+    checkAuth();
+    loadUserProfile();
+    loadBookings();
   }, []);
 
-  const handleUpdate = () => {
-    setRefreshTrigger(prev => prev + 1);
+  const checkAuth = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      navigate('/passenger/login');
+    }
   };
 
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
+  const loadUserProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Try to get passenger profile
+        const { data: passenger } = await supabase
+          .from('passengers')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        setUserProfile({
+          full_name: passenger?.full_name || user.user_metadata?.full_name || user.email,
+          profile_photo_url: passenger?.profile_photo_url || user.user_metadata?.avatar_url,
+          phone: passenger?.phone || user.user_metadata?.phone,
+          email: user.email
+        });
+      }
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+    }
   };
 
-  const handleNewBooking = () => {
-    navigate('/passenger/price-estimate');
+  const loadBookings = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.rpc('get_my_passenger_bookings');
+      
+      if (error) {
+        console.error('Error loading bookings:', error);
+        setBookings([]);
+      } else {
+        setBookings(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      console.error('Error loading bookings:', error);
+      setBookings([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const mockCurrentUserId = 'passenger-user-id';
-  const mockCurrentUserName = passengerInfo.full_name || 'Passenger User';
+  const handlePhotoUpload = async (file: File) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      // Update passenger profile
+      await supabase
+        .from('passengers')
+        .upsert({
+          id: user.id,
+          profile_photo_url: data.publicUrl
+        });
+
+      await loadUserProfile();
+      
+      toast({
+        title: "Success",
+        description: "Profile photo updated successfully",
+      });
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      toast({
+        title: "Error",
+        description: "Failed to upload photo",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-md mx-auto bg-white min-h-screen shadow-lg">
+      <div className="max-w-4xl mx-auto">
         <ProfileHeader 
           userType="passenger" 
-          userProfile={passengerInfo}
-          onPhotoUpload={async (file: File) => {
-            console.log('Photo upload:', file);
-            setRefreshTrigger(prev => prev + 1);
-          }}
+          userProfile={userProfile}
+          onPhotoUpload={handlePhotoUpload}
         />
         
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <div className="px-4 pb-20">
-            <TabsContent value="bookings" className="mt-0">
-              <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-gray-900">My Bookings</h1>
-                <Button
-                  onClick={handleNewBooking}
-                  className="bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-2 rounded-lg"
-                >
-                  New Booking
-                </Button>
-              </div>
+        <div className="px-4 py-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="bookings">Bookings</TabsTrigger>
+              <TabsTrigger value="messages">Messages</TabsTrigger>
+              <TabsTrigger value="payments">Payments</TabsTrigger>
+              <TabsTrigger value="settings">Settings</TabsTrigger>
+            </TabsList>
 
-              <PassengerBookingsList key={refreshTrigger} onUpdate={handleUpdate} />
-            </TabsContent>
+            <div className="mt-6">
+              <TabsContent value="bookings" className="mt-0">
+                <PassengerBookingsList onUpdate={loadBookings} />
+              </TabsContent>
 
-            <TabsContent value="messages" className="mt-0">
-              <MessagesTab 
-                bookings={[]}
-                currentUserId={mockCurrentUserId}
-                currentUserName={mockCurrentUserName}
-              />
-            </TabsContent>
+              <TabsContent value="messages" className="mt-0">
+                <MessagesTab />
+              </TabsContent>
 
-            <TabsContent value="payments" className="mt-0">
-              <PaymentsTab bookings={[]} />
-            </TabsContent>
+              <TabsContent value="payments" className="mt-0">
+                <PaymentsTab bookings={bookings} />
+              </TabsContent>
 
-            <TabsContent value="settings" className="mt-0">
-              <SettingsTab passengerInfo={passengerInfo} />
-            </TabsContent>
-          </div>
-        </Tabs>
-
-        <BottomNavigation 
-          userType="passenger"
-          activeTab={activeTab}
-          onTabChange={handleTabChange}
-        />
+              <TabsContent value="settings" className="mt-0">
+                <SettingsTab />
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
       </div>
     </div>
   );
