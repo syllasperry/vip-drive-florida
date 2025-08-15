@@ -1,160 +1,128 @@
 
 import React, { useState, useEffect } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PassengerBookingsList } from "@/components/passenger/PassengerBookingsList";
+import { ProfileHeader } from "@/components/dashboard/ProfileHeader";
 import { MessagesTab } from "@/components/passenger/MessagesTab";
 import { PaymentsTab } from "@/components/passenger/PaymentsTab";
 import { SettingsTab } from "@/components/passenger/SettingsTab";
-import { ProfileHeader } from "@/components/dashboard/ProfileHeader";
+import { BottomNavigation } from "@/components/dashboard/BottomNavigation";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
-import { getPassengerBookings } from "@/lib/api/bookings";
 
-const PassengerDashboard: React.FC = () => {
+export const PassengerDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('bookings');
-  const [bookings, setBookings] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [bookings, setBookings] = useState([]);
+  const [passenger, setPassenger] = useState<{
+    full_name?: string;
+    profile_photo_url?: string;
+    email?: string;
+    phone?: string;
+  }>({});
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   useEffect(() => {
-    checkAuth();
-    loadUserProfile();
     loadBookings();
+    loadPassengerData();
   }, []);
 
-  const checkAuth = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      navigate('/passenger/login');
-    }
-  };
-
-  const loadUserProfile = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        // Try to get passenger profile
-        const { data: passenger } = await supabase
-          .from('passengers')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        setUserProfile({
-          full_name: passenger?.full_name || user.user_metadata?.full_name || user.email,
-          profile_photo_url: passenger?.profile_photo_url || user.user_metadata?.avatar_url,
-          phone: passenger?.phone || user.user_metadata?.phone,
-          email: user.email
-        });
-      }
-    } catch (error) {
-      console.error('Error loading user profile:', error);
-    }
-  };
-
   const loadBookings = async () => {
+    // Placeholder: Replace with actual data fetching logic
+    setBookings([
+      {
+        id: '1',
+        pickup_location: '123 Main St',
+        dropoff_location: '456 Elm St',
+        pickup_time: '2024-07-15T10:00:00',
+        passenger_count: 2,
+        status: 'confirmed'
+      },
+      {
+        id: '2',
+        pickup_location: '789 Oak St',
+        dropoff_location: '101 Pine St',
+        pickup_time: '2024-07-16T14:00:00',
+        passenger_count: 1,
+        status: 'pending'
+      }
+    ]);
+  };
+
+  const loadPassengerData = async () => {
     try {
-      setLoading(true);
-      const data = await getPassengerBookings();
-      setBookings(Array.isArray(data) ? data : []);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/passenger/login');
+        return;
+      }
+
+      const { data: passengerData, error } = await supabase
+        .from('passengers')
+        .select('full_name, profile_photo_url, email, phone')
+        .eq('auth_user_id', user.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching passenger data:', error);
+        return;
+      }
+
+      setPassenger(passengerData || {});
     } catch (error) {
-      console.error('Error loading bookings:', error);
-      setBookings([]);
-    } finally {
-      setLoading(false);
+      console.error('Error loading passenger data:', error);
     }
   };
 
-  const handlePhotoUpload = async (file: File) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
-
-      // Update passenger profile - use correct upsert syntax
-      await supabase
-        .from('passengers')
-        .upsert({
-          id: user.id,
-          full_name: user.user_metadata?.full_name || user.email || 'User',
-          email: user.email || '',
-          profile_photo_url: data.publicUrl
-        });
-
-      await loadUserProfile();
-      
-      toast({
-        title: "Success",
-        description: "Profile photo updated successfully",
-      });
-    } catch (error) {
-      console.error('Error uploading photo:', error);
-      toast({
-        title: "Error",
-        description: "Failed to upload photo",
-        variant: "destructive",
-      });
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'bookings':
+        return (
+          <div className="space-y-6">
+            <ProfileHeader 
+              full_name={passenger?.full_name}
+              profile_photo_url={passenger?.profile_photo_url}
+            />
+            <PassengerBookingsList 
+              bookings={bookings}
+              onUpdate={loadBookings}
+            />
+          </div>
+        );
+      case 'messages':
+        return <MessagesTab userType="passenger" userId="current-user" onSelectChat={() => {}} />;
+      case 'payments':
+        return <PaymentsTab />;
+      case 'settings':
+        return <SettingsTab passenger={passenger} />;
+      default:
+        return (
+          <div className="space-y-6">
+            <ProfileHeader 
+              full_name={passenger?.full_name}
+              profile_photo_url={passenger?.profile_photo_url}
+            />
+            <PassengerBookingsList 
+              bookings={bookings}
+              onUpdate={loadBookings}
+            />
+          </div>
+        );
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto">
-        <ProfileHeader 
-          userType="passenger" 
-          userProfile={userProfile}
-          onPhotoUpload={handlePhotoUpload}
-        />
-        
-        <div className="px-4 py-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="bookings">Bookings</TabsTrigger>
-              <TabsTrigger value="messages">Messages</TabsTrigger>
-              <TabsTrigger value="payments">Payments</TabsTrigger>
-              <TabsTrigger value="settings">Settings</TabsTrigger>
-            </TabsList>
-
-            <div className="mt-6">
-              <TabsContent value="bookings" className="mt-0">
-                <PassengerBookingsList onUpdate={loadBookings} />
-              </TabsContent>
-
-              <TabsContent value="messages" className="mt-0">
-                <MessagesTab 
-                  bookings={bookings}
-                  currentUserId={userProfile?.id || ''}
-                  currentUserName={userProfile?.full_name || 'User'}
-                />
-              </TabsContent>
-
-              <TabsContent value="payments" className="mt-0">
-                <PaymentsTab bookings={bookings} />
-              </TabsContent>
-
-              <TabsContent value="settings" className="mt-0">
-                <SettingsTab passengerInfo={userProfile} />
-              </TabsContent>
-            </div>
-          </Tabs>
+    <div className="min-h-screen bg-gray-50 pb-20">
+      <div className="max-w-7xl mx-auto">
+        <div className="px-6 py-4">
+          {renderContent()}
         </div>
       </div>
+
+      <BottomNavigation 
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        userType="passenger"
+        pendingActionsCount={0}
+      />
     </div>
   );
 };
