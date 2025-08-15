@@ -5,30 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Clock, MapPin, User, Phone } from "lucide-react";
 import { format } from "date-fns";
-import { supabase } from "@/integrations/supabase/client";
+import { getDispatcherBookings, type DispatcherBookingData } from "@/lib/api/bookings";
 import { useToast } from "@/hooks/use-toast";
 
-interface DispatcherBooking {
-  booking_id: string;
-  status: string;
-  pickup_time: string;
-  pickup_location: string;
-  dropoff_location: string;
-  passenger_name: string;
-  passenger_phone: string;
-  passenger_email?: string;
-  passenger_image?: string;
-  driver_name?: string;
-  driver_phone?: string;
-  driver_email?: string;
-  driver_image?: string;
-  vehicle_model?: string;
-  created_at: string;
-  final_price?: number;
-}
-
 export const DispatcherBookingManager = () => {
-  const [bookings, setBookings] = useState<DispatcherBooking[]>([]);
+  const [bookings, setBookings] = useState<DispatcherBookingData[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -39,57 +20,8 @@ export const DispatcherBookingManager = () => {
   const loadBookings = async () => {
     try {
       setLoading(true);
-      
-      // Query the bookings table with proper joins
-      const { data, error } = await supabase
-        .from("bookings")
-        .select(`
-          id,
-          status,
-          pickup_time,
-          pickup_location,
-          dropoff_location,
-          final_price,
-          created_at,
-          passengers!inner (
-            full_name,
-            phone,
-            email,
-            profile_photo_url
-          ),
-          drivers (
-            full_name,
-            phone,
-            email,
-            profile_photo_url
-          )
-        `)
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        throw error;
-      }
-
-      // Map data to expected format
-      const mappedData: DispatcherBooking[] = (data || []).map(booking => ({
-        booking_id: booking.id,
-        status: booking.status,
-        pickup_time: booking.pickup_time,
-        pickup_location: booking.pickup_location,
-        dropoff_location: booking.dropoff_location,
-        passenger_name: booking.passengers?.full_name || 'Unknown',
-        passenger_phone: booking.passengers?.phone || '',
-        passenger_email: booking.passengers?.email,
-        passenger_image: booking.passengers?.profile_photo_url,
-        driver_name: booking.drivers?.full_name,
-        driver_phone: booking.drivers?.phone,
-        driver_email: booking.drivers?.email,
-        driver_image: booking.drivers?.profile_photo_url,
-        created_at: booking.created_at,
-        final_price: booking.final_price
-      }));
-
-      setBookings(mappedData);
+      const data = await getDispatcherBookings();
+      setBookings(data);
     } catch (error) {
       console.error('Error loading dispatcher bookings:', error);
       toast({
