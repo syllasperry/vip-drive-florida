@@ -11,7 +11,6 @@ import { PrivacySecurityCard } from "./PrivacySecurityCard";
 import { HelpSupportCard } from "./HelpSupportCard";
 import { ProfileSettingsCard } from "./ProfileSettingsCard";
 import { ProfileSettingsModal } from "./ProfileSettingsModal";
-import { PreferencesSettingsCard } from "./PreferencesSettingsCard";
 import { getMyPassengerProfile } from "@/lib/api/profiles";
 
 interface SettingsTabProps {
@@ -151,7 +150,10 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
         >
           ← Back to Settings
         </Button>
-        <PreferencesSettingsCard onClose={() => setActiveModal(null)} />
+        <ProfileSettingsCard 
+          passengerInfo={currentPassengerInfo}
+          onProfileUpdate={handleProfileUpdate}
+        />
       </div>
     );
   }
@@ -217,7 +219,7 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
               <SettingsIcon className="w-5 h-5 text-gray-600" />
               <div className="flex-1">
                 <h3 className="font-medium text-gray-900">Preferences</h3>
-                <p className="text-sm text-gray-500">Account preferences</p>
+                <p className="text-sm text-gray-500">Profile and account preferences</p>
               </div>
             </div>
           </CardContent>

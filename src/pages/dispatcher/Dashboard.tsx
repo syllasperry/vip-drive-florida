@@ -1,204 +1,141 @@
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DispatcherBookingManager } from "@/components/dispatcher/DispatcherBookingManager";
-import { DispatcherSettings } from "@/components/dispatcher/DispatcherSettings";
-import { PaymentsSection } from "@/components/dispatcher/PaymentsSection";
 import { DriverManagement } from "@/components/dispatcher/DriverManagement";
+import { PaymentsSection } from "@/components/dispatcher/PaymentsSection";
 import { DispatcherMessaging } from "@/components/dispatcher/DispatcherMessaging";
-import { FinancialReports } from "@/components/dispatcher/FinancialReports";
-import { ProfileHeader } from "@/components/dashboard/ProfileHeader";
-import { Users, DollarSign, Calendar, TrendingUp } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { DispatcherSettings } from "@/components/dispatcher/DispatcherSettings";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { getDispatcherBookings } from "@/lib/api/bookings";
 
-const DispatcherDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('bookings');
-  const [stats, setStats] = useState({
-    totalBookings: 0,
-    totalRevenue: 0,
-    activeDrivers: 0,
-    completionRate: 0
-  });
+const Dashboard = () => {
+  const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAuthorized, setIsAuthorized] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  useEffect(() => {
-    checkDispatcherAccess();
-    loadDashboardStats();
-  }, []);
-
-  const checkDispatcherAccess = async () => {
+  const fetchBookings = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate('/passenger/login');
-        return;
-      }
-
-      // Check if user is a dispatcher
-      const { data: dispatcher, error } = await supabase
-        .from('dispatchers')
-        .select('*')
-        .eq('email', user.email)
-        .single();
-
-      if (error || !dispatcher) {
-        toast({
-          title: "Access Denied",
-          description: "You don't have dispatcher privileges",
-          variant: "destructive",
-        });
-        navigate('/');
-        return;
-      }
+      console.log('🔄 Fetching dispatcher bookings...');
+      const data = await getDispatcherBookings();
+      setBookings(data);
+      console.log('✅ Dispatcher bookings loaded:', data.length);
     } catch (error) {
-      console.error('Error checking dispatcher access:', error);
-      navigate('/');
-    }
-  };
-
-  const loadDashboardStats = async () => {
-    try {
-      setLoading(true);
-      
-      // Load basic stats - you can expand this with real queries
-      const { data: bookings } = await supabase
-        .from('bookings')
-        .select('id, final_price, status')
-        .limit(100);
-
-      const { data: drivers } = await supabase
-        .from('drivers')
-        .select('id, status')
-        .eq('status', 'active');
-
-      setStats({
-        totalBookings: bookings?.length || 0,
-        totalRevenue: bookings?.reduce((sum, booking) => sum + (booking.final_price || 0), 0) || 0,
-        activeDrivers: drivers?.length || 0,
-        completionRate: 85 // Placeholder - calculate based on actual data
+      console.error('❌ Error fetching dispatcher bookings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load bookings. Please try again.",
+        variant: "destructive",
       });
-    } catch (error) {
-      console.error('Error loading dashboard stats:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
-  const mockDispatcherProfile = {
-    full_name: 'Dispatcher Admin',
-    profile_photo_url: null,
-    phone: '+1 (555) 123-4567',
-    email: 'dispatcher@vip-drive-florida.com'
-  };
+  useEffect(() => {
+    const checkAuthAndLoadData = async () => {
+      try {
+        setLoading(true);
+        
+        // Check authentication
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        
+        if (authError || !user) {
+          console.log('❌ No authenticated user, redirecting to login');
+          navigate('/passenger/login', { replace: true });
+          return;
+        }
+
+        console.log('✅ Authenticated user:', user.email);
+
+        // Check if user is authorized dispatcher
+        if (user.email !== 'syllasperry@gmail.com') {
+          console.log('❌ Unauthorized email:', user.email, 'Expected: syllasperry@gmail.com');
+          toast({
+            title: "Access Denied",
+            description: "You don't have permission to access the dispatcher dashboard.",
+            variant: "destructive",
+          });
+          navigate('/passenger/dashboard', { replace: true });
+          return;
+        }
+
+        console.log('✅ Authorized dispatcher access for:', user.email);
+        setIsAuthorized(true);
+        
+        // Load bookings data
+        await fetchBookings();
+        
+      } catch (error) {
+        console.error('❌ Error in auth/data loading:', error);
+        navigate('/passenger/login', { replace: true });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuthAndLoadData();
+  }, [navigate, toast]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthorized) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600">Redirecting...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto">
-        <ProfileHeader 
-          userType="dispatcher" 
-          userProfile={mockDispatcherProfile}
-          onPhotoUpload={async (file: File) => {
-            console.log('Photo upload for dispatcher:', file);
-          }}
-        />
-        
-        {/* Dashboard Stats */}
-        <div className="px-6 py-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Total Bookings</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.totalBookings}</p>
-                  </div>
-                  <Calendar className="h-8 w-8 text-blue-600" />
-                </div>
-              </CardContent>
-            </Card>
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto p-4">
+        <Tabs defaultValue="bookings" className="w-full">
+          <TabsList className="grid w-full grid-cols-5 mb-6">
+            <TabsTrigger value="bookings">Bookings</TabsTrigger>
+            <TabsTrigger value="drivers">Drivers</TabsTrigger>
+            <TabsTrigger value="payments">Payments</TabsTrigger>
+            <TabsTrigger value="messages">Messages</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+          </TabsList>
 
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                    <p className="text-2xl font-bold text-gray-900">${stats.totalRevenue.toLocaleString()}</p>
-                  </div>
-                  <DollarSign className="h-8 w-8 text-green-600" />
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="bookings">
+            <DispatcherBookingManager 
+              bookings={bookings} 
+              onUpdate={fetchBookings}
+            />
+          </TabsContent>
 
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Active Drivers</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.activeDrivers}</p>
-                  </div>
-                  <Users className="h-8 w-8 text-purple-600" />
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="drivers">
+            <DriverManagement />
+          </TabsContent>
 
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Completion Rate</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.completionRate}%</p>
-                  </div>
-                  <TrendingUp className="h-8 w-8 text-orange-600" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <TabsContent value="payments">
+            <PaymentsSection />
+          </TabsContent>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-6">
-              <TabsTrigger value="bookings">Bookings</TabsTrigger>
-              <TabsTrigger value="drivers">Drivers</TabsTrigger>
-              <TabsTrigger value="payments">Payments</TabsTrigger>
-              <TabsTrigger value="messages">Messages</TabsTrigger>
-              <TabsTrigger value="reports">Reports</TabsTrigger>
-              <TabsTrigger value="settings">Settings</TabsTrigger>
-            </TabsList>
+          <TabsContent value="messages">
+            <DispatcherMessaging />
+          </TabsContent>
 
-            <div className="mt-6">
-              <TabsContent value="bookings" className="mt-0">
-                <DispatcherBookingManager />
-              </TabsContent>
-
-              <TabsContent value="drivers" className="mt-0">
-                <DriverManagement />
-              </TabsContent>
-
-              <TabsContent value="payments" className="mt-0">
-                <PaymentsSection />
-              </TabsContent>
-
-              <TabsContent value="messages" className="mt-0">
-                <DispatcherMessaging />
-              </TabsContent>
-
-              <TabsContent value="reports" className="mt-0">
-                <FinancialReports />
-              </TabsContent>
-
-              <TabsContent value="settings" className="mt-0">
-                <DispatcherSettings />
-              </TabsContent>
-            </div>
-          </Tabs>
-        </div>
+          <TabsContent value="settings">
+            <DispatcherSettings />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
 };
 
-export default DispatcherDashboard;
+export default Dashboard;
