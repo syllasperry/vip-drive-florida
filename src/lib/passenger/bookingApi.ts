@@ -19,6 +19,7 @@ export const createPassengerBooking = async (bookingData: CreateBookingData) => 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
     if (userError || !user) {
+      console.error('❌ User not authenticated:', userError);
       throw new Error('User not authenticated');
     }
 
@@ -62,6 +63,14 @@ export const createPassengerBooking = async (bookingData: CreateBookingData) => 
       console.log('✅ Passenger profile found:', passenger.id);
     }
 
+    // Verify passenger ownership
+    if (passenger.user_id !== user.id) {
+      console.error('❌ Passenger user_id mismatch:', { passenger_user_id: passenger.user_id, auth_user_id: user.id });
+      throw new Error('Passenger profile does not belong to authenticated user');
+    }
+
+    console.log('✅ Passenger ownership verified');
+
     // Prepare booking data for insertion
     const bookingInsertData = {
       passenger_id: passenger.id,
@@ -81,6 +90,21 @@ export const createPassengerBooking = async (bookingData: CreateBookingData) => 
     };
 
     console.log('📝 Inserting booking with data:', bookingInsertData);
+    console.log('🔐 Current user context:', { user_id: user.id, passenger_id: passenger.id });
+
+    // Test RLS by checking if we can read passengers table first
+    const { data: testPassengers, error: testError } = await supabase
+      .from('passengers')
+      .select('id, user_id')
+      .eq('id', passenger.id)
+      .single();
+
+    if (testError) {
+      console.error('❌ RLS test failed - cannot read passenger:', testError);
+      throw new Error('RLS configuration issue: cannot verify passenger access');
+    }
+
+    console.log('✅ RLS test passed - passenger readable:', testPassengers);
 
     // Create the booking
     const { data: newBooking, error: bookingError } = await supabase
@@ -100,6 +124,12 @@ export const createPassengerBooking = async (bookingData: CreateBookingData) => 
 
     if (bookingError) {
       console.error('❌ Error creating booking:', bookingError);
+      console.error('❌ Booking error details:', {
+        code: bookingError.code,
+        message: bookingError.message,
+        details: bookingError.details,
+        hint: bookingError.hint
+      });
       throw bookingError;
     }
 
