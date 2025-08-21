@@ -126,6 +126,17 @@ const PassengerDashboard: React.FC = () => {
     }
   }, [activeTab]);
 
+  // Force refresh when component mounts or when returning from booking flow
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log('🔄 Window focused - refreshing dashboard');
+      setRefreshTrigger(prev => prev + 1);
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
+
   const handleUpdate = () => {
     console.log('🔄 Manual refresh triggered');
     setRefreshTrigger(prev => prev + 1);

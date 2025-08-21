@@ -1,6 +1,5 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 
 export interface CreateBookingData {
   pickup_location: string;
@@ -23,15 +22,44 @@ export const createPassengerBooking = async (bookingData: CreateBookingData) => 
       throw new Error('User not authenticated');
     }
 
-    // Get passenger profile to ensure passenger exists
-    const { data: passenger, error: passengerError } = await supabase
-      .from('passengers')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
+    console.log('✅ User authenticated:', user.id);
 
-    if (passengerError || !passenger) {
-      throw new Error('Passenger profile not found. Please complete your profile first.');
+    // Get or create passenger profile
+    let { data: passenger, error: passengerError } = await supabase
+      .from('passengers')
+      .select('id, user_id, full_name, email, phone')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (passengerError) {
+      console.error('❌ Error fetching passenger:', passengerError);
+      throw new Error('Failed to fetch passenger profile');
+    }
+
+    // If no passenger profile exists, create one
+    if (!passenger) {
+      console.log('📝 Creating passenger profile for user:', user.id);
+      
+      const { data: newPassenger, error: createError } = await supabase
+        .from('passengers')
+        .insert([{
+          user_id: user.id,
+          full_name: user.email?.split('@')[0] || 'Passenger',
+          email: user.email,
+          phone: null
+        }])
+        .select('id, user_id, full_name, email, phone')
+        .single();
+
+      if (createError) {
+        console.error('❌ Error creating passenger:', createError);
+        throw new Error('Failed to create passenger profile');
+      }
+
+      passenger = newPassenger;
+      console.log('✅ Passenger profile created:', passenger.id);
+    } else {
+      console.log('✅ Passenger profile found:', passenger.id);
     }
 
     // Prepare booking data for insertion
