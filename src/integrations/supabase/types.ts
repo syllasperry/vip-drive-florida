@@ -5239,6 +5239,15 @@ export type Database = {
         }
         Relationships: []
       }
+      security_definer_functions_audit: {
+        Row: {
+          documentation_status: string | null
+          function_name: unknown | null
+          justification: string | null
+          schema_name: unknown | null
+        }
+        Relationships: []
+      }
       v_booking_pricing_preview: {
         Row: {
           base_fare_cents: number | null
