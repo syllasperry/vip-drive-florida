@@ -91,6 +91,12 @@ export const UniversalRideCard = ({
     photo_url: booking.drivers?.profile_photo_url
   };
 
+  // Determine the correct role for chat based on userType
+  const getChatRole = (): 'dispatcher' | 'passenger' => {
+    if (userType === 'dispatcher') return 'dispatcher';
+    return 'passenger';
+  };
+
   return (
     <>
       <Card className={`w-full mb-4 shadow-sm hover:shadow-md transition-shadow ${className}`}>
@@ -232,7 +238,7 @@ export const UniversalRideCard = ({
         isOpen={showChat}
         onClose={() => setShowChat(false)}
         bookingId={booking.id}
-        role={userType === 'dispatcher' ? 'dispatcher' : 'passenger'}
+        role={getChatRole()}
       />
     </>
   );
