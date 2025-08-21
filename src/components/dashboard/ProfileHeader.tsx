@@ -21,22 +21,30 @@ export const ProfileHeader = ({ userProfile, onPhotoUpload, userType, isOnline =
   // Load passenger profile from passengers table for passenger users
   useEffect(() => {
     if (userType === "passenger") {
-      const loadPassengerProfile = async () => {
-        setIsLoading(true);
-        const profile = await fetchMyPassengerProfile();
-        setPassengerProfile(profile);
-        setIsLoading(false);
-      };
-      
       loadPassengerProfile();
     } else {
       setIsLoading(false);
     }
   }, [userType]);
 
+  const loadPassengerProfile = async () => {
+    setIsLoading(true);
+    const profile = await fetchMyPassengerProfile();
+    setPassengerProfile(profile);
+    setIsLoading(false);
+  };
+
   const handleEditProfile = () => {
     console.log("ProfileHeader: Change button clicked, opening modal");
     setIsEditModalOpen(true);
+  };
+
+  const handleProfileUpdate = () => {
+    // Refresh passenger profile after update
+    if (userType === "passenger") {
+      loadPassengerProfile();
+    }
+    onProfileUpdate?.();
   };
 
   // Determine display name and avatar
@@ -107,7 +115,7 @@ export const ProfileHeader = ({ userProfile, onPhotoUpload, userType, isOnline =
         onClose={() => setIsEditModalOpen(false)}
         userProfile={userProfile}
         onPhotoUpload={onPhotoUpload}
-        onProfileUpdate={onProfileUpdate}
+        onProfileUpdate={handleProfileUpdate}
       />
     </>
   );

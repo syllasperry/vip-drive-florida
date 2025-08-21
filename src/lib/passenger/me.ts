@@ -10,10 +10,18 @@ export async function fetchMyPassengerProfile(): Promise<PassengerMe | null> {
   try {
     console.log('🔍 Fetching passenger profile from passengers table...');
     
+    // Get the current user first
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user?.id) {
+      console.warn('⚠️ No authenticated user found');
+      return null;
+    }
+
     const { data, error } = await supabase
       .from('passengers')
       .select('full_name, profile_photo_url')
-      .eq('user_id', supabase.auth.getUser().then(({ data: { user } }) => user?.id))
+      .eq('user_id', user.id)
       .maybeSingle();
 
     if (error) {
