@@ -79,7 +79,7 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload, 
       const savedProfile = await saveMyPassengerProfile({
         fullName: formData.fullName.trim(),
         phone: formData.phone.trim(),
-        avatarUrl: formData.avatarUrl
+        email: formData.email.trim()
       });
 
       toast({

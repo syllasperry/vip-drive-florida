@@ -23,7 +23,7 @@ export async function fetchMyPassengerProfile(): Promise<PassengerProfile | null
       return null;
     }
     
-    if (!data || data.length === 0) {
+    if (!data || (Array.isArray(data) && data.length === 0)) {
       console.log('📭 No passenger profile found');
       return null;
     }
@@ -60,7 +60,7 @@ export async function saveMyPassengerProfile(params: {
       throw error;
     }
     
-    if (!data || data.length === 0) {
+    if (!data || (Array.isArray(data) && data.length === 0)) {
       throw new Error('No data returned from profile save');
     }
     
