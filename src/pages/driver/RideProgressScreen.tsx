@@ -302,4 +302,4 @@ export const RideProgressScreen = () => {
       </div>
     </div>
   );
-};
+export default RideProgressScreen;

@@ -140,8 +140,8 @@ export async function fetchBookingDetail(bookingId: string): Promise<DetailDTO |
       driver_name: data.drivers?.full_name,
       driver_avatar_url: data.drivers?.profile_photo_url,
       driver_phone: data.drivers?.phone,
-      price_dollars: (data.final_price_cents || data.estimated_price_cents) ?
-        ((data.final_price_cents || data.estimated_price_cents) / 100) : undefined,
+      price_dollars: (data.final_price || data.estimated_price) ?
+        (data.final_price || data.estimated_price) : undefined,
       currency: 'USD',
       pickup_location: data.pickup_location,
       dropoff_location: data.dropoff_location,

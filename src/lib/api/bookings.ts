@@ -52,15 +52,15 @@ export const fetchPassengerBookings = async (): Promise<PassengerBookingResponse
     console.log('🔄 Fetching passenger bookings using RPC function...');
     
     // Use the RPC function to get bookings
-    const { data, error } = await supabase.rpc('get_passenger_bookings_by_auth');
+    const { data, error } = await supabase.rpc('get_my_passenger_bookings');
     
     if (error) {
       console.error("❌ Error fetching passenger bookings:", error);
       throw error;
     }
 
-    console.log('✅ Passenger bookings fetched successfully:', data?.length || 0, 'bookings');
-    return data || [];
+    console.log('✅ Passenger bookings fetched successfully:', Array.isArray(data) ? data.length : 0, 'bookings');
+    return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error("❌ Unexpected error fetching passenger bookings:", error);
     return [];
