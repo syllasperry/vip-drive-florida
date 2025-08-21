@@ -1,7 +1,9 @@
+
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ProfileEditModal } from "@/components/ProfileEditModal";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { fetchMyPassengerProfile, type PassengerMe } from "@/lib/passenger/me";
 
 interface ProfileHeaderProps {
   userProfile: any;
@@ -13,11 +15,40 @@ interface ProfileHeaderProps {
 
 export const ProfileHeader = ({ userProfile, onPhotoUpload, userType, isOnline = true, onProfileUpdate }: ProfileHeaderProps) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [passengerProfile, setPassengerProfile] = useState<PassengerMe | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load passenger profile from passengers table for passenger users
+  useEffect(() => {
+    if (userType === "passenger") {
+      const loadPassengerProfile = async () => {
+        setIsLoading(true);
+        const profile = await fetchMyPassengerProfile();
+        setPassengerProfile(profile);
+        setIsLoading(false);
+      };
+      
+      loadPassengerProfile();
+    } else {
+      setIsLoading(false);
+    }
+  }, [userType]);
 
   const handleEditProfile = () => {
     console.log("ProfileHeader: Change button clicked, opening modal");
     setIsEditModalOpen(true);
   };
+
+  // Determine display name and avatar
+  const displayName = userType === "passenger" && passengerProfile?.full_name 
+    ? passengerProfile.full_name 
+    : userProfile?.full_name || (userType === "passenger" ? "VIP Member" : "Driver");
+    
+  const avatarUrl = userType === "passenger" && passengerProfile?.profile_photo_url 
+    ? passengerProfile.profile_photo_url 
+    : userProfile?.profile_photo_url;
+
+  const fallbackInitial = displayName ? displayName.charAt(0).toUpperCase() : (userType === "passenger" ? 'P' : 'D');
 
   return (
     <>
@@ -26,12 +57,12 @@ export const ProfileHeader = ({ userProfile, onPhotoUpload, userType, isOnline =
           <div className="relative group cursor-pointer" onClick={handleEditProfile}>
             <Avatar className="h-16 w-16 hover:ring-2 hover:ring-primary/50 transition-all duration-300">
               <AvatarImage 
-                src={userProfile?.profile_photo_url || undefined} 
+                src={avatarUrl || undefined} 
                 alt="Profile"
                 className="object-cover"
               />
               <AvatarFallback className="bg-primary text-primary-foreground text-xl font-semibold">
-                {userProfile?.full_name ? userProfile.full_name.charAt(0).toUpperCase() : (userType === "passenger" ? 'P' : 'D')}
+                {fallbackInitial}
               </AvatarFallback>
             </Avatar>
             
@@ -62,7 +93,7 @@ export const ProfileHeader = ({ userProfile, onPhotoUpload, userType, isOnline =
               Welcome back!
             </h1>
             <p className="text-lg font-semibold text-primary">
-              {userProfile?.full_name || (userType === "passenger" ? "VIP Member" : "Driver")}
+              {isLoading && userType === "passenger" ? "Loading..." : displayName}
             </p>
             <p className="text-sm text-muted-foreground">
               {userType === "passenger" ? "Manage your rides and bookings" : "Ready for your next ride"}
