@@ -64,22 +64,69 @@ export interface DetailDTO {
 // RPC-based fetch using the new type
 export async function fetchMyBookings(): Promise<PassengerBooking[]> {
   try {
-    console.log('🔄 Fetching passenger bookings via RPC...');
+    console.log('🔄 Fetching passenger bookings via direct query...');
     
-    const { data, error } = await supabase.rpc('get_my_passenger_bookings');
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error('❌ No authenticated user');
+      return [];
+    }
+
+    // Fetch bookings for the current passenger
+    const { data, error } = await supabase
+      .from('bookings')
+      .select(`
+        id,
+        booking_code,
+        pickup_time,
+        pickup_location,
+        dropoff_location,
+        vehicle_type,
+        status,
+        payment_status,
+        final_price_cents,
+        passenger_first_name,
+        passenger_last_name,
+        passenger_photo_url,
+        created_at,
+        updated_at,
+        drivers (
+          full_name,
+          profile_photo_url
+        )
+      `)
+      .eq('passenger_id', user.id)
+      .order('created_at', { ascending: false });
     
     if (error) {
-      console.error('❌ RPC error:', error);
+      console.error('❌ Query error:', error);
       throw error;
     }
     
-    console.log('✅ RPC bookings fetched:', Array.isArray(data) ? data.length : 0, 'bookings');
+    console.log('✅ Bookings fetched:', Array.isArray(data) ? data.length : 0, 'bookings');
     
-    // Ensure array and stable shape
-    const bookings = (data ?? []) as PassengerBooking[];
+    // Transform the data to match PassengerBooking interface
+    const bookings: PassengerBooking[] = (data || []).map(booking => ({
+      id: booking.id,
+      booking_code: booking.booking_code,
+      pickup_time: booking.pickup_time,
+      pickup_location: booking.pickup_location,
+      dropoff_location: booking.dropoff_location,
+      vehicle_type: booking.vehicle_type,
+      status: booking.status,
+      payment_status: booking.payment_status,
+      final_price_cents: booking.final_price_cents,
+      passenger_first_name: booking.passenger_first_name,
+      passenger_last_name: booking.passenger_last_name,
+      passenger_photo_url: booking.passenger_photo_url,
+      driver_full_name: booking.drivers?.full_name || null,
+      driver_photo_url: booking.drivers?.profile_photo_url || null,
+      created_at: booking.created_at,
+      updated_at: booking.updated_at
+    }));
     
-    // Sort by created_at descending (newest first)
-    return bookings.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return bookings;
   } catch (error) {
     console.error('❌ fetchMyBookings error:', error);
     throw error;
@@ -110,7 +157,7 @@ export function subscribeMyBookings(onChange: () => void) {
   };
 }
 
-// Legacy function for backward compatibility - now uses RPC
+// Legacy function for backward compatibility - now uses new fetchMyBookings
 export async function fetchMyCards(): Promise<CardDTO[]> {
   try {
     const bookings = await fetchMyBookings();
@@ -201,9 +248,4 @@ export async function fetchBookingDetail(bookingId: string): Promise<DetailDTO |
     console.error('❌ Unexpected error fetching booking detail:', error);
     return null;
   }
-}
-
-// Legacy subscription function - now uses the new implementation
-export function subscribeMyBookings(onChange: () => void): () => void {
-  return subscribeMyBookings(onChange);
 }

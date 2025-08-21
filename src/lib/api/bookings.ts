@@ -20,7 +20,7 @@ export const normalizeBookingStatus = (booking: any) => {
   return 'booking_requested';
 };
 
-// Type for the passenger bookings response from RPC
+// Type for the passenger bookings response
 interface PassengerBookingResponse {
   booking_id: string;
   status: string;
@@ -49,10 +49,53 @@ interface PassengerBookingResponse {
 
 export const fetchPassengerBookings = async (): Promise<PassengerBookingResponse[]> => {
   try {
-    console.log('🔄 Fetching passenger bookings using RPC function...');
+    console.log('🔄 Fetching passenger bookings using direct query...');
     
-    // Use the RPC function to get bookings
-    const { data, error } = await supabase.rpc('get_my_passenger_bookings');
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error('❌ No authenticated user');
+      return [];
+    }
+
+    // Use direct query instead of RPC since the RPC doesn't exist in types
+    const { data, error } = await supabase
+      .from('bookings')
+      .select(`
+        id,
+        status,
+        pickup_location,
+        dropoff_location,
+        pickup_time,
+        created_at,
+        passenger_id,
+        driver_id,
+        estimated_price,
+        final_price,
+        payment_confirmation_status,
+        ride_status,
+        passenger_first_name,
+        passenger_last_name,
+        passenger_phone,
+        passenger_photo_url,
+        drivers (
+          full_name,
+          phone,
+          profile_photo_url,
+          car_make,
+          car_model,
+          car_color,
+          license_plate
+        ),
+        passengers (
+          full_name,
+          phone,
+          email,
+          profile_photo_url
+        )
+      `)
+      .eq('passenger_id', user.id)
+      .order('created_at', { ascending: false });
     
     if (error) {
       console.error("❌ Error fetching passenger bookings:", error);
@@ -60,7 +103,35 @@ export const fetchPassengerBookings = async (): Promise<PassengerBookingResponse
     }
 
     console.log('✅ Passenger bookings fetched successfully:', Array.isArray(data) ? data.length : 0, 'bookings');
-    return Array.isArray(data) ? data : [];
+    
+    // Transform the data to match the expected interface
+    const bookings: PassengerBookingResponse[] = (data || []).map(booking => ({
+      booking_id: booking.id,
+      status: booking.status,
+      pickup_location: booking.pickup_location,
+      dropoff_location: booking.dropoff_location,
+      pickup_time: booking.pickup_time,
+      created_at: booking.created_at,
+      passenger_id: booking.passenger_id,
+      passenger_name: booking.passengers?.full_name || `${booking.passenger_first_name || ''} ${booking.passenger_last_name || ''}`.trim(),
+      passenger_phone: booking.passengers?.phone || booking.passenger_phone,
+      passenger_email: booking.passengers?.email || '',
+      passenger_photo_url: booking.passengers?.profile_photo_url || booking.passenger_photo_url,
+      driver_id: booking.driver_id,
+      driver_name: booking.drivers?.full_name || null,
+      driver_phone: booking.drivers?.phone || null,
+      driver_photo_url: booking.drivers?.profile_photo_url || null,
+      driver_car_make: booking.drivers?.car_make || null,
+      driver_car_model: booking.drivers?.car_model || null,
+      driver_car_color: booking.drivers?.car_color || null,
+      driver_license_plate: booking.drivers?.license_plate || null,
+      estimated_price: booking.estimated_price,
+      final_price: booking.final_price,
+      payment_confirmation_status: booking.payment_confirmation_status,
+      ride_status: booking.ride_status
+    }));
+    
+    return bookings;
   } catch (error) {
     console.error("❌ Unexpected error fetching passenger bookings:", error);
     return [];
