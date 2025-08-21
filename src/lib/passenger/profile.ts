@@ -60,7 +60,7 @@ export async function saveMyPassengerProfile(params: {
       throw error;
     }
     
-    if (!data || (Array.isArray(data) && data.length === 0)) {
+    if (!data) {
       throw new Error('No data returned from profile save');
     }
     
