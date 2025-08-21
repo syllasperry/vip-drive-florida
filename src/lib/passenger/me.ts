@@ -19,7 +19,7 @@ export async function fetchMyPassengerProfile(): Promise<PassengerMe | null> {
       return null;
     }
 
-    if (!data || (Array.isArray(data) && data.length === 0)) {
+    if (!data || data.length === 0) {
       console.warn('⚠️ No passenger profile found');
       return null;
     }

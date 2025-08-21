@@ -51,63 +51,6 @@ export async function fetchMyBookings(): Promise<Booking[]> {
   }
 }
 
-export type BookingHistoryEntry = {
-  id: number;
-  booking_id: string;
-  status: string;
-  created_at: string;
-  role?: string;
-  changed_by?: string;
-  metadata?: any;
-};
-
-export async function fetchBookingHistory(bookingId: string): Promise<BookingHistoryEntry[]> {
-  try {
-    const { data, error } = await supabase
-      .from('booking_status_history')
-      .select('*')
-      .eq('booking_id', bookingId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching booking history:', error);
-      return [];
-    }
-
-    return data || [];
-  } catch (error) {
-    console.error('Unexpected error fetching booking history:', error);
-    return [];
-  }
-}
-
-export function subscribeBookingHistory(
-  bookingId: string, 
-  onUpdate: (history: BookingHistoryEntry[]) => void
-): () => void {
-  const subscription = supabase
-    .channel(`booking_history_${bookingId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'booking_status_history',
-        filter: `booking_id=eq.${bookingId}`
-      },
-      async () => {
-        // Refetch history when changes occur
-        const history = await fetchBookingHistory(bookingId);
-        onUpdate(history);
-      }
-    )
-    .subscribe();
-
-  return () => {
-    subscription.unsubscribe();
-  };
-}
-
 // Real-time subscription for passenger bookings
 export function subscribeMyBookings(onChange: () => void): () => void {
   console.log('🔔 Setting up real-time subscription for passenger bookings');
