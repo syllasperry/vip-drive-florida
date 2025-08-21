@@ -68,65 +68,45 @@ export interface DetailDTO {
   updatedAt: string;
 }
 
-// Fetch passenger bookings
+// Fetch passenger bookings using Supabase RPC
 export async function fetchMyBookings(): Promise<PassengerBooking[]> {
   try {
-    console.log('📊 Fetching passenger bookings');
+    console.log('📊 Fetching passenger bookings via RPC');
     
-    const { data, error } = await supabase
-      .from('bookings')
-      .select(`
-        id,
-        code,
-        pickup_time,
-        pickup_location,
-        dropoff_location,
-        vehicle_type,
-        status,
-        payment_status,
-        final_price_cents,
-        passenger_first_name,
-        passenger_last_name,
-        passenger_photo_url,
-        created_at,
-        updated_at,
-        drivers!driver_id(
-          full_name,
-          avatar_url
-        )
-      `)
-      .order('pickup_time', { ascending: false });
+    const { data, error } = await supabase.rpc('get_my_passenger_bookings');
 
     if (error) {
       console.error('❌ Error fetching passenger bookings:', error);
-      throw error;
+      return [];
     }
 
     console.log('✅ Successfully fetched passenger bookings:', data?.length || 0);
 
-    const bookings: PassengerBooking[] = (data || []).map(booking => ({
-      id: booking.id,
-      booking_code: booking.code || '',
-      pickup_time: booking.pickup_time,
-      pickup_location: booking.pickup_location,
-      dropoff_location: booking.dropoff_location,
-      vehicle_type: booking.vehicle_type,
-      status: booking.status,
-      payment_status: booking.payment_status,
-      final_price_cents: booking.final_price_cents,
-      passenger_first_name: booking.passenger_first_name,
-      passenger_last_name: booking.passenger_last_name,
-      passenger_photo_url: booking.passenger_photo_url,
-      driver_full_name: booking.drivers?.full_name || null,
-      driver_photo_url: booking.drivers?.avatar_url || null,
-      created_at: booking.created_at,
-      updated_at: booking.updated_at
+    // Map RPC result to PassengerBooking interface
+    const bookings: PassengerBooking[] = (data || []).map((row: any) => ({
+      id: row.booking_id || row.id,
+      booking_code: row.booking_code || row.code || '',
+      pickup_time: row.pickup_time,
+      pickup_location: row.pickup_location,
+      dropoff_location: row.dropoff_location,
+      vehicle_type: row.vehicle_type,
+      status: row.status,
+      payment_status: row.payment_status,
+      final_price_cents: row.price_cents || row.final_price_cents,
+      passenger_first_name: row.passenger_first_name || row.passenger_name?.split(' ')[0] || null,
+      passenger_last_name: row.passenger_last_name || row.passenger_name?.split(' ').slice(1).join(' ') || null,
+      passenger_photo_url: row.passenger_photo_url || row.passenger_avatar_url,
+      driver_full_name: row.driver_name || row.driver_full_name,
+      driver_photo_url: row.driver_photo_url || row.driver_avatar_url,
+      created_at: row.created_at,
+      updated_at: row.updated_at
     }));
     
-    return bookings;
+    // Sort by created_at DESC as requested
+    return bookings.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   } catch (error) {
     console.error('❌ Error in fetchMyBookings:', error);
-    throw error;
+    return [];
   }
 }
 

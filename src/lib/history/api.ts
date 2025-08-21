@@ -8,7 +8,7 @@ export type BookingTimelineEvent = {
   role?: string | null;
   changed_by?: string | null;
   created_at: string;
-  metadata?: Record<string, any> | null;
+  metadata?: any; // Changed from Record<string, any> to any to handle Json type
 };
 
 // Fetch booking timeline events
@@ -32,7 +32,7 @@ export async function fetchBookingTimeline(bookingId: string): Promise<BookingTi
     return (data || []).map(entry => ({
       id: entry.id,
       booking_id: entry.booking_id,
-      status: entry.status,
+      status: entry.status as string, // Cast to string to handle enum type
       role: entry.role,
       changed_by: entry.updated_by || entry.changed_by,
       created_at: entry.created_at,
@@ -81,14 +81,14 @@ export function subscribeToBookingTimeline(
 export async function addTimelineEvent(
   bookingId: string,
   status: string,
-  metadata?: Record<string, any>
+  metadata?: any
 ): Promise<void> {
   try {
     const { error } = await supabase
       .from('booking_status_history')
       .insert({
         booking_id: bookingId,
-        status,
+        status: status as any, // Cast to handle enum type
         metadata: metadata || {},
         updated_by: (await supabase.auth.getUser()).data.user?.id,
         role: 'system' // can be overridden in metadata
