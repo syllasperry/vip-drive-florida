@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { MapPin, Calendar, Users, Car, MessageCircle, Phone, CreditCard } from 'lucide-react';
-import { fetchMyCards, subscribeMyBookings, requestCheckout, CardDTO } from '@/lib/passenger/api';
+import { fetchMyCards, subscribeMyBookings, CardDTO } from '@/lib/passenger/api';
+import { startCheckout } from '@/lib/payments/stripe';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { BookingChatModal } from '@/components/chat/BookingChatModal';
@@ -118,7 +118,7 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
 
     try {
       setPayingBookingId(booking.booking_id);
-      await requestCheckout(booking.booking_id);
+      await startCheckout(booking.booking_id);
     } catch (error) {
       console.error('Payment error:', error);
       toast({
@@ -129,6 +129,12 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
     } finally {
       setPayingBookingId(null);
     }
+  };
+
+  // Check if booking is paid
+  const isBookingPaid = (booking: CardDTO) => {
+    // Assuming status indicates payment state - adjust based on your data structure
+    return booking.status === 'paid' || booking.status === 'completed';
   };
 
   if (loading) {
@@ -253,8 +259,8 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
                 </div>
               )}
 
-              {/* Payment CTA */}
-              {booking.price_dollars && booking.price_dollars > 0 && (
+              {/* Payment CTA - only show if booking is not paid and has a price */}
+              {!isBookingPaid(booking) && booking.price_dollars && booking.price_dollars > 0 && (
                 <Button 
                   onClick={() => handlePayment(booking)}
                   disabled={payingBookingId === booking.booking_id}
