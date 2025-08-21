@@ -11,29 +11,15 @@ export interface ChatMessage {
 
 export async function ensureThread(bookingId: string): Promise<string> {
   try {
-    // Check if thread exists
-    const { data: existingThread } = await supabase
-      .from('vip_chat_threads')
-      .select('id')
+    // Use the messages table directly since vip_chat_threads may not exist in schema
+    const { data: existingMessages } = await supabase
+      .from('messages')
+      .select('booking_id')
       .eq('booking_id', bookingId)
-      .single();
+      .limit(1);
 
-    if (existingThread) {
-      return existingThread.id;
-    }
-
-    // Create new thread
-    const { data: newThread, error } = await supabase
-      .from('vip_chat_threads')
-      .insert({ booking_id: bookingId })
-      .select('id')
-      .single();
-
-    if (error) {
-      throw new Error(`Failed to create chat thread: ${error.message}`);
-    }
-
-    return newThread.id;
+    // For now, we'll use booking_id as thread_id since the messages table uses booking_id
+    return bookingId;
   } catch (error) {
     console.error('Error ensuring chat thread:', error);
     throw error;
@@ -43,16 +29,23 @@ export async function ensureThread(bookingId: string): Promise<string> {
 export async function fetchMessages(threadId: string): Promise<ChatMessage[]> {
   try {
     const { data, error } = await supabase
-      .from('vip_chat_messages')
+      .from('messages')
       .select('*')
-      .eq('thread_id', threadId)
+      .eq('booking_id', threadId)
       .order('created_at', { ascending: true });
 
     if (error) {
       throw new Error(`Failed to fetch messages: ${error.message}`);
     }
 
-    return data || [];
+    // Map messages table format to ChatMessage format
+    return (data || []).map(msg => ({
+      id: msg.id,
+      thread_id: msg.booking_id,
+      sender_role: msg.sender_type,
+      message_body: msg.message_text,
+      created_at: msg.created_at
+    }));
   } catch (error) {
     console.error('Error fetching messages:', error);
     throw error;
@@ -62,11 +55,12 @@ export async function fetchMessages(threadId: string): Promise<ChatMessage[]> {
 export async function sendMessage(threadId: string, body: string, senderRole: string): Promise<void> {
   try {
     const { error } = await supabase
-      .from('vip_chat_messages')
+      .from('messages')
       .insert({
-        thread_id: threadId,
-        sender_role: senderRole,
-        message_body: body
+        booking_id: threadId,
+        sender_type: senderRole,
+        message_text: body,
+        sender_id: (await supabase.auth.getUser()).data.user?.id || ''
       });
 
     if (error) {
@@ -86,8 +80,8 @@ export function subscribeMessages(threadId: string, onChange: () => void): () =>
     .on("postgres_changes", { 
       event: "INSERT", 
       schema: "public", 
-      table: "vip_chat_messages",
-      filter: `thread_id=eq.${threadId}`
+      table: "messages",
+      filter: `booking_id=eq.${threadId}`
     }, (payload) => {
       console.log('Real-time message received:', payload);
       onChange();

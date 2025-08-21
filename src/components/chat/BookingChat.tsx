@@ -1,73 +1,67 @@
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Send, Check } from "lucide-react";
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useToast } from "@/hooks/use-toast";
-import { ChatMessage, SenderRole } from "@/lib/chat/types";
-import { ensureThread, fetchMessages, sendMessage, subscribeMessages } from "@/lib/chat/api";
+import { Send } from "lucide-react";
+import { ensureThread, fetchMessages, sendMessage, subscribeMessages, ChatMessage } from "@/lib/chat/api";
 
 interface BookingChatProps {
   bookingId: string;
-  role: 'dispatcher' | 'passenger';
+  role: 'dispatcher' | 'passenger' | 'driver';
 }
 
 export const BookingChat = ({ bookingId, role }: BookingChatProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [newMessage, setNewMessage] = useState("");
+  const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
 
-  const scrollToBottom = useCallback(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, []);
+  useEffect(() => {
+    const loadMessages = async () => {
+      try {
+        const threadId = await ensureThread(bookingId);
+        const messageList = await fetchMessages(threadId);
+        setMessages(messageList);
+      } catch (error) {
+        console.error('Error loading messages:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const isNearBottom = useCallback(() => {
-    if (!scrollAreaRef.current) return true;
-    const { scrollTop, scrollHeight, clientHeight } = scrollAreaRef.current;
-    return scrollHeight - scrollTop - clientHeight < 100;
-  }, []);
+    loadMessages();
+  }, [bookingId]);
 
-  const loadMessages = async () => {
-    try {
-      setLoading(true);
-      const data = await fetchMessages(bookingId);
-      setMessages(data);
-      // Always scroll to bottom on initial load
-      setTimeout(scrollToBottom, 100);
-    } catch (error) {
-      console.error('Failed to load messages:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load chat messages",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    const refreshMessages = async () => {
+      try {
+        const threadId = await ensureThread(bookingId);
+        const messageList = await fetchMessages(threadId);
+        setMessages(messageList);
+      } catch (error) {
+        console.error('Error refreshing messages:', error);
+      }
+    };
+
+    const unsubscribe = subscribeMessages(bookingId, refreshMessages);
+    return unsubscribe;
+  }, [bookingId]);
 
   const handleSendMessage = async () => {
-    const messageText = newMessage.trim();
-    if (!messageText || sending) return;
-
+    if (!newMessage.trim()) return;
+    
     try {
       setSending(true);
-      await sendMessage(bookingId, role, messageText);
-      setNewMessage("");
+      const threadId = await ensureThread(bookingId);
+      await sendMessage(threadId, newMessage.trim(), role);
+      setNewMessage('');
+      
+      // Refresh messages
+      const messageList = await fetchMessages(threadId);
+      setMessages(messageList);
     } catch (error) {
-      console.error('Failed to send message:', error);
-      toast({
-        title: "Error",
-        description: "Failed to send message",
-        variant: "destructive"
-      });
+      console.error('Error sending message:', error);
     } finally {
       setSending(false);
     }
@@ -80,116 +74,57 @@ export const BookingChat = ({ bookingId, role }: BookingChatProps) => {
     }
   };
 
-  useEffect(() => {
-    loadMessages();
-  }, [bookingId]);
-
-  useEffect(() => {
-    const unsubscribe = subscribeMessages(bookingId, (newMessage) => {
-      const wasNearBottom = isNearBottom();
-      setMessages(prev => {
-        // Avoid duplicates
-        if (prev.some(m => m.id === newMessage.id)) {
-          return prev;
-        }
-        return [...prev, newMessage];
-      });
-      
-      // Auto-scroll only if user was near bottom
-      if (wasNearBottom) {
-        setTimeout(scrollToBottom, 100);
-      }
-    });
-
-    return unsubscribe;
-  }, [bookingId, isNearBottom, scrollToBottom]);
-
-  const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
-  };
-
-  const getMessageAlignment = (senderRole: SenderRole) => {
-    if (senderRole === 'system') return 'justify-center';
-    if (senderRole === role) return 'justify-end';
-    return 'justify-start';
-  };
-
-  const getMessageStyle = (senderRole: SenderRole) => {
-    if (senderRole === 'system') {
-      return 'bg-muted text-muted-foreground text-center max-w-sm mx-auto px-4 py-2 rounded-full';
-    }
-    if (senderRole === role) {
-      return 'bg-primary text-primary-foreground ml-12 px-4 py-2 rounded-l-lg rounded-tr-lg';
-    }
-    return 'bg-muted text-foreground mr-12 px-4 py-2 rounded-r-lg rounded-tl-lg';
-  };
-
-  const renderMessage = (message: ChatMessage) => (
-    <div key={message.id} className={`flex ${getMessageAlignment(message.sender_role)} mb-3`}>
-      <div className="max-w-xs">
-        <div className={getMessageStyle(message.sender_role)}>
-          {message.sender_role === 'system' && (
-            <Check className="w-4 h-4 inline mr-2" />
-          )}
-          <span className="text-sm">{message.body}</span>
-        </div>
-        <div className={`text-xs text-muted-foreground mt-1 ${
-          message.sender_role === 'system' ? 'text-center' : 
-          message.sender_role === role ? 'text-right' : 'text-left'
-        }`}>
-          {formatTime(message.created_at)}
-        </div>
-      </div>
-    </div>
-  );
-
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">Loading chat...</div>
-      </div>
-    );
+    return <div className="p-4">Loading messages...</div>;
   }
 
   return (
-    <div className="flex flex-col h-96 border rounded-lg bg-background">
-      {/* Header */}
-      <div className="border-b px-4 py-3">
-        <h3 className="font-semibold text-foreground">Booking Chat</h3>
-      </div>
-
-      {/* Messages */}
-      <ScrollArea ref={scrollAreaRef} className="flex-1 p-4">
-        <div className="space-y-2">
-          {messages.length === 0 ? (
-            <div className="text-center text-muted-foreground py-8">
-              No messages yet. Start the conversation!
-            </div>
-          ) : (
-            messages.map(renderMessage)
-          )}
-          <div ref={messagesEndRef} />
-        </div>
+    <div className="flex flex-col h-96">
+      <ScrollArea className="flex-1 p-4">
+        {messages.length === 0 ? (
+          <div className="text-center text-gray-500 py-8">
+            No messages yet. Start the conversation!
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${
+                  message.sender_role === role ? 'justify-end' : 'justify-start'
+                }`}
+              >
+                <div
+                  className={`max-w-xs px-3 py-2 rounded-lg ${
+                    message.sender_role === role
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-200 text-gray-900'
+                  }`}
+                >
+                  <p className="text-sm">{message.message_body}</p>
+                  <p className="text-xs opacity-70 mt-1">
+                    {new Date(message.created_at).toLocaleTimeString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </ScrollArea>
-
-      {/* Input */}
-      <div className="border-t p-4">
-        <div className="flex gap-2">
+      
+      <div className="p-4 border-t">
+        <div className="flex space-x-2">
           <Input
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Type a message..."
+            placeholder="Type your message..."
             disabled={sending}
-            className="flex-1"
           />
-          <Button 
+          <Button
             onClick={handleSendMessage}
             disabled={sending || !newMessage.trim()}
-            size="icon"
+            size="sm"
           >
             <Send className="w-4 h-4" />
           </Button>

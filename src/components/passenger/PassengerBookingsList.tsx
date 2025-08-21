@@ -1,9 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { MapPin, Calendar, Users, Car, MessageCircle, Phone, CreditCard } from 'lucide-react';
 import { fetchMyCards, subscribeMyBookings, CardDTO } from '@/lib/passenger/api';
 import { prepareCheckout, CheckoutResponse } from '@/lib/payments/stripe';
@@ -11,6 +11,7 @@ import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { BookingChatModal } from '@/components/chat/BookingChatModal';
 import { PriceBreakdownDialog } from '@/components/payments/PriceBreakdownDialog';
+import { AvatarWithFallback } from '@/components/ui/avatar-with-fallback';
 
 interface PassengerBookingsListProps {
   onUpdate?: () => void;
@@ -185,6 +186,37 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
         {bookings.map((booking) => (
           <Card key={booking.booking_id} className="overflow-hidden shadow-sm">
             <CardContent className="p-6">
+              {/* Avatar Section */}
+              <div className="flex items-start space-x-4 mb-4">
+                <div className="relative inline-block">
+                  <AvatarWithFallback 
+                    src={booking.passenger_avatar_url} 
+                    fullName={booking.passenger_name} 
+                    size="md" 
+                  />
+                  {booking.driver_name && (
+                    <div className="absolute -bottom-1 -right-1 border-2 border-white rounded-full">
+                      <AvatarWithFallback 
+                        src={booking.driver_avatar_url} 
+                        fullName={booking.driver_name} 
+                        size="sm" 
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-gray-900 mb-1">
+                    {booking.passenger_name || 'VIP Passenger'}
+                  </div>
+                  {booking.driver_name && (
+                    <div className="text-xs text-blue-600">
+                      Driver: {booking.driver_name}
+                    </div>
+                  )}
+                </div>
+                {getStatusBadge(booking)}
+              </div>
+
               {/* Pickup and Drop-off */}
               <div className="space-y-3 mb-4">
                 <div className="flex items-start space-x-3">
@@ -225,12 +257,11 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
                 </div>
               )}
 
-              {/* Price and Status */}
+              {/* Price */}
               <div className="flex items-center justify-between mb-4">
                 <div className="text-2xl font-bold text-red-500">
                   ${booking.price_dollars || 'TBD'}
                 </div>
-                {getStatusBadge(booking)}
               </div>
 
               {/* Driver Info */}
@@ -238,12 +269,11 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
                 <div className="bg-blue-50 rounded-lg p-4 mb-4">
                   <div className="font-medium text-gray-900 mb-3">Your Assigned Driver</div>
                   <div className="flex items-center space-x-3 mb-3">
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={booking.driver_avatar_url || undefined} />
-                      <AvatarFallback>
-                        {booking.driver_name ? booking.driver_name.charAt(0) : 'D'}
-                      </AvatarFallback>
-                    </Avatar>
+                    <AvatarWithFallback 
+                      src={booking.driver_avatar_url} 
+                      fullName={booking.driver_name} 
+                      size="lg"
+                    />
                     <div className="flex-1">
                       <div className="font-semibold text-gray-900">
                         {booking.driver_name}
