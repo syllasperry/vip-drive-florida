@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export type PassengerProfile = {
@@ -35,7 +34,7 @@ export async function saveMyProfile(input: {
   try {
     const { full_name, email, phone, avatarUrl } = input;
     const { data, error } = await supabase.rpc('upsert_my_passenger_profile', {
-      _full_name: full_name || '',
+      _first_name: full_name || '',
       _last_name: '', // Using full_name for both first and last for simplicity
       _phone: phone || '',
       _email: email || ''

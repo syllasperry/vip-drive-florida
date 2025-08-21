@@ -1,4 +1,3 @@
-
 export type PassengerProfile = {
   id: string;
   user_id: string;
@@ -33,7 +32,7 @@ export async function saveMyPassengerProfile(params: {
 }): Promise<PassengerProfile | null> {
   try {
     const { data, error } = await supabase.rpc('upsert_my_passenger_profile', {
-      _full_name: params.fullName || '',
+      _first_name: params.fullName || '',
       _last_name: '', // Using full_name for simplicity
       _phone: params.phone || '',
       _email: '' // Will be handled by auth
