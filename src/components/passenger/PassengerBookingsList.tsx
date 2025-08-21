@@ -1,11 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Calendar, Users, Car, MessageCircle, Phone, CreditCard } from 'lucide-react';
-import { fetchMyCards, subscribeMyBookings, CardDTO } from '@/lib/passenger/api';
+import { fetchMyBookings, subscribeMyBookings, PassengerBooking } from '@/lib/passenger/api';
 import { prepareCheckout, CheckoutResponse } from '@/lib/payments/stripe';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -18,8 +18,8 @@ interface PassengerBookingsListProps {
 }
 
 export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ onUpdate }) => {
-  const [bookings, setBookings] = useState<CardDTO[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [bookings, setBookings] = useState<PassengerBooking[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [preparingPayment, setPreparingPayment] = useState<string | null>(null);
   const [chatBookingId, setChatBookingId] = useState<string | null>(null);
   const [showBreakdown, setShowBreakdown] = useState(false);
@@ -27,56 +27,39 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const refetchBookings = async () => {
-    try {
-      console.log('🔄 Refetching passenger bookings...');
-      const data = await fetchMyCards();
-      setBookings(data);
-      console.log('✅ Bookings updated:', data.length);
-    } catch (error) {
-      console.error('❌ Failed to refetch bookings:', error);
-      toast({
-        title: "Error",
-        description: "Failed to refresh bookings. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const loadBookings = async () => {
+  const load = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await fetchMyCards();
-      setBookings(data);
-    } catch (error) {
-      console.error('❌ Failed to load bookings:', error);
+      console.log('🔄 Loading passenger bookings...');
+      const rows = await fetchMyBookings();
+      setBookings(rows);
+      console.log('✅ Loaded', rows.length, 'bookings');
+    } catch (err: any) {
+      console.error('❌ fetchMyBookings error:', err);
       toast({
-        title: "Error",
-        description: "Failed to load bookings. Please try again.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to load bookings. Please try again.',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
-    loadBookings();
-  }, []);
-
-  // Set up realtime subscription
-  useEffect(() => {
-    const unsubscribe = subscribeMyBookings(() => {
-      console.log('🔄 Real-time update - refreshing bookings...');
-      refetchBookings();
+    load();
+    const off = subscribeMyBookings(() => {
+      console.log('🔔 Real-time update - refreshing bookings...');
+      load();
       onUpdate?.();
     });
+    return () => off();
+  }, [load, onUpdate]);
 
-    return unsubscribe;
-  }, [onUpdate]);
-
-  const handlePaymentClick = async (booking: CardDTO) => {
-    if (!booking.price_dollars || booking.price_dollars <= 0) {
+  const handlePaymentClick = async (booking: PassengerBooking) => {
+    const priceDollars = booking.final_price_cents ? booking.final_price_cents / 100 : 0;
+    
+    if (!priceDollars || priceDollars <= 0) {
       toast({
         title: "Payment Not Available",
         description: "No amount available for payment yet.",
@@ -86,8 +69,8 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
     }
 
     try {
-      setPreparingPayment(booking.booking_id);
-      const response = await prepareCheckout(booking.booking_id);
+      setPreparingPayment(booking.id);
+      const response = await prepareCheckout(booking.id);
       setCheckoutData(response);
       setShowBreakdown(true);
     } catch (error) {
@@ -111,9 +94,9 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
     setCheckoutData(null);
   };
 
-  const getStatusBadge = (booking: CardDTO) => {
-    const hasDriver = booking.driver_name;
-    const hasPrice = booking.price_dollars && booking.price_dollars > 0;
+  const getStatusBadge = (booking: PassengerBooking) => {
+    const hasDriver = booking.driver_full_name;
+    const hasPrice = booking.final_price_cents && booking.final_price_cents > 0;
     
     if (hasPrice && !hasDriver) {
       return (
@@ -147,9 +130,8 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
   };
 
   // Check if booking is paid
-  const isBookingPaid = (booking: CardDTO) => {
-    // Assuming status indicates payment state - adjust based on your data structure
-    return booking.status === 'paid' || booking.status === 'completed';
+  const isBookingPaid = (booking: PassengerBooking) => {
+    return booking.payment_status === 'paid' || booking.status === 'completed';
   };
 
   if (loading) {
@@ -183,159 +165,166 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
   return (
     <>
       <div className="space-y-6">
-        {bookings.map((booking) => (
-          <Card key={booking.booking_id} className="overflow-hidden shadow-sm">
-            <CardContent className="p-6">
-              {/* Avatar Section */}
-              <div className="flex items-start space-x-4 mb-4">
-                <div className="relative inline-block">
-                  <AvatarWithFallback 
-                    src={booking.passenger_avatar_url} 
-                    fullName={booking.passenger_name} 
-                    size="md" 
-                  />
-                  {booking.driver_name && (
-                    <div className="absolute -bottom-1 -right-1 border-2 border-white rounded-full">
-                      <AvatarWithFallback 
-                        src={booking.driver_avatar_url} 
-                        fullName={booking.driver_name} 
-                        size="sm" 
-                      />
+        {bookings.map((booking) => {
+          const passengerName = booking.passenger_first_name && booking.passenger_last_name 
+            ? `${booking.passenger_first_name} ${booking.passenger_last_name}`.trim()
+            : booking.passenger_first_name || 'VIP Passenger';
+          const priceDollars = booking.final_price_cents ? booking.final_price_cents / 100 : 0;
+
+          return (
+            <Card key={booking.id} className="overflow-hidden shadow-sm">
+              <CardContent className="p-6">
+                {/* Avatar Section */}
+                <div className="flex items-start space-x-4 mb-4">
+                  <div className="relative inline-block">
+                    <AvatarWithFallback 
+                      src={booking.passenger_photo_url} 
+                      fullName={passengerName} 
+                      size="md" 
+                    />
+                    {booking.driver_full_name && (
+                      <div className="absolute -bottom-1 -right-1 border-2 border-white rounded-full">
+                        <AvatarWithFallback 
+                          src={booking.driver_photo_url} 
+                          fullName={booking.driver_full_name} 
+                          size="sm" 
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-gray-900 mb-1">
+                      {passengerName}
+                    </div>
+                    {booking.driver_full_name && (
+                      <div className="text-xs text-blue-600">
+                        Driver: {booking.driver_full_name}
+                      </div>
+                    )}
+                  </div>
+                  {getStatusBadge(booking)}
+                </div>
+
+                {/* Pickup and Drop-off */}
+                <div className="space-y-3 mb-4">
+                  <div className="flex items-start space-x-3">
+                    <div className="w-3 h-3 bg-green-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                    <div>
+                      <div className="font-semibold text-gray-900">Pickup</div>
+                      <div className="text-gray-600 text-sm">{booking.pickup_location}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-3">
+                    <div className="w-3 h-3 bg-red-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                    <div>
+                      <div className="font-semibold text-gray-900">Drop-off</div>
+                      <div className="text-gray-600 text-sm">{booking.dropoff_location}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Booking Meta */}
+                <div className="flex items-center space-x-4 text-sm text-gray-600 mb-4">
+                  {booking.pickup_time && (
+                    <div className="flex items-center space-x-1">
+                      <Calendar className="w-4 h-4" />
+                      <span>{format(new Date(booking.pickup_time), 'MMM dd, yyyy - HH:mm')}</span>
                     </div>
                   )}
-                </div>
-                <div className="flex-1">
-                  <div className="text-sm font-medium text-gray-900 mb-1">
-                    {booking.passenger_name || 'VIP Passenger'}
-                  </div>
-                  {booking.driver_name && (
-                    <div className="text-xs text-blue-600">
-                      Driver: {booking.driver_name}
-                    </div>
-                  )}
-                </div>
-                {getStatusBadge(booking)}
-              </div>
-
-              {/* Pickup and Drop-off */}
-              <div className="space-y-3 mb-4">
-                <div className="flex items-start space-x-3">
-                  <div className="w-3 h-3 bg-green-500 rounded-full mt-1.5 flex-shrink-0"></div>
-                  <div>
-                    <div className="font-semibold text-gray-900">Pickup</div>
-                    <div className="text-gray-600 text-sm">{booking.pickup_location}</div>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-3 h-3 bg-red-500 rounded-full mt-1.5 flex-shrink-0"></div>
-                  <div>
-                    <div className="font-semibold text-gray-900">Drop-off</div>
-                    <div className="text-gray-600 text-sm">{booking.dropoff_location}</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Booking Meta */}
-              <div className="flex items-center space-x-4 text-sm text-gray-600 mb-4">
-                {booking.pickup_time && (
                   <div className="flex items-center space-x-1">
-                    <Calendar className="w-4 h-4" />
-                    <span>{format(new Date(booking.pickup_time), 'MMM dd, yyyy - HH:mm')}</span>
+                    <Users className="w-4 h-4" />
+                    <span>1 passenger</span>
+                  </div>
+                </div>
+
+                {/* Vehicle Info */}
+                {booking.vehicle_type && (
+                  <div className="flex items-center space-x-1 text-sm text-gray-600 mb-4">
+                    <Car className="w-4 h-4" />
+                    <span>{booking.vehicle_type}</span>
                   </div>
                 )}
-                <div className="flex items-center space-x-1">
-                  <Users className="w-4 h-4" />
-                  <span>1 passenger</span>
-                </div>
-              </div>
 
-              {/* Vehicle Info */}
-              {booking.vehicle_type && (
-                <div className="flex items-center space-x-1 text-sm text-gray-600 mb-4">
-                  <Car className="w-4 h-4" />
-                  <span>{booking.vehicle_type}</span>
+                {/* Price */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="text-2xl font-bold text-red-500">
+                    ${priceDollars > 0 ? priceDollars.toFixed(2) : 'TBD'}
+                  </div>
                 </div>
-              )}
 
-              {/* Price */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="text-2xl font-bold text-red-500">
-                  ${booking.price_dollars || 'TBD'}
-                </div>
-              </div>
-
-              {/* Driver Info */}
-              {booking.driver_name && (
-                <div className="bg-blue-50 rounded-lg p-4 mb-4">
-                  <div className="font-medium text-gray-900 mb-3">Your Assigned Driver</div>
-                  <div className="flex items-center space-x-3 mb-3">
-                    <AvatarWithFallback 
-                      src={booking.driver_avatar_url} 
-                      fullName={booking.driver_name} 
-                      size="lg"
-                    />
-                    <div className="flex-1">
-                      <div className="font-semibold text-gray-900">
-                        {booking.driver_name}
-                      </div>
-                      <div className="text-blue-600 text-sm">
-                        Professional Driver
+                {/* Driver Info */}
+                {booking.driver_full_name && (
+                  <div className="bg-blue-50 rounded-lg p-4 mb-4">
+                    <div className="font-medium text-gray-900 mb-3">Your Assigned Driver</div>
+                    <div className="flex items-center space-x-3 mb-3">
+                      <AvatarWithFallback 
+                        src={booking.driver_photo_url} 
+                        fullName={booking.driver_full_name} 
+                        size="lg"
+                      />
+                      <div className="flex-1">
+                        <div className="font-semibold text-gray-900">
+                          {booking.driver_full_name}
+                        </div>
+                        <div className="text-blue-600 text-sm">
+                          Professional Driver
+                        </div>
                       </div>
                     </div>
+                    
+                    {/* Driver Action Buttons */}
+                    <div className="flex space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => setChatBookingId(booking.id)}
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        Message
+                      </Button>
+                      <Button variant="outline" size="sm" className="flex-1">
+                        <Phone className="w-4 h-4 mr-2" />
+                        Call
+                      </Button>
+                    </div>
                   </div>
-                  
-                  {/* Driver Action Buttons */}
-                  <div className="flex space-x-2">
+                )}
+
+                {/* Payment CTA - only show if booking is not paid and has a price */}
+                {!isBookingPaid(booking) && priceDollars > 0 && (
+                  <Button 
+                    onClick={() => handlePaymentClick(booking)}
+                    disabled={preparingPayment === booking.id}
+                    className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-3 rounded-lg"
+                  >
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    {preparingPayment === booking.id 
+                      ? 'Preparing...' 
+                      : `Pay $${priceDollars.toFixed(2)} - Complete Booking`
+                    }
+                  </Button>
+                )}
+
+                {/* No driver assigned yet */}
+                {!booking.driver_full_name && (
+                  <div className="text-center py-6 text-gray-500">
+                    <p>Waiting for driver assignment...</p>
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="flex-1"
-                      onClick={() => setChatBookingId(booking.booking_id)}
+                      className="mt-2"
+                      onClick={() => setChatBookingId(booking.id)}
                     >
                       <MessageCircle className="w-4 h-4 mr-2" />
-                      Message
-                    </Button>
-                    <Button variant="outline" size="sm" className="flex-1">
-                      <Phone className="w-4 h-4 mr-2" />
-                      Call
+                      Contact Support
                     </Button>
                   </div>
-                </div>
-              )}
-
-              {/* Payment CTA - only show if booking is not paid and has a price */}
-              {!isBookingPaid(booking) && booking.price_dollars && booking.price_dollars > 0 && (
-                <Button 
-                  onClick={() => handlePaymentClick(booking)}
-                  disabled={preparingPayment === booking.booking_id}
-                  className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-3 rounded-lg"
-                >
-                  <CreditCard className="w-4 h-4 mr-2" />
-                  {preparingPayment === booking.booking_id 
-                    ? 'Preparing...' 
-                    : `Pay $${booking.price_dollars} - Complete Booking`
-                  }
-                </Button>
-              )}
-
-              {/* No driver assigned yet */}
-              {!booking.driver_name && (
-                <div className="text-center py-6 text-gray-500">
-                  <p>Waiting for driver assignment...</p>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="mt-2"
-                    onClick={() => setChatBookingId(booking.booking_id)}
-                  >
-                    <MessageCircle className="w-4 h-4 mr-2" />
-                    Contact Support
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Price Breakdown Dialog */}

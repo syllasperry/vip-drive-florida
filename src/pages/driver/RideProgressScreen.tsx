@@ -1,305 +1,291 @@
-import React, { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Phone, Send, MapPin, Users, Route, Flag, CheckCircle, User } from 'lucide-react';
+
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { MapPin, Clock, User, Car, Phone, MessageCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-export type RideStage = 
-  | 'driver_heading_to_pickup'
-  | 'driver_arrived_at_pickup'
-  | 'passenger_onboard'
-  | 'in_transit'
-  | 'driver_arrived_at_dropoff'
-  | 'completed';
+interface BookingData {
+  id: string;
+  pickup_location: string;
+  dropoff_location: string;
+  pickup_time: string;
+  passenger_name: string;
+  passenger_phone: string;
+  vehicle_type: string;
+  final_price: number;
+  status: string;
+  ride_stage: string;
+}
 
-const rideStages = [
-  { 
-    value: 'driver_heading_to_pickup', 
-    label: 'Heading to Pickup',
-    icon: Send,
-    bgColor: 'bg-blue-500',
-    textColor: 'text-white',
-    message: 'I\'m heading to your pickup location. Estimated arrival in 10 minutes.'
-  },
-  { 
-    value: 'driver_arrived_at_pickup', 
-    label: 'Arrived at Pickup',
-    icon: MapPin,
-    bgColor: 'bg-green-500',
-    textColor: 'text-white',
-    message: 'I\'m at the pickup location. Please meet me promptly.'
-  },
-  { 
-    value: 'passenger_onboard', 
-    label: 'Passenger Onboard',
-    icon: User,
-    bgColor: 'bg-orange-500',
-    textColor: 'text-white',
-    message: 'Passenger onboard. Ride started. Enjoy the trip!'
-  },
-  { 
-    value: 'in_transit', 
-    label: 'In Transit with Stops',
-    icon: Route,
-    bgColor: 'bg-yellow-400',
-    textColor: 'text-white',
-    message: 'We are on the way. Quick stops may happen during the ride.'
-  },
-  { 
-    value: 'driver_arrived_at_dropoff', 
-    label: 'Arrived at Drop-off',
-    icon: Flag,
-    bgColor: 'bg-purple-500',
-    textColor: 'text-white',
-    message: 'We\'ve arrived at your destination. Please exit the vehicle safely.'
-  },
-  { 
-    value: 'completed', 
-    label: 'Ride Completed',
-    icon: CheckCircle,
-    bgColor: 'bg-stone-100',
-    textColor: 'text-stone-700',
-    message: 'Thank you for riding with us! Please leave a review if you\'d like.'
-  }
-];
-
-export const RideProgressScreen = () => {
-  const location = useLocation();
+const RideProgressScreen: React.FC = () => {
+  const { bookingId } = useParams<{ bookingId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const booking = location.state?.booking;
-  
-  // Start with no selection - driver must manually choose
-  const [selectedStage, setSelectedStage] = useState<string>('');
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [booking, setBooking] = useState<BookingData | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Load current ride stage on mount
-  React.useEffect(() => {
-    if (booking?.ride_stage) {
-      setSelectedStage(booking.ride_stage);
+  useEffect(() => {
+    if (bookingId) {
+      fetchBookingData();
     }
-  }, [booking?.ride_stage]);
+  }, [bookingId]);
 
-  if (!booking) {
+  const fetchBookingData = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select(`
+          id,
+          pickup_location,
+          dropoff_location,
+          pickup_time,
+          passenger_first_name,
+          passenger_last_name,
+          passenger_phone,
+          vehicle_type,
+          final_price,
+          status,
+          ride_stage
+        `)
+        .eq('id', bookingId)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setBooking({
+          ...data,
+          passenger_name: `${data.passenger_first_name || ''} ${data.passenger_last_name || ''}`.trim() || 'Passenger',
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching booking:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load booking details",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateRideStage = async (newStage: string) => {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ ride_stage: newStage })
+        .eq('id', bookingId);
+
+      if (error) throw error;
+
+      setBooking(prev => prev ? { ...prev, ride_stage: newStage } : null);
+      
+      toast({
+        title: "Status Updated",
+        description: `Ride status updated to ${newStage}`,
+      });
+    } catch (error) {
+      console.error('Error updating ride stage:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update ride status",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-4">
-        <div className="max-w-md mx-auto">
-          <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">
-            <ArrowLeft className="h-5 w-5 mr-2" />
-            Back
-          </Button>
-          <p>No booking information available</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading ride details...</p>
         </div>
       </div>
     );
   }
 
-  const sendAutomaticMessage = async (messageText: string) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.error('No authenticated user found');
-        return;
-      }
+  if (!booking) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-4">Booking not found</h2>
+          <Button onClick={() => navigate('/driver/dashboard')}>
+            Back to Dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
-      await supabase
-        .from('messages')
-        .insert({
-          booking_id: booking.id,
-          sender_id: user.id,
-          sender_type: 'driver',
-          message_text: messageText
-        });
-      
-      console.log('Automatic message sent:', messageText);
-    } catch (error) {
-      console.error('Error sending automatic message:', error);
-    }
-  };
-
-  const handleStageChange = async (newStage: string) => {
-    if (!booking?.id) {
-      toast({
-        title: "Error",
-        description: "No booking ID found",
-        variant: "destructive",
-      });
-      return;
-    }
-
-
-    // Check if user is authenticated
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toast({
-        title: "Error", 
-        description: "Please log in to update ride status",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    console.log('=== RIDE PROGRESS DEBUG ===');
-    console.log('Stage change clicked:', newStage);
-    console.log('Current booking:', booking);
-    console.log('Booking ID:', booking?.id);
-    console.log('User ID:', user.id);
-    console.log('Driver ID from booking:', booking.driver_id);
+  const getStageActions = () => {
+    const stage = booking.ride_stage;
     
-    setIsUpdating(true);
-
-    try {
-      // Simplified approach - directly update the booking without extra checks
-      // since RLS policies already handle authorization
-      const updateData: any = { 
-        ride_stage: newStage,
-        updated_at: new Date().toISOString()
-      };
-
-      // Set specific timestamps for key milestones
-      if (newStage === 'passenger_onboard') {
-        updateData.ride_started_at = new Date().toISOString();
-      } else if (newStage === 'completed') {
-        updateData.ride_completed_at = new Date().toISOString();
-        updateData.status = 'completed';
-        updateData.ride_status = 'completed';
-      }
-
-      console.log('Updating booking with data:', updateData);
-
-      // Perform the update - RLS will handle authorization
-      const { error, data } = await supabase
-        .from('bookings')
-        .update(updateData)
-        .eq('id', booking.id)
-        .select();
-
-      if (error) {
-        console.error('Supabase update error:', error);
-        console.error('Error details:', {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint
-        });
-        throw new Error(`Database update failed: ${error.message}`);
-      }
-
-      console.log('Successfully updated booking:', data);
-
-      // Update local state
-      setSelectedStage(newStage);
-
-      // Send automatic message to passenger
-      const stage = rideStages.find(stage => stage.value === newStage);
-      if (stage?.message) {
-        await sendAutomaticMessage(stage.message);
-      }
-
-      const stageLabel = stage?.label;
-      toast({
-        title: "Success",
-        description: "Status sent to passenger successfully",
-      });
-
-      console.log('Status updated successfully:', stageLabel);
-    } catch (error) {
-      console.error('Error updating ride status:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update ride status",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUpdating(false);
-      console.log('=== END DEBUG ===');
+    switch (stage) {
+      case 'driver_heading_to_pickup':
+        return (
+          <Button 
+            onClick={() => updateRideStage('driver_arrived_at_pickup')}
+            className="w-full bg-blue-600 hover:bg-blue-700"
+          >
+            Mark as Arrived at Pickup
+          </Button>
+        );
+      case 'driver_arrived_at_pickup':
+        return (
+          <Button 
+            onClick={() => updateRideStage('passenger_onboard')}
+            className="w-full bg-green-600 hover:bg-green-700"
+          >
+            Passenger Onboard
+          </Button>
+        );
+      case 'passenger_onboard':
+        return (
+          <Button 
+            onClick={() => updateRideStage('in_transit')}
+            className="w-full bg-purple-600 hover:bg-purple-700"
+          >
+            Start Journey
+          </Button>
+        );
+      case 'in_transit':
+        return (
+          <Button 
+            onClick={() => updateRideStage('completed')}
+            className="w-full bg-red-600 hover:bg-red-700"
+          >
+            Complete Ride
+          </Button>
+        );
+      case 'completed':
+        return (
+          <div className="text-center">
+            <p className="text-green-600 font-semibold mb-4">Ride Completed!</p>
+            <Button onClick={() => navigate('/driver/dashboard')}>
+              Back to Dashboard
+            </Button>
+          </div>
+        );
+      default:
+        return (
+          <Button 
+            onClick={() => updateRideStage('driver_heading_to_pickup')}
+            className="w-full bg-blue-600 hover:bg-blue-700"
+          >
+            Start Heading to Pickup
+          </Button>
+        );
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 relative">
-      {/* Background overlay for glass effect */}
-      <div className="absolute inset-0 bg-black/5"></div>
-      
-      {/* Floating Status Panel */}
-      <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
-        <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-6 w-full max-w-sm">
-          {/* Panel Header */}
-          <div className="flex items-center justify-center relative mb-6">
-            <button 
-              onClick={() => navigate(-1)}
-              className="absolute left-0 text-gray-600 hover:text-gray-800 transition-colors"
-            >
-              <ArrowLeft className="h-6 w-6" />
-            </button>
-            <h2 className="text-lg font-semibold text-gray-800">Ride Status Update</h2>
-          </div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-md mx-auto bg-white min-h-screen shadow-lg">
+        {/* Header */}
+        <div className="bg-red-600 text-white p-4">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/driver/dashboard')}
+            className="text-white hover:bg-red-700 mb-2"
+          >
+            ← Back to Dashboard
+          </Button>
+          <h1 className="text-xl font-bold">Ride in Progress</h1>
+          <Badge variant="secondary" className="mt-2">
+            {booking.ride_stage?.replace(/_/g, ' ').toUpperCase() || 'PENDING'}
+          </Badge>
+        </div>
 
-          {/* Status Grid */}
-          <div className="grid grid-cols-2 gap-4">
-            {rideStages.map((stage) => {
-              const IconComponent = stage.icon;
-              return (
-                <button
-                  key={stage.value}
-                  onClick={() => !isUpdating && handleStageChange(stage.value)}
-                  disabled={isUpdating}
-                  className={`
-                    ${stage.bgColor} ${stage.textColor}
-                    flex items-center gap-3 p-4 rounded-xl
-                    font-semibold text-sm text-left
-                    transition-all duration-200 ease-in-out
-                    hover:scale-105 hover:shadow-lg
-                    active:scale-95
-                    disabled:opacity-50 disabled:cursor-not-allowed
-                    relative
-                    ${selectedStage === stage.value ? 'ring-4 ring-blue-300 shadow-xl scale-105' : ''}
-                  `}
-                >
-                  <IconComponent className="h-5 w-5 flex-shrink-0" />
-                  <span className="leading-tight">{stage.label}</span>
-                  {selectedStage === stage.value && (
-                    <div className="absolute -top-1 -right-1 bg-white rounded-full p-1 shadow-lg">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Loading State */}
-          {isUpdating && (
-            <div className="mt-6 text-center">
-              <div className="inline-flex items-center gap-2 text-gray-600">
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent"></div>
-                <span className="text-sm">Updating status...</span>
+        <div className="p-4 space-y-6">
+          {/* Passenger Info */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="w-5 h-5" />
+                Passenger Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <p className="font-semibold">{booking.passenger_name}</p>
+                <div className="flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-gray-500" />
+                  <span className="text-sm">{booking.passenger_phone || 'No phone provided'}</span>
+                </div>
               </div>
-            </div>
-          )}
+              <div className="flex gap-2 mt-4">
+                <Button variant="outline" size="sm" className="flex-1">
+                  <Phone className="w-4 h-4 mr-2" />
+                  Call
+                </Button>
+                <Button variant="outline" size="sm" className="flex-1">
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  Message
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* Trip Info */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <div className="space-y-3 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span className="font-medium text-gray-700">Passenger:</span>
-                <span className="text-gray-600">
-                  {booking.passengers?.full_name || booking.passenger_name || 'Passenger'}
+          {/* Trip Details */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="w-5 h-5" />
+                Trip Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-3 h-3 bg-green-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                  <div>
+                    <p className="font-semibold text-sm">Pickup</p>
+                    <p className="text-gray-600 text-sm">{booking.pickup_location}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-3 h-3 bg-red-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                  <div>
+                    <p className="font-semibold text-sm">Drop-off</p>
+                    <p className="text-gray-600 text-sm">{booking.dropoff_location}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2 pt-2 border-t">
+                <Clock className="w-4 h-4 text-gray-500" />
+                <span className="text-sm">
+                  {new Date(booking.pickup_time).toLocaleString()}
                 </span>
               </div>
+              
               <div className="flex items-center gap-2">
-                <Phone className="h-3 w-3 text-gray-500" />
-                <span className="text-gray-600">
-                  {booking.passengers?.phone || booking.passenger_phone || 'N/A'}
-                </span>
+                <Car className="w-4 h-4 text-gray-500" />
+                <span className="text-sm">{booking.vehicle_type}</span>
               </div>
-            </div>
+              
+              <div className="pt-2 border-t">
+                <p className="text-lg font-bold text-red-600">
+                  ${booking.final_price?.toFixed(2) || 'TBD'}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Action Button */}
+          <div className="pb-8">
+            {getStageActions()}
           </div>
         </div>
       </div>
     </div>
   );
+};
+
 export default RideProgressScreen;
