@@ -7,13 +7,410 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
   }
   public: {
     Tables: {
+      app_payments: {
+        Row: {
+          amount_cents: number | null
+          booking_id: string
+          created_at: string
+          currency: string
+          id: number
+          method: string
+          note: string | null
+          status: string
+        }
+        Insert: {
+          amount_cents?: number | null
+          booking_id: string
+          created_at?: string
+          currency?: string
+          id?: number
+          method: string
+          note?: string | null
+          status: string
+        }
+        Update: {
+          amount_cents?: number | null
+          booking_id?: string
+          created_at?: string
+          currency?: string
+          id?: number
+          method?: string
+          note?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "booking_notification_prefs_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "app_payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_booking_cards_v"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_view"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "v_booking_pricing_preview"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_booking_card"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["booking_id"]
+          },
+        ]
+      }
+      app_settings: {
+        Row: {
+          key: string
+          smartprice_enabled: boolean | null
+          smartprice_markup_cents: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          key: string
+          smartprice_enabled?: boolean | null
+          smartprice_markup_cents?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          key?: string
+          smartprice_enabled?: boolean | null
+          smartprice_markup_cents?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      app_suggested_pricing: {
+        Row: {
+          booking_id: string
+          currency: string
+          inputs: Json | null
+          miles_snapshot: number | null
+          suggested_price_cents: number
+          updated_at: string
+          vehicle_category: string | null
+        }
+        Insert: {
+          booking_id: string
+          currency?: string
+          inputs?: Json | null
+          miles_snapshot?: number | null
+          suggested_price_cents?: number
+          updated_at?: string
+          vehicle_category?: string | null
+        }
+        Update: {
+          booking_id?: string
+          currency?: string
+          inputs?: Json | null
+          miles_snapshot?: number | null
+          suggested_price_cents?: number
+          updated_at?: string
+          vehicle_category?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_suggested_pricing_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "booking_notification_prefs_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_suggested_pricing_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "app_suggested_pricing_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "dispatcher_booking_cards_v"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_suggested_pricing_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "dispatcher_bookings_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_suggested_pricing_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "dispatcher_bookings_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_suggested_pricing_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "dispatcher_bookings_view"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_suggested_pricing_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "dispatcher_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_suggested_pricing_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_suggested_pricing_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_suggested_pricing_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_suggested_pricing_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "my_passenger_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_suggested_pricing_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "my_passenger_bookings_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_suggested_pricing_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "passenger_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_suggested_pricing_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "passenger_dashboard_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_suggested_pricing_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_suggested_pricing_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "v_booking_pricing_preview"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_suggested_pricing_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "vw_dispatcher_booking_card"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_suggested_pricing_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_suggested_pricing_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["booking_id"]
+          },
+        ]
+      }
+      booking_code_counters: {
+        Row: {
+          last_value: number
+          year: number
+        }
+        Insert: {
+          last_value?: number
+          year: number
+        }
+        Update: {
+          last_value?: number
+          year?: number
+        }
+        Relationships: []
+      }
+      booking_payments: {
+        Row: {
+          amount_cents: number
+          booking_id: string
+          created_at: string
+          currency: string
+          id: string
+          method: string
+          note: string | null
+        }
+        Insert: {
+          amount_cents: number
+          booking_id: string
+          created_at?: string
+          currency?: string
+          id?: string
+          method: string
+          note?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          booking_id?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          method?: string
+          note?: string | null
+        }
+        Relationships: []
+      }
       booking_status_history: {
         Row: {
           booking_id: string
@@ -22,7 +419,7 @@ export type Database = {
           id: number
           metadata: Json | null
           role: string | null
-          status: string
+          status: Database["public"]["Enums"]["booking_sync_status"]
           timestamp: string | null
           updated_at: string | null
           updated_by: string | null
@@ -34,7 +431,7 @@ export type Database = {
           id?: number
           metadata?: Json | null
           role?: string | null
-          status: string
+          status: Database["public"]["Enums"]["booking_sync_status"]
           timestamp?: string | null
           updated_at?: string | null
           updated_by?: string | null
@@ -46,7 +443,7 @@ export type Database = {
           id?: number
           metadata?: Json | null
           role?: string | null
-          status?: string
+          status?: Database["public"]["Enums"]["booking_sync_status"]
           timestamp?: string | null
           updated_at?: string | null
           updated_by?: string | null
@@ -56,14 +453,144 @@ export type Database = {
             foreignKeyName: "booking_status_history_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
+            referencedRelation: "booking_notification_prefs_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "booking_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
             referencedRelation: "bookings"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_booking_cards_v"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "booking_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "booking_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "booking_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_view"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "booking_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "booking_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "booking_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "booking_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "booking_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "booking_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "booking_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "booking_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "booking_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "booking_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "v_booking_pricing_preview"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "booking_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_booking_card"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "booking_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "booking_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["booking_id"]
           },
         ]
       }
       bookings: {
         Row: {
+          assigned_driver_id: string | null
+          booking_code: string | null
+          code: string | null
           created_at: string
+          dispatcher_id: string | null
           distance_miles: number | null
           driver_id: string | null
           driver_location_lat: number | null
@@ -74,12 +601,23 @@ export type Database = {
           dropoff_location: string
           estimated_fare: number | null
           estimated_price: number | null
+          estimated_price_cents: number | null
           extra_stops: Json | null
           final_price: number | null
+          final_price_cents: number | null
           flight_info: string | null
           id: string
           luggage_count: number
           luggage_size: string | null
+          offer_amount: number | null
+          offer_amount_cents: number | null
+          offer_currency: string | null
+          offer_price_cents: number | null
+          offer_sent_at: string | null
+          offered_by_dispatcher_id: string | null
+          paid_amount_cents: number | null
+          paid_at: string | null
+          paid_currency: string | null
           passenger_count: number
           passenger_first_name: string | null
           passenger_id: string
@@ -103,12 +641,19 @@ export type Database = {
           status: string
           status_driver: string | null
           status_passenger: string | null
+          status_updated_at: string | null
+          stripe_payment_intent_id: string | null
           updated_at: string | null
+          vehicle_category: string | null
           vehicle_id: string | null
           vehicle_type: string | null
         }
         Insert: {
+          assigned_driver_id?: string | null
+          booking_code?: string | null
+          code?: string | null
           created_at?: string
+          dispatcher_id?: string | null
           distance_miles?: number | null
           driver_id?: string | null
           driver_location_lat?: number | null
@@ -119,12 +664,23 @@ export type Database = {
           dropoff_location: string
           estimated_fare?: number | null
           estimated_price?: number | null
+          estimated_price_cents?: number | null
           extra_stops?: Json | null
           final_price?: number | null
+          final_price_cents?: number | null
           flight_info?: string | null
           id?: string
           luggage_count?: number
           luggage_size?: string | null
+          offer_amount?: number | null
+          offer_amount_cents?: number | null
+          offer_currency?: string | null
+          offer_price_cents?: number | null
+          offer_sent_at?: string | null
+          offered_by_dispatcher_id?: string | null
+          paid_amount_cents?: number | null
+          paid_at?: string | null
+          paid_currency?: string | null
           passenger_count?: number
           passenger_first_name?: string | null
           passenger_id: string
@@ -145,15 +701,22 @@ export type Database = {
           ride_stage?: string | null
           ride_started_at?: string | null
           ride_status?: string | null
-          status?: string
+          status: string
           status_driver?: string | null
           status_passenger?: string | null
+          status_updated_at?: string | null
+          stripe_payment_intent_id?: string | null
           updated_at?: string | null
+          vehicle_category?: string | null
           vehicle_id?: string | null
           vehicle_type?: string | null
         }
         Update: {
+          assigned_driver_id?: string | null
+          booking_code?: string | null
+          code?: string | null
           created_at?: string
+          dispatcher_id?: string | null
           distance_miles?: number | null
           driver_id?: string | null
           driver_location_lat?: number | null
@@ -164,12 +727,23 @@ export type Database = {
           dropoff_location?: string
           estimated_fare?: number | null
           estimated_price?: number | null
+          estimated_price_cents?: number | null
           extra_stops?: Json | null
           final_price?: number | null
+          final_price_cents?: number | null
           flight_info?: string | null
           id?: string
           luggage_count?: number
           luggage_size?: string | null
+          offer_amount?: number | null
+          offer_amount_cents?: number | null
+          offer_currency?: string | null
+          offer_price_cents?: number | null
+          offer_sent_at?: string | null
+          offered_by_dispatcher_id?: string | null
+          paid_amount_cents?: number | null
+          paid_at?: string | null
+          paid_currency?: string | null
           passenger_count?: number
           passenger_first_name?: string | null
           passenger_id?: string
@@ -193,17 +767,118 @@ export type Database = {
           status?: string
           status_driver?: string | null
           status_passenger?: string | null
+          status_updated_at?: string | null
+          stripe_payment_intent_id?: string | null
           updated_at?: string | null
+          vehicle_category?: string | null
           vehicle_id?: string | null
           vehicle_type?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "bookings_dispatcher_id_fkey"
+            columns: ["dispatcher_id"]
+            isOneToOne: false
+            referencedRelation: "dispatchers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_drivers_min"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["driver_id"]
+          },
           {
             foreignKeyName: "bookings_driver_id_fkey"
             columns: ["driver_id"]
             isOneToOne: false
             referencedRelation: "drivers"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_offered_by_dispatcher_id_fkey"
+            columns: ["offered_by_dispatcher_id"]
+            isOneToOne: false
+            referencedRelation: "dispatchers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["passenger_id"]
           },
           {
             foreignKeyName: "bookings_passenger_id_fkey"
@@ -219,6 +894,76 @@ export type Database = {
             referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["assigned_driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["assigned_driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_drivers_min"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["assigned_driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["assigned_driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["assigned_driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["assigned_driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["assigned_driver_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["assigned_driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["assigned_driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_dispatcher"
+            columns: ["dispatcher_id"]
+            isOneToOne: false
+            referencedRelation: "dispatchers"
+            referencedColumns: ["id"]
+          },
         ]
       }
       dispatchers: {
@@ -230,6 +975,7 @@ export type Database = {
           phone: string | null
           profile_photo_url: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -239,6 +985,7 @@ export type Database = {
           phone?: string | null
           profile_photo_url?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -248,6 +995,7 @@ export type Database = {
           phone?: string | null
           profile_photo_url?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -293,8 +1041,134 @@ export type Database = {
             foreignKeyName: "driver_offers_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
+            referencedRelation: "booking_notification_prefs_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "driver_offers_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
             referencedRelation: "bookings"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_offers_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_booking_cards_v"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "driver_offers_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "driver_offers_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "driver_offers_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_view"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "driver_offers_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "driver_offers_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "driver_offers_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "driver_offers_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "driver_offers_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "driver_offers_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "driver_offers_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "driver_offers_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "driver_offers_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "driver_offers_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "v_booking_pricing_preview"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "driver_offers_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_booking_card"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "driver_offers_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "driver_offers_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["booking_id"]
           },
           {
             foreignKeyName: "driver_offers_vehicle_id_fkey"
@@ -362,8 +1236,64 @@ export type Database = {
             foreignKeyName: "driver_vehicles_driver_id_fkey"
             columns: ["driver_id"]
             isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "driver_vehicles_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_drivers_min"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_vehicles_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "driver_vehicles_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "driver_vehicles_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "driver_vehicles_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
             referencedRelation: "drivers"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_vehicles_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "driver_vehicles_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "driver_vehicles_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["driver_id"]
           },
           {
             foreignKeyName: "driver_vehicles_vehicle_id_fkey"
@@ -379,6 +1309,7 @@ export type Database = {
           account_name: string | null
           account_type: string | null
           apple_pay_info: string | null
+          avatar_url: string | null
           bank_info: Json | null
           business_type: string | null
           cancellation_policy: string | null
@@ -413,6 +1344,7 @@ export type Database = {
           account_name?: string | null
           account_type?: string | null
           apple_pay_info?: string | null
+          avatar_url?: string | null
           bank_info?: Json | null
           business_type?: string | null
           cancellation_policy?: string | null
@@ -447,6 +1379,7 @@ export type Database = {
           account_name?: string | null
           account_type?: string | null
           apple_pay_info?: string | null
+          avatar_url?: string | null
           bank_info?: Json | null
           business_type?: string | null
           cancellation_policy?: string | null
@@ -478,6 +1411,206 @@ export type Database = {
           zelle_info?: string | null
         }
         Relationships: []
+      }
+      dynamic_rate_buckets: {
+        Row: {
+          base_fee_cents: number
+          id: number
+          max_miles: number | null
+          min_miles: number
+          per_mile_cents: number
+          vehicle_category: string | null
+          vehicle_type: string
+        }
+        Insert: {
+          base_fee_cents: number
+          id?: number
+          max_miles?: number | null
+          min_miles: number
+          per_mile_cents: number
+          vehicle_category?: string | null
+          vehicle_type: string
+        }
+        Update: {
+          base_fee_cents?: number
+          id?: number
+          max_miles?: number | null
+          min_miles?: number
+          per_mile_cents?: number
+          vehicle_category?: string | null
+          vehicle_type?: string
+        }
+        Relationships: []
+      }
+      email_outbox: {
+        Row: {
+          booking_id: string
+          created_at: string
+          id: string
+          last_error: string | null
+          payload: Json
+          recipient: string
+          sent_at: string | null
+          status: string
+          template: string
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          payload: Json
+          recipient: string
+          sent_at?: string | null
+          status?: string
+          template: string
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          payload?: Json
+          recipient?: string
+          sent_at?: string | null
+          status?: string
+          template?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "booking_notification_prefs_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "email_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_booking_cards_v"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "email_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "email_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "email_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_view"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "email_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "email_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "email_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "email_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "email_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "email_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "email_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "email_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "email_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "email_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "v_booking_pricing_preview"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "email_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_booking_card"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "email_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "email_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["booking_id"]
+          },
+        ]
       }
       message_status: {
         Row: {
@@ -543,6 +1676,7 @@ export type Database = {
         Row: {
           booking_id: string | null
           created_at: string | null
+          event_type: string | null
           id: string
           payload: Json | null
           recipient_driver_id: string | null
@@ -555,6 +1689,7 @@ export type Database = {
         Insert: {
           booking_id?: string | null
           created_at?: string | null
+          event_type?: string | null
           id?: string
           payload?: Json | null
           recipient_driver_id?: string | null
@@ -567,6 +1702,7 @@ export type Database = {
         Update: {
           booking_id?: string | null
           created_at?: string | null
+          event_type?: string | null
           id?: string
           payload?: Json | null
           recipient_driver_id?: string | null
@@ -581,8 +1717,134 @@ export type Database = {
             foreignKeyName: "notification_outbox_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
+            referencedRelation: "booking_notification_prefs_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
             referencedRelation: "bookings"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_booking_cards_v"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_view"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "v_booking_pricing_preview"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_booking_card"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["booking_id"]
           },
         ]
       }
@@ -678,6 +1940,8 @@ export type Database = {
           account_name: string | null
           account_type: string | null
           additional_notes: string | null
+          auth_user_id: string | null
+          avatar_url: string | null
           created_at: string
           email: string
           first_name: string | null
@@ -692,11 +1956,14 @@ export type Database = {
           profile_photo_url: string | null
           trip_purpose: string | null
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           account_name?: string | null
           account_type?: string | null
           additional_notes?: string | null
+          auth_user_id?: string | null
+          avatar_url?: string | null
           created_at?: string
           email: string
           first_name?: string | null
@@ -711,11 +1978,14 @@ export type Database = {
           profile_photo_url?: string | null
           trip_purpose?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           account_name?: string | null
           account_type?: string | null
           additional_notes?: string | null
+          auth_user_id?: string | null
+          avatar_url?: string | null
           created_at?: string
           email?: string
           first_name?: string | null
@@ -730,8 +2000,510 @@ export type Database = {
           profile_photo_url?: string | null
           trip_purpose?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
+      }
+      payment_session_links: {
+        Row: {
+          amount_cents_hint: number | null
+          booking_id: string
+          created_at: string
+          currency_hint: string | null
+          id: string
+          provider: string
+          provider_session_id: string
+          status_hint: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount_cents_hint?: number | null
+          booking_id: string
+          created_at?: string
+          currency_hint?: string | null
+          id?: string
+          provider?: string
+          provider_session_id: string
+          status_hint?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount_cents_hint?: number | null
+          booking_id?: string
+          created_at?: string
+          currency_hint?: string | null
+          id?: string
+          provider?: string
+          provider_session_id?: string
+          status_hint?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_session_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "booking_notification_prefs_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payment_session_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_session_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_booking_cards_v"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payment_session_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payment_session_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payment_session_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_view"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payment_session_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payment_session_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payment_session_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payment_session_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payment_session_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payment_session_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payment_session_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payment_session_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payment_session_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payment_session_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "v_booking_pricing_preview"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payment_session_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_booking_card"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payment_session_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payment_session_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["booking_id"]
+          },
+        ]
+      }
+      payment_sessions: {
+        Row: {
+          amount_cents: number
+          booking_id: string
+          created_at: string
+          currency: string
+          id: string
+          stripe_session_id: string | null
+        }
+        Insert: {
+          amount_cents: number
+          booking_id: string
+          created_at?: string
+          currency?: string
+          id?: string
+          stripe_session_id?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          booking_id?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          stripe_session_id?: string | null
+        }
+        Relationships: []
+      }
+      payment_webhook_events: {
+        Row: {
+          amount_cents: number | null
+          booking_id: string | null
+          created_at: string
+          currency: string | null
+          event_type: string | null
+          id: string
+          payload: Json
+          processed_ok: boolean
+          provider: string
+          provider_event_id: string | null
+        }
+        Insert: {
+          amount_cents?: number | null
+          booking_id?: string | null
+          created_at?: string
+          currency?: string | null
+          event_type?: string | null
+          id?: string
+          payload: Json
+          processed_ok?: boolean
+          provider: string
+          provider_event_id?: string | null
+        }
+        Update: {
+          amount_cents?: number | null
+          booking_id?: string | null
+          created_at?: string
+          currency?: string | null
+          event_type?: string | null
+          id?: string
+          payload?: Json
+          processed_ok?: boolean
+          provider?: string
+          provider_event_id?: string | null
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount_cents: number
+          booking_id: string
+          created_at: string
+          currency: string
+          dispatcher_id: string | null
+          id: string
+          meta: Json | null
+          method: string | null
+          passenger_id: string | null
+          provider_txn_id: string | null
+          status: string
+        }
+        Insert: {
+          amount_cents: number
+          booking_id: string
+          created_at?: string
+          currency?: string
+          dispatcher_id?: string | null
+          id?: string
+          meta?: Json | null
+          method?: string | null
+          passenger_id?: string | null
+          provider_txn_id?: string | null
+          status?: string
+        }
+        Update: {
+          amount_cents?: number
+          booking_id?: string
+          created_at?: string
+          currency?: string
+          dispatcher_id?: string | null
+          id?: string
+          meta?: Json | null
+          method?: string | null
+          passenger_id?: string | null
+          provider_txn_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "booking_notification_prefs_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_booking_cards_v"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_view"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "v_booking_pricing_preview"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_booking_card"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_dispatcher_id_fkey"
+            columns: ["dispatcher_id"]
+            isOneToOne: false
+            referencedRelation: "dispatchers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "payments_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "payments_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "payments_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "payments_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "passengers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pricing_rules: {
+        Row: {
+          base_fare_cents: number
+          category_code: string
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          id: string
+          minimum_fare_cents: number
+          per_mile_cents: number
+          smart_addon_cents: number
+          updated_at: string
+        }
+        Insert: {
+          base_fare_cents: number
+          category_code: string
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          minimum_fare_cents: number
+          per_mile_cents: number
+          smart_addon_cents?: number
+          updated_at?: string
+        }
+        Update: {
+          base_fare_cents?: number
+          category_code?: string
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          minimum_fare_cents?: number
+          per_mile_cents?: number
+          smart_addon_cents?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pricing_rules_category_code_fkey"
+            columns: ["category_code"]
+            isOneToOne: false
+            referencedRelation: "vehicle_categories"
+            referencedColumns: ["code"]
+          },
+        ]
       }
       push_subscriptions: {
         Row: {
@@ -757,6 +2529,60 @@ export type Database = {
           subscription?: Json
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      push_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          platform: string
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          platform: string
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          platform?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      realtime_outbox: {
+        Row: {
+          booking_id: string
+          created_at: string
+          delivered_at: string | null
+          id: number
+          payload: Json
+          topic: string
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          delivered_at?: string | null
+          id?: number
+          payload: Json
+          topic: string
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          delivered_at?: string | null
+          id?: number
+          payload?: Json
+          topic?: string
         }
         Relationships: []
       }
@@ -793,8 +2619,169 @@ export type Database = {
             foreignKeyName: "reviews_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
+            referencedRelation: "booking_notification_prefs_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
             referencedRelation: "bookings"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_booking_cards_v"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_view"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "v_booking_pricing_preview"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_booking_card"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "reviews_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "reviews_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_drivers_min"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "reviews_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "reviews_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["driver_id"]
           },
           {
             foreignKeyName: "reviews_driver_id_fkey"
@@ -802,6 +2789,55 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "drivers"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "reviews_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "reviews_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "reviews_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "reviews_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "reviews_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "reviews_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["passenger_id"]
           },
           {
             foreignKeyName: "reviews_passenger_id_fkey"
@@ -869,8 +2905,134 @@ export type Database = {
             foreignKeyName: "ride_reviews_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
+            referencedRelation: "booking_notification_prefs_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
             referencedRelation: "bookings"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ride_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_booking_cards_v"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_view"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "v_booking_pricing_preview"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_booking_card"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["booking_id"]
           },
         ]
       }
@@ -913,8 +3075,134 @@ export type Database = {
             foreignKeyName: "ride_status_ride_id_fkey"
             columns: ["ride_id"]
             isOneToOne: false
+            referencedRelation: "booking_notification_prefs_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
             referencedRelation: "bookings"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ride_status_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_booking_cards_v"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_view"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "v_booking_pricing_preview"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_booking_card"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["booking_id"]
           },
         ]
       }
@@ -948,8 +3236,134 @@ export type Database = {
             foreignKeyName: "ride_status_history_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
+            referencedRelation: "booking_notification_prefs_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
             referencedRelation: "bookings"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ride_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_booking_cards_v"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_view"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "v_booking_pricing_preview"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_booking_card"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["booking_id"]
           },
         ]
       }
@@ -986,6 +3400,27 @@ export type Database = {
         }
         Relationships: []
       }
+      system_settings: {
+        Row: {
+          created_at: string
+          id: string
+          smart_price_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          smart_price_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          smart_price_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       timeline_events: {
         Row: {
           booking_id: string
@@ -1019,8 +3454,169 @@ export type Database = {
             foreignKeyName: "timeline_events_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
+            referencedRelation: "booking_notification_prefs_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
             referencedRelation: "bookings"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timeline_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_booking_cards_v"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_view"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "v_booking_pricing_preview"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_booking_card"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_drivers_min"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timeline_events_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["driver_id"]
           },
           {
             foreignKeyName: "timeline_events_driver_id_fkey"
@@ -1030,6 +3626,55 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "timeline_events_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["passenger_id"]
+          },
+          {
             foreignKeyName: "timeline_events_passenger_id_fkey"
             columns: ["passenger_id"]
             isOneToOne: false
@@ -1037,6 +3682,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_notification_prefs: {
+        Row: {
+          created_at: string
+          email_enabled: boolean
+          id: string
+          push_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_enabled?: boolean
+          id?: string
+          push_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_enabled?: boolean
+          id?: string
+          push_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
@@ -1086,6 +3758,30 @@ export type Database = {
           phone?: string | null
           photo_url?: string | null
           role?: string | null
+        }
+        Relationships: []
+      }
+      vehicle_categories: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          display_name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          display_name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          display_name?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1146,11 +3842,1855 @@ export type Database = {
         }
         Relationships: []
       }
+      vip_chat_messages: {
+        Row: {
+          body: string
+          booking_id: string
+          created_at: string
+          id: string
+          sender_role: Database["public"]["Enums"]["vip_chat_sender_role"]
+          thread_id: string
+        }
+        Insert: {
+          body: string
+          booking_id: string
+          created_at?: string
+          id?: string
+          sender_role?: Database["public"]["Enums"]["vip_chat_sender_role"]
+          thread_id: string
+        }
+        Update: {
+          body?: string
+          booking_id?: string
+          created_at?: string
+          id?: string
+          sender_role?: Database["public"]["Enums"]["vip_chat_sender_role"]
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vip_chat_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "vip_chat_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vip_chat_threads: {
+        Row: {
+          booking_id: string
+          created_at: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      booking_notification_prefs_v1: {
+        Row: {
+          booking_id: string | null
+          booking_status: string | null
+          dispatcher_email_ok: boolean | null
+          dispatcher_id: string | null
+          dispatcher_push_ok: boolean | null
+          dispatcher_user_id: string | null
+          driver_email_ok: boolean | null
+          driver_id: string | null
+          driver_push_ok: boolean | null
+          driver_user_id: string | null
+          generated_at: string | null
+          passenger_email_ok: boolean | null
+          passenger_id: string | null
+          passenger_push_ok: boolean | null
+          passenger_user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_dispatcher_id_fkey"
+            columns: ["dispatcher_id"]
+            isOneToOne: false
+            referencedRelation: "dispatchers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_drivers_min"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "passengers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_dispatcher"
+            columns: ["dispatcher_id"]
+            isOneToOne: false
+            referencedRelation: "dispatchers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dispatcher_booking_cards_v: {
+        Row: {
+          booking_id: string | null
+          created_at: string | null
+          currency: string | null
+          distance_miles: number | null
+          driver_id: string | null
+          driver_name: string | null
+          driver_phone: string | null
+          passenger_id: string | null
+          passenger_name: string | null
+          passenger_phone: string | null
+          passenger_photo_url: string | null
+          smartprice_enabled: boolean | null
+          smartprice_markup_cents: number | null
+          status: string | null
+          suggested_price_cents: number | null
+          updated_at: string | null
+          vehicle_category: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "passengers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_drivers_min"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["driver_id"]
+          },
+        ]
+      }
+      dispatcher_bookings_cards_v1: {
+        Row: {
+          booking_code: string | null
+          booking_id: string | null
+          created_at: string | null
+          currency: string | null
+          distance_miles: number | null
+          driver_avatar_url: string | null
+          driver_id: string | null
+          driver_name: string | null
+          passenger_first_name: string | null
+          passenger_last_name: string | null
+          passenger_name: string | null
+          passenger_phone: string | null
+          price_cents: number | null
+          price_dollars: number | null
+          status: Database["public"]["Enums"]["booking_sync_status"] | null
+          updated_at: string | null
+          vehicle_type: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_drivers_min"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["driver_id"]
+          },
+        ]
+      }
+      dispatcher_bookings_cards_v2: {
+        Row: {
+          booking_code: string | null
+          booking_id: string | null
+          created_at: string | null
+          currency: string | null
+          distance_miles: number | null
+          driver_avatar_url: string | null
+          driver_id: string | null
+          driver_name: string | null
+          driver_phone: string | null
+          passenger_avatar_url: string | null
+          passenger_id: string | null
+          passenger_name: string | null
+          passenger_phone: string | null
+          price_cents: number | null
+          price_dollars: number | null
+          status: Database["public"]["Enums"]["booking_sync_status"] | null
+          updated_at: string | null
+          vehicle_type: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_drivers_min"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "passengers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dispatcher_bookings_view: {
+        Row: {
+          assigned_driver_id: string | null
+          booking_code: string | null
+          booking_id: string | null
+          created_at: string | null
+          driver_name: string | null
+          driver_phone: string | null
+          driver_vehicle_label: string | null
+          dropoff_location: string | null
+          offer_currency: string | null
+          offer_price_cents: number | null
+          passenger_id: string | null
+          passenger_name: string | null
+          passenger_phone: string | null
+          pickup_location: string | null
+          status: string | null
+          status_updated_at: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "passengers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["assigned_driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["assigned_driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_drivers_min"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["assigned_driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["assigned_driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["assigned_driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["assigned_driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["assigned_driver_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["assigned_driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["assigned_driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["driver_id"]
+          },
+        ]
+      }
+      dispatcher_dashboard_cards_v1: {
+        Row: {
+          booking_code: string | null
+          booking_id: string | null
+          created_at: string | null
+          currency: string | null
+          distance_miles: number | null
+          driver_avatar_url: string | null
+          driver_id: string | null
+          driver_name: string | null
+          passenger_avatar_url: string | null
+          passenger_id: string | null
+          passenger_name: string | null
+          passenger_user_id: string | null
+          price_cents: number | null
+          price_dollars: number | null
+          status: Database["public"]["Enums"]["booking_sync_status"] | null
+          updated_at: string | null
+          vehicle_type: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_drivers_min"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "passengers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dispatcher_dashboard_feed: {
+        Row: {
+          booking_code: string | null
+          booking_id: string | null
+          booking_status: string | null
+          created_at: string | null
+          driver_email: string | null
+          driver_id: string | null
+          driver_name: string | null
+          dropoff_location: string | null
+          last_status_change_at: string | null
+          passenger_email: string | null
+          passenger_id: string | null
+          passenger_name: string | null
+          passenger_phone: string | null
+          pickup_location: string | null
+          pickup_time: string | null
+          price_usd: number | null
+          updated_at: string | null
+          vehicle_id: string | null
+          vehicle_name: string | null
+        }
+        Relationships: []
+      }
+      dispatcher_drivers_min: {
+        Row: {
+          car_color: string | null
+          car_make: string | null
+          car_model: string | null
+          car_year: string | null
+          email: string | null
+          full_name: string | null
+          id: string | null
+          license_plate: string | null
+          phone: string | null
+          photo_url: string | null
+        }
+        Insert: {
+          car_color?: string | null
+          car_make?: string | null
+          car_model?: string | null
+          car_year?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string | null
+          license_plate?: string | null
+          phone?: string | null
+          photo_url?: string | null
+        }
+        Update: {
+          car_color?: string | null
+          car_make?: string | null
+          car_model?: string | null
+          car_year?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string | null
+          license_plate?: string | null
+          phone?: string | null
+          photo_url?: string | null
+        }
+        Relationships: []
+      }
+      dispatcher_full_bookings: {
+        Row: {
+          booking_id: string | null
+          created_at: string | null
+          dispatcher_id: string | null
+          driver_id: string | null
+          driver_image: string | null
+          driver_name: string | null
+          driver_phone: string | null
+          dropoff_location: string | null
+          passenger_email: string | null
+          passenger_id: string | null
+          passenger_image: string | null
+          passenger_name: string | null
+          passenger_phone: string | null
+          payment_status: string | null
+          pickup_location: string | null
+          pickup_time: string | null
+          status: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_dispatcher_id_fkey"
+            columns: ["dispatcher_id"]
+            isOneToOne: false
+            referencedRelation: "dispatchers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_dispatcher"
+            columns: ["dispatcher_id"]
+            isOneToOne: false
+            referencedRelation: "dispatchers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dispatcher_payments_totals: {
+        Row: {
+          total_pending: number | null
+          total_received: number | null
+          total_refunds: number | null
+        }
+        Relationships: []
+      }
+      dispatcher_payments_view: {
+        Row: {
+          amount: number | null
+          amount_cents: number | null
+          booking_code: string | null
+          booking_id: string | null
+          booking_status: string | null
+          driver_id: string | null
+          driver_name: string | null
+          driver_phone: string | null
+          passenger_id: string | null
+          passenger_name: string | null
+          passenger_phone: string | null
+          payment_created_at: string | null
+          payment_id: string | null
+          payment_status: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "booking_notification_prefs_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_booking_cards_v"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_view"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "v_booking_pricing_preview"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_booking_card"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["booking_id"]
+          },
+        ]
+      }
+      dispatcher_recent_bookings: {
+        Row: {
+          booking_id: string | null
+          created_at: string | null
+          driver_car_color: string | null
+          driver_car_make: string | null
+          driver_car_model: string | null
+          driver_car_year: string | null
+          driver_email: string | null
+          driver_id: string | null
+          driver_image: string | null
+          driver_license_plate: string | null
+          driver_name: string | null
+          driver_phone: string | null
+          dropoff_location: string | null
+          estimated_price: number | null
+          final_price: number | null
+          passenger_count: number | null
+          passenger_email: string | null
+          passenger_id: string | null
+          passenger_image: string | null
+          passenger_name: string | null
+          passenger_phone: string | null
+          payment_status: string | null
+          pickup_location: string | null
+          pickup_time: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
+      my_passenger_bookings: {
+        Row: {
+          booking_code: string | null
+          booking_id: string | null
+          created_at: string | null
+          currency: string | null
+          distance_miles: number | null
+          driver_id: string | null
+          driver_name: string | null
+          dropoff_location: string | null
+          pickup_location: string | null
+          pickup_time: string | null
+          price_cents: number | null
+          price_dollars: number | null
+          status: string | null
+          updated_at: string | null
+          vehicle_type: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_drivers_min"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["driver_id"]
+          },
+        ]
+      }
+      my_passenger_bookings_v1: {
+        Row: {
+          booking_code: string | null
+          booking_id: string | null
+          created_at: string | null
+          currency: string | null
+          distance_miles: number | null
+          driver_id: string | null
+          driver_name: string | null
+          dropoff_location: string | null
+          pickup_location: string | null
+          pickup_time: string | null
+          price_cents: number | null
+          price_dollars: number | null
+          status: Database["public"]["Enums"]["booking_sync_status"] | null
+          updated_at: string | null
+          vehicle_type: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_drivers_min"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["driver_id"]
+          },
+        ]
+      }
+      passenger_dashboard_cards_v1: {
+        Row: {
+          booking_code: string | null
+          booking_id: string | null
+          created_at: string | null
+          currency: string | null
+          distance_miles: number | null
+          driver_avatar_url: string | null
+          driver_id: string | null
+          driver_name: string | null
+          dropoff_location: string | null
+          passenger_avatar_url: string | null
+          passenger_id: string | null
+          passenger_name: string | null
+          pickup_location: string | null
+          pickup_time: string | null
+          price_cents: number | null
+          price_dollars: number | null
+          status: Database["public"]["Enums"]["booking_sync_status"] | null
+          updated_at: string | null
+          vehicle_type: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_drivers_min"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "passengers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      passenger_dashboard_cards_v2: {
+        Row: {
+          booking_code: string | null
+          booking_id: string | null
+          created_at: string | null
+          currency: string | null
+          distance_miles: number | null
+          driver_avatar_url: string | null
+          driver_name: string | null
+          passenger_avatar_url: string | null
+          passenger_name: string | null
+          price_cents: number | null
+          price_dollars: number | null
+          status: Database["public"]["Enums"]["booking_sync_status"] | null
+          updated_at: string | null
+          vehicle_type: string | null
+        }
+        Relationships: []
+      }
+      passenger_dashboard_feed: {
+        Row: {
+          booking_id: string | null
+          currency: string | null
+          driver_contact: Json | null
+          driver_id: string | null
+          driver_name: string | null
+          estimated_price_usd: number | null
+          final_price_usd: number | null
+          status: string | null
+          updated_at: string | null
+          vehicle_name: string | null
+        }
+        Relationships: []
+      }
+      passenger_my_bookings: {
+        Row: {
+          booking_code: string | null
+          created_at: string | null
+          driver_avatar_url: string | null
+          driver_id: string | null
+          driver_name: string | null
+          dropoff_location: string | null
+          final_price_cents: number | null
+          id: string | null
+          payment_status: string | null
+          pickup_location: string | null
+          pickup_time: string | null
+          status: string | null
+          vehicle_type: string | null
+        }
+        Relationships: []
+      }
+      v_booking_pricing_preview: {
+        Row: {
+          base_fare_cents: number | null
+          booking_id: string | null
+          booking_status: string | null
+          category_code: string | null
+          distance_miles: number | null
+          fare_cents: number | null
+          fare_dollars: number | null
+          minimum_fare_cents: number | null
+          passenger_id: string | null
+          per_mile_cents: number | null
+          quote_json: Json | null
+          smart_addon_cents: number | null
+          smart_price_enabled: boolean | null
+          vehicle_type: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "passengers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_system_settings: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          smart_price_enabled: boolean | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
+      vw_dispatcher_booking_card: {
+        Row: {
+          booking_id: string | null
+          created_at: string | null
+          currency: string | null
+          driver_id: string | null
+          driver_name: string | null
+          dropoff_location: string | null
+          has_final_price: boolean | null
+          has_suggested_price: boolean | null
+          passenger_name: string | null
+          passenger_phone: string | null
+          pickup_location: string | null
+          pickup_time: string | null
+          price_amount: number | null
+          price_cents: number | null
+          smartprice_enabled_global: boolean | null
+          status: string | null
+          updated_at: string | null
+          vehicle_category: string | null
+          vehicle_type: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_drivers_min"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["driver_id"]
+          },
+        ]
+      }
+      vw_dispatcher_bookings: {
+        Row: {
+          booking_code: string | null
+          booking_id: string | null
+          can_checkout_immediately: boolean | null
+          can_send_offer: boolean | null
+          created_at: string | null
+          currency: string | null
+          display_price_amount: number | null
+          display_price_cents: number | null
+          driver_email: string | null
+          driver_id: string | null
+          driver_name: string | null
+          dropoff_location: string | null
+          estimated_price: number | null
+          final_price: number | null
+          passenger_id: string | null
+          passenger_name: string | null
+          passenger_phone: string | null
+          passenger_photo_url: string | null
+          payment_method: string | null
+          payment_status: string | null
+          pickup_location: string | null
+          pickup_time: string | null
+          status_key: string | null
+          status_label: string | null
+          suggested_currency: string | null
+          suggested_price_cents: number | null
+          updated_at: string | null
+          vehicle_category: string | null
+          vehicle_id: string | null
+          vehicle_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "passengers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vw_passenger_bookings: {
+        Row: {
+          booking_code: string | null
+          booking_id: string | null
+          checkout_allowed: boolean | null
+          created_at: string | null
+          currency: string | null
+          display_price_amount: number | null
+          display_price_cents: number | null
+          driver_email: string | null
+          driver_email_visible: string | null
+          driver_id: string | null
+          driver_name: string | null
+          driver_phone: string | null
+          driver_phone_visible: string | null
+          dropoff_location: string | null
+          estimated_price: number | null
+          final_price: number | null
+          passenger_id: string | null
+          passenger_name: string | null
+          passenger_phone: string | null
+          passenger_photo_url: string | null
+          payment_method: string | null
+          payment_status: string | null
+          pickup_location: string | null
+          pickup_time: string | null
+          status_key: string | null
+          status_label: string | null
+          suggested_currency: string | null
+          suggested_price_cents: number | null
+          updated_at: string | null
+          vehicle_category: string | null
+          vehicle_id: string | null
+          vehicle_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["passenger_id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "passengers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      _normalize_vehicle_category: {
+        Args: { p_vehicle_type: string }
+        Returns: string
+      }
+      _notify_driver_assigned: {
+        Args: { p_booking_id: string }
+        Returns: undefined
+      }
+      _notify_payment_confirmed: {
+        Args: { p_booking_id: string }
+        Returns: undefined
+      }
+      api_booking_detail_json: {
+        Args: { p_booking_id: string }
+        Returns: Json
+      }
+      api_dispatcher_bookings: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_status?: Database["public"]["Enums"]["booking_sync_status"]
+        }
+        Returns: {
+          booking_code: string | null
+          booking_id: string | null
+          can_checkout_immediately: boolean | null
+          can_send_offer: boolean | null
+          created_at: string | null
+          currency: string | null
+          display_price_amount: number | null
+          display_price_cents: number | null
+          driver_email: string | null
+          driver_id: string | null
+          driver_name: string | null
+          dropoff_location: string | null
+          estimated_price: number | null
+          final_price: number | null
+          passenger_id: string | null
+          passenger_name: string | null
+          passenger_phone: string | null
+          passenger_photo_url: string | null
+          payment_method: string | null
+          payment_status: string | null
+          pickup_location: string | null
+          pickup_time: string | null
+          status_key: string | null
+          status_label: string | null
+          suggested_currency: string | null
+          suggested_price_cents: number | null
+          updated_at: string | null
+          vehicle_category: string | null
+          vehicle_id: string | null
+          vehicle_name: string | null
+        }[]
+      }
+      api_dispatcher_mark_paid: {
+        Args: {
+          p_amount_cents?: number
+          p_booking_id: string
+          p_currency?: string
+          p_payment_method?: string
+        }
+        Returns: Json
+      }
+      api_dispatcher_send_offer_v2: {
+        Args: {
+          p_booking_id: string
+          p_currency?: string
+          p_driver_id: string
+          p_offer_cents?: number
+        }
+        Returns: Json
+      }
+      api_passenger_bookings: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: {
+          booking_code: string | null
+          booking_id: string | null
+          checkout_allowed: boolean | null
+          created_at: string | null
+          currency: string | null
+          display_price_amount: number | null
+          display_price_cents: number | null
+          driver_email: string | null
+          driver_email_visible: string | null
+          driver_id: string | null
+          driver_name: string | null
+          driver_phone: string | null
+          driver_phone_visible: string | null
+          dropoff_location: string | null
+          estimated_price: number | null
+          final_price: number | null
+          passenger_id: string | null
+          passenger_name: string | null
+          passenger_phone: string | null
+          passenger_photo_url: string | null
+          payment_method: string | null
+          payment_status: string | null
+          pickup_location: string | null
+          pickup_time: string | null
+          status_key: string | null
+          status_label: string | null
+          suggested_currency: string | null
+          suggested_price_cents: number | null
+          updated_at: string | null
+          vehicle_category: string | null
+          vehicle_id: string | null
+          vehicle_name: string | null
+        }[]
+      }
+      apply_payment_authoritative: {
+        Args: {
+          p_amount_cents: number
+          p_booking_id: string
+          p_currency?: string
+          p_payload?: Json
+          p_provider?: string
+          p_provider_event_id?: string
+        }
+        Returns: undefined
+      }
+      apply_payment_by_session: {
+        Args: {
+          p_amount_cents: number
+          p_currency?: string
+          p_payload?: Json
+          p_provider: string
+          p_provider_session_id: string
+        }
+        Returns: undefined
+      }
+      apply_smartprice_if_enabled: {
+        Args: { p_booking_id: string }
+        Returns: undefined
+      }
+      assign_driver_after_payment: {
+        Args: { p_booking_id: string; p_driver_id: string }
+        Returns: undefined
+      }
       assign_driver_and_send_offer: {
         Args: {
           p_booking_id: string
@@ -1158,49 +5698,635 @@ export type Database = {
           p_final_price: number
         }
         Returns: {
-          booking_id: string
           assigned_driver_id: string
-          final_price: number
+          booking_id: string
           booking_status: string
+          final_price: number
         }[]
+      }
+      booking_checkout_amount: {
+        Args: { p_booking_id: string }
+        Returns: {
+          amount_cents: number
+          currency: string
+        }[]
+      }
+      booking_mark_paid_auto: {
+        Args:
+          | {
+              amount_cents: number
+              booking_id: string
+              currency: string
+              provider_payment_id?: string
+              raw?: Json
+              source?: string
+            }
+          | {
+              p_amount_cents?: number
+              p_booking_id: string
+              p_currency?: string
+              p_source?: string
+            }
+        Returns: undefined
+      }
+      booking_price_breakdown: {
+        Args: { p_booking_id: string }
+        Returns: {
+          app_fee_cents: number
+          base_cents: number
+          booking_id: string
+          currency: string
+          dispatcher_fee_cents: number
+          stripe_grossup_cents: number
+          subtotal_cents: number
+          total_cents: number
+        }[]
+      }
+      can_act_on_booking_passenger: {
+        Args: { pax_id: string }
+        Returns: boolean
+      }
+      compute_suggested_for_booking: {
+        Args: { p_booking_id: string }
+        Returns: undefined
+      }
+      compute_suggested_price: {
+        Args: { p_booking_id: string }
+        Returns: undefined
+      }
+      confirm_payment: {
+        Args: {
+          p_amount_cents: number
+          p_booking_id: string
+          p_currency?: string
+          p_meta?: Json
+          p_method?: string
+          p_provider_txn_id?: string
+        }
+        Returns: undefined
+      }
+      dispatcher_assign_driver: {
+        Args:
+          | {
+              p_booking_id: string
+              p_dispatcher_id: string
+              p_driver_id: string
+            }
+          | { p_booking_id: string; p_driver_id: string }
+        Returns: {
+          booking_id: string
+          driver_id: string
+          driver_name: string
+          driver_phone: string
+          status: Database["public"]["Enums"]["booking_sync_status"]
+          updated_at: string
+        }[]
+      }
+      dispatcher_assign_driver_and_price: {
+        Args: {
+          p_booking_id: string
+          p_driver_id: string
+          p_estimated_price: number
+          p_final_price?: number
+        }
+        Returns: {
+          booking_id: string
+          driver_id: string
+          estimated_price: number
+          final_price: number
+          status: string
+          updated_at: string
+        }[]
+      }
+      dispatcher_assign_offer: {
+        Args: {
+          p_booking_id: string
+          p_currency?: string
+          p_driver_id: string
+          p_offer_amount: number
+        }
+        Returns: undefined
       }
       dispatcher_booking_passenger_details: {
         Args: { b_id: string }
         Returns: {
-          passenger_id: string
-          full_name: string
+          conversation_preference: string
           email: string
+          full_name: string
+          passenger_id: string
           phone: string
           photo_url: string
-          preferred_temperature: number
           preferred_music: string
-          conversation_preference: string
-          trip_purpose: string
+          preferred_temperature: number
           trip_notes: string
+          trip_purpose: string
         }[]
+      }
+      dispatcher_cancel_offer: {
+        Args: { p_booking_id: string; p_reason?: string }
+        Returns: undefined
+      }
+      dispatcher_claim_booking: {
+        Args: { p_booking_id: string }
+        Returns: {
+          booking_id: string | null
+          created_at: string | null
+          dispatcher_id: string | null
+          driver_id: string | null
+          driver_image: string | null
+          driver_name: string | null
+          driver_phone: string | null
+          dropoff_location: string | null
+          passenger_email: string | null
+          passenger_id: string | null
+          passenger_image: string | null
+          passenger_name: string | null
+          passenger_phone: string | null
+          payment_status: string | null
+          pickup_location: string | null
+          pickup_time: string | null
+          status: string | null
+        }
+      }
+      dispatcher_clear_assignment: {
+        Args: { p_booking_id: string }
+        Returns: {
+          booking_id: string
+          driver_id: string
+          estimated_price: number
+          final_price: number
+          status: string
+          updated_at: string
+        }[]
+      }
+      dispatcher_confirm_payment: {
+        Args: {
+          p_amount_cents: number
+          p_booking_id: string
+          p_currency?: string
+          p_txn_id?: string
+        }
+        Returns: undefined
+      }
+      dispatcher_get_booking_detail: {
+        Args: { p_booking_id: string }
+        Returns: {
+          booking_code: string
+          booking_id: string
+          created_at: string
+          currency: string
+          distance_miles: number
+          driver_avatar_url: string
+          driver_id: string
+          driver_name: string
+          passenger_first_name: string
+          passenger_last_name: string
+          passenger_name: string
+          passenger_phone: string
+          price_cents: number
+          price_dollars: number
+          status: Database["public"]["Enums"]["booking_sync_status"]
+          updated_at: string
+          vehicle_type: string
+        }[]
+      }
+      dispatcher_get_booking_detail_v2: {
+        Args: { p_booking_id: string }
+        Returns: {
+          booking_code: string
+          booking_id: string
+          created_at: string
+          currency: string
+          distance_miles: number
+          driver_avatar_url: string
+          driver_id: string
+          driver_name: string
+          driver_phone: string
+          dropoff_location: string
+          estimated_price_cents: number
+          final_price_cents: number
+          has_driver: boolean
+          passenger_avatar_url: string
+          passenger_first_name: string
+          passenger_id: string
+          passenger_last_name: string
+          passenger_name: string
+          passenger_phone: string
+          pickup_location: string
+          pickup_time: string
+          price_cents: number
+          price_dollars: number
+          smartprice_enabled: boolean
+          status: Database["public"]["Enums"]["booking_sync_status"]
+          suggested_price_cents: number
+          updated_at: string
+          vehicle_type: string
+        }[]
+      }
+      dispatcher_get_booking_detail_v3: {
+        Args: { p_booking_id: string }
+        Returns: {
+          booking_code: string
+          booking_id: string
+          created_at: string
+          currency: string
+          distance_miles: number
+          driver_avatar_url: string
+          driver_id: string
+          driver_name: string
+          dropoff_location: string
+          passenger_avatar_url: string
+          passenger_first_name: string
+          passenger_id: string
+          passenger_last_name: string
+          passenger_name: string
+          passenger_phone: string
+          pickup_location: string
+          pickup_time: string
+          price_cents: number
+          price_dollars: number
+          smartprice_enabled: boolean
+          status: Database["public"]["Enums"]["booking_sync_status"]
+          suggested_price_cents: number
+          suggested_price_dollars: number
+          updated_at: string
+          vehicle_type: string
+        }[]
+      }
+      dispatcher_get_bookings_list_v2: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          booking_code: string
+          booking_id: string
+          created_at: string
+          currency: string
+          distance_miles: number
+          driver_avatar_url: string
+          driver_id: string
+          driver_name: string
+          dropoff_location: string
+          passenger_avatar_url: string
+          passenger_id: string
+          passenger_name: string
+          passenger_phone: string
+          pickup_location: string
+          pickup_time: string
+          price_cents: number
+          price_dollars: number
+          status: Database["public"]["Enums"]["booking_sync_status"]
+          updated_at: string
+          vehicle_type: string
+        }[]
+      }
+      dispatcher_list_bookings: {
+        Args:
+          | Record<PropertyKey, never>
+          | { p_limit?: number; p_offset?: number; p_search?: string }
+          | {
+              p_page?: number
+              p_page_size?: number
+              p_search?: string
+              p_status?: string
+            }
+        Returns: {
+          booking_code: string
+          booking_id: string
+          created_at: string
+          currency: string
+          distance_miles: number
+          driver_avatar_url: string
+          driver_id: string
+          driver_name: string
+          driver_phone: string
+          passenger_avatar_url: string
+          passenger_id: string
+          passenger_name: string
+          passenger_phone: string
+          price_cents: number
+          price_dollars: number
+          status: Database["public"]["Enums"]["booking_sync_status"]
+          updated_at: string
+          vehicle_type: string
+        }[]
+      }
+      dispatcher_list_bookings_v2: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_status?: string
+        }
+        Returns: {
+          booking_code: string
+          booking_id: string
+          created_at: string
+          currency: string
+          distance_miles: number
+          driver_id: string
+          driver_name: string
+          dropoff_location: string
+          passenger_avatar_url: string
+          passenger_first_name: string
+          passenger_id: string
+          passenger_last_name: string
+          passenger_name: string
+          passenger_phone: string
+          pickup_location: string
+          pickup_time: string
+          price_cents: number
+          price_dollars: number
+          status: Database["public"]["Enums"]["booking_sync_status"]
+          total_rows: number
+          updated_at: string
+          vehicle_type: string
+        }[]
+      }
+      dispatcher_list_bookings_v3: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          booking_code: string
+          booking_id: string
+          created_at: string
+          currency: string
+          distance_miles: number
+          driver_avatar_url: string
+          driver_id: string
+          driver_name: string
+          dropoff_location: string
+          passenger_avatar_url: string
+          passenger_id: string
+          passenger_name: string
+          passenger_phone: string
+          pickup_location: string
+          pickup_time: string
+          price_cents: number
+          price_dollars: number
+          status: Database["public"]["Enums"]["booking_sync_status"]
+          updated_at: string
+          vehicle_type: string
+        }[]
+      }
+      dispatcher_list_inbox: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          booking_id: string | null
+          created_at: string | null
+          dispatcher_id: string | null
+          driver_id: string | null
+          driver_image: string | null
+          driver_name: string | null
+          driver_phone: string | null
+          dropoff_location: string | null
+          passenger_email: string | null
+          passenger_id: string | null
+          passenger_image: string | null
+          passenger_name: string | null
+          passenger_phone: string | null
+          payment_status: string | null
+          pickup_location: string | null
+          pickup_time: string | null
+          status: string | null
+        }[]
+      }
+      dispatcher_list_recent: {
+        Args: {
+          p_date_from?: string
+          p_date_to?: string
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_statuses?: string[]
+        }
+        Returns: {
+          booking_id: string | null
+          created_at: string | null
+          driver_car_color: string | null
+          driver_car_make: string | null
+          driver_car_model: string | null
+          driver_car_year: string | null
+          driver_email: string | null
+          driver_id: string | null
+          driver_image: string | null
+          driver_license_plate: string | null
+          driver_name: string | null
+          driver_phone: string | null
+          dropoff_location: string | null
+          estimated_price: number | null
+          final_price: number | null
+          passenger_count: number | null
+          passenger_email: string | null
+          passenger_id: string | null
+          passenger_image: string | null
+          passenger_name: string | null
+          passenger_phone: string | null
+          payment_status: string | null
+          pickup_location: string | null
+          pickup_time: string | null
+          status: string | null
+          updated_at: string | null
+        }[]
+      }
+      dispatcher_mark_paid: {
+        Args: {
+          p_amount_cents: number
+          p_booking_id: string
+          p_currency?: string
+          p_method: string
+          p_tx_ref?: string
+        }
+        Returns: {
+          amount_cents: number
+          assigned_driver_id: string
+          booking_id: string
+          currency: string
+          new_status: string
+          paid_at: string
+          passenger_id: string
+          payment_method: string
+        }[]
+      }
+      dispatcher_mark_paid_and_notify: {
+        Args: {
+          p_amount_cents: number
+          p_booking_id: string
+          p_currency?: string
+          p_method: string
+          p_note?: string
+        }
+        Returns: undefined
+      }
+      dispatcher_offer_and_assign: {
+        Args: {
+          p_booking_id: string
+          p_driver_id: string
+          p_offer_price: number
+        }
+        Returns: undefined
+      }
+      dispatcher_reset_to_new_request: {
+        Args: { p_booking_id: string; p_reason?: string }
+        Returns: {
+          accepted_at: string
+          assigned_driver_id: string
+          booking_id: string
+          declined_at: string
+          new_status: string
+          offer_currency: string
+          offer_price_cents: number
+          offer_sent_at: string
+        }[]
+      }
+      dispatcher_send_offer: {
+        Args:
+          | {
+              p_booking_id: string
+              p_currency: string
+              p_dispatcher_id: string
+              p_driver_id: string
+              p_offer_price_cents: number
+            }
+          | {
+              p_booking_id: string
+              p_currency: string
+              p_dispatcher_user_id: string
+              p_offer_price_cents: number
+            }
+          | {
+              p_booking_id: string
+              p_currency?: string
+              p_driver_id: string
+              p_offer_amount: number
+            }
+          | { p_booking_id: string; p_offer_price: number }
+        Returns: {
+          booking_id: string
+          final_price_cents: number
+          new_status: Database["public"]["Enums"]["booking_sync_status"]
+          updated_at: string
+        }[]
+      }
+      dispatcher_send_offer_v3: {
+        Args: {
+          p_booking_id: string
+          p_currency?: string
+          p_dispatcher_user_id: string
+          p_driver_id: string
+          p_offer_price_cents: number
+        }
+        Returns: undefined
+      }
+      dispatcher_set_offer: {
+        Args:
+          | {
+              p_amount_cents: number
+              p_booking_id: string
+              p_currency?: string
+            }
+          | {
+              p_booking_id: string
+              p_currency?: string
+              p_driver_id: string
+              p_offer_cents: number
+            }
+        Returns: {
+          booking_id: string
+          offer_currency: string
+          offer_price_cents: number
+          offer_sent_at: string
+        }[]
+      }
+      dispatcher_unclaim_booking: {
+        Args: { p_booking_id: string }
+        Returns: {
+          booking_id: string | null
+          created_at: string | null
+          dispatcher_id: string | null
+          driver_id: string | null
+          driver_image: string | null
+          driver_name: string | null
+          driver_phone: string | null
+          dropoff_location: string | null
+          passenger_email: string | null
+          passenger_id: string | null
+          passenger_image: string | null
+          passenger_name: string | null
+          passenger_phone: string | null
+          payment_status: string | null
+          pickup_location: string | null
+          pickup_time: string | null
+          status: string | null
+        }
       }
       drivers_for_booking: {
         Args: { bookingid: string }
         Returns: {
-          id: string
-          full_name: string
           email: string
+          full_name: string
+          id: string
           phone: string
           profile_photo_url: string
         }[]
       }
+      enqueue_booking_paid_notifications: {
+        Args: { p_booking_id: string }
+        Returns: undefined
+      }
+      enqueue_payment_confirmation_emails: {
+        Args: { p_booking_id: string }
+        Returns: undefined
+      }
+      ensure_vip_chat_thread: {
+        Args: { p_booking_id: string }
+        Returns: string
+      }
+      estimate_fare: {
+        Args: {
+          p_apply_smart?: boolean
+          p_category_code: string
+          p_distance_miles: number
+          p_duration_minutes?: number
+        }
+        Returns: Json
+      }
       find_matching_drivers: {
         Args: { p_vehicle_make: string; p_vehicle_model: string }
         Returns: {
+          driver_email: string
           driver_id: string
           driver_name: string
-          driver_email: string
           driver_phone: string
         }[]
       }
       generate_driver_registration_token: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_all_dispatcher_bookings: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_status?: Database["public"]["Enums"]["booking_sync_status"]
+        }
+        Returns: {
+          booking_code: string | null
+          booking_id: string | null
+          created_at: string | null
+          currency: string | null
+          distance_miles: number | null
+          driver_avatar_url: string | null
+          driver_id: string | null
+          driver_name: string | null
+          passenger_avatar_url: string | null
+          passenger_id: string | null
+          passenger_name: string | null
+          passenger_user_id: string | null
+          price_cents: number | null
+          price_dollars: number | null
+          status: Database["public"]["Enums"]["booking_sync_status"] | null
+          updated_at: string | null
+          vehicle_type: string | null
+        }[]
       }
       get_complete_schema: {
         Args: Record<PropertyKey, never>
@@ -1210,27 +6336,231 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      get_dispatcher_booking_card: {
+        Args: { p_booking_id: string }
+        Returns: {
+          booking_code: string | null
+          booking_id: string | null
+          created_at: string | null
+          currency: string | null
+          distance_miles: number | null
+          driver_avatar_url: string | null
+          driver_id: string | null
+          driver_name: string | null
+          passenger_avatar_url: string | null
+          passenger_id: string | null
+          passenger_name: string | null
+          passenger_user_id: string | null
+          price_cents: number | null
+          price_dollars: number | null
+          status: Database["public"]["Enums"]["booking_sync_status"] | null
+          updated_at: string | null
+          vehicle_type: string | null
+        }
+      }
+      get_dispatcher_booking_detail: {
+        Args: { p_booking_id: string }
+        Returns: {
+          booking_code: string
+          booking_id: string
+          created_at: string
+          currency: string
+          distance_miles: number
+          driver_avatar_url: string
+          driver_id: string
+          driver_name: string
+          passenger_avatar_url: string
+          passenger_first_name: string
+          passenger_id: string
+          passenger_last_name: string
+          price_cents: number
+          price_dollars: number
+          status: Database["public"]["Enums"]["booking_sync_status"]
+          updated_at: string
+          vehicle_type: string
+        }[]
+      }
+      get_dispatcher_bookings: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          booking_code: string
+          booking_id: string
+          created_at: string
+          currency: string
+          distance_miles: number
+          driver_avatar_url: string
+          driver_id: string
+          driver_name: string
+          driver_phone: string
+          passenger_avatar_url: string
+          passenger_email: string
+          passenger_first_name: string
+          passenger_last_name: string
+          passenger_phone: string
+          price_cents: number
+          price_dollars: number
+          status: Database["public"]["Enums"]["booking_sync_status"]
+          updated_at: string
+          vehicle_type: string
+        }[]
+      }
+      get_dispatcher_bookings_by_auth: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          booking_id: string | null
+          created_at: string | null
+          dispatcher_id: string | null
+          driver_id: string | null
+          driver_image: string | null
+          driver_name: string | null
+          driver_phone: string | null
+          dropoff_location: string | null
+          passenger_email: string | null
+          passenger_id: string | null
+          passenger_image: string | null
+          passenger_name: string | null
+          passenger_phone: string | null
+          payment_status: string | null
+          pickup_location: string | null
+          pickup_time: string | null
+          status: string | null
+        }[]
+      }
+      get_my_passenger_booking_detail: {
+        Args: { p_booking_id: string }
+        Returns: {
+          booking_code: string
+          booking_id: string
+          created_at: string
+          currency: string
+          distance_miles: number
+          driver_avatar_url: string
+          driver_id: string
+          driver_name: string
+          dropoff_location: string
+          passenger_avatar_url: string
+          passenger_id: string
+          passenger_name: string
+          passenger_phone: string
+          pickup_location: string
+          pickup_time: string
+          price_cents: number
+          price_dollars: number
+          status: Database["public"]["Enums"]["booking_sync_status"]
+          updated_at: string
+          vehicle_type: string
+        }[]
+      }
+      get_my_passenger_bookings: {
+        Args:
+          | Record<PropertyKey, never>
+          | { p_limit?: number; p_offset?: number }
+        Returns: {
+          booking_code: string
+          booking_id: string
+          created_at: string
+          currency: string
+          distance_miles: number
+          driver_avatar_url: string
+          driver_id: string
+          driver_name: string
+          dropoff_location: string
+          passenger_avatar_url: string
+          passenger_id: string
+          passenger_name: string
+          pickup_location: string
+          pickup_time: string
+          price_cents: number
+          price_dollars: number
+          status: Database["public"]["Enums"]["booking_sync_status"]
+          updated_at: string
+          vehicle_type: string
+        }[]
+      }
+      get_my_passenger_bookings_v2: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          booking_code: string
+          booking_id: string
+          created_at: string
+          currency: string
+          distance_miles: number
+          driver_avatar_url: string
+          driver_id: string
+          driver_name: string
+          passenger_avatar_url: string
+          passenger_name: string
+          price_cents: number
+          price_dollars: number
+          status: string
+          updated_at: string
+          vehicle_type: string
+        }[]
+      }
+      get_my_passenger_bookings_v3: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          booking_code: string
+          booking_id: string
+          created_at: string
+          currency: string
+          distance_miles: number
+          driver_avatar_url: string
+          driver_name: string
+          passenger_avatar_url: string
+          passenger_name: string
+          price_cents: number
+          price_dollars: number
+          status: Database["public"]["Enums"]["booking_sync_status"]
+          updated_at: string
+          vehicle_type: string
+        }[]
+      }
+      get_my_passenger_bookings_v4: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          booking_code: string
+          booking_id: string
+          created_at: string
+          currency: string
+          distance_miles: number
+          driver_avatar_url: string
+          driver_id: string
+          driver_name: string
+          dropoff_location: string
+          passenger_avatar_url: string
+          passenger_id: string
+          passenger_name: string
+          pickup_location: string
+          pickup_time: string
+          price_cents: number
+          price_dollars: number
+          status: Database["public"]["Enums"]["booking_sync_status"]
+          updated_at: string
+          vehicle_type: string
+        }[]
+      }
       get_my_passenger_preferences: {
         Args: Record<PropertyKey, never>
         Returns: {
           air_conditioning: boolean
-          preferred_temperature: number
-          temperature_unit: string
-          radio_on: boolean
-          preferred_music: string
           conversation_preference: string
-          trip_purpose: string
+          preferred_music: string
+          preferred_temperature: number
+          radio_on: boolean
+          temperature_unit: string
           trip_notes: string
+          trip_purpose: string
         }[]
       }
       get_my_passenger_profile: {
         Args: Record<PropertyKey, never>
         Returns: {
-          id: string
+          email: string
           first_name: string
+          id: string
           last_name: string
           phone: string
-          email: string
         }[]
       }
       get_my_preferences: {
@@ -1250,76 +6580,364 @@ export type Database = {
           user_id: string
         }
       }
+      get_passenger_booking_detail: {
+        Args: { p_booking_id: string }
+        Returns: {
+          booking_code: string
+          booking_id: string
+          created_at: string
+          currency: string
+          distance_miles: number
+          driver_avatar_url: string
+          driver_id: string
+          driver_name: string
+          driver_phone: string
+          dropoff_location: string
+          passenger_avatar_url: string
+          passenger_email: string
+          passenger_id: string
+          passenger_name: string
+          passenger_phone: string
+          pickup_location: string
+          pickup_time: string
+          price_cents: number
+          price_dollars: number
+          status: Database["public"]["Enums"]["booking_sync_status"]
+          updated_at: string
+          vehicle_type: string
+        }[]
+      }
+      get_passenger_booking_detail_v1: {
+        Args: { p_booking_id: string }
+        Returns: {
+          booking_code: string
+          booking_id: string
+          created_at: string
+          currency: string
+          distance_miles: number
+          driver_avatar_url: string
+          driver_id: string
+          driver_name: string
+          dropoff_location: string
+          passenger_avatar_url: string
+          passenger_name: string
+          pickup_location: string
+          pickup_time: string
+          price_cents: number
+          price_dollars: number
+          status: string
+          updated_at: string
+          vehicle_type: string
+        }[]
+      }
+      get_passenger_bookings_by_auth: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          booking_code: string
+          created_at: string
+          driver_avatar_url: string
+          driver_id: string
+          driver_name: string
+          dropoff_location: string
+          final_price_cents: number
+          id: string
+          payment_status: string
+          pickup_location: string
+          pickup_time: string
+          status: string
+          vehicle_type: string
+        }[]
+      }
       get_ride_status_summary: {
         Args: { p_ride_id: string }
         Returns: {
           actor_role: string
+          metadata: Json
           status_code: string
           status_label: string
           status_timestamp: string
-          metadata: Json
         }[]
       }
       get_ride_timeline: {
         Args: { p_ride_id: string }
         Returns: {
+          actor_role: string
+          metadata: Json
           status_code: string
           status_label: string
-          actor_role: string
           status_timestamp: string
-          metadata: Json
+        }[]
+      }
+      get_smartprice: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          smartprice_enabled: boolean
+          smartprice_markup_cents: number
+          updated_at: string
         }[]
       }
       has_role: {
         Args: {
-          _user_id: string
           _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
         }
         Returns: boolean
       }
       is_dispatcher: {
-        Args: Record<PropertyKey, never> | { u: string }
+        Args: Record<PropertyKey, never> | { p_email: string } | { u: string }
         Returns: boolean
+      }
+      is_dispatcher_email: {
+        Args: { p_email: string }
+        Returns: boolean
+      }
+      is_passenger_of_booking: {
+        Args: { p_booking: string; u: string }
+        Returns: boolean
+      }
+      link_checkout_session: {
+        Args: {
+          p_amount_cents_hint?: number
+          p_booking_id: string
+          p_currency_hint?: string
+          p_provider?: string
+          p_provider_session_id: string
+        }
+        Returns: undefined
+      }
+      mark_paid_manual: {
+        Args: {
+          p_amount_cents: number
+          p_booking_id: string
+          p_currency?: string
+          p_method: string
+          p_note?: string
+        }
+        Returns: undefined
+      }
+      mark_paid_on_stripe: {
+        Args: {
+          p_amount_cents: number
+          p_booking_id: string
+          p_currency: string
+          p_method?: string
+          p_payment_intent_id: string
+          p_raw?: Json
+        }
+        Returns: undefined
+      }
+      mark_payment_failed: {
+        Args: { p_booking_id: string; p_reason?: string }
+        Returns: undefined
+      }
+      next_booking_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      notify_offer_sent: {
+        Args: { p_booking_id: string; p_payment_url?: string }
+        Returns: undefined
+      }
+      notify_payment_confirmed: {
+        Args: { booking_id: string }
+        Returns: undefined
+      }
+      passenger_accept_offer: {
+        Args: { p_booking_id: string }
+        Returns: {
+          accepted_at: string
+          assigned_driver_id: string
+          booking_id: string
+          new_status: string
+          offer_currency: string
+          offer_price_cents: number
+          offer_sent_at: string
+        }[]
+      }
+      passenger_create_booking: {
+        Args: {
+          p_distance_miles: number
+          p_dropoff_location: string
+          p_first_name: string
+          p_last_name: string
+          p_phone: string
+          p_pickup_location: string
+          p_pickup_time: string
+          p_vehicle_type: string
+        }
+        Returns: string
+      }
+      passenger_decline_offer: {
+        Args: {
+          p_booking_id: string
+          p_reason?: string
+          p_unassign_driver?: boolean
+        }
+        Returns: {
+          assigned_driver_id: string
+          booking_id: string
+          declined_at: string
+          new_status: string
+        }[]
       }
       passenger_driver_profile: {
         Args: { _booking_id: string }
         Returns: {
-          driver_id: string
-          full_name: string
           car_model: string
-          photo_url: string
-          phone: string
+          driver_id: string
           email: string
+          full_name: string
+          phone: string
+          photo_url: string
         }[]
+      }
+      passenger_get_booking_detail: {
+        Args: { p_booking_id: string }
+        Returns: {
+          booking_code: string
+          booking_id: string
+          created_at: string
+          currency: string
+          distance_miles: number
+          driver_id: string
+          driver_name: string
+          dropoff_location: string
+          pickup_location: string
+          pickup_time: string
+          price_cents: number
+          price_dollars: number
+          status: Database["public"]["Enums"]["booking_sync_status"]
+          updated_at: string
+          vehicle_type: string
+        }[]
+      }
+      passenger_health_check: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      post_payment_confirmed_messages: {
+        Args: { p_booking_id: string }
+        Returns: undefined
+      }
+      post_system_chat_message: {
+        Args: { p_body: string; p_booking_id: string }
+        Returns: string
+      }
+      queue_payment_confirmation_emails: {
+        Args: { p_booking_id: string }
+        Returns: undefined
+      }
+      quote_booking: {
+        Args: { p_apply_smart?: boolean; p_booking_id: string }
+        Returns: Json
+      }
+      recompute_pricing_for_booking: {
+        Args: { p_booking_id: string }
+        Returns: {
+          booking_id: string
+          distance_miles: number
+          estimated_currency: string
+          estimated_price_cents: number
+          smartprice_enabled: boolean
+          smartprice_markup_cents: number
+          suggested_currency: string
+          suggested_price_cents: number
+          updated_at: string
+          vehicle_category: string
+        }[]
+      }
+      recompute_suggested_price: {
+        Args: { p_booking_id: string }
+        Returns: undefined
+      }
+      resolve_booking_by_session: {
+        Args: { p_provider: string; p_provider_session_id: string }
+        Returns: string
+      }
+      resolve_vehicle_category: {
+        Args: { p_vehicle_type: string }
+        Returns: string
+      }
+      save_push_token: {
+        Args: { p_platform?: string; p_token: string }
+        Returns: undefined
+      }
+      set_category_smart_addon: {
+        Args: { p_category_code: string; p_smart_addon_cents: number }
+        Returns: undefined
+      }
+      set_smart_price_enabled: {
+        Args: { p_enabled: boolean }
+        Returns: Json
+      }
+      set_smartprice: {
+        Args: { p_enabled: boolean; p_markup_cents: number }
+        Returns: {
+          smartprice_enabled: boolean
+          smartprice_markup_cents: number
+          updated_at: string
+        }[]
+      }
+      set_smartprice_config: {
+        Args: { p_enabled: boolean; p_markup_cents: number }
+        Returns: undefined
+      }
+      suggest_price_for_booking: {
+        Args: { p_booking_id: string }
+        Returns: Json
+      }
+      touch_and_recompute_booking: {
+        Args: {
+          p_booking_id: string
+          p_distance_miles?: number
+          p_vehicle_category?: string
+        }
+        Returns: {
+          booking_id: string
+          currency: string
+          distance_miles: number
+          driver_id: string
+          final_price_cents: number
+          smartprice_enabled: boolean
+          smartprice_markup_cents: number
+          status: Database["public"]["Enums"]["booking_sync_status"]
+          suggested_price_cents: number
+          updated_at: string
+          vehicle_category: string
+        }[]
+      }
+      upsert_current_passenger: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       upsert_my_passenger_preferences: {
         Args: {
           _air_conditioning: boolean
-          _preferred_temperature: number
-          _temperature_unit: string
-          _radio_on: boolean
-          _preferred_music: string
           _conversation_preference: string
-          _trip_purpose: string
+          _preferred_music: string
+          _preferred_temperature: number
+          _radio_on: boolean
+          _temperature_unit: string
           _trip_notes: string
+          _trip_purpose: string
         }
         Returns: undefined
       }
       upsert_my_passenger_profile: {
         Args: {
+          _email: string
           _first_name: string
           _last_name: string
           _phone: string
-          _email: string
         }
         Returns: undefined
       }
       upsert_my_preferences: {
         Args: {
-          _temperature_f: number
-          _radio_enabled: boolean
           _conversation: Database["public"]["Enums"]["conversation_pref"]
           _purpose: Database["public"]["Enums"]["trip_purpose"]
+          _radio_enabled: boolean
+          _temperature_f: number
         }
         Returns: {
           air_conditioning: boolean | null
@@ -1340,12 +6958,31 @@ export type Database = {
         Args: { booking_id: string }
         Returns: boolean
       }
+      user_wants_email: {
+        Args: { u: string }
+        Returns: boolean
+      }
+      user_wants_push: {
+        Args: { u: string }
+        Returns: boolean
+      }
+      version_pricing_rule: {
+        Args: {
+          p_base_fare_cents: number
+          p_category_code: string
+          p_minimum_fare_cents: number
+          p_per_mile_cents: number
+          p_smart_addon_cents?: number
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "dispatcher" | "driver" | "passenger"
       booking_status:
         | "pending"
         | "offer_sent"
+        | "payment_confirmed"
         | "offer_accepted"
         | "offer_rejected"
         | "in_progress"
@@ -1354,7 +6991,28 @@ export type Database = {
         | "payment_pending"
         | "price_awaiting_acceptance"
         | "all_set"
+      booking_status_enum:
+        | "NEW_REQUEST"
+        | "OFFER_SENT"
+        | "PAYMENT_PENDING"
+        | "CONFIRMED"
+        | "CANCELLED"
+        | "COMPLETED"
+        | "PAID"
+        | "PAYMENT_FAILED"
+        | "REFUNDED"
+      booking_sync_status:
+        | "pending"
+        | "offer_sent"
+        | "offer_accepted"
+        | "offer_rejected"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
+        | "booking_requested"
+        | "payment_confirmed"
       conversation_pref: "no_preference" | "chatty" | "quiet"
+      email_status: "pending" | "sent" | "failed"
       notification_type:
         | "offer_received"
         | "offer_accepted"
@@ -1363,7 +7021,12 @@ export type Database = {
         | "driver_arrived"
         | "ride_started"
         | "ride_completed"
+        | "price_updated"
+        | "booking_status_updated"
+        | "payment_confirmed"
+        | "ride_cancelled"
       trip_purpose: "leisure" | "business" | "other"
+      vip_chat_sender_role: "system" | "dispatcher" | "passenger"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1495,6 +7158,7 @@ export const Constants = {
       booking_status: [
         "pending",
         "offer_sent",
+        "payment_confirmed",
         "offer_accepted",
         "offer_rejected",
         "in_progress",
@@ -1504,7 +7168,30 @@ export const Constants = {
         "price_awaiting_acceptance",
         "all_set",
       ],
+      booking_status_enum: [
+        "NEW_REQUEST",
+        "OFFER_SENT",
+        "PAYMENT_PENDING",
+        "CONFIRMED",
+        "CANCELLED",
+        "COMPLETED",
+        "PAID",
+        "PAYMENT_FAILED",
+        "REFUNDED",
+      ],
+      booking_sync_status: [
+        "pending",
+        "offer_sent",
+        "offer_accepted",
+        "offer_rejected",
+        "in_progress",
+        "completed",
+        "cancelled",
+        "booking_requested",
+        "payment_confirmed",
+      ],
       conversation_pref: ["no_preference", "chatty", "quiet"],
+      email_status: ["pending", "sent", "failed"],
       notification_type: [
         "offer_received",
         "offer_accepted",
@@ -1513,8 +7200,13 @@ export const Constants = {
         "driver_arrived",
         "ride_started",
         "ride_completed",
+        "price_updated",
+        "booking_status_updated",
+        "payment_confirmed",
+        "ride_cancelled",
       ],
       trip_purpose: ["leisure", "business", "other"],
+      vip_chat_sender_role: ["system", "dispatcher", "passenger"],
     },
   },
 } as const
