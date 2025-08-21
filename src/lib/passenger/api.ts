@@ -74,7 +74,7 @@ export async function fetchBookingHistory(bookingId: string): Promise<BookingHis
       return [];
     }
 
-    return (data as BookingHistoryEntry[]) || [];
+    return data || [];
   } catch (error) {
     console.error('Unexpected error fetching booking history:', error);
     return [];
