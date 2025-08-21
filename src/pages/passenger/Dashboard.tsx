@@ -80,21 +80,54 @@ const PassengerDashboard: React.FC = () => {
     loadPassengerInfo();
   }, [refreshTrigger, toast]);
 
-  // Set up realtime subscription
+  // Set up realtime subscription with enhanced refresh
   useEffect(() => {
+    console.log('📡 Setting up real-time subscription for passenger dashboard...');
+    
     const unsubscribe = subscribeToBookingsAndPassengers(() => {
-      console.log('🔄 Real-time update in Dashboard - refreshing passenger info...');
+      console.log('🔄 Real-time update detected - refreshing dashboard...');
       setRefreshTrigger(prev => prev + 1);
     });
 
+    // Also set up direct booking subscription for immediate updates
+    const bookingChannel = supabase
+      .channel('passenger_dashboard_bookings')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings'
+        },
+        (payload) => {
+          console.log('📡 Direct booking update received:', payload);
+          // Trigger immediate refresh
+          setRefreshTrigger(prev => prev + 1);
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 Direct booking subscription status:', status);
+      });
+
     return () => {
+      console.log('🧹 Cleaning up real-time subscriptions');
       if (unsubscribe) {
         unsubscribe();
       }
+      supabase.removeChannel(bookingChannel);
     };
   }, []);
 
+  // Auto-refresh when navigating to bookings tab to catch new bookings
+  useEffect(() => {
+    if (activeTab === 'bookings') {
+      console.log('🔄 Bookings tab activated - triggering refresh');
+      setRefreshTrigger(prev => prev + 1);
+    }
+  }, [activeTab]);
+
   const handleUpdate = () => {
+    console.log('🔄 Manual refresh triggered');
     setRefreshTrigger(prev => prev + 1);
   };
 

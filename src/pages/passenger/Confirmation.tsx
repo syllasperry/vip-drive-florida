@@ -1,171 +1,161 @@
-import { useNavigate, useLocation } from "react-router-dom";
-import { CheckCircle, CreditCard, Smartphone, DollarSign } from "lucide-react";
+
+import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useScrollToTop } from "@/hooks/useScrollToTop";
+import { MapPin, Clock, Users, Luggage, Calendar } from 'lucide-react';
+import { format } from 'date-fns';
+import { useBookingCreation } from '@/hooks/useBookingCreation';
 
-const Confirmation = () => {
-  const navigate = useNavigate();
+const Confirmation: React.FC = () => {
   const location = useLocation();
-  const { pickup, dropoff, selectedVehicle, bookingDetails } = location.state || {};
-  
-  // Auto-scroll to top when this page loads
-  useScrollToTop();
+  const navigate = useNavigate();
+  const { createBooking, isCreating } = useBookingCreation();
+  const [bookingSubmitted, setBookingSubmitted] = useState(false);
 
-  const handleReturnToDashboard = () => {
-    navigate("/passenger/dashboard");
+  const {
+    pickupLocation,
+    dropoffLocation,
+    selectedDateTime,
+    vehicleType,
+    passengerCount,
+    luggageCount,
+    flightInfo,
+    specialRequests
+  } = location.state || {};
+
+  useEffect(() => {
+    if (!pickupLocation || !dropoffLocation || !selectedDateTime) {
+      navigate('/passenger/booking-form');
+    }
+  }, [pickupLocation, dropoffLocation, selectedDateTime, navigate]);
+
+  const handleConfirmBooking = async () => {
+    if (bookingSubmitted) return;
+    
+    try {
+      setBookingSubmitted(true);
+      
+      const bookingData = {
+        pickup_location: pickupLocation,
+        dropoff_location: dropoffLocation,
+        pickup_time: selectedDateTime,
+        vehicle_type: vehicleType || 'Premium Sedan',
+        passenger_count: passengerCount || 1,
+        luggage_count: luggageCount || 0,
+        flight_info: flightInfo || ''
+      };
+
+      await createBooking(bookingData);
+      
+    } catch (error) {
+      console.error('Booking confirmation failed:', error);
+      setBookingSubmitted(false);
+    }
   };
 
+  if (!pickupLocation) {
+    return null;
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4">
-      <div className="max-w-2xl mx-auto pt-8">
-        <div className="text-center mb-8 space-y-4">
-          <div className="flex justify-center">
-            <CheckCircle className="h-16 w-16 text-green-500" />
-          </div>
-          <h1 className="text-3xl font-bold text-foreground">Booking Request Sent!</h1>
-          <div className="bg-card rounded-xl p-6 shadow-lg">
-            <p className="text-lg text-card-foreground mb-4">
-              Your booking request has been sent! The driver will confirm shortly. 
-              Please complete payment within 24 hours after driver acceptance to secure your booking.
-            </p>
-          </div>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-md mx-auto px-4">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Confirm Your Booking</h1>
+          <p className="text-gray-600">Please review your trip details before confirming</p>
         </div>
 
-        {/* Booking Summary */}
-        <div className="bg-card rounded-xl p-6 mb-6 shadow-lg space-y-4">
-          <h2 className="text-xl font-bold text-card-foreground">Booking Summary</h2>
-          
-          {selectedVehicle && (
-            <div className="flex items-center space-x-4 p-4 bg-muted/20 rounded-lg">
-              <img 
-                src={selectedVehicle.image} 
-                alt={selectedVehicle.name}
-                className="w-16 h-12 object-cover rounded-lg"
-              />
-              <div>
-                <h3 className="font-bold text-card-foreground">{selectedVehicle.name}</h3>
-                <p className="text-sm text-muted-foreground">{selectedVehicle.description}</p>
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">From:</span>
-              <span className="text-card-foreground font-medium">{pickup}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">To:</span>
-              <span className="text-card-foreground font-medium">{dropoff}</span>
-            </div>
-            {bookingDetails?.date && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Date:</span>
-                <span className="text-card-foreground font-medium">
-                  {new Date(bookingDetails.date).toLocaleDateString('en-US', { 
-                    weekday: 'long', 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                  })}
-                </span>
-              </div>
-            )}
-            {bookingDetails?.time && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Time:</span>
-                <span className="text-card-foreground font-medium">{bookingDetails.time}</span>
-              </div>
-            )}
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Passengers:</span>
-              <span className="text-card-foreground font-medium">{bookingDetails?.passengers || 1}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Payment Information */}
-        <div className="bg-card rounded-xl p-6 mb-6 shadow-lg">
-          <h2 className="text-xl font-bold text-card-foreground mb-4 flex items-center">
-            <CreditCard className="mr-2 h-5 w-5 text-primary" />
-            Payment Information
-          </h2>
-          
-          <div className="space-y-4">
-            <p className="text-card-foreground">
-              Payment is made directly to the driver. We accept:
-            </p>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <h3 className="font-semibold text-card-foreground flex items-center">
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  Credit Cards
-                </h3>
-                <div className="text-sm text-muted-foreground space-y-1">
-                  <div>• VISA</div>
-                  <div>• Mastercard</div>
-                  <div>• American Express</div>
-                  <div>• Discover</div>
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Calendar className="h-5 w-5 text-blue-600" />
+              <span>Trip Details</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <div className="flex items-start space-x-3">
+                <MapPin className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-medium text-gray-900">Pickup Location</p>
+                  <p className="text-gray-600 text-sm">{pickupLocation}</p>
                 </div>
               </div>
               
-              <div className="space-y-2">
-                <h3 className="font-semibold text-card-foreground flex items-center">
-                  <Smartphone className="mr-2 h-4 w-4" />
-                  Digital Payments
-                </h3>
-                <div className="text-sm text-muted-foreground space-y-1">
-                  <div>• Apple Pay</div>
-                  <div>• Google Pay</div>
-                  <div>• Venmo</div>
-                  <div>• Zelle</div>
+              <div className="flex items-start space-x-3">
+                <MapPin className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-medium text-gray-900">Drop-off Location</p>
+                  <p className="text-gray-600 text-sm">{dropoffLocation}</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start space-x-3">
+                <Clock className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-medium text-gray-900">Pickup Time</p>
+                  <p className="text-gray-600 text-sm">
+                    {selectedDateTime ? format(new Date(selectedDateTime), 'MMM d, yyyy \'at\' h:mm a') : 'Not selected'}
+                  </p>
                 </div>
               </div>
             </div>
-            
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-              <div className="flex items-start space-x-2">
-                <DollarSign className="h-5 w-5 text-amber-600 mt-0.5" />
-                <p className="text-sm text-amber-800">
-                  <strong>Important:</strong> Please confirm with your driver which payment method they accept before your ride.
-                </p>
+
+            <div className="border-t pt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center space-x-2">
+                  <Users className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm text-gray-600">
+                    {passengerCount || 1} passenger{(passengerCount || 1) > 1 ? 's' : ''}
+                  </span>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Luggage className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm text-gray-600">
+                    {luggageCount || 0} bag{(luggageCount || 0) !== 1 ? 's' : ''}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
+
+            <div className="border-t pt-4">
+              <p className="font-medium text-gray-900 mb-1">Vehicle Type</p>
+              <p className="text-gray-600 text-sm">{vehicleType || 'Premium Sedan'}</p>
+            </div>
+
+            {flightInfo && (
+              <div className="border-t pt-4">
+                <p className="font-medium text-gray-900 mb-1">Flight Information</p>
+                <p className="text-gray-600 text-sm">{flightInfo}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="space-y-3">
+          <Button
+            onClick={handleConfirmBooking}
+            disabled={isCreating || bookingSubmitted}
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 text-lg"
+          >
+            {isCreating ? 'Creating Booking...' : bookingSubmitted ? 'Booking Submitted' : 'Confirm Booking'}
+          </Button>
+          
+          <Button
+            onClick={() => navigate(-1)}
+            variant="outline"
+            disabled={isCreating}
+            className="w-full"
+          >
+            Back to Edit
+          </Button>
         </div>
 
-        {/* Next Steps */}
-        <div className="bg-card rounded-xl p-6 mb-8 shadow-lg">
-          <h2 className="text-xl font-bold text-card-foreground mb-4">What happens next?</h2>
-          <div className="space-y-3">
-            <div className="flex items-start space-x-3">
-              <div className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold">1</div>
-              <p className="text-card-foreground">You'll receive a notification when a driver accepts your booking</p>
-            </div>
-            <div className="flex items-start space-x-3">
-              <div className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold">2</div>
-              <p className="text-card-foreground">Complete payment within 24 hours to secure your booking</p>
-            </div>
-            <div className="flex items-start space-x-3">
-              <div className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold">3</div>
-              <p className="text-card-foreground">Your driver will contact you with pickup details</p>
-            </div>
-          </div>
-        </div>
-
-        <Button
-          onClick={handleReturnToDashboard}
-          variant="luxury"
-          size="lg"
-          className="w-full"
-        >
-          Go to Dashboard
-        </Button>
-
-        <div className="text-center mt-6">
-          <p className="text-sm text-muted-foreground">
-            Need help? Contact our support team anytime.
+        <div className="mt-6 text-center">
+          <p className="text-xs text-gray-500">
+            By confirming, you agree to our Terms of Service and Privacy Policy
           </p>
         </div>
       </div>
