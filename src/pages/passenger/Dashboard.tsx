@@ -8,9 +8,11 @@ import { SettingsTab } from '@/components/passenger/SettingsTab';
 import { PaymentsTab } from '@/components/passenger/PaymentsTab';
 import { PassengerBookingsList } from '@/components/passenger/PassengerBookingsList';
 import { fetchPassengerBookings, subscribeToBookingsAndPassengers } from '@/lib/api/bookings';
+import { fetchMyPassengerProfile } from '@/lib/passenger/profile';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const PassengerDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('bookings');
@@ -24,21 +26,46 @@ const PassengerDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Load passenger info from bookings using RPC
+  // Load passenger info from profile and auth
   useEffect(() => {
     const loadPassengerInfo = async () => {
       try {
-        console.log('🔄 Loading passenger info using RPC...');
+        console.log('🔄 Loading passenger info...');
+        
+        // First try to get from passenger profile
+        const profile = await fetchMyPassengerProfile();
+        if (profile) {
+          setPassengerInfo({
+            full_name: profile.full_name || 'Passenger User',
+            profile_photo_url: profile.profile_photo_url,
+            phone: profile.phone,
+            email: profile.email
+          });
+          console.log('✅ Passenger profile loaded successfully');
+          return;
+        }
+
+        // Fallback to auth user email
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.email) {
+          setPassengerInfo(prev => ({
+            ...prev,
+            email: user.email,
+            full_name: user.email
+          }));
+        }
+
+        // Also try from bookings as fallback
         const bookings = await fetchPassengerBookings();
         if (bookings.length > 0 && bookings[0].passenger_name) {
           setPassengerInfo(prev => ({
             ...prev,
-            full_name: bookings[0].passenger_name || 'Passenger User',
-            profile_photo_url: bookings[0].passenger_photo_url,
-            phone: bookings[0].passenger_phone,
-            email: bookings[0].passenger_email
+            full_name: bookings[0].passenger_name || prev.full_name,
+            profile_photo_url: bookings[0].passenger_photo_url || prev.profile_photo_url,
+            phone: bookings[0].passenger_phone || prev.phone,
+            email: bookings[0].passenger_email || prev.email
           }));
-          console.log('✅ Passenger info loaded successfully');
+          console.log('✅ Passenger info loaded from bookings');
         }
       } catch (error) {
         console.error('❌ Failed to load passenger info:', error);
@@ -92,6 +119,7 @@ const PassengerDashboard: React.FC = () => {
             console.log('Photo upload:', file);
             setRefreshTrigger(prev => prev + 1);
           }}
+          onProfileUpdate={() => setRefreshTrigger(prev => prev + 1)}
         />
         
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">

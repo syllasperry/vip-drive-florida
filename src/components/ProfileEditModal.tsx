@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { getMyProfile, saveMyProfile, type PassengerProfile } from "@/lib/profile/api";
+import { saveMyPassengerProfile, fetchMyPassengerProfile, type PassengerProfile } from "@/lib/passenger/profile";
 
 interface ProfileEditModalProps {
   isOpen: boolean;
@@ -36,7 +36,7 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload, 
 
   const loadProfile = async () => {
     try {
-      const profileData = await getMyProfile();
+      const profileData = await fetchMyPassengerProfile();
       if (profileData) {
         setProfile(profileData);
         setFormData({
@@ -76,9 +76,8 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload, 
 
     setLoading(true);
     try {
-      const savedProfile = await saveMyProfile({
-        full_name: formData.fullName.trim(),
-        email: formData.email.trim(),
+      const savedProfile = await saveMyPassengerProfile({
+        fullName: formData.fullName.trim(),
         phone: formData.phone.trim(),
         avatarUrl: formData.avatarUrl
       });
@@ -205,6 +204,7 @@ export const ProfileEditModal = ({ isOpen, onClose, userProfile, onPhotoUpload, 
                 onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                 placeholder="Enter your email"
                 className="mt-1"
+                disabled
               />
             </div>
 

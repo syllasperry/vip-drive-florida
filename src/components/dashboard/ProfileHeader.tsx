@@ -3,7 +3,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ProfileEditModal } from "@/components/ProfileEditModal";
 import { useState, useEffect } from "react";
-import { fetchMyPassengerProfile, type PassengerMe } from "@/lib/passenger/me";
+import { fetchMyPassengerProfile, type PassengerProfile } from "@/lib/passenger/profile";
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProfileHeaderProps {
   userProfile: any;
@@ -15,23 +16,34 @@ interface ProfileHeaderProps {
 
 export const ProfileHeader = ({ userProfile, onPhotoUpload, userType, isOnline = true, onProfileUpdate }: ProfileHeaderProps) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [passengerProfile, setPassengerProfile] = useState<PassengerMe | null>(null);
+  const [passengerProfile, setPassengerProfile] = useState<PassengerProfile | null>(null);
+  const [authUserEmail, setAuthUserEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load passenger profile from passengers table for passenger users
+  // Load passenger profile and auth user data
   useEffect(() => {
     if (userType === "passenger") {
-      loadPassengerProfile();
+      loadPassengerData();
     } else {
       setIsLoading(false);
     }
   }, [userType]);
 
-  const loadPassengerProfile = async () => {
+  const loadPassengerData = async () => {
     setIsLoading(true);
-    const profile = await fetchMyPassengerProfile();
-    setPassengerProfile(profile);
-    setIsLoading(false);
+    try {
+      // Get auth user for email fallback
+      const { data: { user } } = await supabase.auth.getUser();
+      setAuthUserEmail(user?.email ?? null);
+      
+      // Get passenger profile
+      const profile = await fetchMyPassengerProfile();
+      setPassengerProfile(profile);
+    } catch (error) {
+      console.error('Failed to load passenger data:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleEditProfile = () => {
@@ -42,7 +54,7 @@ export const ProfileHeader = ({ userProfile, onPhotoUpload, userType, isOnline =
   const handleProfileUpdate = () => {
     // Refresh passenger profile after update
     if (userType === "passenger") {
-      loadPassengerProfile();
+      loadPassengerData();
     }
     onProfileUpdate?.();
   };
@@ -50,7 +62,9 @@ export const ProfileHeader = ({ userProfile, onPhotoUpload, userType, isOnline =
   // Determine display name and avatar
   const displayName = userType === "passenger" && passengerProfile?.full_name 
     ? passengerProfile.full_name 
-    : userProfile?.full_name || (userType === "passenger" ? "VIP Member" : "Driver");
+    : userType === "passenger" && authUserEmail
+    ? authUserEmail
+    : userProfile?.full_name || (userType === "passenger" ? "Passenger" : "Driver");
     
   const avatarUrl = userType === "passenger" && passengerProfile?.profile_photo_url 
     ? passengerProfile.profile_photo_url 
