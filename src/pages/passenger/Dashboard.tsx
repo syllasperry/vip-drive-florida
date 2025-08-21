@@ -7,42 +7,32 @@ import { MessagesTab } from '@/components/passenger/MessagesTab';
 import { SettingsTab } from '@/components/passenger/SettingsTab';
 import { PaymentsTab } from '@/components/passenger/PaymentsTab';
 import { PassengerBookingsList } from '@/components/passenger/PassengerBookingsList';
+import { fetchPassengerBookings, subscribeToBookingsAndPassengers } from '@/lib/api/bookings';
 import { fetchMyPassengerProfile } from '@/lib/passenger/profile';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { usePassengerAuth } from '@/hooks/usePassengerAuth';
-import { Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const PassengerDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('bookings');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [passengerInfo, setPassengerInfo] = useState({
-    full_name: '',
+    full_name: 'Passenger User',
     profile_photo_url: null,
     phone: null,
     email: null
   });
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, loading: authLoading, hasProfile, isAuthenticated } = usePassengerAuth();
 
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      navigate('/passenger/login');
-      return;
-    }
-  }, [authLoading, isAuthenticated, navigate]);
-
-  // Load passenger info
+  // Load passenger info from profile and auth
   useEffect(() => {
     const loadPassengerInfo = async () => {
-      if (!isAuthenticated || !hasProfile) return;
-      
       try {
         console.log('🔄 Loading passenger info...');
         
+        // First try to get from passenger profile
         const profile = await fetchMyPassengerProfile();
         if (profile) {
           setPassengerInfo({
@@ -52,13 +42,30 @@ const PassengerDashboard: React.FC = () => {
             email: profile.email
           });
           console.log('✅ Passenger profile loaded successfully');
-        } else if (user?.email) {
-          // Fallback to auth user email
+          return;
+        }
+
+        // Fallback to auth user email
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.email) {
           setPassengerInfo(prev => ({
             ...prev,
             email: user.email,
-            full_name: user.email.split('@')[0]
+            full_name: user.email
           }));
+        }
+
+        // Also try from bookings as fallback
+        const bookings = await fetchPassengerBookings();
+        if (bookings.length > 0 && bookings[0].passenger_name) {
+          setPassengerInfo(prev => ({
+            ...prev,
+            full_name: bookings[0].passenger_name || prev.full_name,
+            profile_photo_url: bookings[0].passenger_photo_url || prev.profile_photo_url,
+            phone: bookings[0].passenger_phone || prev.phone,
+            email: bookings[0].passenger_email || prev.email
+          }));
+          console.log('✅ Passenger info loaded from bookings');
         }
       } catch (error) {
         console.error('❌ Failed to load passenger info:', error);
@@ -71,7 +78,21 @@ const PassengerDashboard: React.FC = () => {
     };
 
     loadPassengerInfo();
-  }, [refreshTrigger, isAuthenticated, hasProfile, user, toast]);
+  }, [refreshTrigger, toast]);
+
+  // Set up realtime subscription
+  useEffect(() => {
+    const unsubscribe = subscribeToBookingsAndPassengers(() => {
+      console.log('🔄 Real-time update in Dashboard - refreshing passenger info...');
+      setRefreshTrigger(prev => prev + 1);
+    });
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, []);
 
   const handleUpdate = () => {
     setRefreshTrigger(prev => prev + 1);
@@ -85,24 +106,7 @@ const PassengerDashboard: React.FC = () => {
     navigate('/passenger/price-estimate');
   };
 
-  // Show loading while auth is loading
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Don't render if not authenticated (will redirect)
-  if (!isAuthenticated) {
-    return null;
-  }
-
-  const mockCurrentUserId = user?.id || 'passenger-user-id';
+  const mockCurrentUserId = 'passenger-user-id';
   const mockCurrentUserName = passengerInfo.full_name || 'Passenger User';
 
   return (

@@ -3,8 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, MapPin, User, Car, AlertCircle, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Clock, MapPin, User, Car, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { fetchMyBookings, subscribeMyBookings } from '@/lib/passenger/api';
 import { Booking } from '@/lib/types/booking';
@@ -45,29 +44,24 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('all');
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const loadBookings = async (showRefreshing = false) => {
-    try {
-      if (showRefreshing) setRefreshing(true);
-      setLoading(!showRefreshing);
-      setError(null);
-      
-      console.log('🔄 Loading bookings...');
-      const fetchedBookings = await fetchMyBookings();
-      setBookings(fetchedBookings);
-      console.log('✅ Loaded passenger bookings:', fetchedBookings.length);
-    } catch (err) {
-      console.error('❌ Failed to load bookings:', err);
-      setError('Failed to load bookings');
-      setBookings([]);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
 
   useEffect(() => {
+    const loadBookings = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const fetchedBookings = await fetchMyBookings();
+        setBookings(fetchedBookings);
+        console.log('✅ Loaded passenger bookings:', fetchedBookings.length);
+      } catch (err) {
+        console.error('❌ Failed to load bookings:', err);
+        setError('Failed to load bookings');
+        setBookings([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     loadBookings();
 
     // Set up real-time subscription
@@ -86,10 +80,6 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
     };
   }, [onUpdate]);
 
-  const handleRefresh = () => {
-    loadBookings(true);
-  };
-
   const filterBookings = (bookings: Booking[], status: string) => {
     if (status === 'all') return bookings;
     if (status === 'active') {
@@ -105,7 +95,7 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
     return bookings;
   };
 
-  if (loading && !refreshing) {
+  if (loading) {
     return (
       <div className="space-y-4">
         {[1, 2, 3].map((i) => (
@@ -129,10 +119,13 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
     return (
       <div className="text-center py-8">
         <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-        <p className="text-red-600 mb-4">{error}</p>
-        <Button onClick={() => loadBookings()}>
+        <p className="text-red-600 mb-2">{error}</p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="text-blue-600 hover:underline"
+        >
           Try again
-        </Button>
+        </button>
       </div>
     );
   }
@@ -141,19 +134,6 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">My Bookings</h2>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={handleRefresh}
-          disabled={refreshing}
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-      </div>
-      
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="all">All ({bookings.length})</TabsTrigger>
