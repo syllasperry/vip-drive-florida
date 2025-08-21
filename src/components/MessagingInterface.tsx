@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { BookingChat } from "@/components/chat/BookingChat";
 
 interface Message {
   id: string;
@@ -27,6 +28,7 @@ interface MessagingInterfaceProps {
   currentUserAvatar?: string;
   otherUserName?: string;
   otherUserAvatar?: string;
+  useNewChat?: boolean;
 }
 
 export const MessagingInterface = ({ 
@@ -38,8 +40,37 @@ export const MessagingInterface = ({
   currentUserName,
   currentUserAvatar,
   otherUserName,
-  otherUserAvatar
+  otherUserAvatar,
+  useNewChat = true
 }: MessagingInterfaceProps) => {
+  if (!isOpen) return null;
+
+  if (useNewChat) {
+    return (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="bg-card rounded-xl w-full max-w-md shadow-xl">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-border">
+            <h2 className="text-lg font-semibold text-card-foreground">
+              {userType === "passenger" ? "Chat with Driver" : "Chat with Passenger"}
+            </h2>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Chat Component */}
+          <div className="p-4">
+            <BookingChat 
+              bookingId={bookingId} 
+              role={userType === "driver" ? "dispatcher" : userType} 
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [showEmojis, setShowEmojis] = useState(false);
@@ -203,8 +234,6 @@ export const MessagingInterface = ({
       };
     }
   };
-
-  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
