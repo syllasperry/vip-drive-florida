@@ -1,4 +1,5 @@
-export { Booking } from '@/lib/types/booking';
+
+export type { Booking } from '@/lib/types/booking';
 
 export interface PaymentTransaction {
   id: string;
