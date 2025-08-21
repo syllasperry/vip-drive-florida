@@ -6,10 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { MapPin, Calendar, Users, Car, MessageCircle, Phone, CreditCard } from 'lucide-react';
 import { fetchMyCards, subscribeMyBookings, CardDTO } from '@/lib/passenger/api';
-import { startCheckout } from '@/lib/payments/stripe';
+import { prepareCheckout, CheckoutResponse } from '@/lib/payments/stripe';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { BookingChatModal } from '@/components/chat/BookingChatModal';
+import { PriceBreakdownDialog } from '@/components/payments/PriceBreakdownDialog';
 
 interface PassengerBookingsListProps {
   onUpdate?: () => void;
@@ -18,8 +19,10 @@ interface PassengerBookingsListProps {
 export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ onUpdate }) => {
   const [bookings, setBookings] = useState<CardDTO[]>([]);
   const [loading, setLoading] = useState(true);
-  const [payingBookingId, setPayingBookingId] = useState<string | null>(null);
+  const [preparingPayment, setPreparingPayment] = useState<string | null>(null);
   const [chatBookingId, setChatBookingId] = useState<string | null>(null);
+  const [showBreakdown, setShowBreakdown] = useState(false);
+  const [checkoutData, setCheckoutData] = useState<CheckoutResponse | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -71,6 +74,42 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
     return unsubscribe;
   }, [onUpdate]);
 
+  const handlePaymentClick = async (booking: CardDTO) => {
+    if (!booking.price_dollars || booking.price_dollars <= 0) {
+      toast({
+        title: "Payment Not Available",
+        description: "No amount available for payment yet.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setPreparingPayment(booking.booking_id);
+      const response = await prepareCheckout(booking.booking_id);
+      setCheckoutData(response);
+      setShowBreakdown(true);
+    } catch (error) {
+      console.error('Payment preparation error:', error);
+    } finally {
+      setPreparingPayment(null);
+    }
+  };
+
+  const handleConfirmPayment = () => {
+    if (checkoutData?.url) {
+      console.log('✅ Redirecting to Stripe Checkout:', checkoutData.url);
+      window.location.href = checkoutData.url;
+    }
+    setShowBreakdown(false);
+    setCheckoutData(null);
+  };
+
+  const handleCancelPayment = () => {
+    setShowBreakdown(false);
+    setCheckoutData(null);
+  };
+
   const getStatusBadge = (booking: CardDTO) => {
     const hasDriver = booking.driver_name;
     const hasPrice = booking.price_dollars && booking.price_dollars > 0;
@@ -104,31 +143,6 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
         CONFIRMED
       </Badge>
     );
-  };
-
-  const handlePayment = async (booking: CardDTO) => {
-    if (!booking.price_dollars || booking.price_dollars <= 0) {
-      toast({
-        title: "Payment Not Available",
-        description: "No amount available for payment yet.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      setPayingBookingId(booking.booking_id);
-      await startCheckout(booking.booking_id);
-    } catch (error) {
-      console.error('Payment error:', error);
-      toast({
-        title: "Payment Error",
-        description: "Failed to start payment process. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setPayingBookingId(null);
-    }
   };
 
   // Check if booking is paid
@@ -262,13 +276,13 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
               {/* Payment CTA - only show if booking is not paid and has a price */}
               {!isBookingPaid(booking) && booking.price_dollars && booking.price_dollars > 0 && (
                 <Button 
-                  onClick={() => handlePayment(booking)}
-                  disabled={payingBookingId === booking.booking_id}
+                  onClick={() => handlePaymentClick(booking)}
+                  disabled={preparingPayment === booking.booking_id}
                   className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-3 rounded-lg"
                 >
                   <CreditCard className="w-4 h-4 mr-2" />
-                  {payingBookingId === booking.booking_id 
-                    ? 'Processing...' 
+                  {preparingPayment === booking.booking_id 
+                    ? 'Preparing...' 
                     : `Pay $${booking.price_dollars} - Complete Booking`
                   }
                 </Button>
@@ -293,6 +307,16 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
           </Card>
         ))}
       </div>
+
+      {/* Price Breakdown Dialog */}
+      {showBreakdown && checkoutData && (
+        <PriceBreakdownDialog
+          open={showBreakdown}
+          onClose={handleCancelPayment}
+          onConfirm={handleConfirmPayment}
+          breakdown={checkoutData.breakdown}
+        />
+      )}
 
       {/* Chat Modal */}
       {chatBookingId && (

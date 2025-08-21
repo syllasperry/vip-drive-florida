@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +10,7 @@ import { format } from 'date-fns';
 
 interface UniversalRideCardProps {
   booking: any;
-  userType: 'driver' | 'passenger';
+  userType: 'dispatcher' | 'passenger';
   onUpdate?: () => void;
 }
 
@@ -88,8 +89,8 @@ export const UniversalRideCard: React.FC<UniversalRideCardProps> = ({
         </CardContent>
       </Card>
 
-      {/* Chat Modal - only show for passenger and driver roles */}
-      {showChat && (userType === 'driver' || userType === 'passenger') && (
+      {/* Chat Modal - only show for passenger and dispatcher roles */}
+      {showChat && (userType === 'dispatcher' || userType === 'passenger') && (
         <BookingChatModal
           isOpen={showChat}
           onClose={() => setShowChat(false)}

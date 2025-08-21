@@ -41,24 +41,49 @@ export interface DetailDTO {
 
 export async function fetchMyCards(): Promise<CardDTO[]> {
   try {
-    // Use the existing RPC that works for passengers
-    const { data, error } = await supabase.rpc('get_passenger_bookings_by_auth');
+    // Use direct table query since the view may not be available in types
+    const { data, error } = await supabase
+      .from('bookings')
+      .select(`
+        id,
+        booking_code,
+        status,
+        pickup_location,
+        dropoff_location,
+        pickup_time,
+        vehicle_type,
+        estimated_price_cents,
+        final_price_cents,
+        created_at,
+        updated_at,
+        passengers (
+          full_name,
+          profile_photo_url
+        ),
+        drivers (
+          full_name,
+          profile_photo_url
+        )
+      `)
+      .eq('passenger_id', (await supabase.auth.getUser()).data.user?.id)
+      .order('created_at', { ascending: false });
     
     if (error) {
       console.error('Error fetching passenger cards:', error);
       throw new Error(`Failed to fetch bookings: ${error.message}`);
     }
     
-    // Map the RPC result to our CardDTO format
+    // Map the result to our CardDTO format
     return (data || []).map((booking: any) => ({
-      booking_id: booking.booking_id,
-      booking_code: booking.booking_code || booking.booking_id?.slice(0, 8),
+      booking_id: booking.id,
+      booking_code: booking.booking_code || booking.id?.slice(0, 8),
       status: booking.status,
-      passenger_name: booking.passenger_name,
-      passenger_avatar_url: booking.passenger_photo_url,
-      driver_name: booking.driver_name,
-      driver_avatar_url: booking.driver_photo_url,
-      price_dollars: booking.final_price || booking.estimated_price,
+      passenger_name: booking.passengers?.full_name,
+      passenger_avatar_url: booking.passengers?.profile_photo_url,
+      driver_name: booking.drivers?.full_name,
+      driver_avatar_url: booking.drivers?.profile_photo_url,
+      price_dollars: (booking.final_price_cents || booking.estimated_price_cents) ? 
+        ((booking.final_price_cents || booking.estimated_price_cents) / 100) : undefined,
       currency: 'USD',
       pickup_location: booking.pickup_location,
       dropoff_location: booking.dropoff_location,
@@ -115,7 +140,8 @@ export async function fetchBookingDetail(bookingId: string): Promise<DetailDTO |
       driver_name: data.drivers?.full_name,
       driver_avatar_url: data.drivers?.profile_photo_url,
       driver_phone: data.drivers?.phone,
-      price_dollars: data.final_price || data.estimated_price,
+      price_dollars: (data.final_price_cents || data.estimated_price_cents) ?
+        ((data.final_price_cents || data.estimated_price_cents) / 100) : undefined,
       currency: 'USD',
       pickup_location: data.pickup_location,
       dropoff_location: data.dropoff_location,
@@ -152,45 +178,4 @@ export function subscribeMyBookings(onChange: () => void): () => void {
     console.log('Cleaning up real-time subscription');
     supabase.removeChannel(channel);
   };
-}
-
-export async function requestCheckout(bookingId: string): Promise<void> {
-  try {
-    const { data: session } = await supabase.auth.getSession();
-    if (!session.session) {
-      throw new Error('No active session');
-    }
-
-    const response = await fetch(
-      'https://extdyjkfgftbokabiamc.supabase.co/functions/v1/stripe-start-checkout',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.session.access_token}`
-        },
-        body: JSON.stringify({ booking_id: bookingId })
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const result = await response.json();
-    
-    if (result.error) {
-      throw new Error(result.error);
-    }
-
-    if (result.url) {
-      // Redirect to Stripe Checkout
-      window.location.href = result.url;
-    } else {
-      throw new Error('No checkout URL received');
-    }
-  } catch (error) {
-    console.error('Error requesting checkout:', error);
-    throw error;
-  }
 }

@@ -8,6 +8,38 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+interface PriceBreakdown {
+  base: number;
+  dispatcher_fee: number;
+  app_fee: number;
+  subtotal: number;
+  stripe_pct: number;
+  stripe_fixed: number;
+  amount_cents: number;
+}
+
+function calculateBreakdown(baseUberEstimateCents: number): PriceBreakdown {
+  const base = baseUberEstimateCents;
+  const dispatcher_fee = Math.round(base * 0.20);
+  const app_fee = 1000; // $10 fixed
+  const subtotal = base + dispatcher_fee + app_fee;
+  
+  // Stripe fee gross-up calculation
+  const stripe_pct = 0.029;
+  const stripe_fixed = 30;
+  const amount_cents = Math.ceil((subtotal + stripe_fixed) / (1 - stripe_pct));
+  
+  return {
+    base,
+    dispatcher_fee,
+    app_fee,
+    subtotal,
+    stripe_pct,
+    stripe_fixed,
+    amount_cents
+  };
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -74,9 +106,9 @@ serve(async (req) => {
       )
     }
 
-    // Check if booking has a price
-    const priceInCents = booking.final_price_cents || booking.estimated_price_cents
-    if (!priceInCents || priceInCents <= 0) {
+    // Get base price (Uber estimate)
+    const baseUberEstimateCents = booking.final_price_cents || booking.estimated_price_cents
+    if (!baseUberEstimateCents || baseUberEstimateCents <= 0) {
       return new Response(
         JSON.stringify({ error: 'No price available for this booking' }),
         { 
@@ -85,6 +117,9 @@ serve(async (req) => {
         }
       )
     }
+
+    // Calculate price breakdown
+    const breakdown = calculateBreakdown(baseUberEstimateCents);
 
     // Initialize Stripe
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
@@ -105,7 +140,7 @@ serve(async (req) => {
               name: `VIP Ride - ${booking.pickup_location} to ${booking.dropoff_location}`,
               description: `Booking ID: ${booking_id}`,
             },
-            unit_amount: priceInCents,
+            unit_amount: breakdown.amount_cents,
           },
           quantity: 1,
         },
@@ -116,11 +151,22 @@ serve(async (req) => {
       metadata: {
         booking_id: booking_id,
         passenger_id: user.id,
+        base: breakdown.base.toString(),
+        dispatcher_fee: breakdown.dispatcher_fee.toString(),
+        app_fee: breakdown.app_fee.toString(),
+        subtotal: breakdown.subtotal.toString(),
+        stripe_pct: breakdown.stripe_pct.toString(),
+        stripe_fixed: breakdown.stripe_fixed.toString(),
+        amount_cents: breakdown.amount_cents.toString(),
       },
     })
 
     return new Response(
-      JSON.stringify({ url: session.url }),
+      JSON.stringify({ 
+        ok: true,
+        url: session.url,
+        breakdown 
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }

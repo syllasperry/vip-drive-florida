@@ -1,66 +1,103 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import type { ChatMessage, ChatThread, SenderRole } from "./types";
+
+export interface ChatMessage {
+  id: string;
+  thread_id: string;
+  sender_role: string;
+  message_body: string;
+  created_at: string;
+}
 
 export async function ensureThread(bookingId: string): Promise<string> {
   try {
-    const { data, error } = await supabase.rpc('ensure_vip_chat_thread', {
-      p_booking_id: bookingId
-    });
+    // Check if thread exists
+    const { data: existingThread } = await supabase
+      .from('vip_chat_threads')
+      .select('id')
+      .eq('booking_id', bookingId)
+      .single();
 
-    if (error) throw error;
-    return data as string;
+    if (existingThread) {
+      return existingThread.id;
+    }
+
+    // Create new thread
+    const { data: newThread, error } = await supabase
+      .from('vip_chat_threads')
+      .insert({ booking_id: bookingId })
+      .select('id')
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to create chat thread: ${error.message}`);
+    }
+
+    return newThread.id;
   } catch (error) {
-    console.error('Error ensuring thread:', error);
+    console.error('Error ensuring chat thread:', error);
     throw error;
   }
 }
 
-export async function fetchMessages(bookingId: string, limit = 100): Promise<ChatMessage[]> {
+export async function fetchMessages(threadId: string): Promise<ChatMessage[]> {
   try {
-    // Use a direct query since vip_chat_messages might not be in the generated types yet
     const { data, error } = await supabase
-      .from('bookings')
+      .from('vip_chat_messages')
       .select('*')
-      .eq('id', bookingId)
-      .limit(1);
+      .eq('thread_id', threadId)
+      .order('created_at', { ascending: true });
 
-    if (error) throw error;
-    
-    // For now, return empty array until the vip_chat_messages table is properly typed
-    return [];
+    if (error) {
+      throw new Error(`Failed to fetch messages: ${error.message}`);
+    }
+
+    return data || [];
   } catch (error) {
     console.error('Error fetching messages:', error);
     throw error;
   }
 }
 
-export async function sendMessage(
-  bookingId: string,
-  senderRole: SenderRole,
-  body: string
-): Promise<void> {
+export async function sendMessage(threadId: string, body: string, senderRole: string): Promise<void> {
   try {
-    // Ensure thread exists first
-    const threadId = await ensureThread(bookingId);
-    
-    // For now, we'll use a simple approach until the tables are properly typed
-    console.log('Sending message:', { bookingId, senderRole, body, threadId });
+    const { error } = await supabase
+      .from('vip_chat_messages')
+      .insert({
+        thread_id: threadId,
+        sender_role: senderRole,
+        message_body: body
+      });
+
+    if (error) {
+      throw new Error(`Failed to send message: ${error.message}`);
+    }
   } catch (error) {
     console.error('Error sending message:', error);
     throw error;
   }
 }
 
-export function subscribeMessages(
-  bookingId: string,
-  onInsert: (message: ChatMessage) => void
-): () => void {
-  // For now, return a no-op unsubscribe function
-  // This will be properly implemented once the chat tables are available
-  console.log('Subscribing to messages for booking:', bookingId);
+export function subscribeMessages(threadId: string, onChange: () => void): () => void {
+  console.log('Setting up real-time subscription for messages...');
+  
+  const channel = supabase
+    .channel(`chat-${threadId}`)
+    .on("postgres_changes", { 
+      event: "INSERT", 
+      schema: "public", 
+      table: "vip_chat_messages",
+      filter: `thread_id=eq.${threadId}`
+    }, (payload) => {
+      console.log('Real-time message received:', payload);
+      onChange();
+    })
+    .subscribe((status) => {
+      console.log('Real-time chat subscription status:', status);
+    });
   
   return () => {
-    console.log('Unsubscribing from messages');
+    console.log('Cleaning up chat subscription');
+    supabase.removeChannel(channel);
   };
 }
