@@ -52,7 +52,7 @@ export async function fetchMyBookings(): Promise<Booking[]> {
 }
 
 export type BookingHistoryEntry = {
-  id: string;
+  id: number;
   booking_id: string;
   status: string;
   created_at: string;
