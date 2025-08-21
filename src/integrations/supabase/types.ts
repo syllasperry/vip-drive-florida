@@ -6556,12 +6556,27 @@ export type Database = {
       get_my_passenger_profile: {
         Args: Record<PropertyKey, never>
         Returns: {
+          account_name: string | null
+          account_type: string | null
+          additional_notes: string | null
+          auth_user_id: string | null
+          avatar_url: string | null
+          created_at: string
           email: string
-          first_name: string
+          first_name: string | null
+          full_name: string
           id: string
-          last_name: string
-          phone: string
-        }[]
+          interaction_preference: string | null
+          last_name: string | null
+          music_playlist_link: string | null
+          music_preference: string | null
+          phone: string | null
+          preferred_temperature: number | null
+          profile_photo_url: string | null
+          trip_purpose: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
       }
       get_my_preferences: {
         Args: Record<PropertyKey, never>
@@ -6952,6 +6967,31 @@ export type Database = {
           trip_purpose: string | null
           updated_at: string
           user_id: string
+        }
+      }
+      upsert_passenger_profile: {
+        Args: { p_avatar_url?: string; p_full_name: string; p_phone: string }
+        Returns: {
+          account_name: string | null
+          account_type: string | null
+          additional_notes: string | null
+          auth_user_id: string | null
+          avatar_url: string | null
+          created_at: string
+          email: string
+          first_name: string | null
+          full_name: string
+          id: string
+          interaction_preference: string | null
+          last_name: string | null
+          music_playlist_link: string | null
+          music_preference: string | null
+          phone: string | null
+          preferred_temperature: number | null
+          profile_photo_url: string | null
+          trip_purpose: string | null
+          updated_at: string | null
+          user_id: string | null
         }
       }
       user_owns_booking: {
