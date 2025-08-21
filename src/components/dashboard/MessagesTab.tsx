@@ -59,7 +59,7 @@ export const MessagesTab = ({ userType, userId, onSelectChat }: MessageTabProps)
             full_name,
             profile_photo_url
           ),
-          drivers:driver_id (
+          drivers!driver_id (
             id,
             full_name,
             profile_photo_url

@@ -63,7 +63,7 @@ export const MessagesInbox = ({ userType, userId, onSelectChat }: MessagesInboxP
             full_name,
             profile_photo_url
           ),
-          drivers:driver_id (
+          drivers!driver_id (
             id,
             full_name,
             profile_photo_url,

@@ -21,7 +21,7 @@ export const useRealtimeBookings = () => {
           .select(`
             *,
             passengers:passenger_id(*),
-            drivers:driver_id(*)
+            drivers!driver_id(*)
           `)
           .order('created_at', { ascending: false });
 
@@ -92,7 +92,7 @@ export const useRealtimeBookings = () => {
         .select(`
           *,
           passengers:passenger_id(*),
-          drivers:driver_id(*)
+          drivers!driver_id(*)
         `)
         .order('created_at', { ascending: false });
 

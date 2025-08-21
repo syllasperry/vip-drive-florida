@@ -1,84 +1,83 @@
+import { supabase } from '@/integrations/supabase/client';
 
-import { supabase } from "@/integrations/supabase/client";
-
-// Updated types to match the requirements
+// Booking interface for passenger data
 export interface PassengerBooking {
   id: string;
-  booking_code: string | null;
-  pickup_time: string | null;        // ISO
-  pickup_location: string | null;
-  dropoff_location: string | null;
+  booking_code: string;
+  pickup_time: string;
+  pickup_location: string;
+  dropoff_location: string;
   vehicle_type: string | null;
-  status: string;                    // pending | offered | paid | assigned | ...
-  payment_status: string | null;     // unpaid | paid | ...
+  status: string | null;
+  payment_status: string | null;
   final_price_cents: number | null;
   passenger_first_name: string | null;
   passenger_last_name: string | null;
-  passenger_photo_url?: string | null;
-  driver_full_name?: string | null;
-  driver_photo_url?: string | null;
+  passenger_photo_url: string | null;
+  driver_full_name: string | null;
+  driver_photo_url: string | null;
   created_at: string;
   updated_at: string;
 }
 
-// Legacy CardDTO for backward compatibility
+// Legacy DTOs for backward compatibility
 export interface CardDTO {
-  booking_id: string;
-  booking_code?: string;
+  id: string;
+  bookingId: string;
+  pickupTime: string;
+  pickupLocation: string;
+  dropoffLocation: string;
+  vehicleType: string;
   status: string;
-  passenger_name?: string;
-  passenger_avatar_url?: string;
-  driver_name?: string;
-  driver_avatar_url?: string;
-  price_dollars?: number;
-  currency?: string;
-  pickup_location?: string;
-  dropoff_location?: string;
-  pickup_time?: string;
-  vehicle_type?: string;
-  created_at?: string;
-  updated_at?: string;
+  paymentStatus: string;
+  finalPrice: number | null;
+  passengerName: string;
+  passengerPhoto: string | null;
+  driverName: string | null;
+  driverPhoto: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
-// Legacy DetailDTO for backward compatibility
 export interface DetailDTO {
-  booking_id: string;
-  booking_code?: string;
+  id: string;
+  bookingCode: string;
+  pickupTime: string;
+  pickupLocation: string;
+  dropoffLocation: string;
+  vehicleType: string;
   status: string;
-  passenger_name?: string;
-  passenger_avatar_url?: string;
-  driver_name?: string;
-  driver_avatar_url?: string;
-  driver_phone?: string;
-  price_dollars?: number;
-  currency?: string;
-  pickup_location?: string;
-  dropoff_location?: string;
-  pickup_time?: string;
-  vehicle_type?: string;
-  distance_miles?: number;
-  created_at?: string;
-  updated_at?: string;
+  paymentStatus: string;
+  finalPrice: number | null;
+  passenger: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    photoUrl: string | null;
+  };
+  driver: {
+    id: string;
+    fullName: string;
+    email: string;
+    phone: string;
+    photoUrl: string | null;
+  } | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
-// RPC-based fetch using the new type
+// Fetch passenger bookings
 export async function fetchMyBookings(): Promise<PassengerBooking[]> {
   try {
-    console.log('🔄 Fetching passenger bookings via direct query...');
+    console.log('📊 Fetching passenger bookings');
     
-    // Get current user
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      console.error('❌ No authenticated user');
-      return [];
-    }
-
-    // Fetch bookings for the current passenger
     const { data, error } = await supabase
       .from('bookings')
       .select(`
         id,
-        booking_code,
+        code,
         pickup_time,
         pickup_location,
         dropoff_location,
@@ -91,25 +90,23 @@ export async function fetchMyBookings(): Promise<PassengerBooking[]> {
         passenger_photo_url,
         created_at,
         updated_at,
-        drivers (
+        drivers!driver_id(
           full_name,
-          profile_photo_url
+          avatar_url
         )
       `)
-      .eq('passenger_id', user.id)
-      .order('created_at', { ascending: false });
-    
+      .order('pickup_time', { ascending: false });
+
     if (error) {
-      console.error('❌ Query error:', error);
+      console.error('❌ Error fetching passenger bookings:', error);
       throw error;
     }
-    
-    console.log('✅ Bookings fetched:', Array.isArray(data) ? data.length : 0, 'bookings');
-    
-    // Transform the data to match PassengerBooking interface
+
+    console.log('✅ Successfully fetched passenger bookings:', data?.length || 0);
+
     const bookings: PassengerBooking[] = (data || []).map(booking => ({
       id: booking.id,
-      booking_code: booking.booking_code,
+      booking_code: booking.code || '',
       pickup_time: booking.pickup_time,
       pickup_location: booking.pickup_location,
       dropoff_location: booking.dropoff_location,
@@ -121,131 +118,154 @@ export async function fetchMyBookings(): Promise<PassengerBooking[]> {
       passenger_last_name: booking.passenger_last_name,
       passenger_photo_url: booking.passenger_photo_url,
       driver_full_name: booking.drivers?.full_name || null,
-      driver_photo_url: booking.drivers?.profile_photo_url || null,
+      driver_photo_url: booking.drivers?.avatar_url || null,
       created_at: booking.created_at,
       updated_at: booking.updated_at
     }));
     
     return bookings;
   } catch (error) {
-    console.error('❌ fetchMyBookings error:', error);
+    console.error('❌ Error in fetchMyBookings:', error);
     throw error;
   }
 }
 
-// Real-time subscription helper
-export function subscribeMyBookings(onChange: () => void) {
-  console.log('🔄 Setting up real-time subscription for passenger bookings...');
+// Real-time subscription
+export function subscribeMyBookings(onChange: () => void): () => void {
+  console.log('🔔 Setting up real-time subscription for passenger bookings');
   
   const channel = supabase
-    .channel('pax-bookings-realtime')
-    .on('postgres_changes', { 
-      event: '*', 
-      schema: 'public', 
-      table: 'bookings' 
-    }, (payload) => {
-      console.log('🔔 Real-time booking update:', payload);
-      onChange();
-    })
-    .subscribe((status) => {
-      console.log('📡 Realtime subscription status:', status);
-    });
-    
+    .channel('passenger_bookings')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'bookings'
+      },
+      (payload) => {
+        console.log('📡 Real-time passenger booking update:', payload);
+        onChange();
+      }
+    )
+    .subscribe();
+
   return () => {
-    console.log('🔌 Cleaning up real-time subscription');
+    console.log('🔕 Cleaning up passenger bookings subscription');
     supabase.removeChannel(channel);
   };
 }
 
-// Legacy function for backward compatibility - now uses new fetchMyBookings
+// Legacy function for CardDTO format
 export async function fetchMyCards(): Promise<CardDTO[]> {
   try {
     const bookings = await fetchMyBookings();
     
-    // Transform to legacy CardDTO format
-    return bookings.map((booking): CardDTO => ({
-      booking_id: booking.id,
-      booking_code: booking.booking_code || booking.id?.slice(0, 8),
-      status: booking.status,
-      passenger_name: booking.passenger_first_name && booking.passenger_last_name 
-        ? `${booking.passenger_first_name} ${booking.passenger_last_name}`.trim()
-        : booking.passenger_first_name || 'VIP Passenger',
-      passenger_avatar_url: booking.passenger_photo_url,
-      driver_name: booking.driver_full_name,
-      driver_avatar_url: booking.driver_photo_url,
-      price_dollars: booking.final_price_cents ? booking.final_price_cents / 100 : undefined,
-      currency: 'USD',
-      pickup_location: booking.pickup_location || '',
-      dropoff_location: booking.dropoff_location || '',
-      pickup_time: booking.pickup_time || '',
-      vehicle_type: booking.vehicle_type || '',
-      created_at: booking.created_at,
-      updated_at: booking.updated_at
+    return bookings.map(booking => ({
+      id: booking.id,
+      bookingId: booking.id,
+      pickupTime: booking.pickup_time,
+      pickupLocation: booking.pickup_location,
+      dropoffLocation: booking.dropoff_location,
+      vehicleType: booking.vehicle_type || '',
+      status: booking.status || '',
+      paymentStatus: booking.payment_status || 'pending',
+      finalPrice: booking.final_price_cents ? booking.final_price_cents / 100 : null,
+      passengerName: `${booking.passenger_first_name || ''} ${booking.passenger_last_name || ''}`.trim(),
+      passengerPhoto: booking.passenger_photo_url,
+      driverName: booking.driver_full_name,
+      driverPhoto: booking.driver_photo_url,
+      createdAt: booking.created_at,
+      updatedAt: booking.updated_at
     }));
   } catch (error) {
-    console.error('❌ fetchMyCards error:', error);
+    console.error('❌ Error in fetchMyCards:', error);
     throw error;
   }
 }
 
-// Legacy function for backward compatibility
+// Fetch detailed booking information
 export async function fetchBookingDetail(bookingId: string): Promise<DetailDTO | null> {
   try {
-    console.log('🔄 Fetching booking detail for:', bookingId);
+    console.log('🔍 Fetching booking detail for ID:', bookingId);
     
-    // Get booking details using the existing bookings table
-    const { data, error } = await supabase
+    const { data: booking, error } = await supabase
       .from('bookings')
       .select(`
-        *,
-        passengers (
+        id,
+        code,
+        pickup_time,
+        pickup_location,
+        dropoff_location,
+        vehicle_type,
+        status,
+        payment_status,
+        final_price_cents,
+        created_at,
+        updated_at,
+        passengers(
           id,
           full_name,
+          email,
           phone,
           profile_photo_url
         ),
-        drivers (
+        drivers!driver_id(
+          id,
           full_name,
+          email,
           phone,
-          profile_photo_url,
-          car_make,
-          car_model,
-          car_color,
-          license_plate
+          avatar_url
         )
       `)
       .eq('id', bookingId)
       .single();
 
     if (error) {
+      if (error.code === 'PGRST116') {
+        console.log('📭 No booking found with ID:', bookingId);
+        return null;
+      }
       console.error('❌ Error fetching booking detail:', error);
+      throw error;
+    }
+
+    if (!booking) {
       return null;
     }
 
-    if (!data) return null;
-
+    const passengerNames = booking.passengers?.full_name?.split(' ') || ['', ''];
+    
     return {
-      booking_id: data.id,
-      booking_code: data.booking_code || data.id?.slice(0, 8),
-      status: data.status,
-      passenger_name: data.passengers?.full_name,
-      passenger_avatar_url: data.passengers?.profile_photo_url,
-      driver_name: data.drivers?.full_name,
-      driver_avatar_url: data.drivers?.profile_photo_url,
-      driver_phone: data.drivers?.phone,
-      price_dollars: (data.final_price || data.estimated_price) ?
-        (data.final_price || data.estimated_price) : undefined,
-      currency: 'USD',
-      pickup_location: data.pickup_location,
-      dropoff_location: data.dropoff_location,
-      pickup_time: data.pickup_time,
-      vehicle_type: data.vehicle_type,
-      distance_miles: data.distance_miles,
-      created_at: data.created_at,
-      updated_at: data.updated_at
+      id: booking.id,
+      bookingCode: booking.code || '',
+      pickupTime: booking.pickup_time,
+      pickupLocation: booking.pickup_location,
+      dropoffLocation: booking.dropoff_location,
+      vehicleType: booking.vehicle_type || '',
+      status: booking.status || '',
+      paymentStatus: booking.payment_status || 'pending',
+      finalPrice: booking.final_price_cents ? booking.final_price_cents / 100 : null,
+      passenger: {
+        id: booking.passengers?.id || '',
+        firstName: passengerNames[0] || '',
+        lastName: passengerNames.slice(1).join(' ') || '',
+        email: booking.passengers?.email || '',
+        phone: booking.passengers?.phone || '',
+        photoUrl: booking.passengers?.profile_photo_url || null
+      },
+      driver: booking.drivers ? {
+        id: booking.drivers.id,
+        fullName: booking.drivers.full_name || '',
+        email: booking.drivers.email || '',
+        phone: booking.drivers.phone || '',
+        photoUrl: booking.drivers.avatar_url || null
+      } : null,
+      createdAt: booking.created_at,
+      updatedAt: booking.updated_at
     };
   } catch (error) {
-    console.error('❌ Unexpected error fetching booking detail:', error);
-    return null;
+    console.error('❌ Error in fetchBookingDetail:', error);
+    throw error;
   }
 }

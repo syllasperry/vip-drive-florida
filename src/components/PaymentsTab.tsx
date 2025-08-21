@@ -62,11 +62,11 @@ export const PaymentsTab = ({ userId, userType, onViewSummary }: PaymentsTabProp
         .from('bookings')
         .select(`
           *,
-          drivers!inner(
-            full_name,
-            preferred_payment_method,
-            payment_instructions
-          )
+        drivers!driver_id(
+          full_name,
+          preferred_payment_method,
+          payment_instructions
+        )
         `)
         .eq(userType === 'passenger' ? 'passenger_id' : 'driver_id', userId)
         .eq('payment_confirmation_status', 'all_set')
