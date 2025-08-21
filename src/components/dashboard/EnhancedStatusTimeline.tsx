@@ -3,9 +3,10 @@ import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusTimeline } from '@/components/timeline/StatusTimeline';
 import { BookingLifecycleTimeline } from '@/components/timeline/BookingLifecycleTimeline';
+import { Booking } from '@/lib/types/booking';
 
 export interface EnhancedStatusTimelineProps {
-  booking: any;
+  booking: Booking;
   userType: 'passenger' | 'driver';
   onReopenModal?: (status: string) => void;
 }
@@ -40,9 +41,10 @@ export const EnhancedStatusTimeline: React.FC<EnhancedStatusTimelineProps> = ({
         
         <TabsContent value="current" className="mt-4">
           <StatusTimeline 
-            booking={booking}
+            bookingId={booking.id}
             userType={userType}
-            onReopenModal={onReopenModal}
+            userPhotoUrl={userType === 'passenger' ? booking.passenger_photo_url || booking.passenger_avatar_url : booking.driver_photo_url || booking.driver_avatar_url}
+            otherUserPhotoUrl={userType === 'passenger' ? booking.driver_photo_url || booking.driver_avatar_url : booking.passenger_photo_url || booking.passenger_avatar_url}
           />
         </TabsContent>
         

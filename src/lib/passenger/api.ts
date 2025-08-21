@@ -1,25 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-
-// Booking interface for passenger data
-export interface PassengerBooking {
-  id: string;
-  booking_code: string;
-  pickup_time: string;
-  pickup_location: string;
-  dropoff_location: string;
-  vehicle_type: string | null;
-  status: string | null;
-  payment_status: string | null;
-  final_price_cents: number | null;
-  passenger_first_name: string | null;
-  passenger_last_name: string | null;
-  passenger_photo_url: string | null;
-  driver_full_name: string | null;
-  driver_photo_url: string | null;
-  created_at: string;
-  updated_at: string;
-}
+import { Booking } from '@/lib/types/booking';
 
 // Legacy DTOs for backward compatibility
 export interface CardDTO {
@@ -70,7 +51,7 @@ export interface DetailDTO {
 }
 
 // Fetch passenger bookings using Supabase RPC
-export async function fetchMyBookings(): Promise<PassengerBooking[]> {
+export async function fetchMyBookings(): Promise<Booking[]> {
   try {
     console.log('📊 Fetching passenger bookings via RPC');
     
@@ -83,8 +64,8 @@ export async function fetchMyBookings(): Promise<PassengerBooking[]> {
 
     console.log('✅ Successfully fetched passenger bookings:', data?.length || 0);
 
-    // Map RPC result to PassengerBooking interface
-    const bookings: PassengerBooking[] = (data || []).map((row: any) => ({
+    // Map RPC result to Booking interface
+    const bookings: Booking[] = (data || []).map((row: any) => ({
       id: row.booking_id || row.id,
       booking_code: row.booking_code || row.code || '',
       pickup_time: row.pickup_time,
@@ -93,11 +74,17 @@ export async function fetchMyBookings(): Promise<PassengerBooking[]> {
       vehicle_type: row.vehicle_type,
       status: row.status,
       payment_status: row.payment_status,
-      final_price_cents: row.price_cents || row.final_price_cents,
+      price_cents: row.price_cents || row.final_price_cents,
+      currency: row.currency || 'USD',
       passenger_first_name: row.passenger_first_name || row.passenger_name?.split(' ')[0] || null,
       passenger_last_name: row.passenger_last_name || row.passenger_name?.split(' ').slice(1).join(' ') || null,
+      passenger_name: row.passenger_name || `${row.passenger_first_name || ''} ${row.passenger_last_name || ''}`.trim(),
       passenger_photo_url: row.passenger_photo_url || row.passenger_avatar_url,
-      driver_full_name: row.driver_name || row.driver_full_name,
+      passenger_id: row.passenger_id || '',
+      driver_id: row.driver_id,
+      driver_name: row.driver_name || row.driver_full_name,
+      driver_full_name: row.driver_full_name || row.driver_name,
+      driver_phone: row.driver_phone,
       driver_photo_url: row.driver_photo_url || row.driver_avatar_url,
       created_at: row.created_at,
       updated_at: row.updated_at
@@ -151,13 +138,13 @@ export async function fetchMyCards(): Promise<CardDTO[]> {
       vehicleType: booking.vehicle_type || '',
       status: booking.status || '',
       paymentStatus: booking.payment_status || 'pending',
-      finalPrice: booking.final_price_cents ? booking.final_price_cents / 100 : null,
-      passengerName: `${booking.passenger_first_name || ''} ${booking.passenger_last_name || ''}`.trim(),
+      finalPrice: booking.price_cents ? booking.price_cents / 100 : null,
+      passengerName: booking.passenger_name || '',
       passengerPhoto: booking.passenger_photo_url,
-      driverName: booking.driver_full_name,
+      driverName: booking.driver_name,
       driverPhoto: booking.driver_photo_url,
       createdAt: booking.created_at,
-      updatedAt: booking.updated_at
+      updatedAt: booking.updated_at || booking.created_at
     }));
   } catch (error) {
     console.error('❌ Error in fetchMyCards:', error);
