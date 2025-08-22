@@ -6604,6 +6604,10 @@ export type Database = {
           user_id: string
         }
       }
+      get_or_create_passenger_profile: {
+        Args: { p_user_id: string }
+        Returns: string
+      }
       get_passenger_booking_detail: {
         Args: { p_booking_id: string }
         Returns: {

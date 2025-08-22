@@ -46,8 +46,12 @@ export const useBookingCreation = () => {
         userMessage = 'Please log in to create a booking.';
       } else if (errorMessage.includes('Permission denied')) {
         userMessage = 'You do not have permission to create bookings. Please contact support.';
-      } else if (errorMessage.includes('RLS')) {
+      } else if (errorMessage.includes('RLS') || errorMessage.includes('row-level security')) {
         userMessage = 'There was a security issue. Please try logging out and back in.';
+      } else if (errorMessage.includes('Pre-flight check failed')) {
+        userMessage = 'System checks failed. Please try again or contact support.';
+      } else if (errorMessage.includes('create passenger profile')) {
+        userMessage = 'Could not set up your profile. Please try again.';
       }
       
       toast({

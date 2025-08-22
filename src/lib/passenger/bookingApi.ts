@@ -38,44 +38,29 @@ export const createPassengerBooking = async (bookingData: CreateBookingData) => 
 
     console.log('✅ User authenticated:', user.id);
 
-    // Get or create passenger profile with better error handling
-    let { data: passenger, error: passengerError } = await supabase
-      .from('passengers')
-      .select('id, user_id, full_name, email, phone')
-      .eq('user_id', user.id)
-      .maybeSingle();
+    // Use the new helper function to get or create passenger profile
+    const { data: passengerId, error: profileError } = await supabase
+      .rpc('get_or_create_passenger_profile', {
+        p_user_id: user.id
+      });
 
-    if (passengerError) {
-      console.error('❌ Error fetching passenger:', passengerError);
-      throw new Error(`Failed to fetch passenger profile: ${passengerError.message}`);
+    if (profileError || !passengerId) {
+      console.error('❌ Error creating/getting passenger profile:', profileError);
+      throw new Error(`Failed to create passenger profile: ${profileError?.message || 'Unknown error'}`);
     }
 
-    // If no passenger profile exists, create one with better data
-    if (!passenger) {
-      console.log('📝 Creating passenger profile for user:', user.id);
-      
-      const passengerData = {
-        user_id: user.id,
-        full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Passenger',
-        email: user.email,
-        phone: user.user_metadata?.phone || null
-      };
+    console.log('✅ Passenger profile ready:', passengerId);
 
-      const { data: newPassenger, error: createError } = await supabase
-        .from('passengers')
-        .insert([passengerData])
-        .select('id, user_id, full_name, email, phone')
-        .single();
+    // Get the passenger details for the booking
+    const { data: passenger, error: passengerFetchError } = await supabase
+      .from('passengers')
+      .select('id, user_id, full_name, email, phone, profile_photo_url')
+      .eq('id', passengerId)
+      .single();
 
-      if (createError) {
-        console.error('❌ Error creating passenger:', createError);
-        throw new Error(`Failed to create passenger profile: ${createError.message}`);
-      }
-
-      passenger = newPassenger;
-      console.log('✅ Passenger profile created:', passenger.id);
-    } else {
-      console.log('✅ Passenger profile found:', passenger.id);
+    if (passengerFetchError || !passenger) {
+      console.error('❌ Error fetching passenger details:', passengerFetchError);
+      throw new Error(`Failed to fetch passenger details: ${passengerFetchError?.message || 'Unknown error'}`);
     }
 
     // Verify passenger ownership
@@ -119,24 +104,7 @@ export const createPassengerBooking = async (bookingData: CreateBookingData) => 
     console.log('📝 Inserting booking with data:', bookingInsertData);
     console.log('🔐 Current user context:', { user_id: user.id, passenger_id: passenger.id });
 
-    // Test the booking creation before actual insert
-    const testResult = await bookingDiagnostics.testBookingCreation({
-      ...bookingInsertData,
-      // Add a test flag to identify this as a test
-      flight_info: '__TEST_BOOKING__'
-    });
-
-    if (testResult.status === 'error') {
-      console.error('❌ Booking creation test failed:', testResult);
-      throw new Error(`Booking creation test failed: ${testResult.message}`);
-    }
-
-    // If test passed, delete the test booking and create the real one
-    if (testResult.details?.id) {
-      await supabase.from('bookings').delete().eq('id', testResult.details.id);
-    }
-
-    // Create the actual booking
+    // Create the booking
     const { data: newBooking, error: bookingError } = await supabase
       .from('bookings')
       .insert([bookingInsertData])
