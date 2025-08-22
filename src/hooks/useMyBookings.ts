@@ -37,23 +37,13 @@ export const useMyBookings = () => {
       if (!user?.id) {
         console.log('❌ No authenticated user');
         setBookings([]);
+        setLoading(false);
         return;
       }
 
-      // First, get or create passenger profile
-      const { data: passengerData } = await supabase
-        .from('passengers')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
+      console.log('✅ User authenticated:', user.id);
 
-      if (!passengerData) {
-        console.log('❌ No passenger profile found');
-        setBookings([]);
-        return;
-      }
-
-      // Now get bookings for this passenger
+      // Get bookings directly using user_id as passenger_id
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -76,7 +66,7 @@ export const useMyBookings = () => {
             full_name
           )
         `)
-        .eq('passenger_id', passengerData.id)
+        .eq('passenger_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) {

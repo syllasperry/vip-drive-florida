@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BottomNavigation } from '@/components/dashboard/BottomNavigation';
@@ -7,7 +6,6 @@ import { MessagesTab } from '@/components/passenger/MessagesTab';
 import { SettingsTab } from '@/components/passenger/SettingsTab';
 import { PaymentsTab } from '@/components/passenger/PaymentsTab';
 import { PassengerBookingsList } from '@/components/passenger/PassengerBookingsList';
-import { fetchPassengerBookings, subscribeToBookingsAndPassengers } from '@/lib/api/bookings';
 import { fetchMyPassengerProfile } from '@/lib/passenger/profile';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -18,7 +16,7 @@ const PassengerDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('bookings');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [passengerInfo, setPassengerInfo] = useState({
-    full_name: 'Passenger User',
+    full_name: 'Loading...',
     profile_photo_url: null,
     phone: null,
     email: null
@@ -32,64 +30,49 @@ const PassengerDashboard: React.FC = () => {
       try {
         console.log('🔄 Loading passenger info...');
         
-        // First try to get from passenger profile
-        const profile = await fetchMyPassengerProfile();
-        if (profile) {
-          setPassengerInfo({
-            full_name: profile.full_name || 'Passenger User',
-            profile_photo_url: profile.profile_photo_url,
-            phone: profile.phone,
-            email: profile.email
-          });
-          console.log('✅ Passenger profile loaded successfully');
+        // Get auth user first
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user?.email) {
+          console.error('❌ No authenticated user or email');
           return;
         }
 
-        // Fallback to auth user email
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user?.email) {
-          setPassengerInfo(prev => ({
-            ...prev,
-            email: user.email,
-            full_name: user.email
-          }));
+        // Set email as fallback immediately
+        setPassengerInfo(prev => ({
+          ...prev,
+          email: user.email,
+          full_name: user.email // Use email as name temporarily
+        }));
+
+        // Try to get passenger profile
+        const profile = await fetchMyPassengerProfile();
+        if (profile) {
+          setPassengerInfo({
+            full_name: profile.full_name || user.email,
+            profile_photo_url: profile.profile_photo_url,
+            phone: profile.phone,
+            email: profile.email || user.email
+          });
+          console.log('✅ Passenger profile loaded successfully');
+        } else {
+          console.log('⚠️ No passenger profile found, using auth user email');
         }
 
-        // Also try from bookings as fallback
-        const bookings = await fetchPassengerBookings();
-        if (bookings.length > 0 && bookings[0].passenger_name) {
-          setPassengerInfo(prev => ({
-            ...prev,
-            full_name: bookings[0].passenger_name || prev.full_name,
-            profile_photo_url: bookings[0].passenger_photo_url || prev.profile_photo_url,
-            phone: bookings[0].passenger_phone || prev.phone,
-            email: bookings[0].passenger_email || prev.email
-          }));
-          console.log('✅ Passenger info loaded from bookings');
-        }
       } catch (error) {
         console.error('❌ Failed to load passenger info:', error);
-        toast({
-          title: "Warning",
-          description: "Could not load passenger information. Please check your connection.",
-          variant: "destructive",
-        });
+        // Don't show error toast for profile loading
+        // Just keep the email as fallback
       }
     };
 
     loadPassengerInfo();
-  }, [refreshTrigger, toast]);
+  }, [refreshTrigger]);
 
   // Set up realtime subscription with enhanced refresh
   useEffect(() => {
     console.log('📡 Setting up real-time subscription for passenger dashboard...');
     
-    const unsubscribe = subscribeToBookingsAndPassengers(() => {
-      console.log('🔄 Real-time update detected - refreshing dashboard...');
-      setRefreshTrigger(prev => prev + 1);
-    });
-
-    // Also set up direct booking subscription for immediate updates
+    // Set up direct booking subscription for immediate updates
     const bookingChannel = supabase
       .channel('passenger_dashboard_bookings')
       .on(
@@ -111,9 +94,6 @@ const PassengerDashboard: React.FC = () => {
 
     return () => {
       console.log('🧹 Cleaning up real-time subscriptions');
-      if (unsubscribe) {
-        unsubscribe();
-      }
       supabase.removeChannel(bookingChannel);
     };
   }, []);
