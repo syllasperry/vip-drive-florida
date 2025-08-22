@@ -25,26 +25,45 @@ export const useMyBookings = () => {
   const [bookings, setBookings] = useState<MyBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Use refs to control fetch operations
   const mountedRef = useRef(true);
   const fetchingRef = useRef(false);
+  const lastFetchRef = useRef(0);
 
-  const fetchBookings = async () => {
+  const fetchBookings = async (isManualRefetch = false) => {
+    // Debounce: prevent multiple calls within 1 second
+    const now = Date.now();
+    if (!isManualRefetch && now - lastFetchRef.current < 1000) {
+      console.log('🚫 Skipping fetch - too soon since last fetch');
+      return;
+    }
+
     // Prevent multiple simultaneous fetches
-    if (fetchingRef.current || !mountedRef.current) {
-      console.log('🚫 Skipping fetch - already in progress or unmounted');
+    if (fetchingRef.current) {
+      console.log('🚫 Skipping fetch - already in progress');
+      return;
+    }
+
+    if (!mountedRef.current) {
+      console.log('🚫 Skipping fetch - component unmounted');
       return;
     }
     
     fetchingRef.current = true;
+    lastFetchRef.current = now;
     
     try {
       console.log('🔄 Fetching passenger bookings...');
       
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.id || !mountedRef.current) {
+      if (!user?.id) {
         console.log('❌ No authenticated user for bookings');
-        setBookings([]);
-        setLoading(false);
+        if (mountedRef.current) {
+          setBookings([]);
+          setError(null);
+          setLoading(false);
+        }
         return;
       }
 
@@ -53,17 +72,44 @@ export const useMyBookings = () => {
         .from('passengers')
         .select('id')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (passengerError || !passengerData || !mountedRef.current) {
-        console.log('❌ No passenger profile found for bookings');
+      if (passengerError) {
+        console.error('❌ Error fetching passenger profile:', passengerError);
+        throw passengerError;
+      }
+
+      if (!passengerData) {
+        console.log('⚠️ No passenger profile found, creating one...');
+        
+        // Create passenger profile
+        const { data: newPassenger, error: createError } = await supabase
+          .from('passengers')
+          .insert({
+            user_id: user.id,
+            full_name: user.email,
+            email: user.email
+          })
+          .select('id')
+          .single();
+
+        if (createError) {
+          console.error('❌ Error creating passenger profile:', createError);
+          throw createError;
+        }
+
+        // Use the newly created passenger ID
+        if (!mountedRef.current) return;
+
+        console.log('✅ Passenger profile created');
+        // Set empty bookings for new user and finish loading
         setBookings([]);
-        setError(null); // Not really an error, just no profile yet
+        setError(null);
         setLoading(false);
         return;
       }
 
-      // Get bookings using passenger_id
+      // Fetch bookings using passenger_id
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -92,11 +138,7 @@ export const useMyBookings = () => {
 
       if (error) {
         console.error('❌ Error fetching bookings:', error);
-        if (mountedRef.current) {
-          setError(error.message);
-          setBookings([]);
-        }
-        return;
+        throw error;
       }
 
       if (!mountedRef.current) return;
@@ -106,7 +148,7 @@ export const useMyBookings = () => {
       const formattedBookings: MyBooking[] = (data || []).map(booking => ({
         id: booking.id,
         booking_code: booking.booking_code,
-        status: booking.status,
+        status: booking.status || 'pending',
         pickup_location: booking.pickup_location,
         dropoff_location: booking.dropoff_location,
         pickup_time: booking.pickup_time,
@@ -146,7 +188,7 @@ export const useMyBookings = () => {
     // Initial fetch
     fetchBookings();
 
-    // Set up real-time subscription with controlled updates
+    // Set up real-time subscription with debouncing
     let debounceTimeout: NodeJS.Timeout;
     
     const channel = supabase
@@ -161,13 +203,13 @@ export const useMyBookings = () => {
         (payload) => {
           console.log('📡 Booking realtime update received:', payload);
           
-          // Debounce rapid updates to prevent excessive API calls
+          // Debounce rapid updates
           clearTimeout(debounceTimeout);
           debounceTimeout = setTimeout(() => {
             if (mountedRef.current && !fetchingRef.current) {
               fetchBookings();
             }
-          }, 1000); // 1 second debounce
+          }, 2000); // 2 second debounce for real-time updates
         }
       )
       .subscribe((status) => {
@@ -177,16 +219,17 @@ export const useMyBookings = () => {
     return () => {
       mountedRef.current = false;
       clearTimeout(debounceTimeout);
+      fetchingRef.current = false;
       supabase.removeChannel(channel);
       console.log('🧹 Cleaning up passenger bookings subscription');
     };
   }, []); // Empty dependency array - only run once
 
-  const refetch = () => {
-    if (mountedRef.current && !fetchingRef.current) {
+  const refetch = async () => {
+    if (mountedRef.current) {
       console.log('🔄 Manual refetch triggered');
       setLoading(true);
-      fetchBookings();
+      await fetchBookings(true); // Pass true to bypass debouncing for manual refetch
     }
   };
 

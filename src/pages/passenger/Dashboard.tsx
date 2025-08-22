@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BottomNavigation } from '@/components/dashboard/BottomNavigation';
 import { ProfileHeader } from '@/components/dashboard/ProfileHeader';
@@ -25,156 +25,12 @@ const PassengerDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  // Use refs to prevent multiple simultaneous operations
+  const initializingRef = useRef(false);
+  const mountedRef = useRef(true);
 
-  // Single useEffect to handle everything sequentially
-  useEffect(() => {
-    let mounted = true;
-    let loadingTimeout: NodeJS.Timeout;
-
-    const initializeDashboard = async () => {
-      try {
-        console.log('🔄 Initializing passenger dashboard...');
-        
-        // Check authentication
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        
-        if (authError || !user) {
-          console.log('❌ User not authenticated, redirecting...');
-          navigate('/passenger/login');
-          return;
-        }
-
-        if (!mounted) return;
-
-        console.log('✅ User authenticated:', user.id);
-        
-        // Set email as fallback immediately
-        if (mounted) {
-          setPassengerInfo(prev => ({
-            ...prev,
-            email: user.email
-          }));
-        }
-
-        // Try to get passenger profile
-        const { data: passengerProfile, error: passengerError } = await supabase
-          .from('passengers')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-
-        if (!mounted) return;
-
-        if (passengerError && passengerError.code === 'PGRST116') {
-          // No profile exists, create one
-          const { data: newProfile, error: createError } = await supabase
-            .from('passengers')
-            .insert({
-              user_id: user.id,
-              full_name: user.email,
-              email: user.email,
-              phone: null,
-              profile_photo_url: null
-            })
-            .select()
-            .single();
-
-          if (createError) {
-            console.error('❌ Error creating passenger profile:', createError);
-            throw createError;
-          }
-
-          if (mounted) {
-            setPassengerInfo({
-              full_name: newProfile.full_name || user.email,
-              profile_photo_url: newProfile.profile_photo_url,
-              phone: newProfile.phone,
-              email: newProfile.email || user.email
-            });
-          }
-        } else if (passengerError) {
-          console.error('❌ Error fetching passenger profile:', passengerError);
-          throw passengerError;
-        } else if (passengerProfile && mounted) {
-          setPassengerInfo({
-            full_name: passengerProfile.full_name || user.email,
-            profile_photo_url: passengerProfile.profile_photo_url,
-            phone: passengerProfile.phone,
-            email: passengerProfile.email || user.email
-          });
-        }
-
-        // Set loading to false after everything is loaded
-        if (mounted) {
-          setLoading(false);
-          setError(null);
-        }
-
-      } catch (err) {
-        console.error('❌ Dashboard initialization error:', err);
-        if (mounted) {
-          setError(err instanceof Error ? err.message : 'Failed to load dashboard');
-          setLoading(false);
-        }
-      }
-    };
-
-    // Set a maximum loading timeout
-    loadingTimeout = setTimeout(() => {
-      if (mounted && loading) {
-        console.warn('⚠️ Dashboard loading timeout');
-        setLoading(false);
-        setError('Loading timeout. Please refresh the page.');
-      }
-    }, 10000); // 10 seconds timeout
-
-    initializeDashboard();
-
-    // Auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!mounted) return;
-      
-      console.log('🔄 Auth state change:', event);
-      if (event === 'SIGNED_OUT' || !session?.user) {
-        navigate('/passenger/login');
-      }
-    });
-
-    return () => {
-      mounted = false;
-      clearTimeout(loadingTimeout);
-      subscription.unsubscribe();
-    };
-  }, []); // Empty dependency array - only run once
-
-  // Simplified real-time subscription
-  useEffect(() => {
-    if (loading || error) return;
-
-    console.log('📡 Setting up real-time subscription...');
-    
-    const channel = supabase
-      .channel('passenger_dashboard_updates')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'bookings'
-        },
-        (payload) => {
-          console.log('📡 Booking update received:', payload);
-          setRefreshTrigger(prev => prev + 1);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      console.log('🧹 Cleaning up real-time subscription');
-      supabase.removeChannel(channel);
-    };
-  }, [loading, error]);
-
+  // Memoized handlers
   const handleUpdate = useCallback(() => {
     console.log('🔄 Manual refresh triggered');
     setRefreshTrigger(prev => prev + 1);
@@ -235,30 +91,198 @@ const PassengerDashboard: React.FC = () => {
     }
   }, [handleUpdate, toast]);
 
-  // Loading state
+  // Single initialization effect
+  useEffect(() => {
+    let mounted = true;
+    mountedRef.current = true;
+
+    const initializeDashboard = async () => {
+      // Prevent multiple simultaneous initializations
+      if (initializingRef.current) {
+        console.log('🚫 Already initializing, skipping...');
+        return;
+      }
+
+      initializingRef.current = true;
+
+      try {
+        console.log('🔄 Initializing passenger dashboard...');
+        
+        // Check authentication with timeout
+        const authPromise = supabase.auth.getUser();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Auth timeout')), 5000)
+        );
+
+        const { data: { user }, error: authError } = await Promise.race([
+          authPromise,
+          timeoutPromise
+        ]) as any;
+        
+        if (authError || !user) {
+          console.log('❌ User not authenticated, redirecting...');
+          navigate('/passenger/login');
+          return;
+        }
+
+        if (!mounted) return;
+
+        console.log('✅ User authenticated:', user.id);
+        
+        // Set email immediately as fallback
+        if (mounted) {
+          setPassengerInfo(prev => ({
+            ...prev,
+            email: user.email
+          }));
+        }
+
+        // Get passenger profile with timeout
+        const profilePromise = supabase
+          .from('passengers')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        const { data: passengerProfile, error: passengerError } = await Promise.race([
+          profilePromise,
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Profile timeout')), 5000)
+          )
+        ]) as any;
+
+        if (!mounted) return;
+
+        if (passengerError && passengerError.code !== 'PGRST116') {
+          console.error('❌ Error fetching passenger profile:', passengerError);
+          throw passengerError;
+        }
+
+        if (!passengerProfile) {
+          // Create profile if it doesn't exist
+          const { data: newProfile, error: createError } = await supabase
+            .from('passengers')
+            .insert({
+              user_id: user.id,
+              full_name: user.email,
+              email: user.email,
+              phone: null,
+              profile_photo_url: null
+            })
+            .select()
+            .single();
+
+          if (createError) {
+            console.error('❌ Error creating passenger profile:', createError);
+            throw createError;
+          }
+
+          if (mounted) {
+            setPassengerInfo({
+              full_name: newProfile.full_name || user.email,
+              profile_photo_url: newProfile.profile_photo_url,
+              phone: newProfile.phone,
+              email: newProfile.email || user.email
+            });
+          }
+        } else if (mounted) {
+          setPassengerInfo({
+            full_name: passengerProfile.full_name || user.email,
+            profile_photo_url: passengerProfile.profile_photo_url,
+            phone: passengerProfile.phone,
+            email: passengerProfile.email || user.email
+          });
+        }
+
+        if (mounted) {
+          setLoading(false);
+          setError(null);
+          console.log('✅ Dashboard initialized successfully');
+        }
+
+      } catch (err) {
+        console.error('❌ Dashboard initialization error:', err);
+        if (mounted) {
+          if (err instanceof Error && err.message.includes('timeout')) {
+            setError('Loading timeout. Please check your internet connection.');
+          } else {
+            setError(err instanceof Error ? err.message : 'Failed to load dashboard');
+          }
+          setLoading(false);
+        }
+      } finally {
+        initializingRef.current = false;
+      }
+    };
+
+    // Set maximum loading timeout
+    const loadingTimeout = setTimeout(() => {
+      if (mounted && loading && !error) {
+        console.warn('⚠️ Dashboard loading timeout after 10 seconds');
+        setLoading(false);
+        setError('Loading timeout. Please refresh the page.');
+      }
+    }, 10000);
+
+    initializeDashboard();
+
+    // Auth state listener with cleanup
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
+      
+      console.log('🔄 Auth state change:', event);
+      if (event === 'SIGNED_OUT' || !session?.user) {
+        navigate('/passenger/login');
+      }
+    });
+
+    return () => {
+      mounted = false;
+      mountedRef.current = false;
+      clearTimeout(loadingTimeout);
+      subscription.unsubscribe();
+      initializingRef.current = false;
+      console.log('🧹 Dashboard cleanup completed');
+    };
+  }, []); // Empty dependency array - only run once
+
+  // Loading state with better UX
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Loading dashboard...</p>
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto"></div>
+          <div className="space-y-2">
+            <p className="text-lg font-semibold text-gray-700">Loading your dashboard...</p>
+            <p className="text-sm text-gray-500">This should only take a moment</p>
+          </div>
         </div>
       </div>
     );
   }
 
-  // Error state
+  // Error state with retry option
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">{error}</p>
-          <Button 
-            onClick={() => window.location.reload()} 
-            className="bg-red-500 hover:bg-red-600 text-white"
-          >
-            Reload Page
-          </Button>
+        <div className="text-center space-y-4 max-w-md">
+          <div className="text-red-500 text-6xl">⚠️</div>
+          <h2 className="text-xl font-semibold text-gray-900">Something went wrong</h2>
+          <p className="text-gray-600">{error}</p>
+          <div className="flex gap-3 justify-center">
+            <Button 
+              onClick={() => window.location.reload()} 
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
+              Reload Page
+            </Button>
+            <Button 
+              onClick={() => navigate('/passenger/login')} 
+              variant="outline"
+            >
+              Back to Login
+            </Button>
+          </div>
         </div>
       </div>
     );
