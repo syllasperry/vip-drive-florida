@@ -7,7 +7,6 @@ import { MessagesTab } from '@/components/passenger/MessagesTab';
 import { SettingsTab } from '@/components/passenger/SettingsTab';
 import { PaymentsTab } from '@/components/passenger/PaymentsTab';
 import { PassengerBookingsList } from '@/components/passenger/PassengerBookingsList';
-import { fetchMyPassengerProfile } from '@/lib/passenger/profile';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -22,86 +21,40 @@ const PassengerDashboard: React.FC = () => {
     phone: null as string | null,
     email: null as string | null
   });
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [authChecked, setAuthChecked] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Stabilize auth check to prevent loops
+  // Single useEffect to handle everything sequentially
   useEffect(() => {
     let mounted = true;
-    
-    const checkAuth = async () => {
+    let loadingTimeout: NodeJS.Timeout;
+
+    const initializeDashboard = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        console.log('🔄 Initializing passenger dashboard...');
+        
+        // Check authentication
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        
+        if (authError || !user) {
+          console.log('❌ User not authenticated, redirecting...');
+          navigate('/passenger/login');
+          return;
+        }
+
         if (!mounted) return;
-        
-        if (!user) {
-          console.log('❌ User not authenticated, redirecting to login');
-          navigate('/passenger/login');
-          return;
-        }
-        
+
         console.log('✅ User authenticated:', user.id);
-        setIsAuthenticated(true);
-        setAuthChecked(true);
-      } catch (error) {
-        console.error('❌ Auth check error:', error);
-        if (mounted) {
-          navigate('/passenger/login');
-        }
-      }
-    };
-
-    if (!authChecked) {
-      checkAuth();
-    }
-
-    // Listen for auth changes only once
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!mounted) return;
-      
-      console.log('🔄 Auth state change:', event, session?.user?.id);
-      if (!session?.user) {
-        navigate('/passenger/login');
-      } else if (!isAuthenticated) {
-        setIsAuthenticated(true);
-        setAuthChecked(true);
-      }
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, [navigate, authChecked, isAuthenticated]);
-
-  // Load passenger info with stable dependency array
-  useEffect(() => {
-    if (!isAuthenticated || !authChecked) return;
-
-    let mounted = true;
-
-    const loadPassengerInfo = async () => {
-      try {
-        setLoading(true);
-        console.log('🔄 Loading passenger info...');
         
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!mounted || !user?.email) {
-          console.error('❌ No authenticated user or email');
-          return;
-        }
-
-        console.log('👤 Auth user email:', user.email);
-
         // Set email as fallback immediately
-        setPassengerInfo(prev => ({
-          ...prev,
-          full_name: prev.full_name || user.email,
-          email: user.email
-        }));
+        if (mounted) {
+          setPassengerInfo(prev => ({
+            ...prev,
+            email: user.email
+          }));
+        }
 
         // Try to get passenger profile
         const { data: passengerProfile, error: passengerError } = await supabase
@@ -112,10 +65,8 @@ const PassengerDashboard: React.FC = () => {
 
         if (!mounted) return;
 
-        if (passengerError) {
-          console.warn('⚠️ No passenger profile found:', passengerError);
-          
-          // Try to create passenger profile
+        if (passengerError && passengerError.code === 'PGRST116') {
+          // No profile exists, create one
           const { data: newProfile, error: createError } = await supabase
             .from('passengers')
             .insert({
@@ -130,11 +81,10 @@ const PassengerDashboard: React.FC = () => {
 
           if (createError) {
             console.error('❌ Error creating passenger profile:', createError);
-            return;
+            throw createError;
           }
 
           if (mounted) {
-            console.log('✅ Passenger profile created:', newProfile);
             setPassengerInfo({
               full_name: newProfile.full_name || user.email,
               profile_photo_url: newProfile.profile_photo_url,
@@ -142,41 +92,69 @@ const PassengerDashboard: React.FC = () => {
               email: newProfile.email || user.email
             });
           }
-        } else {
-          if (mounted) {
-            console.log('✅ Passenger profile loaded:', passengerProfile);
-            setPassengerInfo({
-              full_name: passengerProfile.full_name || user.email,
-              profile_photo_url: passengerProfile.profile_photo_url,
-              phone: passengerProfile.phone,
-              email: passengerProfile.email || user.email
-            });
-          }
+        } else if (passengerError) {
+          console.error('❌ Error fetching passenger profile:', passengerError);
+          throw passengerError;
+        } else if (passengerProfile && mounted) {
+          setPassengerInfo({
+            full_name: passengerProfile.full_name || user.email,
+            profile_photo_url: passengerProfile.profile_photo_url,
+            phone: passengerProfile.phone,
+            email: passengerProfile.email || user.email
+          });
         }
-      } catch (error) {
-        console.error('❌ Failed to load passenger info:', error);
-      } finally {
+
+        // Set loading to false after everything is loaded
         if (mounted) {
+          setLoading(false);
+          setError(null);
+        }
+
+      } catch (err) {
+        console.error('❌ Dashboard initialization error:', err);
+        if (mounted) {
+          setError(err instanceof Error ? err.message : 'Failed to load dashboard');
           setLoading(false);
         }
       }
     };
 
-    loadPassengerInfo();
+    // Set a maximum loading timeout
+    loadingTimeout = setTimeout(() => {
+      if (mounted && loading) {
+        console.warn('⚠️ Dashboard loading timeout');
+        setLoading(false);
+        setError('Loading timeout. Please refresh the page.');
+      }
+    }, 10000); // 10 seconds timeout
+
+    initializeDashboard();
+
+    // Auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
+      
+      console.log('🔄 Auth state change:', event);
+      if (event === 'SIGNED_OUT' || !session?.user) {
+        navigate('/passenger/login');
+      }
+    });
 
     return () => {
       mounted = false;
+      clearTimeout(loadingTimeout);
+      subscription.unsubscribe();
     };
-  }, [isAuthenticated, authChecked, refreshTrigger]);
+  }, []); // Empty dependency array - only run once
 
-  // Stable realtime subscription
+  // Simplified real-time subscription
   useEffect(() => {
-    if (!isAuthenticated || !authChecked) return;
+    if (loading || error) return;
 
-    console.log('📡 Setting up real-time subscription for passenger dashboard...');
+    console.log('📡 Setting up real-time subscription...');
     
-    const bookingChannel = supabase
-      .channel('passenger_dashboard_bookings')
+    const channel = supabase
+      .channel('passenger_dashboard_updates')
       .on(
         'postgres_changes',
         {
@@ -185,19 +163,17 @@ const PassengerDashboard: React.FC = () => {
           table: 'bookings'
         },
         (payload) => {
-          console.log('📡 Direct booking update received:', payload);
+          console.log('📡 Booking update received:', payload);
           setRefreshTrigger(prev => prev + 1);
         }
       )
-      .subscribe((status) => {
-        console.log('📡 Direct booking subscription status:', status);
-      });
+      .subscribe();
 
     return () => {
-      console.log('🧹 Cleaning up real-time subscriptions');
-      supabase.removeChannel(bookingChannel);
+      console.log('🧹 Cleaning up real-time subscription');
+      supabase.removeChannel(channel);
     };
-  }, [isAuthenticated, authChecked]);
+  }, [loading, error]);
 
   const handleUpdate = useCallback(() => {
     console.log('🔄 Manual refresh triggered');
@@ -209,22 +185,12 @@ const PassengerDashboard: React.FC = () => {
   }, []);
 
   const handleNewBooking = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toast({
-        title: "Authentication Required",
-        description: "Please log in to create a new booking.",
-        variant: "destructive",
-      });
-      navigate('/passenger/login');
-      return;
-    }
     navigate('/passenger/price-estimate');
-  }, [navigate, toast]);
+  }, [navigate]);
 
   const handlePhotoUpload = useCallback(async (file: File) => {
     try {
-      console.log('📸 Photo upload:', file);
+      console.log('📸 Photo upload started...');
       
       const { data: { user } } = await supabase.auth.getUser();
       if (!user?.id) {
@@ -239,9 +205,7 @@ const PassengerDashboard: React.FC = () => {
         .from('avatars')
         .upload(filePath, file, { upsert: true });
 
-      if (uploadError) {
-        throw uploadError;
-      }
+      if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
@@ -252,36 +216,53 @@ const PassengerDashboard: React.FC = () => {
         .update({ profile_photo_url: publicUrl })
         .eq('user_id', user.id);
 
-      if (updateError) {
-        throw updateError;
-      }
+      if (updateError) throw updateError;
 
       console.log('✅ Photo uploaded successfully');
-      setRefreshTrigger(prev => prev + 1);
+      handleUpdate();
+      
+      toast({
+        title: "Photo Updated",
+        description: "Your profile photo has been updated successfully.",
+      });
     } catch (error) {
       console.error('❌ Photo upload error:', error);
-      throw error;
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload photo. Please try again.",
+        variant: "destructive",
+      });
     }
-  }, []);
+  }, [handleUpdate, toast]);
 
-  // Early return for loading state
-  if (!authChecked || loading) {
+  // Loading state
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Loading...</p>
+          <p className="mt-2 text-gray-600">Loading dashboard...</p>
         </div>
       </div>
     );
   }
 
-  if (!isAuthenticated) {
-    return null; // Let the navigation effect handle redirect
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
+          <Button 
+            onClick={() => window.location.reload()} 
+            className="bg-red-500 hover:bg-red-600 text-white"
+          >
+            Reload Page
+          </Button>
+        </div>
+      </div>
+    );
   }
-
-  const mockCurrentUserId = 'passenger-user-id';
-  const mockCurrentUserName = passengerInfo.full_name || 'Passenger User';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -312,8 +293,8 @@ const PassengerDashboard: React.FC = () => {
             <TabsContent value="messages" className="mt-0">
               <MessagesTab 
                 bookings={[]}
-                currentUserId={mockCurrentUserId}
-                currentUserName={mockCurrentUserName}
+                currentUserId="passenger-user-id"
+                currentUserName={passengerInfo.full_name || 'Passenger User'}
               />
             </TabsContent>
 

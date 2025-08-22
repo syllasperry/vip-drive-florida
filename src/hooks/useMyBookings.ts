@@ -29,35 +29,37 @@ export const useMyBookings = () => {
   const fetchingRef = useRef(false);
 
   const fetchBookings = async () => {
-    if (fetchingRef.current || !mountedRef.current) return;
+    // Prevent multiple simultaneous fetches
+    if (fetchingRef.current || !mountedRef.current) {
+      console.log('🚫 Skipping fetch - already in progress or unmounted');
+      return;
+    }
     
     fetchingRef.current = true;
     
     try {
-      setLoading(true);
-      setError(null);
-      
-      console.log('🔄 Fetching my bookings...');
+      console.log('🔄 Fetching passenger bookings...');
       
       const { data: { user } } = await supabase.auth.getUser();
       if (!user?.id || !mountedRef.current) {
-        console.log('❌ No authenticated user');
+        console.log('❌ No authenticated user for bookings');
         setBookings([]);
+        setLoading(false);
         return;
       }
 
-      console.log('✅ User authenticated for bookings:', user.id);
-
       // Get passenger record first
-      const { data: passengerData } = await supabase
+      const { data: passengerData, error: passengerError } = await supabase
         .from('passengers')
         .select('id')
         .eq('user_id', user.id)
         .single();
 
-      if (!passengerData || !mountedRef.current) {
-        console.log('❌ No passenger profile found');
+      if (passengerError || !passengerData || !mountedRef.current) {
+        console.log('❌ No passenger profile found for bookings');
         setBookings([]);
+        setError(null); // Not really an error, just no profile yet
+        setLoading(false);
         return;
       }
 
@@ -90,7 +92,11 @@ export const useMyBookings = () => {
 
       if (error) {
         console.error('❌ Error fetching bookings:', error);
-        throw error;
+        if (mountedRef.current) {
+          setError(error.message);
+          setBookings([]);
+        }
+        return;
       }
 
       if (!mountedRef.current) return;
@@ -116,7 +122,10 @@ export const useMyBookings = () => {
         distance_miles: booking.distance_miles
       }));
 
-      setBookings(formattedBookings);
+      if (mountedRef.current) {
+        setBookings(formattedBookings);
+        setError(null);
+      }
     } catch (err) {
       console.error('❌ Error in fetchBookings:', err);
       if (mountedRef.current) {
@@ -134,13 +143,14 @@ export const useMyBookings = () => {
   useEffect(() => {
     mountedRef.current = true;
     
+    // Initial fetch
     fetchBookings();
 
-    // Set up real-time subscription with debouncing
-    let timeoutId: NodeJS.Timeout;
+    // Set up real-time subscription with controlled updates
+    let debounceTimeout: NodeJS.Timeout;
     
     const channel = supabase
-      .channel('my_bookings_updates')
+      .channel('passenger_bookings_realtime')
       .on(
         'postgres_changes',
         {
@@ -149,30 +159,41 @@ export const useMyBookings = () => {
           table: 'bookings'
         },
         (payload) => {
-          console.log('📡 Booking update received:', payload);
+          console.log('📡 Booking realtime update received:', payload);
           
-          // Debounce rapid updates
-          clearTimeout(timeoutId);
-          timeoutId = setTimeout(() => {
-            if (mountedRef.current) {
+          // Debounce rapid updates to prevent excessive API calls
+          clearTimeout(debounceTimeout);
+          debounceTimeout = setTimeout(() => {
+            if (mountedRef.current && !fetchingRef.current) {
               fetchBookings();
             }
-          }, 500);
+          }, 1000); // 1 second debounce
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('📡 Passenger bookings subscription status:', status);
+      });
 
     return () => {
       mountedRef.current = false;
-      clearTimeout(timeoutId);
+      clearTimeout(debounceTimeout);
       supabase.removeChannel(channel);
+      console.log('🧹 Cleaning up passenger bookings subscription');
     };
-  }, []);
+  }, []); // Empty dependency array - only run once
+
+  const refetch = () => {
+    if (mountedRef.current && !fetchingRef.current) {
+      console.log('🔄 Manual refetch triggered');
+      setLoading(true);
+      fetchBookings();
+    }
+  };
 
   return {
     bookings,
     loading,
     error,
-    refetch: fetchBookings
+    refetch
   };
 };
