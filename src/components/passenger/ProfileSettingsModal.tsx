@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { X, User, Upload, Camera, Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { getMyPassengerProfile, upsertMyPassengerProfile, uploadAvatar } from "@/lib/api/profiles";
+import { supabase } from "@/integrations/supabase/client";
 
 interface PassengerProfile {
   first_name: string;
@@ -52,14 +51,38 @@ export const ProfileSettingsModal = ({
 
   const loadProfileData = async () => {
     try {
-      const profile = await getMyPassengerProfile();
-      setFormData({
-        first_name: profile.first_name || '',
-        last_name: profile.last_name || '',
-        phone: profile.phone || '',
-        email: profile.email || ''
-      });
-      setAvatarUrl(profile.avatarUrl);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get existing passenger profile
+      const { data: passenger } = await supabase
+        .from('passengers')
+        .select('full_name, phone, profile_photo_url')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (passenger) {
+        // Split full_name into first and last name
+        const nameParts = passenger.full_name?.split(' ') || [];
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+
+        setFormData({
+          first_name: firstName,
+          last_name: lastName,
+          phone: passenger.phone || '',
+          email: user.email || ''
+        });
+        setAvatarUrl(passenger.profile_photo_url);
+      } else {
+        // Use auth user data as fallback
+        setFormData({
+          first_name: '',
+          last_name: '',
+          phone: '',
+          email: user.email || ''
+        });
+      }
     } catch (error) {
       console.error('Error loading profile data:', error);
       toast({
@@ -100,6 +123,36 @@ export const ProfileSettingsModal = ({
     }
   };
 
+  const uploadAvatar = async (file: File): Promise<string | null> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
+
+      const fileExt = file.name.split('.').pop() || 'jpg';
+      const fileName = `avatar-${Date.now()}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      throw error;
+    }
+  };
+
   const handleSave = async () => {
     // Validate required fields
     if (!formData.first_name.trim() || !formData.last_name.trim()) {
@@ -114,6 +167,9 @@ export const ProfileSettingsModal = ({
     setIsSaving(true);
     
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       let newAvatarUrl = avatarUrl;
 
       // Upload avatar if a new one was selected
@@ -134,13 +190,25 @@ export const ProfileSettingsModal = ({
         }
       }
 
-      // Update profile data
-      await upsertMyPassengerProfile({
-        first_name: formData.first_name.trim(),
-        last_name: formData.last_name.trim(),
-        phone: formData.phone.trim(),
-        email: formData.email.trim()
-      });
+      // Create full name from first and last name
+      const fullName = `${formData.first_name.trim()} ${formData.last_name.trim()}`.trim();
+
+      // Update or create passenger profile
+      const { error } = await supabase
+        .from('passengers')
+        .upsert({
+          user_id: user.id,
+          full_name: fullName,
+          phone: formData.phone.trim() || null,
+          email: formData.email.trim() || user.email,
+          profile_photo_url: newAvatarUrl
+        }, {
+          onConflict: 'user_id'
+        });
+
+      if (error) {
+        throw error;
+      }
 
       // Create updated profile object
       const updatedProfile: PassengerProfile = {
