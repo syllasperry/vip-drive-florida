@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -11,12 +12,13 @@ import { ArrowLeft, Plane, Calendar, Users, Luggage, MessageSquare, User } from 
 import { DateTimePicker } from '@/components/DateTimePicker';
 import { validatePassengerCount, validatePickupTime } from '@/utils/inputValidation';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { useBookingCreation } from '@/hooks/useBookingCreation';
 
 const BookingForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { createBooking, isCreating } = useBookingCreation();
   
   // Get data from previous page (vehicle selection)
   const { selectedVehicle, pickup, dropoff, estimatedPrice } = location.state || {};
@@ -41,8 +43,6 @@ const BookingForm = () => {
   const [thirdPartyName, setThirdPartyName] = useState('');
   const [thirdPartyPhone, setThirdPartyPhone] = useState('');
   const [thirdPartyEmail, setThirdPartyEmail] = useState('');
-  
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Helper function to extract numeric price from price string
   const extractNumericPrice = (priceString: any): number => {
@@ -122,133 +122,40 @@ const BookingForm = () => {
         return;
       }
     }
-
-    setIsSubmitting(true);
     
     try {
-      console.log('🔐 Getting current user...');
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError || !user) {
-        console.error('❌ User authentication failed:', userError);
-        throw new Error('User not authenticated');
-      }
-
-      console.log('✅ User authenticated:', user.id);
-
       // Create flight info string if provided
       let flightInfoString = '';
       if (showFlightInfo && flightType && flightNumber) {
         flightInfoString = `${flightType}: ${flightNumber}`;
       }
 
-      // Prepare booking data WITHOUT driver_id - CRITICAL GUARD
+      // Calculate estimated distance (you might want to get this from a mapping service)
+      const estimatedDistance = 10; // Default 10 miles for now
+
+      // Prepare booking data using the createBooking hook
       const bookingData = {
-        passenger_id: user.id,
         pickup_location: pickup || 'Not specified',
         dropoff_location: dropoff || 'Not specified',
         pickup_time: pickupTime.toISOString(),
-        passenger_count: parseInt(passengerCount),
         vehicle_type: selectedVehicle?.name || 'Standard Vehicle',
-        estimated_price: null,
-        final_price: null,
-        status: 'pending',
-        ride_status: 'pending_driver',
-        payment_confirmation_status: 'waiting_for_offer',
-        status_passenger: 'passenger_requested',
-        status_driver: 'new_request',
-        payment_status: 'pending',
-        // CRITICAL GUARD: driver_id is NEVER included in creation
-        passenger_preferences: {
-          luggage_size: luggageSize,
-          luggage_count: parseInt(luggageCount),
-          flight_info: flightInfoString,
-          special_requests: specialRequests,
-          original_estimate_display: estimatedPrice,
-          ...(isThirdPartyBooking && {
-            third_party_booking: {
-              name: thirdPartyName,
-              phone: thirdPartyPhone,
-              email: thirdPartyEmail
-            }
-          })
-        }
+        passenger_count: parseInt(passengerCount),
+        luggage_count: parseInt(luggageCount),
+        flight_info: flightInfoString,
+        distance_miles: estimatedDistance
       };
 
-      // SECURITY GUARD: Check payload before sending
-      console.log('[GUARD] payload to bookings:', bookingData);
-      if ('driver_id' in bookingData && (bookingData as any).driver_id) {
-        throw new Error('GUARD: driver_id must be null on create');
+      console.log('📝 Creating booking with data:', bookingData);
+
+      const booking = await createBooking(bookingData);
+
+      if (booking) {
+        console.log('✅ Booking created successfully:', booking);
+        // Navigation is handled by the useBookingCreation hook
       }
-
-      console.log('🚀 Inserting booking into database (driver_id completely omitted)...');
-      const { data: booking, error: bookingError } = await supabase
-        .from('bookings')
-        .insert(bookingData)
-        .select()
-        .single();
-
-      if (bookingError) {
-        console.error('❌ Database insertion error:', bookingError);
-        throw new Error(`Database error: ${bookingError.message}`);
-      }
-
-      if (!booking) {
-        console.error('❌ No booking data returned from database');
-        throw new Error('No booking data returned from database');
-      }
-
-      console.log('✅ Booking created successfully (constraint respected):', booking);
-
-      // Success - navigate to confirmation page with booking data
-      toast({
-        title: "Booking Created!",
-        description: "Your booking request has been submitted successfully. Awaiting assignment from our team.",
-      });
-
-      console.log('🧭 Navigating to confirmation page...');
-      navigate('/passenger/confirmation', { 
-        state: { 
-          selectedVehicle,
-          pickup,
-          dropoff,
-          estimatedPrice: null,
-          pickupTime: pickupTime.toISOString(),
-          passengerCount: parseInt(passengerCount),
-          luggageSize,
-          luggageCount: parseInt(luggageCount),
-          specialRequests,
-          flightInfo: showFlightInfo ? { type: flightType, number: flightNumber } : null,
-          thirdPartyBooking: isThirdPartyBooking ? {
-            name: thirdPartyName,
-            phone: thirdPartyPhone,
-            email: thirdPartyEmail
-          } : null,
-          bookingDetails: {
-            date: selectedDate,
-            time: selectedTime,
-            passengers: passengerCount,
-            bookingId: booking.id
-          }
-        } 
-      });
     } catch (error) {
-      console.error('❌ Error submitting booking:', error);
-      let errorMessage = "Failed to submit booking. Please try again.";
-      
-      if (error instanceof Error) {
-        errorMessage = error.message;
-        console.error('❌ Error details:', error.message);
-      }
-      
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
+      console.error('❌ Error in handleSubmit:', error);
+      // Error handling is managed by the useBookingCreation hook
     }
   };
 
@@ -478,9 +385,9 @@ const BookingForm = () => {
             <Button
               onClick={handleSubmit}
               className="w-full h-12 text-base font-medium"
-              disabled={isSubmitting}
+              disabled={isCreating}
             >
-              {isSubmitting ? 'Creating Booking...' : 'Confirm Booking'}
+              {isCreating ? 'Creating Booking...' : 'Confirm Booking'}
             </Button>
           </div>
         </div>
