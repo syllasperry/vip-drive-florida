@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BottomNavigation } from '@/components/dashboard/BottomNavigation';
 import { ProfileHeader } from '@/components/dashboard/ProfileHeader';
@@ -24,54 +24,72 @@ const PassengerDashboard: React.FC = () => {
   });
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Check authentication status
+  // Stabilize auth check to prevent loops
   useEffect(() => {
+    let mounted = true;
+    
     const checkAuth = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
+        if (!mounted) return;
+        
         if (!user) {
           console.log('❌ User not authenticated, redirecting to login');
           navigate('/passenger/login');
           return;
         }
+        
         console.log('✅ User authenticated:', user.id);
         setIsAuthenticated(true);
+        setAuthChecked(true);
       } catch (error) {
         console.error('❌ Auth check error:', error);
-        navigate('/passenger/login');
+        if (mounted) {
+          navigate('/passenger/login');
+        }
       }
     };
 
-    checkAuth();
+    if (!authChecked) {
+      checkAuth();
+    }
 
-    // Listen for auth changes
+    // Listen for auth changes only once
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
+      
       console.log('🔄 Auth state change:', event, session?.user?.id);
       if (!session?.user) {
         navigate('/passenger/login');
-      } else {
+      } else if (!isAuthenticated) {
         setIsAuthenticated(true);
+        setAuthChecked(true);
       }
     });
 
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [navigate, authChecked, isAuthenticated]);
 
-  // Load passenger info from profile and auth
+  // Load passenger info with stable dependency array
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !authChecked) return;
+
+    let mounted = true;
 
     const loadPassengerInfo = async () => {
       try {
         setLoading(true);
         console.log('🔄 Loading passenger info...');
         
-        // Get auth user first
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user?.email) {
+        if (!mounted || !user?.email) {
           console.error('❌ No authenticated user or email');
           return;
         }
@@ -79,19 +97,20 @@ const PassengerDashboard: React.FC = () => {
         console.log('👤 Auth user email:', user.email);
 
         // Set email as fallback immediately
-        setPassengerInfo({
-          full_name: user.email,
-          profile_photo_url: null,
-          phone: null,
+        setPassengerInfo(prev => ({
+          ...prev,
+          full_name: prev.full_name || user.email,
           email: user.email
-        });
+        }));
 
-        // Try to get passenger profile by user_id
+        // Try to get passenger profile
         const { data: passengerProfile, error: passengerError } = await supabase
           .from('passengers')
           .select('*')
           .eq('user_id', user.id)
           .single();
+
+        if (!mounted) return;
 
         if (passengerError) {
           console.warn('⚠️ No passenger profile found:', passengerError);
@@ -114,40 +133,48 @@ const PassengerDashboard: React.FC = () => {
             return;
           }
 
-          console.log('✅ Passenger profile created:', newProfile);
-          setPassengerInfo({
-            full_name: newProfile.full_name || user.email,
-            profile_photo_url: newProfile.profile_photo_url,
-            phone: newProfile.phone,
-            email: newProfile.email || user.email
-          });
+          if (mounted) {
+            console.log('✅ Passenger profile created:', newProfile);
+            setPassengerInfo({
+              full_name: newProfile.full_name || user.email,
+              profile_photo_url: newProfile.profile_photo_url,
+              phone: newProfile.phone,
+              email: newProfile.email || user.email
+            });
+          }
         } else {
-          console.log('✅ Passenger profile loaded:', passengerProfile);
-          setPassengerInfo({
-            full_name: passengerProfile.full_name || user.email,
-            profile_photo_url: passengerProfile.profile_photo_url,
-            phone: passengerProfile.phone,
-            email: passengerProfile.email || user.email
-          });
+          if (mounted) {
+            console.log('✅ Passenger profile loaded:', passengerProfile);
+            setPassengerInfo({
+              full_name: passengerProfile.full_name || user.email,
+              profile_photo_url: passengerProfile.profile_photo_url,
+              phone: passengerProfile.phone,
+              email: passengerProfile.email || user.email
+            });
+          }
         }
-
       } catch (error) {
         console.error('❌ Failed to load passenger info:', error);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
     loadPassengerInfo();
-  }, [refreshTrigger, isAuthenticated]);
 
-  // Set up realtime subscription with enhanced refresh
+    return () => {
+      mounted = false;
+    };
+  }, [isAuthenticated, authChecked, refreshTrigger]);
+
+  // Stable realtime subscription
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !authChecked) return;
 
     console.log('📡 Setting up real-time subscription for passenger dashboard...');
     
-    // Set up direct booking subscription for immediate updates
     const bookingChannel = supabase
       .channel('passenger_dashboard_bookings')
       .on(
@@ -159,7 +186,6 @@ const PassengerDashboard: React.FC = () => {
         },
         (payload) => {
           console.log('📡 Direct booking update received:', payload);
-          // Trigger immediate refresh
           setRefreshTrigger(prev => prev + 1);
         }
       )
@@ -171,56 +197,32 @@ const PassengerDashboard: React.FC = () => {
       console.log('🧹 Cleaning up real-time subscriptions');
       supabase.removeChannel(bookingChannel);
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authChecked]);
 
-  // Auto-refresh when navigating to bookings tab to catch new bookings
-  useEffect(() => {
-    if (activeTab === 'bookings') {
-      console.log('🔄 Bookings tab activated - triggering refresh');
-      setRefreshTrigger(prev => prev + 1);
-    }
-  }, [activeTab]);
-
-  // Force refresh when component mounts or when returning from booking flow
-  useEffect(() => {
-    const handleFocus = () => {
-      console.log('🔄 Window focused - refreshing dashboard');
-      setRefreshTrigger(prev => prev + 1);
-    };
-
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, []);
-
-  const handleUpdate = () => {
+  const handleUpdate = useCallback(() => {
     console.log('🔄 Manual refresh triggered');
     setRefreshTrigger(prev => prev + 1);
-  };
+  }, []);
 
-  const handleTabChange = (value: string) => {
+  const handleTabChange = useCallback((value: string) => {
     setActiveTab(value);
-  };
+  }, []);
 
-  const handleNewBooking = () => {
-    // Check authentication before allowing navigation
-    const checkAuthAndNavigate = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast({
-          title: "Authentication Required",
-          description: "Please log in to create a new booking.",
-          variant: "destructive",
-        });
-        navigate('/passenger/login');
-        return;
-      }
-      navigate('/passenger/price-estimate');
-    };
-    
-    checkAuthAndNavigate();
-  };
+  const handleNewBooking = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to create a new booking.",
+        variant: "destructive",
+      });
+      navigate('/passenger/login');
+      return;
+    }
+    navigate('/passenger/price-estimate');
+  }, [navigate, toast]);
 
-  const handlePhotoUpload = async (file: File) => {
+  const handlePhotoUpload = useCallback(async (file: File) => {
     try {
       console.log('📸 Photo upload:', file);
       
@@ -245,7 +247,6 @@ const PassengerDashboard: React.FC = () => {
         .from('avatars')
         .getPublicUrl(filePath);
 
-      // Update passenger profile with new photo URL
       const { error: updateError } = await supabase
         .from('passengers')
         .update({ profile_photo_url: publicUrl })
@@ -261,14 +262,26 @@ const PassengerDashboard: React.FC = () => {
       console.error('❌ Photo upload error:', error);
       throw error;
     }
-  };
+  }, []);
+
+  // Early return for loading state
+  if (!authChecked || loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null; // Let the navigation effect handle redirect
+  }
 
   const mockCurrentUserId = 'passenger-user-id';
   const mockCurrentUserName = passengerInfo.full_name || 'Passenger User';
-
-  if (!isAuthenticated || loading) {
-    return <div>Loading...</div>;
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -277,7 +290,7 @@ const PassengerDashboard: React.FC = () => {
           userType="passenger" 
           userProfile={passengerInfo}
           onPhotoUpload={handlePhotoUpload}
-          onProfileUpdate={() => setRefreshTrigger(prev => prev + 1)}
+          onProfileUpdate={handleUpdate}
         />
         
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface MyBooking {
@@ -25,8 +25,14 @@ export const useMyBookings = () => {
   const [bookings, setBookings] = useState<MyBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
+  const fetchingRef = useRef(false);
 
   const fetchBookings = async () => {
+    if (fetchingRef.current || !mountedRef.current) return;
+    
+    fetchingRef.current = true;
+    
     try {
       setLoading(true);
       setError(null);
@@ -34,7 +40,7 @@ export const useMyBookings = () => {
       console.log('🔄 Fetching my bookings...');
       
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.id) {
+      if (!user?.id || !mountedRef.current) {
         console.log('❌ No authenticated user');
         setBookings([]);
         return;
@@ -42,7 +48,20 @@ export const useMyBookings = () => {
 
       console.log('✅ User authenticated for bookings:', user.id);
 
-      // Get bookings directly using user_id (which is stored in passengers table)
+      // Get passenger record first
+      const { data: passengerData } = await supabase
+        .from('passengers')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!passengerData || !mountedRef.current) {
+        console.log('❌ No passenger profile found');
+        setBookings([]);
+        return;
+      }
+
+      // Get bookings using passenger_id
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -62,81 +81,19 @@ export const useMyBookings = () => {
           vehicle_type,
           distance_miles,
           drivers!driver_id(
-            full_name
-          ),
-          passengers!passenger_id(
-            user_id,
-            full_name
+            full_name,
+            phone
           )
         `)
-        .eq('passengers.user_id', user.id)
+        .eq('passenger_id', passengerData.id)
         .order('created_at', { ascending: false });
 
       if (error) {
         console.error('❌ Error fetching bookings:', error);
-        
-        // Try alternative approach using passengers table join
-        const { data: passengerData } = await supabase
-          .from('passengers')
-          .select('id')
-          .eq('user_id', user.id)
-          .single();
-
-        if (passengerData) {
-          const { data: bookingsData, error: bookingsError } = await supabase
-            .from('bookings')
-            .select(`
-              id,
-              booking_code,
-              status,
-              pickup_location,
-              dropoff_location,
-              pickup_time,
-              created_at,
-              updated_at,
-              driver_id,
-              estimated_price,
-              final_price,
-              estimated_price_cents,
-              final_price_cents,
-              vehicle_type,
-              distance_miles,
-              drivers!driver_id(
-                full_name
-              )
-            `)
-            .eq('passenger_id', passengerData.id)
-            .order('created_at', { ascending: false });
-
-          if (bookingsError) {
-            throw bookingsError;
-          }
-
-          const formattedBookings: MyBooking[] = (bookingsData || []).map(booking => ({
-            id: booking.id,
-            booking_code: booking.booking_code,
-            status: booking.status,
-            pickup_location: booking.pickup_location,
-            dropoff_location: booking.dropoff_location,
-            pickup_time: booking.pickup_time,
-            created_at: booking.created_at,
-            updated_at: booking.updated_at,
-            driver_id: booking.driver_id,
-            driver_name: booking.drivers?.full_name,
-            estimated_price: booking.estimated_price,
-            final_price: booking.final_price,
-            price_cents: booking.final_price_cents || booking.estimated_price_cents,
-            vehicle_type: booking.vehicle_type,
-            distance_miles: booking.distance_miles
-          }));
-
-          console.log('✅ Bookings fetched with alternative approach:', formattedBookings.length);
-          setBookings(formattedBookings);
-          return;
-        }
-        
         throw error;
       }
+
+      if (!mountedRef.current) return;
 
       console.log('✅ Bookings fetched successfully:', data?.length || 0);
 
@@ -151,6 +108,7 @@ export const useMyBookings = () => {
         updated_at: booking.updated_at,
         driver_id: booking.driver_id,
         driver_name: booking.drivers?.full_name,
+        driver_phone: booking.drivers?.phone,
         estimated_price: booking.estimated_price,
         final_price: booking.final_price,
         price_cents: booking.final_price_cents || booking.estimated_price_cents,
@@ -161,17 +119,26 @@ export const useMyBookings = () => {
       setBookings(formattedBookings);
     } catch (err) {
       console.error('❌ Error in fetchBookings:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch bookings');
-      setBookings([]);
+      if (mountedRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch bookings');
+        setBookings([]);
+      }
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
+      fetchingRef.current = false;
     }
   };
 
   useEffect(() => {
+    mountedRef.current = true;
+    
     fetchBookings();
 
-    // Set up real-time subscription for booking updates
+    // Set up real-time subscription with debouncing
+    let timeoutId: NodeJS.Timeout;
+    
     const channel = supabase
       .channel('my_bookings_updates')
       .on(
@@ -183,12 +150,21 @@ export const useMyBookings = () => {
         },
         (payload) => {
           console.log('📡 Booking update received:', payload);
-          fetchBookings(); // Refetch bookings on any change
+          
+          // Debounce rapid updates
+          clearTimeout(timeoutId);
+          timeoutId = setTimeout(() => {
+            if (mountedRef.current) {
+              fetchBookings();
+            }
+          }, 500);
         }
       )
       .subscribe();
 
     return () => {
+      mountedRef.current = false;
+      clearTimeout(timeoutId);
       supabase.removeChannel(channel);
     };
   }, []);
