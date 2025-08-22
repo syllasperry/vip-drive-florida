@@ -122,6 +122,34 @@ export async function upsertMyPassengerProfile(input: {
   email: string;
 }) {
   try {
+    // First, ensure we have a passenger profile with full_name
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.id) {
+      throw new Error('User not authenticated');
+    }
+
+    // Create or update passenger with full_name to avoid NOT NULL constraint
+    const fullName = `${input.first_name.trim()} ${input.last_name.trim()}`.trim();
+    
+    const { data: passengerData, error: passengerError } = await supabase
+      .from('passengers')
+      .upsert({
+        user_id: user.id,
+        full_name: fullName || 'User', // Ensure full_name is never empty
+        email: input.email,
+        phone: input.phone
+      }, {
+        onConflict: 'user_id'
+      })
+      .select()
+      .single();
+
+    if (passengerError) {
+      console.error("Error upserting passenger:", passengerError);
+      throw passengerError;
+    }
+
+    // Now use the RPC function
     const { data, error } = await supabase.rpc('upsert_my_passenger_profile', {
       _first_name: input.first_name,
       _last_name: input.last_name,
@@ -130,7 +158,7 @@ export async function upsertMyPassengerProfile(input: {
     });
 
     if (error) {
-      console.error("Error upserting passenger profile:", error);
+      console.error("Error in RPC upsert_my_passenger_profile:", error);
       throw error;
     }
 

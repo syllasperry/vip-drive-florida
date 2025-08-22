@@ -1,12 +1,12 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, MapPin, User, Car, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
-import { fetchMyBookings, subscribeMyBookings } from '@/lib/passenger/api';
-import { Booking } from '@/lib/types/booking';
+import { useMyBookings } from '@/hooks/useMyBookings';
+import type { MyBooking } from '@/hooks/useMyBookings';
 import { PassengerStatusTimeline } from '@/components/dashboard/PassengerStatusTimeline';
 
 interface PassengerBookingsListProps {
@@ -39,48 +39,18 @@ const formatPrice = (priceCents?: number, currency: string = 'USD') => {
 };
 
 export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ onUpdate }) => {
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { bookings, loading, error, refetch } = useMyBookings();
   const [activeTab, setActiveTab] = useState('all');
-  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [selectedBooking, setSelectedBooking] = useState<MyBooking | null>(null);
 
-  useEffect(() => {
-    const loadBookings = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const fetchedBookings = await fetchMyBookings();
-        setBookings(fetchedBookings);
-        console.log('✅ Loaded passenger bookings:', fetchedBookings.length);
-      } catch (err) {
-        console.error('❌ Failed to load bookings:', err);
-        setError('Failed to load bookings');
-        setBookings([]);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Trigger parent update when bookings change
+  React.useEffect(() => {
+    if (onUpdate) {
+      onUpdate();
+    }
+  }, [bookings, onUpdate]);
 
-    loadBookings();
-
-    // Set up real-time subscription
-    const unsubscribe = subscribeMyBookings(() => {
-      console.log('🔄 Real-time update - refreshing bookings...');
-      loadBookings();
-      if (onUpdate) {
-        onUpdate();
-      }
-    });
-
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, [onUpdate]);
-
-  const filterBookings = (bookings: Booking[], status: string) => {
+  const filterBookings = (bookings: MyBooking[], status: string) => {
     if (status === 'all') return bookings;
     if (status === 'active') {
       return bookings.filter(b => 
@@ -121,7 +91,7 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
         <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
         <p className="text-red-600 mb-2">{error}</p>
         <button 
-          onClick={() => window.location.reload()}
+          onClick={() => refetch()}
           className="text-blue-600 hover:underline"
         >
           Try again
@@ -200,14 +170,14 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
                           </span>
                         </div>
                         <div className="font-semibold text-gray-900">
-                          {formatPrice(booking.price_cents, booking.currency)}
+                          {formatPrice(booking.price_cents, 'USD')}
                         </div>
                       </div>
 
                       {selectedBooking?.id === booking.id && (
                         <div className="mt-4 pt-4 border-t">
                           <PassengerStatusTimeline
-                            booking={booking}
+                            booking={booking as any}
                           />
                         </div>
                       )}

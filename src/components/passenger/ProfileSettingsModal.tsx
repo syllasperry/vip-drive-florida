@@ -134,18 +134,21 @@ export const ProfileSettingsModal = ({
         }
       }
 
-      // Update profile data
+      // Update profile data - make sure we have valid names
+      const firstName = formData.first_name.trim() || 'User';
+      const lastName = formData.last_name.trim() || '';
+      
       await upsertMyPassengerProfile({
-        first_name: formData.first_name.trim(),
-        last_name: formData.last_name.trim(),
+        first_name: firstName,
+        last_name: lastName,
         phone: formData.phone.trim(),
         email: formData.email.trim()
       });
 
       // Create updated profile object
       const updatedProfile: PassengerProfile = {
-        first_name: formData.first_name.trim(),
-        last_name: formData.last_name.trim(),
+        first_name: firstName,
+        last_name: lastName,
         phone: formData.phone.trim(),
         email: formData.email.trim(),
         avatarUrl: newAvatarUrl
@@ -168,7 +171,7 @@ export const ProfileSettingsModal = ({
       console.error('Error updating profile:', error);
       toast({
         title: "Error",
-        description: "Failed to update profile",
+        description: error instanceof Error ? error.message : "Failed to update profile",
         variant: "destructive"
       });
     } finally {
