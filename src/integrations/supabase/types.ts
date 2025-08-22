@@ -7007,8 +7007,20 @@ export type Database = {
           user_id: string | null
         }
       }
+      user_is_dispatcher: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      user_is_driver_in_booking: {
+        Args: { booking_driver_id: string }
+        Returns: boolean
+      }
       user_owns_booking: {
         Args: { booking_id: string }
+        Returns: boolean
+      }
+      user_owns_passenger_in_booking: {
+        Args: { booking_passenger_id: string }
         Returns: boolean
       }
       user_wants_email: {
