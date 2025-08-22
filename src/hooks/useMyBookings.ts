@@ -41,9 +41,44 @@ export const useMyBookings = () => {
         return;
       }
 
-      console.log('✅ User authenticated:', user.id);
+      console.log('✅ User authenticated for bookings:', user.id);
 
-      // Get bookings directly using user_id as passenger_id
+      // First, get the passenger ID for this user
+      const { data: passengerData, error: passengerError } = await supabase
+        .from('passengers')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (passengerError || !passengerData) {
+        console.log('⚠️ No passenger profile found, creating one...');
+        
+        // Try to create passenger profile using RPC
+        const { data: passengerId, error: createError } = await supabase
+          .rpc('get_or_create_passenger_profile', {
+            p_user_id: user.id
+          });
+
+        if (createError || !passengerId) {
+          console.error('❌ Failed to create passenger profile:', createError);
+          throw new Error('Failed to create passenger profile');
+        }
+
+        console.log('✅ Passenger profile created:', passengerId);
+      }
+
+      // Get bookings using the passenger profile
+      const passengerIdToUse = passengerData?.id || await (async () => {
+        const { data: newPassengerData } = await supabase
+          .from('passengers')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+        return newPassengerData?.id;
+      })();
+
+      console.log('🔍 Fetching bookings for passenger ID:', passengerIdToUse);
+
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -66,7 +101,7 @@ export const useMyBookings = () => {
             full_name
           )
         `)
-        .eq('passenger_id', user.id)
+        .eq('passenger_id', passengerIdToUse)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -107,7 +142,7 @@ export const useMyBookings = () => {
   useEffect(() => {
     fetchBookings();
 
-    // Set up real-time subscription
+    // Set up real-time subscription for booking updates
     const channel = supabase
       .channel('my_bookings_updates')
       .on(

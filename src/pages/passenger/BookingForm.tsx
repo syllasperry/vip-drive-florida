@@ -1,18 +1,18 @@
-
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label';
+import { Input } from "@/components/ui/input';
+import { Textarea } from "@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { ArrowLeft, Plane, Calendar, Users, Luggage, MessageSquare, User } from 'lucide-react';
 import { DateTimePicker } from '@/components/DateTimePicker';
 import { validatePassengerCount, validatePickupTime } from '@/utils/inputValidation';
 import { useToast } from '@/hooks/use-toast';
 import { useBookingCreation } from '@/hooks/useBookingCreation';
+import { supabase } from '@/integrations/supabase/client';
 
 const BookingForm = () => {
   const navigate = useNavigate();
@@ -66,6 +66,19 @@ const BookingForm = () => {
     
     console.log('🚀 Starting passenger booking submission process...');
     
+    // Check authentication first
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error('❌ User not authenticated');
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to create a booking.",
+        variant: "destructive",
+      });
+      navigate('/passenger/login');
+      return;
+    }
+
     // Validate passenger count
     const passengerValidation = validatePassengerCount(parseInt(passengerCount));
     if (!passengerValidation.isValid) {
@@ -150,7 +163,7 @@ const BookingForm = () => {
       const booking = await createBooking(bookingData);
 
       if (booking) {
-        console.log('✅ Booking created successfully:', booking);
+        console.log('✅ Booking created successfully, should navigate to confirmation');
         // Navigation is handled by the useBookingCreation hook
       }
     } catch (error) {
@@ -159,6 +172,7 @@ const BookingForm = () => {
     }
   };
 
+  // ... keep all existing JSX and component structure the same
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-md mx-auto">

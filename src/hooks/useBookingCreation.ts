@@ -18,7 +18,7 @@ export const useBookingCreation = () => {
     setIsCreating(true);
     
     try {
-      console.log('🚀 Starting booking creation process...');
+      console.log('🚀 Starting booking creation process...', bookingData);
       
       const newBooking = await createPassengerBooking(bookingData);
       
@@ -30,11 +30,19 @@ export const useBookingCreation = () => {
         variant: "default",
       });
 
-      // Navigate to confirmation page with booking details
+      // Force navigate to confirmation page
+      console.log('🚀 Navigating to confirmation page...');
       navigate('/passenger/confirmation', { 
         state: { 
           booking: newBooking,
-          bookingId: newBooking.id 
+          bookingId: newBooking.id,
+          pickupLocation: bookingData.pickup_location,
+          dropoffLocation: bookingData.dropoff_location,
+          selectedDateTime: bookingData.pickup_time,
+          vehicleType: bookingData.vehicle_type,
+          passengerCount: bookingData.passenger_count,
+          luggageCount: bookingData.luggage_count,
+          flightInfo: bookingData.flight_info
         } 
       });
       
@@ -67,7 +75,7 @@ export const useBookingCreation = () => {
       
       throw error;
     } finally {
-      setIsCreating(false);
+      setIsLoading(false);
     }
   };
 

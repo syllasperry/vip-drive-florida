@@ -19,26 +19,18 @@ export const createPassengerBooking = async (bookingData: CreateBookingData) => 
   try {
     console.log('🔄 Creating passenger booking with data:', bookingData);
     
-    // Run pre-flight diagnostics
-    const diagnostics = await bookingDiagnostics.runFullDiagnostic();
-    const criticalIssues = diagnostics.filter(d => d.status === 'error');
-    
-    if (criticalIssues.length > 0) {
-      console.error('❌ Critical issues detected:', criticalIssues);
-      throw new Error(`Pre-flight check failed: ${criticalIssues.map(i => i.message).join(', ')}`);
-    }
-
     // Get current authenticated user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
     if (userError || !user) {
       console.error('❌ User not authenticated:', userError);
-      throw new Error('User not authenticated');
+      throw new Error('User not authenticated - please log in again');
     }
 
     console.log('✅ User authenticated:', user.id);
 
     // Use the RPC function to get or create passenger profile
+    console.log('🔄 Getting/creating passenger profile...');
     const { data: passengerId, error: profileError } = await supabase
       .rpc('get_or_create_passenger_profile', {
         p_user_id: user.id

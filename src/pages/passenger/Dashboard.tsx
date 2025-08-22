@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BottomNavigation } from '@/components/dashboard/BottomNavigation';
@@ -21,11 +22,40 @@ const PassengerDashboard: React.FC = () => {
     phone: null,
     email: null
   });
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Check authentication status
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('❌ User not authenticated, redirecting to login');
+        navigate('/passenger/login');
+        return;
+      }
+      setIsAuthenticated(true);
+    };
+
+    checkAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session?.user) {
+        navigate('/passenger/login');
+      } else {
+        setIsAuthenticated(true);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
   // Load passenger info from profile and auth
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     const loadPassengerInfo = async () => {
       try {
         console.log('🔄 Loading passenger info...');
@@ -66,10 +96,12 @@ const PassengerDashboard: React.FC = () => {
     };
 
     loadPassengerInfo();
-  }, [refreshTrigger]);
+  }, [refreshTrigger, isAuthenticated]);
 
   // Set up realtime subscription with enhanced refresh
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     console.log('📡 Setting up real-time subscription for passenger dashboard...');
     
     // Set up direct booking subscription for immediate updates
@@ -96,7 +128,7 @@ const PassengerDashboard: React.FC = () => {
       console.log('🧹 Cleaning up real-time subscriptions');
       supabase.removeChannel(bookingChannel);
     };
-  }, []);
+  }, [isAuthenticated]);
 
   // Auto-refresh when navigating to bookings tab to catch new bookings
   useEffect(() => {
@@ -127,11 +159,30 @@ const PassengerDashboard: React.FC = () => {
   };
 
   const handleNewBooking = () => {
-    navigate('/passenger/price-estimate');
+    // Check authentication before allowing navigation
+    const checkAuthAndNavigate = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to create a new booking.",
+          variant: "destructive",
+        });
+        navigate('/passenger/login');
+        return;
+      }
+      navigate('/passenger/price-estimate');
+    };
+    
+    checkAuthAndNavigate();
   };
 
   const mockCurrentUserId = 'passenger-user-id';
   const mockCurrentUserName = passengerInfo.full_name || 'Passenger User';
+
+  if (!isAuthenticated) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
