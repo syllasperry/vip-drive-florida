@@ -38,7 +38,7 @@ export const createPassengerBooking = async (bookingData: CreateBookingData) => 
 
     console.log('✅ User authenticated:', user.id);
 
-    // Use the new helper function to get or create passenger profile
+    // Use the RPC function to get or create passenger profile
     const { data: passengerId, error: profileError } = await supabase
       .rpc('get_or_create_passenger_profile', {
         p_user_id: user.id
@@ -51,38 +51,15 @@ export const createPassengerBooking = async (bookingData: CreateBookingData) => 
 
     console.log('✅ Passenger profile ready:', passengerId);
 
-    // Get the passenger details for the booking
-    const { data: passenger, error: passengerFetchError } = await supabase
-      .from('passengers')
-      .select('id, user_id, full_name, email, phone, profile_photo_url')
-      .eq('id', passengerId)
-      .single();
-
-    if (passengerFetchError || !passenger) {
-      console.error('❌ Error fetching passenger details:', passengerFetchError);
-      throw new Error(`Failed to fetch passenger details: ${passengerFetchError?.message || 'Unknown error'}`);
-    }
-
-    // Verify passenger ownership
-    if (passenger.user_id !== user.id) {
-      console.error('❌ Passenger user_id mismatch:', { 
-        passenger_user_id: passenger.user_id, 
-        auth_user_id: user.id 
-      });
-      throw new Error('Passenger profile does not belong to authenticated user');
-    }
-
-    console.log('✅ Passenger ownership verified');
-
     // Calculate smart pricing
     const distanceMiles = bookingData.distance_miles || 10; // Default 10 miles if not provided
     const pricingResult = smartPricing.calculatePrice(distanceMiles);
     
     console.log('💰 Smart pricing calculated:', pricingResult);
 
-    // Prepare booking data for insertion - avoid setting estimated_price_cents to null
+    // Prepare booking data for insertion
     const bookingInsertData = {
-      passenger_id: passenger.id,
+      passenger_id: passengerId,
       pickup_location: bookingData.pickup_location,
       dropoff_location: bookingData.dropoff_location,
       pickup_time: bookingData.pickup_time,
@@ -92,8 +69,7 @@ export const createPassengerBooking = async (bookingData: CreateBookingData) => 
       flight_info: bookingData.flight_info || '',
       distance_miles: distanceMiles,
       estimated_price: pricingResult.total,
-      // Don't set estimated_price_cents if there's a constraint issue
-      status: BookingStatusManager.normalizeStatus('pending'),
+      status: 'pending',
       payment_status: 'pending',
       ride_status: 'pending_driver',
       payment_confirmation_status: 'waiting_for_offer',
@@ -102,7 +78,6 @@ export const createPassengerBooking = async (bookingData: CreateBookingData) => 
     };
 
     console.log('📝 Inserting booking with data:', bookingInsertData);
-    console.log('🔐 Current user context:', { user_id: user.id, passenger_id: passenger.id });
 
     // Create the booking
     const { data: newBooking, error: bookingError } = await supabase

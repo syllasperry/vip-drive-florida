@@ -30,8 +30,13 @@ export const useBookingCreation = () => {
         variant: "default",
       });
 
-      // Navigate to dashboard to show the new booking
-      navigate('/passenger/dashboard');
+      // Navigate to confirmation page with booking details
+      navigate('/passenger/confirmation', { 
+        state: { 
+          booking: newBooking,
+          bookingId: newBooking.id 
+        } 
+      });
       
       return newBooking;
       
