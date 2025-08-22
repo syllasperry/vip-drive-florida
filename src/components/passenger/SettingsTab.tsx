@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -80,10 +79,45 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
-      navigate('/passenger/login');
+      console.log('🚪 Iniciando logout...');
+      
+      // Limpar storage local primeiro
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      // Tentar logout global
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
+      
+      if (error) {
+        console.error('Erro no logout:', error);
+        toast({
+          title: "Erro no logout",
+          description: "Houve um problema ao fazer logout. Tente novamente.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('✅ Logout realizado com sucesso');
+      
+      toast({
+        title: "Logout realizado",
+        description: "Você foi desconectado com sucesso.",
+      });
+      
+      // Redirecionar para login forçando refresh da página
+      window.location.href = '/passenger/login';
+      
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error('❌ Erro inesperado no logout:', error);
+      toast({
+        title: "Erro",
+        description: "Erro inesperado ao fazer logout.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -249,7 +283,7 @@ export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
             variant="destructive" 
             className="w-full flex items-center gap-2"
           >
-            <LogOut className="w-4 w-4" />
+            <LogOut className="w-4 h-4" />
             Sign Out
           </Button>
         </CardContent>

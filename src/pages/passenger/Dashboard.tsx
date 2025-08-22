@@ -17,31 +17,39 @@ const PassengerDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('bookings');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [passengerInfo, setPassengerInfo] = useState({
-    full_name: 'Loading...',
-    profile_photo_url: null,
-    phone: null,
-    email: null
+    full_name: null as string | null,
+    profile_photo_url: null as string | null,
+    phone: null as string | null,
+    email: null as string | null
   });
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   // Check authentication status
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('❌ User not authenticated, redirecting to login');
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          console.log('❌ User not authenticated, redirecting to login');
+          navigate('/passenger/login');
+          return;
+        }
+        console.log('✅ User authenticated:', user.id);
+        setIsAuthenticated(true);
+      } catch (error) {
+        console.error('❌ Auth check error:', error);
         navigate('/passenger/login');
-        return;
       }
-      setIsAuthenticated(true);
     };
 
     checkAuth();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('🔄 Auth state change:', event, session?.user?.id);
       if (!session?.user) {
         navigate('/passenger/login');
       } else {
@@ -58,6 +66,7 @@ const PassengerDashboard: React.FC = () => {
 
     const loadPassengerInfo = async () => {
       try {
+        setLoading(true);
         console.log('🔄 Loading passenger info...');
         
         // Get auth user first
@@ -67,31 +76,65 @@ const PassengerDashboard: React.FC = () => {
           return;
         }
 
-        // Set email as fallback immediately
-        setPassengerInfo(prev => ({
-          ...prev,
-          email: user.email,
-          full_name: user.email // Use email as name temporarily
-        }));
+        console.log('👤 Auth user email:', user.email);
 
-        // Try to get passenger profile
-        const profile = await fetchMyPassengerProfile();
-        if (profile) {
+        // Set email as fallback immediately
+        setPassengerInfo({
+          full_name: user.email,
+          profile_photo_url: null,
+          phone: null,
+          email: user.email
+        });
+
+        // Try to get passenger profile by user_id
+        const { data: passengerProfile, error: passengerError } = await supabase
+          .from('passengers')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+
+        if (passengerError) {
+          console.warn('⚠️ No passenger profile found:', passengerError);
+          
+          // Try to create passenger profile
+          const { data: newProfile, error: createError } = await supabase
+            .from('passengers')
+            .insert({
+              user_id: user.id,
+              full_name: user.email,
+              email: user.email,
+              phone: null,
+              profile_photo_url: null
+            })
+            .select()
+            .single();
+
+          if (createError) {
+            console.error('❌ Error creating passenger profile:', createError);
+            return;
+          }
+
+          console.log('✅ Passenger profile created:', newProfile);
           setPassengerInfo({
-            full_name: profile.full_name || user.email,
-            profile_photo_url: profile.profile_photo_url,
-            phone: profile.phone,
-            email: profile.email || user.email
+            full_name: newProfile.full_name || user.email,
+            profile_photo_url: newProfile.profile_photo_url,
+            phone: newProfile.phone,
+            email: newProfile.email || user.email
           });
-          console.log('✅ Passenger profile loaded successfully');
         } else {
-          console.log('⚠️ No passenger profile found, using auth user email');
+          console.log('✅ Passenger profile loaded:', passengerProfile);
+          setPassengerInfo({
+            full_name: passengerProfile.full_name || user.email,
+            profile_photo_url: passengerProfile.profile_photo_url,
+            phone: passengerProfile.phone,
+            email: passengerProfile.email || user.email
+          });
         }
 
       } catch (error) {
         console.error('❌ Failed to load passenger info:', error);
-        // Don't show error toast for profile loading
-        // Just keep the email as fallback
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -177,10 +220,53 @@ const PassengerDashboard: React.FC = () => {
     checkAuthAndNavigate();
   };
 
+  const handlePhotoUpload = async (file: File) => {
+    try {
+      console.log('📸 Photo upload:', file);
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
+
+      const fileExt = file.name.split('.').pop() || 'jpg';
+      const fileName = `avatar-${Date.now()}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      // Update passenger profile with new photo URL
+      const { error: updateError } = await supabase
+        .from('passengers')
+        .update({ profile_photo_url: publicUrl })
+        .eq('user_id', user.id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      console.log('✅ Photo uploaded successfully');
+      setRefreshTrigger(prev => prev + 1);
+    } catch (error) {
+      console.error('❌ Photo upload error:', error);
+      throw error;
+    }
+  };
+
   const mockCurrentUserId = 'passenger-user-id';
   const mockCurrentUserName = passengerInfo.full_name || 'Passenger User';
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || loading) {
     return <div>Loading...</div>;
   }
 
@@ -190,10 +276,7 @@ const PassengerDashboard: React.FC = () => {
         <ProfileHeader 
           userType="passenger" 
           userProfile={passengerInfo}
-          onPhotoUpload={async (file: File) => {
-            console.log('Photo upload:', file);
-            setRefreshTrigger(prev => prev + 1);
-          }}
+          onPhotoUpload={handlePhotoUpload}
           onProfileUpdate={() => setRefreshTrigger(prev => prev + 1)}
         />
         

@@ -75,7 +75,7 @@ export const useBookingCreation = () => {
       
       throw error;
     } finally {
-      setIsLoading(false);
+      setIsCreating(false);
     }
   };
 

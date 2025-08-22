@@ -37,48 +37,12 @@ export const useMyBookings = () => {
       if (!user?.id) {
         console.log('❌ No authenticated user');
         setBookings([]);
-        setLoading(false);
         return;
       }
 
       console.log('✅ User authenticated for bookings:', user.id);
 
-      // First, get the passenger ID for this user
-      const { data: passengerData, error: passengerError } = await supabase
-        .from('passengers')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (passengerError || !passengerData) {
-        console.log('⚠️ No passenger profile found, creating one...');
-        
-        // Try to create passenger profile using RPC
-        const { data: passengerId, error: createError } = await supabase
-          .rpc('get_or_create_passenger_profile', {
-            p_user_id: user.id
-          });
-
-        if (createError || !passengerId) {
-          console.error('❌ Failed to create passenger profile:', createError);
-          throw new Error('Failed to create passenger profile');
-        }
-
-        console.log('✅ Passenger profile created:', passengerId);
-      }
-
-      // Get bookings using the passenger profile
-      const passengerIdToUse = passengerData?.id || await (async () => {
-        const { data: newPassengerData } = await supabase
-          .from('passengers')
-          .select('id')
-          .eq('user_id', user.id)
-          .single();
-        return newPassengerData?.id;
-      })();
-
-      console.log('🔍 Fetching bookings for passenger ID:', passengerIdToUse);
-
+      // Get bookings directly using user_id (which is stored in passengers table)
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -99,13 +63,78 @@ export const useMyBookings = () => {
           distance_miles,
           drivers!driver_id(
             full_name
+          ),
+          passengers!passenger_id(
+            user_id,
+            full_name
           )
         `)
-        .eq('passenger_id', passengerIdToUse)
+        .eq('passengers.user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) {
         console.error('❌ Error fetching bookings:', error);
+        
+        // Try alternative approach using passengers table join
+        const { data: passengerData } = await supabase
+          .from('passengers')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (passengerData) {
+          const { data: bookingsData, error: bookingsError } = await supabase
+            .from('bookings')
+            .select(`
+              id,
+              booking_code,
+              status,
+              pickup_location,
+              dropoff_location,
+              pickup_time,
+              created_at,
+              updated_at,
+              driver_id,
+              estimated_price,
+              final_price,
+              estimated_price_cents,
+              final_price_cents,
+              vehicle_type,
+              distance_miles,
+              drivers!driver_id(
+                full_name
+              )
+            `)
+            .eq('passenger_id', passengerData.id)
+            .order('created_at', { ascending: false });
+
+          if (bookingsError) {
+            throw bookingsError;
+          }
+
+          const formattedBookings: MyBooking[] = (bookingsData || []).map(booking => ({
+            id: booking.id,
+            booking_code: booking.booking_code,
+            status: booking.status,
+            pickup_location: booking.pickup_location,
+            dropoff_location: booking.dropoff_location,
+            pickup_time: booking.pickup_time,
+            created_at: booking.created_at,
+            updated_at: booking.updated_at,
+            driver_id: booking.driver_id,
+            driver_name: booking.drivers?.full_name,
+            estimated_price: booking.estimated_price,
+            final_price: booking.final_price,
+            price_cents: booking.final_price_cents || booking.estimated_price_cents,
+            vehicle_type: booking.vehicle_type,
+            distance_miles: booking.distance_miles
+          }));
+
+          console.log('✅ Bookings fetched with alternative approach:', formattedBookings.length);
+          setBookings(formattedBookings);
+          return;
+        }
+        
         throw error;
       }
 
