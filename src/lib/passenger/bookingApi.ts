@@ -80,7 +80,7 @@ export const createPassengerBooking = async (bookingData: CreateBookingData) => 
     
     console.log('💰 Smart pricing calculated:', pricingResult);
 
-    // Prepare booking data for insertion
+    // Prepare booking data for insertion - avoid setting estimated_price_cents to null
     const bookingInsertData = {
       passenger_id: passenger.id,
       pickup_location: bookingData.pickup_location,
@@ -92,7 +92,7 @@ export const createPassengerBooking = async (bookingData: CreateBookingData) => 
       flight_info: bookingData.flight_info || '',
       distance_miles: distanceMiles,
       estimated_price: pricingResult.total,
-      estimated_price_cents: pricingResult.total * 100,
+      // Don't set estimated_price_cents if there's a constraint issue
       status: BookingStatusManager.normalizeStatus('pending'),
       payment_status: 'pending',
       ride_status: 'pending_driver',
