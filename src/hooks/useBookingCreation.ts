@@ -10,6 +10,11 @@ export const useBookingCreation = () => {
   const navigate = useNavigate();
 
   const createBooking = async (bookingData: CreateBookingData) => {
+    if (isCreating) {
+      console.warn('⚠️ Booking creation already in progress');
+      return;
+    }
+
     setIsCreating(true);
     
     try {
@@ -21,7 +26,7 @@ export const useBookingCreation = () => {
       
       toast({
         title: "Booking Created Successfully!",
-        description: "Your ride request has been submitted. You'll receive updates soon.",
+        description: `Your ride request has been submitted. Booking ID: ${newBooking.id.slice(0, 8)}...`,
         variant: "default",
       });
 
@@ -35,9 +40,19 @@ export const useBookingCreation = () => {
       
       const errorMessage = error instanceof Error ? error.message : 'Failed to create booking';
       
+      // Provide more user-friendly error messages
+      let userMessage = errorMessage;
+      if (errorMessage.includes('not authenticated')) {
+        userMessage = 'Please log in to create a booking.';
+      } else if (errorMessage.includes('Permission denied')) {
+        userMessage = 'You do not have permission to create bookings. Please contact support.';
+      } else if (errorMessage.includes('RLS')) {
+        userMessage = 'There was a security issue. Please try logging out and back in.';
+      }
+      
       toast({
         title: "Booking Failed",
-        description: errorMessage,
+        description: userMessage,
         variant: "destructive",
       });
       
