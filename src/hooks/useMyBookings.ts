@@ -82,7 +82,7 @@ export const useMyBookings = () => {
             full_name,
             email
           ),
-          drivers(
+          drivers!driver_id(
             full_name,
             phone
           )
