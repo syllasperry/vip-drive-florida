@@ -58,44 +58,7 @@ export const useMyBookings = () => {
 
       console.log('✅ User authenticated:', user.id, user.email);
 
-      // First, try to find existing passenger
-      let { data: passengerData, error: passengerError } = await supabase
-        .from('passengers')
-        .select('id, full_name, email')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (passengerError && passengerError.code !== 'PGRST116') {
-        console.error('❌ Error fetching passenger:', passengerError);
-        throw new Error(`Passenger fetch error: ${passengerError.message}`);
-      }
-
-      // Create passenger if doesn't exist
-      if (!passengerData) {
-        console.log('⚠️ No passenger profile found, creating one...');
-        
-        const { data: newPassenger, error: createError } = await supabase
-          .from('passengers')
-          .insert({
-            user_id: user.id,
-            full_name: user.email?.split('@')[0] || 'User',
-            email: user.email
-          })
-          .select('id, full_name, email')
-          .single();
-
-        if (createError) {
-          console.error('❌ Error creating passenger:', createError);
-          throw new Error(`Passenger creation error: ${createError.message}`);
-        }
-
-        passengerData = newPassenger;
-        console.log('✅ Passenger profile created:', passengerData);
-      }
-
-      console.log('✅ Using passenger:', passengerData);
-
-      // Fetch bookings with all necessary joins
+      // Fetch bookings directly using JOIN with passengers table to filter by user_id
       const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
@@ -114,12 +77,17 @@ export const useMyBookings = () => {
           final_price_cents,
           vehicle_type,
           distance_miles,
-          drivers!driver_id(
+          passengers!inner(
+            user_id,
+            full_name,
+            email
+          ),
+          drivers(
             full_name,
             phone
           )
         `)
-        .eq('passenger_id', passengerData.id)
+        .eq('passengers.user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (bookingsError) {
