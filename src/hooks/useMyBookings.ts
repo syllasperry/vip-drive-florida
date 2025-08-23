@@ -26,20 +26,17 @@ export const useMyBookings = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Use refs to control fetch operations
   const mountedRef = useRef(true);
   const fetchingRef = useRef(false);
   const lastFetchRef = useRef(0);
 
   const fetchBookings = async (isManualRefetch = false) => {
-    // Debounce: prevent multiple calls within 1 second
     const now = Date.now();
     if (!isManualRefetch && now - lastFetchRef.current < 1000) {
       console.log('🚫 Skipping fetch - too soon since last fetch');
       return;
     }
 
-    // Prevent multiple simultaneous fetches
     if (fetchingRef.current) {
       console.log('🚫 Skipping fetch - already in progress');
       return;
@@ -67,8 +64,10 @@ export const useMyBookings = () => {
         return;
       }
 
-      // Get passenger record first
-      const { data: passengerData, error: passengerError } = await supabase
+      console.log('✅ User authenticated:', user.id);
+
+      // Get or create passenger record
+      let { data: passengerData, error: passengerError } = await supabase
         .from('passengers')
         .select('id')
         .eq('user_id', user.id)
@@ -82,12 +81,11 @@ export const useMyBookings = () => {
       if (!passengerData) {
         console.log('⚠️ No passenger profile found, creating one...');
         
-        // Create passenger profile
         const { data: newPassenger, error: createError } = await supabase
           .from('passengers')
           .insert({
             user_id: user.id,
-            full_name: user.email,
+            full_name: user.email?.split('@')[0] || 'User',
             email: user.email
           })
           .select('id')
@@ -98,16 +96,11 @@ export const useMyBookings = () => {
           throw createError;
         }
 
-        // Use the newly created passenger ID
-        if (!mountedRef.current) return;
-
-        console.log('✅ Passenger profile created');
-        // Set empty bookings for new user and finish loading
-        setBookings([]);
-        setError(null);
-        setLoading(false);
-        return;
+        passengerData = newPassenger;
+        console.log('✅ Passenger profile created:', passengerData.id);
       }
+
+      console.log('✅ Using passenger ID:', passengerData.id);
 
       // Fetch bookings using passenger_id
       const { data, error } = await supabase
@@ -144,6 +137,7 @@ export const useMyBookings = () => {
       if (!mountedRef.current) return;
 
       console.log('✅ Bookings fetched successfully:', data?.length || 0);
+      console.log('📊 Bookings data:', data);
 
       const formattedBookings: MyBooking[] = (data || []).map(booking => ({
         id: booking.id,
@@ -167,6 +161,7 @@ export const useMyBookings = () => {
       if (mountedRef.current) {
         setBookings(formattedBookings);
         setError(null);
+        console.log('✅ State updated with bookings:', formattedBookings.length);
       }
     } catch (err) {
       console.error('❌ Error in fetchBookings:', err);
@@ -188,7 +183,7 @@ export const useMyBookings = () => {
     // Initial fetch
     fetchBookings();
 
-    // Set up real-time subscription with debouncing
+    // Set up real-time subscription
     let debounceTimeout: NodeJS.Timeout;
     
     const channel = supabase
@@ -203,13 +198,12 @@ export const useMyBookings = () => {
         (payload) => {
           console.log('📡 Booking realtime update received:', payload);
           
-          // Debounce rapid updates
           clearTimeout(debounceTimeout);
           debounceTimeout = setTimeout(() => {
             if (mountedRef.current && !fetchingRef.current) {
               fetchBookings();
             }
-          }, 2000); // 2 second debounce for real-time updates
+          }, 1000);
         }
       )
       .subscribe((status) => {
@@ -223,13 +217,13 @@ export const useMyBookings = () => {
       supabase.removeChannel(channel);
       console.log('🧹 Cleaning up passenger bookings subscription');
     };
-  }, []); // Empty dependency array - only run once
+  }, []);
 
   const refetch = async () => {
     if (mountedRef.current) {
       console.log('🔄 Manual refetch triggered');
       setLoading(true);
-      await fetchBookings(true); // Pass true to bypass debouncing for manual refetch
+      await fetchBookings(true);
     }
   };
 

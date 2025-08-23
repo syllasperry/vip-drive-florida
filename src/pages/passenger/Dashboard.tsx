@@ -26,11 +26,9 @@ const PassengerDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // Use refs to prevent multiple simultaneous operations
   const initializingRef = useRef(false);
   const mountedRef = useRef(true);
 
-  // Memoized handlers
   const handleUpdate = useCallback(() => {
     console.log('🔄 Manual refresh triggered');
     setRefreshTrigger(prev => prev + 1);
@@ -91,13 +89,11 @@ const PassengerDashboard: React.FC = () => {
     }
   }, [handleUpdate, toast]);
 
-  // Single initialization effect
   useEffect(() => {
     let mounted = true;
     mountedRef.current = true;
 
     const initializeDashboard = async () => {
-      // Prevent multiple simultaneous initializations
       if (initializingRef.current) {
         console.log('🚫 Already initializing, skipping...');
         return;
@@ -108,16 +104,8 @@ const PassengerDashboard: React.FC = () => {
       try {
         console.log('🔄 Initializing passenger dashboard...');
         
-        // Check authentication with timeout
-        const authPromise = supabase.auth.getUser();
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Auth timeout')), 5000)
-        );
-
-        const { data: { user }, error: authError } = await Promise.race([
-          authPromise,
-          timeoutPromise
-        ]) as any;
+        // Check authentication
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
         
         if (authError || !user) {
           console.log('❌ User not authenticated, redirecting...');
@@ -137,21 +125,12 @@ const PassengerDashboard: React.FC = () => {
           }));
         }
 
-        // Get passenger profile with timeout
-        const profilePromise = supabase
+        // Get or create passenger profile
+        let { data: passengerProfile, error: passengerError } = await supabase
           .from('passengers')
           .select('*')
           .eq('user_id', user.id)
           .maybeSingle();
-
-        const { data: passengerProfile, error: passengerError } = await Promise.race([
-          profilePromise,
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Profile timeout')), 5000)
-          )
-        ]) as any;
-
-        if (!mounted) return;
 
         if (passengerError && passengerError.code !== 'PGRST116') {
           console.error('❌ Error fetching passenger profile:', passengerError);
@@ -159,12 +138,13 @@ const PassengerDashboard: React.FC = () => {
         }
 
         if (!passengerProfile) {
-          // Create profile if it doesn't exist
+          console.log('⚠️ No passenger profile found, creating one...');
+          
           const { data: newProfile, error: createError } = await supabase
             .from('passengers')
             .insert({
               user_id: user.id,
-              full_name: user.email,
+              full_name: user.email?.split('@')[0] || 'User',
               email: user.email,
               phone: null,
               profile_photo_url: null
@@ -177,24 +157,17 @@ const PassengerDashboard: React.FC = () => {
             throw createError;
           }
 
-          if (mounted) {
-            setPassengerInfo({
-              full_name: newProfile.full_name || user.email,
-              profile_photo_url: newProfile.profile_photo_url,
-              phone: newProfile.phone,
-              email: newProfile.email || user.email
-            });
-          }
-        } else if (mounted) {
+          passengerProfile = newProfile;
+          console.log('✅ Passenger profile created');
+        }
+
+        if (mounted) {
           setPassengerInfo({
-            full_name: passengerProfile.full_name || user.email,
+            full_name: passengerProfile.full_name || user.email?.split('@')[0] || 'User',
             profile_photo_url: passengerProfile.profile_photo_url,
             phone: passengerProfile.phone,
             email: passengerProfile.email || user.email
           });
-        }
-
-        if (mounted) {
           setLoading(false);
           setError(null);
           console.log('✅ Dashboard initialized successfully');
@@ -203,11 +176,7 @@ const PassengerDashboard: React.FC = () => {
       } catch (err) {
         console.error('❌ Dashboard initialization error:', err);
         if (mounted) {
-          if (err instanceof Error && err.message.includes('timeout')) {
-            setError('Loading timeout. Please check your internet connection.');
-          } else {
-            setError(err instanceof Error ? err.message : 'Failed to load dashboard');
-          }
+          setError(err instanceof Error ? err.message : 'Failed to load dashboard');
           setLoading(false);
         }
       } finally {
@@ -215,7 +184,6 @@ const PassengerDashboard: React.FC = () => {
       }
     };
 
-    // Set maximum loading timeout
     const loadingTimeout = setTimeout(() => {
       if (mounted && loading && !error) {
         console.warn('⚠️ Dashboard loading timeout after 10 seconds');
@@ -226,7 +194,6 @@ const PassengerDashboard: React.FC = () => {
 
     initializeDashboard();
 
-    // Auth state listener with cleanup
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
       
@@ -244,9 +211,8 @@ const PassengerDashboard: React.FC = () => {
       initializingRef.current = false;
       console.log('🧹 Dashboard cleanup completed');
     };
-  }, []); // Empty dependency array - only run once
+  }, [navigate]);
 
-  // Loading state with better UX
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -261,7 +227,6 @@ const PassengerDashboard: React.FC = () => {
     );
   }
 
-  // Error state with retry option
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
