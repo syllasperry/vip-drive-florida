@@ -44,6 +44,13 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
   const [activeTab, setActiveTab] = useState('all');
   const [selectedBooking, setSelectedBooking] = useState<MyBooking | null>(null);
 
+  console.log('🎯 PassengerBookingsList render:', { 
+    bookingsCount: bookings.length, 
+    loading, 
+    error,
+    bookings: bookings.map(b => ({ id: b.id, status: b.status, pickup: b.pickup_location }))
+  });
+
   // Trigger parent update when bookings change
   React.useEffect(() => {
     if (onUpdate) {
@@ -66,10 +73,8 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
     return bookings;
   };
 
-  console.log('📊 PassengerBookingsList render - Loading:', loading, 'Error:', error, 'Bookings count:', bookings.length);
-
   if (loading) {
-    console.log('🔄 Showing loading skeletons...');
+    console.log('🔄 Showing loading state...');
     return (
       <div className="space-y-4">
         {[1, 2, 3].map((i) => (
@@ -111,7 +116,7 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
   }
 
   const filteredBookings = filterBookings(bookings, activeTab);
-  console.log('📊 Filtered bookings for tab', activeTab, ':', filteredBookings.length);
+  console.log('📊 Filtered bookings for display:', filteredBookings.length, 'for tab:', activeTab);
 
   return (
     <div className="space-y-6">
@@ -153,7 +158,13 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
           ) : (
             <div className="space-y-4">
               {filteredBookings.map((booking) => {
-                console.log('📊 Rendering booking:', booking.id, booking);
+                console.log('🎯 Rendering booking card:', booking.id, {
+                  pickup: booking.pickup_location,
+                  dropoff: booking.dropoff_location,
+                  status: booking.status,
+                  price: booking.price_cents
+                });
+                
                 return (
                   <Card 
                     key={booking.id} 
