@@ -3,11 +3,12 @@ import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, MapPin, User, Car, AlertCircle } from "lucide-react";
+import { Clock, MapPin, User, Car, AlertCircle, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { useMyBookings } from '@/hooks/useMyBookings';
 import type { MyBooking } from '@/hooks/useMyBookings';
 import { PassengerStatusTimeline } from '@/components/dashboard/PassengerStatusTimeline';
+import { Button } from "@/components/ui/button";
 
 interface PassengerBookingsListProps {
   onUpdate?: () => void;
@@ -65,7 +66,10 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
     return bookings;
   };
 
+  console.log('📊 PassengerBookingsList render - Loading:', loading, 'Error:', error, 'Bookings count:', bookings.length);
+
   if (loading) {
+    console.log('🔄 Showing loading skeletons...');
     return (
       <div className="space-y-4">
         {[1, 2, 3].map((i) => (
@@ -86,21 +90,28 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
   }
 
   if (error) {
+    console.log('❌ Showing error state:', error);
     return (
       <div className="text-center py-8">
         <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
         <p className="text-red-600 mb-2">{error}</p>
-        <button 
-          onClick={() => refetch()}
-          className="text-blue-600 hover:underline"
+        <Button 
+          onClick={() => {
+            console.log('🔄 Manual retry clicked');
+            refetch();
+          }}
+          variant="outline"
+          className="gap-2"
         >
+          <RefreshCw className="h-4 w-4" />
           Try again
-        </button>
+        </Button>
       </div>
     );
   }
 
   const filteredBookings = filterBookings(bookings, activeTab);
+  console.log('📊 Filtered bookings for tab', activeTab, ':', filteredBookings.length);
 
   return (
     <div className="space-y-6">
@@ -125,66 +136,82 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
               <p className="text-gray-500 text-sm">
                 {activeTab === 'all' ? 'Book your first ride to get started!' : ''}
               </p>
+              {bookings.length === 0 && (
+                <Button 
+                  onClick={() => {
+                    console.log('🔄 Refresh bookings clicked');
+                    refetch();
+                  }}
+                  variant="outline"
+                  className="mt-4 gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Refresh
+                </Button>
+              )}
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredBookings.map((booking) => (
-                <Card 
-                  key={booking.id} 
-                  className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => setSelectedBooking(selectedBooking?.id === booking.id ? null : booking)}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-medium">
-                        {booking.booking_code || `Booking ${booking.id.slice(0, 8)}`}
-                      </CardTitle>
-                      <Badge className={getStatusColor(booking.status)}>
-                        {booking.status}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="space-y-3">
-                      <div className="flex items-center space-x-2 text-sm text-gray-600">
-                        <Clock className="h-4 w-4" />
-                        <span>{format(new Date(booking.pickup_time), "MMM d, h:mm a")}</span>
+              {filteredBookings.map((booking) => {
+                console.log('📊 Rendering booking:', booking.id, booking);
+                return (
+                  <Card 
+                    key={booking.id} 
+                    className="cursor-pointer hover:shadow-md transition-shadow"
+                    onClick={() => setSelectedBooking(selectedBooking?.id === booking.id ? null : booking)}
+                  >
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-medium">
+                          {booking.booking_code || `Booking ${booking.id.slice(0, 8)}`}
+                        </CardTitle>
+                        <Badge className={getStatusColor(booking.status)}>
+                          {booking.status}
+                        </Badge>
                       </div>
-                      
-                      <div className="space-y-2">
-                        <div className="flex items-start space-x-2 text-sm">
-                          <MapPin className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                          <span className="text-gray-900">{booking.pickup_location}</span>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-2 text-sm text-gray-600">
+                          <Clock className="h-4 w-4" />
+                          <span>{format(new Date(booking.pickup_time), "MMM d, h:mm a")}</span>
                         </div>
-                        <div className="flex items-start space-x-2 text-sm">
-                          <MapPin className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
-                          <span className="text-gray-900">{booking.dropoff_location}</span>
+                        
+                        <div className="space-y-2">
+                          <div className="flex items-start space-x-2 text-sm">
+                            <MapPin className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                            <span className="text-gray-900">{booking.pickup_location}</span>
+                          </div>
+                          <div className="flex items-start space-x-2 text-sm">
+                            <MapPin className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+                            <span className="text-gray-900">{booking.dropoff_location}</span>
+                          </div>
                         </div>
-                      </div>
 
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center space-x-2">
-                          <User className="h-4 w-4 text-gray-400" />
-                          <span className="text-gray-600">
-                            {booking.driver_name || 'Driver TBD'}
-                          </span>
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center space-x-2">
+                            <User className="h-4 w-4 text-gray-400" />
+                            <span className="text-gray-600">
+                              {booking.driver_name || 'Driver TBD'}
+                            </span>
+                          </div>
+                          <div className="font-semibold text-gray-900">
+                            {formatPrice(booking.price_cents, 'USD')}
+                          </div>
                         </div>
-                        <div className="font-semibold text-gray-900">
-                          {formatPrice(booking.price_cents, 'USD')}
-                        </div>
-                      </div>
 
-                      {selectedBooking?.id === booking.id && (
-                        <div className="mt-4 pt-4 border-t">
-                          <PassengerStatusTimeline
-                            booking={booking as any}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                        {selectedBooking?.id === booking.id && (
+                          <div className="mt-4 pt-4 border-t">
+                            <PassengerStatusTimeline
+                              booking={booking as any}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </TabsContent>
