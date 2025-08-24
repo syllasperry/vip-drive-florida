@@ -98,7 +98,7 @@ export const ReviewCarousel: React.FC = () => {
 };
 
 const ReviewCard: React.FC<{ review: any }> = ({ review }) => {
-  const firstName = review.passenger_name?.split(' ')[0] || 'Cliente';
+  const firstName = review.passenger_name?.split(' ')[0] || 'Client';
   
   return (
     <Card className="h-full bg-gradient-to-br from-background to-muted/20 border-border/50 shadow-lg hover:shadow-xl transition-shadow">
@@ -136,7 +136,7 @@ const ReviewCard: React.FC<{ review: any }> = ({ review }) => {
         
         <div className="mt-4 pt-4 border-t border-border/30">
           <p className="text-xs text-muted-foreground">
-            VIP Chauffeur Service • {new Date(review.created_at).toLocaleDateString('pt-BR')}
+            VIP Chauffeur Service • {new Date(review.created_at).toLocaleDateString('en-US')}
           </p>
         </div>
       </CardContent>
