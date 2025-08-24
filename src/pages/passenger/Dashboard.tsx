@@ -14,6 +14,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useMyBookings } from '@/hooks/useMyBookings';
 
+interface PassengerProfile {
+  first_name: string;
+  last_name: string;
+  phone: string;
+  email: string;
+  avatarUrl: string | null;
+}
+
 export default function PassengerDashboard() {
   const navigate = useNavigate();
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -21,6 +29,7 @@ export default function PassengerDashboard() {
   const [authLoading, setAuthLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [passengerProfile, setPassengerProfile] = useState<PassengerProfile | null>(null);
   const { bookings } = useMyBookings();
   const MAX_RETRIES = 3;
 
@@ -82,6 +91,18 @@ export default function PassengerDashboard() {
         ...user,
         passenger_profile: passenger
       });
+
+      // Set passenger profile for modal
+      if (passenger) {
+        const nameParts = passenger.full_name?.split(' ') || [''];
+        setPassengerProfile({
+          first_name: nameParts[0] || '',
+          last_name: nameParts.slice(1).join(' ') || '',
+          phone: passenger.phone || '',
+          email: passenger.email || user.email || '',
+          avatarUrl: passenger.profile_photo_url || null
+        });
+      }
       
       console.log('✅ Profile loaded successfully');
       setRetryCount(0); // Reset retry count on success
@@ -109,6 +130,12 @@ export default function PassengerDashboard() {
   const handleRetry = () => {
     setAuthLoading(true);
     setRetryCount(0);
+    fetchUserProfile(true);
+  };
+
+  const handleProfileUpdate = (updatedProfile: PassengerProfile) => {
+    setPassengerProfile(updatedProfile);
+    // Refresh the user profile to get latest data
     fetchUserProfile(true);
   };
 
@@ -218,10 +245,12 @@ export default function PassengerDashboard() {
         </Tabs>
 
         {/* Profile Settings Modal */}
-        {showProfileModal && (
+        {showProfileModal && passengerProfile && (
           <ProfileSettingsModal
             isOpen={showProfileModal}
             onClose={() => setShowProfileModal(false)}
+            profile={passengerProfile}
+            onProfileUpdate={handleProfileUpdate}
           />
         )}
       </div>

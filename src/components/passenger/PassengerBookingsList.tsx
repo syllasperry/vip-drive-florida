@@ -22,14 +22,16 @@ export const PassengerBookingsList = () => {
     switch (status?.toLowerCase()) {
       case 'pending':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'offer_sent':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'accepted':
       case 'confirmed':
       case 'all_set':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-green-100 text-green-800 border-green-200';
       case 'in_progress':
         return 'bg-purple-100 text-purple-800 border-purple-200';
       case 'completed':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'bg-emerald-100 text-emerald-800 border-emerald-200';
       case 'cancelled':
         return 'bg-red-100 text-red-800 border-red-200';
       case 'payment_pending':
@@ -41,16 +43,28 @@ export const PassengerBookingsList = () => {
 
   const getStatusLabel = (status: string) => {
     switch (status?.toLowerCase()) {
-      case 'pending': return 'Pending';
+      case 'pending': return 'Request Received';
+      case 'offer_sent': return 'Offer Sent';
       case 'accepted': return 'Accepted';
       case 'confirmed': return 'Confirmed';
       case 'all_set': return 'All Set';
       case 'in_progress': return 'In Progress';
       case 'completed': return 'Completed';
       case 'cancelled': return 'Cancelled';
-      case 'payment_pending': return 'Payment Pending';
+      case 'payment_pending': return 'Awaiting Payment';
       default: return status || 'Unknown';
     }
+  };
+
+  const getDriverDisplay = (booking: any) => {
+    if (!booking.driver_id || !booking.driver_name) {
+      return 'Driver to be assigned';
+    }
+    return booking.driver_name;
+  };
+
+  const canMessageDriver = (booking: any) => {
+    return booking.driver_id && booking.driver_name && ['offer_sent', 'all_set', 'in_progress'].includes(booking.status?.toLowerCase());
   };
 
   const handlePaymentClick = (booking: any) => {
@@ -161,7 +175,7 @@ export const PassengerBookingsList = () => {
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4 text-gray-400" />
                   <span className="text-sm text-gray-600">
-                    Driver: {booking.driver_name || 'Driver to be assigned'}
+                    Driver: {getDriverDisplay(booking)}
                   </span>
                 </div>
 
@@ -183,20 +197,20 @@ export const PassengerBookingsList = () => {
 
               {/* Action Buttons */}
               <div className="flex gap-2 pt-4 border-t border-gray-100">
-                {booking.driver_id && (
+                {canMessageDriver(booking) && (
                   <Button variant="outline" size="sm" className="gap-1">
                     <MessageCircle className="h-3 w-3" />
                     Message Driver
                   </Button>
                 )}
-                {booking.status === 'payment_pending' && (
+                {booking.status === 'offer_sent' && (
                   <Button 
                     size="sm" 
                     className="gap-1"
                     onClick={() => handlePaymentClick(booking)}
                   >
                     <CreditCard className="h-3 w-3" />
-                    Pay Now
+                    Review Offer
                   </Button>
                 )}
               </div>
