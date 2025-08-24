@@ -51,7 +51,7 @@ export async function isDispatcher(): Promise<boolean> {
 export async function isDispatcherEmail(email: string): Promise<boolean> {
   try {
     const { data, error } = await supabase.rpc('is_dispatcher_email', {
-      email_to_check: email
+      p_email: email
     });
 
     if (error) {
