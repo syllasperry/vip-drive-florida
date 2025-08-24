@@ -127,7 +127,7 @@ const BookingForm: React.FC = () => {
                 <User className="h-5 w-5 text-blue-600" />
                 <span>Passenger Details</span>
               </CardTitle>
-            </CardContent>
+            </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
