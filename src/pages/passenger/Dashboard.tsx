@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, User, Settings, MessageSquare, CreditCard, AlertCircle, RefreshCw } from 'lucide-react';
-import { PassengerBookingsList } from '@/components/passenger/PassengerBookingsList';
+import PassengerBookingsList from '@/components/passenger/PassengerBookingsList';
 import { ProfileSettingsModal } from '@/components/passenger/ProfileSettingsModal';
 import { PassengerPreferencesCard } from '@/components/passenger/PassengerPreferencesCard';
 import { MessagesTab } from '@/components/passenger/MessagesTab';

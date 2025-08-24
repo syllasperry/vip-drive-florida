@@ -4,7 +4,7 @@ import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 import { useReviewScheduler } from '@/hooks/useReviewScheduler';
 import { useSmartPriceVisibility } from '@/hooks/useSmartPriceVisibility';
 import { useMyBookings } from '@/hooks/useMyBookings';
-import { PassengerBookingsList } from './PassengerBookingsList';
+import PassengerBookingsList from './PassengerBookingsList';
 
 interface EnhancedPassengerDashboardProps {
   userId: string;
