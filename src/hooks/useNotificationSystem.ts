@@ -185,18 +185,35 @@ export const useNotificationSystem = (userId: string, userType: 'passenger' | 'd
   }, [userId, preferences]);
 
   const handleStatusChange = async (booking: any, oldBooking: any) => {
-    // Get booking participants with corrected query
-    const { data: bookingData } = await supabase
-      .from('bookings')
-      .select(`
-        *,
-        passengers(*),
-        drivers(*)
-      `)
-      .eq('id', booking.id)
-      .single();
+    // Get booking participants with separate queries to avoid relationship ambiguity
+    let driverName = 'Your driver';
+    let passengerName = 'Passenger';
 
-    if (!bookingData) return;
+    // Get driver info if driver_id exists
+    if (booking.driver_id) {
+      const { data: driverData } = await supabase
+        .from('drivers')
+        .select('full_name')
+        .eq('id', booking.driver_id)
+        .single();
+      
+      if (driverData) {
+        driverName = driverData.full_name || 'Your driver';
+      }
+    }
+
+    // Get passenger info if passenger_id exists
+    if (booking.passenger_id) {
+      const { data: passengerData } = await supabase
+        .from('passengers')
+        .select('full_name')
+        .eq('id', booking.passenger_id)
+        .single();
+      
+      if (passengerData) {
+        passengerName = passengerData.full_name || 'Passenger';
+      }
+    }
 
     // Offer sent (SmartPrice OFF)
     if (booking.status === 'offer_sent' && oldBooking?.status !== 'offer_sent') {
@@ -227,15 +244,6 @@ export const useNotificationSystem = (userId: string, userType: 'passenger' | 'd
     // Payment confirmed & All Set
     if (booking.payment_confirmation_status === 'all_set' && 
         oldBooking?.payment_confirmation_status !== 'all_set') {
-      
-      // Get the driver and passenger info safely
-      const driverName = Array.isArray(bookingData.drivers) 
-        ? bookingData.drivers[0]?.full_name || 'Your driver'
-        : bookingData.drivers?.full_name || 'Your driver';
-      
-      const passengerName = Array.isArray(bookingData.passengers)
-        ? bookingData.passengers[0]?.full_name || 'Passenger'
-        : bookingData.passengers?.full_name || 'Passenger';
       
       // Notify passenger
       await sendNotification({
