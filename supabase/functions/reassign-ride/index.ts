@@ -31,6 +31,43 @@ serve(async (req) => {
       );
     }
 
+    // SECURITY FIX: Verify dispatcher authorization using database role check
+    const authHeader = req.headers.get('Authorization')?.replace('Bearer ', '');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authorization required' }),
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    const { data: { user } } = await supabase.auth.getUser(authHeader);
+    if (!user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid authorization' }),
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Check if user is a dispatcher using the secure database function
+    const { data: isDispatcherResult, error: roleError } = await supabase.rpc('is_dispatcher');
+    
+    if (roleError || !isDispatcherResult) {
+      console.warn('Unauthorized reassign attempt by user:', user.email);
+      return new Response(
+        JSON.stringify({ error: 'Dispatcher access required' }),
+        { 
+          status: 403, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
     console.log('🔄 Reassign function called for booking:', bookingId);
     console.log('[AUTO-ASSIGN GUARD] blocked - reassignment function disabled for manual dispatcher control');
 

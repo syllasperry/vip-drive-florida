@@ -22,20 +22,29 @@ serve(async (req) => {
       );
     }
 
-    // Get Google Maps API key from Supabase secrets
+    // Get Google Maps API key from Supabase secrets (NOT hardcoded)
     const mapsApiKey = Deno.env.get('GOOGLE_MAPS_API_KEY');
     
     if (!mapsApiKey) {
-      console.error('❌ Google Maps API key not configured');
+      console.error('❌ Google Maps API key not configured in Supabase secrets');
       return new Response(
         JSON.stringify({ error: 'Maps service not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Proxy request to Google Places API
+    // Validate and sanitize query to prevent injection attacks
+    const sanitizedQuery = query.replace(/[^\w\s,-]/g, '').trim();
+    if (sanitizedQuery.length < 2) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid query format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Proxy request to Google Places API with rate limiting
     const mapsResponse = await fetch(
-      `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${mapsApiKey}`,
+      `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(sanitizedQuery)}&key=${mapsApiKey}`,
       {
         method: 'GET',
         headers: {
@@ -43,6 +52,10 @@ serve(async (req) => {
         },
       }
     );
+
+    if (!mapsResponse.ok) {
+      throw new Error(`Google Maps API error: ${mapsResponse.status}`);
+    }
 
     const data = await mapsResponse.json();
     

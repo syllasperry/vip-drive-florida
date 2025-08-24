@@ -9,6 +9,7 @@ import { DispatcherMessaging } from "@/components/dispatcher/DispatcherMessaging
 import { DispatcherSettings } from "@/components/dispatcher/DispatcherSettings";
 import { useToast } from "@/hooks/use-toast";
 import { getDispatcherBookings } from "@/lib/api/bookings";
+import { isDispatcher } from "@/lib/auth/roleCheck";
 
 const DispatcherDashboard = () => {
   const [activeTab, setActiveTab] = useState("bookings");
@@ -17,6 +18,7 @@ const DispatcherDashboard = () => {
   const [bookings, setBookings] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -28,20 +30,30 @@ const DispatcherDashboard = () => {
         return;
       }
       
-      // Verify dispatcher access
-      if (session.user.email !== 'syllasperry@gmail.com') {
+      // SECURITY FIX: Use role-based authorization instead of hardcoded email
+      const hasDispatcherRole = await isDispatcher();
+      if (!hasDispatcherRole) {
+        console.warn('Unauthorized dispatcher access attempt:', session.user.email);
+        toast({
+          title: "Access Denied",
+          description: "You don't have dispatcher privileges.",
+          variant: "destructive",
+        });
         navigate("/passenger/dashboard");
         return;
       }
       
       setUser(session.user);
+      setAuthorized(true);
     };
 
     checkAuth();
-  }, [navigate]);
+  }, [navigate, toast]);
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!authorized) return;
+      
       try {
         setLoading(true);
         console.log('[DISPATCHER DASHBOARD] Fetching data...');
@@ -83,10 +95,8 @@ const DispatcherDashboard = () => {
       }
     };
 
-    if (user) {
-      fetchData();
-    }
-  }, [user, toast]);
+    fetchData();
+  }, [authorized, toast]);
 
   useEffect(() => {
     // Subscribe to booking changes
@@ -195,12 +205,14 @@ const DispatcherDashboard = () => {
     }
   };
 
-  if (!user) {
+  if (!user || !authorized) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading dispatcher dashboard...</p>
+          <p className="mt-4 text-muted-foreground">
+            {!user ? "Loading dispatcher dashboard..." : "Verifying permissions..."}
+          </p>
         </div>
       </div>
     );

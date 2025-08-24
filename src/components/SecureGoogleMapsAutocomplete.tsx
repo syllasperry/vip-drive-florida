@@ -1,81 +1,142 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
+import { supabase } from '@/integrations/supabase/client';
+import { sanitizeLocation, checkRateLimit } from '@/lib/security/inputSanitizer';
 
-export interface SecureGoogleMapsAutocompleteProps {
-  value: string;
-  onSelect: (value: string) => void;
+interface SecureGoogleMapsAutocompleteProps {
+  onPlaceSelected: (place: { description: string; place_id?: string }) => void;
   placeholder?: string;
-  id?: string;
-  required?: boolean;
+  value?: string;
   className?: string;
 }
 
+interface Prediction {
+  description: string;
+  place_id: string;
+}
+
 export const SecureGoogleMapsAutocomplete: React.FC<SecureGoogleMapsAutocompleteProps> = ({
-  value,
-  onSelect,
-  placeholder = "Enter address",
-  id,
-  required = false,
+  onPlaceSelected,
+  placeholder = "Enter location...",
+  value = "",
   className
 }) => {
   const [inputValue, setInputValue] = useState(value);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [loading, setLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const debounceRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
     setInputValue(value);
   }, [value]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    setInputValue(newValue);
-    
-    // For now, just call onSelect directly
-    // In a real implementation, this would use the secure proxy
-    onSelect(newValue);
-    
-    // Mock suggestions for demonstration
-    if (newValue.length > 2) {
-      setSuggestions([
-        `${newValue} - Street 1`,
-        `${newValue} - Street 2`,
-        `${newValue} - Avenue`
-      ]);
-      setShowSuggestions(true);
-    } else {
-      setSuggestions([]);
-      setShowSuggestions(false);
+  const fetchPredictions = async (query: string) => {
+    if (query.length < 3) {
+      setPredictions([]);
+      return;
+    }
+
+    // Rate limiting check
+    const clientIP = 'user'; // In production, you'd get actual IP
+    if (!checkRateLimit(`maps-${clientIP}`, 20, 60000)) {
+      console.warn('Rate limit exceeded for maps requests');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Sanitize input before sending to proxy
+      const sanitizedQuery = sanitizeLocation(query);
+      
+      // Use the secure proxy instead of direct Google Maps API
+      const { data, error } = await supabase.functions.invoke('secure-maps-proxy', {
+        body: JSON.stringify({ query: sanitizedQuery })
+      });
+
+      if (error) {
+        console.error('Maps proxy error:', error);
+        setPredictions([]);
+        return;
+      }
+
+      if (data?.predictions) {
+        setPredictions(data.predictions.slice(0, 5)); // Limit to 5 suggestions
+      }
+    } catch (error) {
+      console.error('Error fetching predictions:', error);
+      setPredictions([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSuggestionClick = (suggestion: string) => {
-    setInputValue(suggestion);
-    onSelect(suggestion);
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setInputValue(newValue);
+    setShowSuggestions(true);
+
+    // Debounce API calls
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    debounceRef.current = setTimeout(() => {
+      fetchPredictions(newValue);
+    }, 300);
+  };
+
+  const handleSuggestionClick = (prediction: Prediction) => {
+    setInputValue(prediction.description);
     setShowSuggestions(false);
+    setPredictions([]);
+    onPlaceSelected(prediction);
+  };
+
+  const handleBlur = () => {
+    // Delay hiding suggestions to allow clicking
+    setTimeout(() => setShowSuggestions(false), 150);
   };
 
   return (
-    <div className="relative">
+    <div className="relative w-full">
       <Input
-        id={id}
+        type="text"
         value={inputValue}
         onChange={handleInputChange}
+        onBlur={handleBlur}
+        onFocus={() => setShowSuggestions(true)}
         placeholder={placeholder}
-        required={required}
         className={className}
+        autoComplete="off"
       />
-      {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-          {suggestions.map((suggestion, index) => (
-            <div
-              key={index}
-              className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-              onClick={() => handleSuggestionClick(suggestion)}
-            >
-              {suggestion}
+      
+      {showSuggestions && (predictions.length > 0 || loading) && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+          {loading && (
+            <div className="px-4 py-2 text-gray-500 text-sm">
+              Searching...
             </div>
+          )}
+          
+          {predictions.map((prediction) => (
+            <button
+              key={prediction.place_id}
+              className="w-full px-4 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none text-sm"
+              onClick={() => handleSuggestionClick(prediction)}
+              type="button"
+            >
+              {prediction.description}
+            </button>
           ))}
+          
+          {!loading && predictions.length === 0 && inputValue.length >= 3 && (
+            <div className="px-4 py-2 text-gray-500 text-sm">
+              No suggestions found
+            </div>
+          )}
         </div>
       )}
     </div>
