@@ -11,32 +11,26 @@ import { supabase } from '@/integrations/supabase/client';
 import { SmartPricingEngine } from '@/lib/pricing/smartPricing';
 import { format } from 'date-fns';
 
-export interface PaymentModalProps {
+interface EnhancedPaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
   booking: any;
   onPaymentConfirmed: () => void;
+  isSmartPriceEnabled?: boolean;
 }
 
-export const PaymentModal: React.FC<PaymentModalProps> = ({
+export const EnhancedPaymentModal: React.FC<EnhancedPaymentModalProps> = ({
   isOpen,
   onClose,
   booking,
-  onPaymentConfirmed
+  onPaymentConfirmed,
+  isSmartPriceEnabled = false
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
-  // Check if SmartPrice is enabled (you can get this from system settings)
-  const isSmartPriceEnabled = true; // This should come from your app settings
-
   // Calculate pricing breakdown
-  const uberEstimateCents = booking.estimated_price_cents || 
-                           (booking.estimated_price ? booking.estimated_price * 100 : null) ||
-                           (booking.final_price_cents) ||
-                           (booking.final_price ? booking.final_price * 100 : null) ||
-                           10000; // Default $100
-
+  const uberEstimateCents = booking.estimated_price_cents || (booking.estimated_price * 100) || 10000; // Default $100
   const pricingBreakdown = SmartPricingEngine.calculatePrice(uberEstimateCents);
   const formattedBreakdown = SmartPricingEngine.formatBreakdown(pricingBreakdown);
 
@@ -86,7 +80,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
       console.log('✅ Redirecting to Stripe Checkout:', data.url);
       
-      // Open Stripe checkout in new tab
+      // Open Stripe checkout in new tab (better UX)
       window.open(data.url, '_blank');
       
       toast({
@@ -158,25 +152,44 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             </CardContent>
           </Card>
 
-          {/* Pricing - Passenger only sees total */}
+          {/* Pricing Breakdown */}
           <Card>
             <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-lg font-medium text-gray-900">Total Amount</span>
-                <span className="text-2xl font-bold text-gray-900">{formattedBreakdown.total}</span>
+              <h4 className="font-medium text-gray-900 mb-3">Price Breakdown</h4>
+              
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Uber Premier estimate</span>
+                  <span>{formattedBreakdown.uberEstimate}</span>
+                </div>
+                
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Service fee (30%)</span>
+                  <span>{formattedBreakdown.dispatcherFee}</span>
+                </div>
+                
+                <Separator className="my-2" />
+                
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Subtotal</span>
+                  <span>{formattedBreakdown.subtotal}</span>
+                </div>
+                
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Processing fee</span>
+                  <span>{formattedBreakdown.stripeFee}</span>
+                </div>
+                
+                <Separator className="my-2" />
+                
+                <div className="flex justify-between font-semibold">
+                  <span>Total</span>
+                  <span className="text-lg">{formattedBreakdown.total}</span>
+                </div>
               </div>
 
-              <div className="text-sm text-gray-600 space-y-1">
-                <p>• Premium ride service</p>
-                <p>• All fees included upfront</p>
-                <p>• No hidden charges</p>
-                <p>• Secure payment processing</p>
-              </div>
-
-              <div className="mt-3 p-3 bg-green-50 rounded-lg">
-                <p className="text-xs text-green-700 font-medium">
-                  ✓ Price locked in - no surge pricing
-                </p>
+              <div className="mt-3 p-2 bg-blue-50 rounded text-xs text-blue-700">
+                💡 All fees included upfront. No hidden charges.
               </div>
             </CardContent>
           </Card>
