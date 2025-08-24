@@ -58,7 +58,31 @@ export const useMyBookings = () => {
 
       console.log('✅ User authenticated:', user.id, user.email);
 
-      // Fetch bookings directly using JOIN with passengers table to filter by user_id
+      // Step 1: Get passenger_id for the authenticated user
+      const { data: passengerData, error: passengerError } = await supabase
+        .from('passengers')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (passengerError) {
+        console.error('❌ Error fetching passenger profile:', passengerError);
+        throw new Error(`Passenger profile error: ${passengerError.message}`);
+      }
+
+      if (!passengerData) {
+        console.log('❌ No passenger profile found for user');
+        if (mountedRef.current) {
+          setBookings([]);
+          setError('Passenger profile not found');
+          setLoading(false);
+        }
+        return;
+      }
+
+      console.log('✅ Passenger profile found:', passengerData.id);
+
+      // Step 2: Fetch bookings for this passenger with driver info
       const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
@@ -77,17 +101,12 @@ export const useMyBookings = () => {
           final_price_cents,
           vehicle_type,
           distance_miles,
-          passengers!inner(
-            user_id,
-            full_name,
-            email
-          ),
-          drivers!driver_id(
+          drivers (
             full_name,
             phone
           )
         `)
-        .eq('passengers.user_id', user.id)
+        .eq('passenger_id', passengerData.id)
         .order('created_at', { ascending: false });
 
       if (bookingsError) {
@@ -152,7 +171,7 @@ export const useMyBookings = () => {
     // Initial fetch
     fetchBookings();
 
-    // Set up real-time subscription
+    // Set up real-time subscription for bookings table
     const channel = supabase
       .channel('passenger_bookings_realtime')
       .on(

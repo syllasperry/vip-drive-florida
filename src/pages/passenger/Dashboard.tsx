@@ -23,6 +23,7 @@ const PassengerDashboard: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -104,18 +105,36 @@ const PassengerDashboard: React.FC = () => {
       try {
         console.log('🔄 Initializing passenger dashboard...');
         
-        // Check authentication
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        // Check authentication with retry
+        let authAttempts = 0;
+        let user = null;
+        let authError = null;
+
+        while (authAttempts < 3 && !user) {
+          console.log(`🔐 Auth attempt ${authAttempts + 1}/3`);
+          const result = await supabase.auth.getUser();
+          user = result.data.user;
+          authError = result.error;
+          
+          if (!user && authAttempts < 2) {
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+          }
+          authAttempts++;
+        }
         
         if (authError || !user) {
-          console.log('❌ User not authenticated, redirecting...');
-          navigate('/passenger/login');
+          console.log('❌ User not authenticated after retries, redirecting...');
+          if (mounted) {
+            setAuthChecked(true);
+            navigate('/passenger/login');
+          }
           return;
         }
 
         if (!mounted) return;
 
         console.log('✅ User authenticated:', user.id);
+        setAuthChecked(true);
         
         // Set email immediately as fallback
         if (mounted) {
@@ -178,6 +197,7 @@ const PassengerDashboard: React.FC = () => {
         if (mounted) {
           setError(err instanceof Error ? err.message : 'Failed to load dashboard');
           setLoading(false);
+          setAuthChecked(true);
         }
       } finally {
         initializingRef.current = false;
@@ -200,6 +220,11 @@ const PassengerDashboard: React.FC = () => {
       console.log('🔄 Auth state change:', event);
       if (event === 'SIGNED_OUT' || !session?.user) {
         navigate('/passenger/login');
+      } else if (event === 'SIGNED_IN' && session?.user) {
+        // User just signed in, reinitialize
+        setLoading(true);
+        setError(null);
+        initializeDashboard();
       }
     });
 
@@ -212,6 +237,21 @@ const PassengerDashboard: React.FC = () => {
       console.log('🧹 Dashboard cleanup completed');
     };
   }, [navigate]);
+
+  // Show authentication loading first
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto"></div>
+          <div className="space-y-2">
+            <p className="text-lg font-semibold text-gray-700">Checking authentication...</p>
+            <p className="text-sm text-gray-500">Please wait while we verify your session</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
