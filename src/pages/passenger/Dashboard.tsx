@@ -1,292 +1,147 @@
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BottomNavigation } from '@/components/dashboard/BottomNavigation';
-import { ProfileHeader } from '@/components/dashboard/ProfileHeader';
-import { MessagesTab } from '@/components/passenger/MessagesTab';
-import { SettingsTab } from '@/components/passenger/SettingsTab';
-import { PaymentsTab } from '@/components/passenger/PaymentsTab';
-import { PassengerBookingsList } from '@/components/passenger/PassengerBookingsList';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
+import { Plus, User, Settings, MessageSquare, CreditCard, AlertCircle, RefreshCw } from 'lucide-react';
+import { PassengerBookingsList } from '@/components/passenger/PassengerBookingsList';
+import { ProfileSettingsModal } from '@/components/passenger/ProfileSettingsModal';
+import { PassengerPreferencesCard } from '@/components/passenger/PassengerPreferencesCard';
+import { MessagesTab } from '@/components/passenger/MessagesTab';
+import { PaymentsTab } from '@/components/passenger/PaymentsTab';
+import { SettingsTab } from '@/components/passenger/SettingsTab';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
-const PassengerDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('bookings');
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [passengerInfo, setPassengerInfo] = useState({
-    full_name: null as string | null,
-    profile_photo_url: null as string | null,
-    phone: null as string | null,
-    email: null as string | null
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [authChecked, setAuthChecked] = useState(false);
+export default function PassengerDashboard() {
   const navigate = useNavigate();
-  const { toast } = useToast();
-  
-  const initializingRef = useRef(false);
-  const mountedRef = useRef(true);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 3;
 
-  const handleUpdate = useCallback(() => {
-    console.log('🔄 Manual refresh triggered');
-    setRefreshTrigger(prev => prev + 1);
-  }, []);
-
-  const handleTabChange = useCallback((value: string) => {
-    setActiveTab(value);
-  }, []);
-
-  const handleNewBooking = useCallback(async () => {
-    navigate('/passenger/price-estimate');
-  }, [navigate]);
-
-  const handlePhotoUpload = useCallback(async (file: File) => {
+  const fetchUserProfile = async (forceRefresh = false) => {
     try {
-      console.log('📸 Photo upload started...');
+      console.log('🔄 Fetching user profile...');
+      setProfileError(null);
       
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.id) {
-        throw new Error('User not authenticated');
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError) {
+        console.error('❌ Auth error:', authError);
+        throw new Error('Authentication failed');
       }
-
-      const fileExt = file.name.split('.').pop() || 'jpg';
-      const fileName = `avatar-${Date.now()}.${fileExt}`;
-      const filePath = `${user.id}/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
-
-      const { error: updateError } = await supabase
-        .from('passengers')
-        .update({ profile_photo_url: publicUrl })
-        .eq('user_id', user.id);
-
-      if (updateError) throw updateError;
-
-      console.log('✅ Photo uploaded successfully');
-      handleUpdate();
       
-      toast({
-        title: "Photo Updated",
-        description: "Your profile photo has been updated successfully.",
-      });
-    } catch (error) {
-      console.error('❌ Photo upload error:', error);
-      toast({
-        title: "Upload Failed",
-        description: "Failed to upload photo. Please try again.",
-        variant: "destructive",
-      });
-    }
-  }, [handleUpdate, toast]);
-
-  useEffect(() => {
-    let mounted = true;
-    mountedRef.current = true;
-
-    const initializeDashboard = async () => {
-      if (initializingRef.current) {
-        console.log('🚫 Already initializing, skipping...');
+      if (!user) {
+        console.log('❌ No user found, redirecting to login');
+        navigate('/passenger/login');
         return;
       }
 
-      initializingRef.current = true;
+      console.log('✅ User authenticated:', user.email);
 
-      try {
-        console.log('🔄 Initializing passenger dashboard...');
+      // Try to get or create passenger profile
+      let { data: passenger, error: passengerError } = await supabase
+        .from('passengers')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (passengerError) {
+        console.error('❌ Error fetching passenger:', passengerError);
         
-        // Check authentication with retry
-        let authAttempts = 0;
-        let user = null;
-        let authError = null;
-
-        while (authAttempts < 3 && !user) {
-          console.log(`🔐 Auth attempt ${authAttempts + 1}/3`);
-          const result = await supabase.auth.getUser();
-          user = result.data.user;
-          authError = result.error;
-          
-          if (!user && authAttempts < 2) {
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
-          }
-          authAttempts++;
-        }
-        
-        if (authError || !user) {
-          console.log('❌ User not authenticated after retries, redirecting...');
-          if (mounted) {
-            setAuthChecked(true);
-            navigate('/passenger/login');
-          }
-          return;
-        }
-
-        if (!mounted) return;
-
-        console.log('✅ User authenticated:', user.id);
-        setAuthChecked(true);
-        
-        // Set email immediately as fallback
-        if (mounted) {
-          setPassengerInfo(prev => ({
-            ...prev,
-            email: user.email
-          }));
-        }
-
-        // Get or create passenger profile
-        let { data: passengerProfile, error: passengerError } = await supabase
-          .from('passengers')
-          .select('*')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (passengerError && passengerError.code !== 'PGRST116') {
-          console.error('❌ Error fetching passenger profile:', passengerError);
-          throw passengerError;
-        }
-
-        if (!passengerProfile) {
-          console.log('⚠️ No passenger profile found, creating one...');
-          
-          const { data: newProfile, error: createError } = await supabase
+        // If passenger doesn't exist, create one
+        if (passengerError.code === 'PGRST116') {
+          console.log('🔨 Creating passenger profile...');
+          const { data: newPassenger, error: createError } = await supabase
             .from('passengers')
-            .insert({
+            .insert([{
               user_id: user.id,
-              full_name: user.email?.split('@')[0] || 'User',
-              email: user.email,
-              phone: null,
-              profile_photo_url: null
-            })
+              full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+              email: user.email || '',
+              phone: user.user_metadata?.phone || ''
+            }])
             .select()
             .single();
 
           if (createError) {
-            console.error('❌ Error creating passenger profile:', createError);
-            throw createError;
+            console.error('❌ Error creating passenger:', createError);
+            throw new Error('Failed to create passenger profile');
           }
-
-          passengerProfile = newProfile;
-          console.log('✅ Passenger profile created');
+          passenger = newPassenger;
+        } else {
+          throw passengerError;
         }
-
-        if (mounted) {
-          setPassengerInfo({
-            full_name: passengerProfile.full_name || user.email?.split('@')[0] || 'User',
-            profile_photo_url: passengerProfile.profile_photo_url,
-            phone: passengerProfile.phone,
-            email: passengerProfile.email || user.email
-          });
-          setLoading(false);
-          setError(null);
-          console.log('✅ Dashboard initialized successfully');
-        }
-
-      } catch (err) {
-        console.error('❌ Dashboard initialization error:', err);
-        if (mounted) {
-          setError(err instanceof Error ? err.message : 'Failed to load dashboard');
-          setLoading(false);
-          setAuthChecked(true);
-        }
-      } finally {
-        initializingRef.current = false;
       }
-    };
 
-    const loadingTimeout = setTimeout(() => {
-      if (mounted && loading && !error) {
-        console.warn('⚠️ Dashboard loading timeout after 10 seconds');
-        setLoading(false);
-        setError('Loading timeout. Please refresh the page.');
-      }
-    }, 10000);
-
-    initializeDashboard();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!mounted) return;
+      setUserProfile({
+        ...user,
+        passenger_profile: passenger
+      });
       
-      console.log('🔄 Auth state change:', event);
-      if (event === 'SIGNED_OUT' || !session?.user) {
-        navigate('/passenger/login');
-      } else if (event === 'SIGNED_IN' && session?.user) {
-        // User just signed in, reinitialize
-        setLoading(true);
-        setError(null);
-        initializeDashboard();
+      console.log('✅ Profile loaded successfully');
+      setRetryCount(0); // Reset retry count on success
+      
+    } catch (error) {
+      console.error('❌ Error in fetchUserProfile:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load profile';
+      setProfileError(errorMessage);
+      
+      // Auto-retry logic
+      if (retryCount < MAX_RETRIES) {
+        console.log(`🔄 Auto-retrying... Attempt ${retryCount + 1}/${MAX_RETRIES}`);
+        setRetryCount(prev => prev + 1);
+        setTimeout(() => fetchUserProfile(true), 2000 * (retryCount + 1)); // Exponential backoff
       }
-    });
+    } finally {
+      setAuthLoading(false);
+    }
+  };
 
-    return () => {
-      mounted = false;
-      mountedRef.current = false;
-      clearTimeout(loadingTimeout);
-      subscription.unsubscribe();
-      initializingRef.current = false;
-      console.log('🧹 Dashboard cleanup completed');
-    };
+  useEffect(() => {
+    fetchUserProfile();
   }, [navigate]);
 
-  // Show authentication loading first
-  if (!authChecked) {
+  const handleRetry = () => {
+    setAuthLoading(true);
+    setRetryCount(0);
+    fetchUserProfile(true);
+  };
+
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto"></div>
-          <div className="space-y-2">
-            <p className="text-lg font-semibold text-gray-700">Checking authentication...</p>
-            <p className="text-sm text-gray-500">Please wait while we verify your session</p>
-          </div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando seu painel...</p>
         </div>
       </div>
     );
   }
 
-  if (loading) {
+  if (profileError) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto"></div>
+        <div className="text-center max-w-md p-6">
+          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Erro ao Carregar Perfil</h2>
+          <p className="text-gray-600 mb-4">{profileError}</p>
           <div className="space-y-2">
-            <p className="text-lg font-semibold text-gray-700">Loading your dashboard...</p>
-            <p className="text-sm text-gray-500">This should only take a moment</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="text-center space-y-4 max-w-md">
-          <div className="text-red-500 text-6xl">⚠️</div>
-          <h2 className="text-xl font-semibold text-gray-900">Something went wrong</h2>
-          <p className="text-gray-600">{error}</p>
-          <div className="flex gap-3 justify-center">
-            <Button 
-              onClick={() => window.location.reload()} 
-              className="bg-red-500 hover:bg-red-600 text-white"
-            >
-              Reload Page
+            <Button onClick={handleRetry} className="w-full gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Tentar Novamente
             </Button>
-            <Button 
-              onClick={() => navigate('/passenger/login')} 
-              variant="outline"
-            >
-              Back to Login
-            </Button>
+            {retryCount >= MAX_RETRIES && (
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/passenger/login')}
+                className="w-full"
+              >
+                Voltar ao Login
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -295,56 +150,70 @@ const PassengerDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-md mx-auto bg-white min-h-screen shadow-lg">
-        <ProfileHeader 
-          userType="passenger" 
-          userProfile={passengerInfo}
-          onPhotoUpload={handlePhotoUpload}
-          onProfileUpdate={handleUpdate}
-        />
-        
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <div className="px-4 pb-20">
-            <TabsContent value="bookings" className="mt-0">
-              <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-gray-900">My Bookings</h1>
-                <Button
-                  onClick={handleNewBooking}
-                  className="bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-2 rounded-lg"
-                >
-                  New Booking
-                </Button>
-              </div>
-
-              <PassengerBookingsList key={refreshTrigger} onUpdate={handleUpdate} />
-            </TabsContent>
-
-            <TabsContent value="messages" className="mt-0">
-              <MessagesTab 
-                bookings={[]}
-                currentUserId="passenger-user-id"
-                currentUserName={passengerInfo.full_name || 'Passenger User'}
-              />
-            </TabsContent>
-
-            <TabsContent value="payments" className="mt-0">
-              <PaymentsTab bookings={[]} />
-            </TabsContent>
-
-            <TabsContent value="settings" className="mt-0">
-              <SettingsTab passengerInfo={passengerInfo} />
-            </TabsContent>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Welcome back, {userProfile?.passenger_profile?.full_name || userProfile?.email?.split('@')[0]}
+              </h1>
+              <p className="text-gray-600">Manage your rides and preferences</p>
+            </div>
+            <Button onClick={() => navigate('/passenger/booking')} className="gap-2">
+              <Plus className="h-4 w-4" />
+              New Booking
+            </Button>
           </div>
+        </div>
+
+        {/* Main Content */}
+        <Tabs defaultValue="bookings" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="bookings">My Rides</TabsTrigger>
+            <TabsTrigger value="messages">Messages</TabsTrigger>
+            <TabsTrigger value="payments">Payments</TabsTrigger>
+            <TabsTrigger value="preferences">Preferences</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="bookings">
+            <Card>
+              <CardHeader>
+                <CardTitle>My Bookings</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PassengerBookingsList />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="messages">
+            <MessagesTab />
+          </TabsContent>
+
+          <TabsContent value="payments">
+            <PaymentsTab />
+          </TabsContent>
+
+          <TabsContent value="preferences">
+            <PassengerPreferencesCard />
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <SettingsTab />
+          </TabsContent>
         </Tabs>
 
-        <BottomNavigation 
-          userType="passenger"
-          activeTab={activeTab}
-          onTabChange={handleTabChange}
-        />
+        {/* Profile Settings Modal */}
+        {showProfileModal && (
+          <ProfileSettingsModal
+            isOpen={showProfileModal}
+            onClose={() => setShowProfileModal(false)}
+            onUpdate={() => fetchUserProfile(true)}
+          />
+        )}
       </div>
     </div>
   );
-};
-
-export default PassengerDashboard;
+}

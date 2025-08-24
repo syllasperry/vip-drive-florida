@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, MapPin, User, Car, AlertCircle, RefreshCw, Database } from "lucide-react";
+import { Clock, MapPin, User, Car, AlertCircle, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { useMyBookings } from '@/hooks/useMyBookings';
 import type { MyBooking } from '@/hooks/useMyBookings';
@@ -43,13 +43,11 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
   const { bookings, loading, error, refetch } = useMyBookings();
   const [activeTab, setActiveTab] = useState('all');
   const [selectedBooking, setSelectedBooking] = useState<MyBooking | null>(null);
-  const [showDebugInfo, setShowDebugInfo] = useState(false);
 
   console.log('🎯 PassengerBookingsList render:', { 
     bookingsCount: bookings.length, 
     loading, 
-    error,
-    bookings: bookings.map(b => ({ id: b.id, status: b.status, pickup: b.pickup_location }))
+    error
   });
 
   // Trigger parent update when bookings change
@@ -105,36 +103,17 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
       <div className="text-center py-8">
         <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
         <p className="text-red-600 mb-2">{error}</p>
-        <div className="space-y-2">
-          <Button 
-            onClick={() => {
-              console.log('🔄 Manual retry clicked');
-              refetch();
-            }}
-            variant="outline"
-            className="gap-2"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Tentar novamente
-          </Button>
-          <Button 
-            onClick={() => setShowDebugInfo(!showDebugInfo)}
-            variant="ghost"
-            size="sm"
-            className="gap-2"
-          >
-            <Database className="h-4 w-4" />
-            {showDebugInfo ? 'Ocultar' : 'Mostrar'} Debug
-          </Button>
-        </div>
-        
-        {showDebugInfo && (
-          <div className="mt-4 p-4 bg-gray-100 rounded-lg text-left text-sm">
-            <p><strong>Error:</strong> {error}</p>
-            <p><strong>Bookings encontrados:</strong> {bookings.length}</p>
-            <p><strong>Estado loading:</strong> {loading ? 'true' : 'false'}</p>
-          </div>
-        )}
+        <Button 
+          onClick={() => {
+            console.log('🔄 Manual retry clicked');
+            refetch();
+          }}
+          variant="outline"
+          className="gap-2"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Tentar novamente
+        </Button>
       </div>
     );
   }
@@ -144,39 +123,6 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
 
   return (
     <div className="space-y-6">
-      {/* Debug info header */}
-      <div className="flex items-center justify-between">
-        <div className="text-sm text-gray-600">
-          Total: {bookings.length} bookings encontrados
-        </div>
-        <Button 
-          onClick={() => setShowDebugInfo(!showDebugInfo)}
-          variant="ghost"
-          size="sm"
-          className="gap-2"
-        >
-          <Database className="h-4 w-4" />
-          Debug
-        </Button>
-      </div>
-
-      {showDebugInfo && (
-        <Card className="bg-gray-50">
-          <CardHeader>
-            <CardTitle className="text-sm">Debug Information</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm space-y-2">
-            <p><strong>Total bookings:</strong> {bookings.length}</p>
-            <p><strong>Loading:</strong> {loading ? 'Yes' : 'No'}</p>
-            <p><strong>Error:</strong> {error || 'None'}</p>
-            <p><strong>Bookings IDs:</strong> {bookings.map(b => b.id.slice(0, 8)).join(', ')}</p>
-            <Button onClick={refetch} size="sm" className="mt-2">
-              Refetch Bookings
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="all">Todos ({bookings.length})</TabsTrigger>
@@ -212,72 +158,63 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredBookings.map((booking) => {
-                console.log('🎯 Rendering booking card:', booking.id, {
-                  pickup: booking.pickup_location,
-                  dropoff: booking.dropoff_location,
-                  status: booking.status,
-                  price: booking.price_cents
-                });
-                
-                return (
-                  <Card 
-                    key={booking.id} 
-                    className="cursor-pointer hover:shadow-md transition-shadow"
-                    onClick={() => setSelectedBooking(selectedBooking?.id === booking.id ? null : booking)}
-                  >
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-medium">
-                          {booking.booking_code || `Booking ${booking.id.slice(0, 8)}`}
-                        </CardTitle>
-                        <Badge className={getStatusColor(booking.status)}>
-                          {booking.status}
-                        </Badge>
+              {filteredBookings.map((booking) => (
+                <Card 
+                  key={booking.id} 
+                  className="cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => setSelectedBooking(selectedBooking?.id === booking.id ? null : booking)}
+                >
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-medium">
+                        {booking.booking_code || `Booking ${booking.id.slice(0, 8)}`}
+                      </CardTitle>
+                      <Badge className={getStatusColor(booking.status)}>
+                        {booking.status}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <Clock className="h-4 w-4" />
+                        <span>{format(new Date(booking.pickup_time), "MMM d, h:mm a")}</span>
                       </div>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="space-y-3">
-                        <div className="flex items-center space-x-2 text-sm text-gray-600">
-                          <Clock className="h-4 w-4" />
-                          <span>{format(new Date(booking.pickup_time), "MMM d, h:mm a")}</span>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-start space-x-2 text-sm">
+                          <MapPin className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                          <span className="text-gray-900">{booking.pickup_location}</span>
                         </div>
-                        
-                        <div className="space-y-2">
-                          <div className="flex items-start space-x-2 text-sm">
-                            <MapPin className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                            <span className="text-gray-900">{booking.pickup_location}</span>
-                          </div>
-                          <div className="flex items-start space-x-2 text-sm">
-                            <MapPin className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
-                            <span className="text-gray-900">{booking.dropoff_location}</span>
-                          </div>
+                        <div className="flex items-start space-x-2 text-sm">
+                          <MapPin className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+                          <span className="text-gray-900">{booking.dropoff_location}</span>
                         </div>
-
-                        <div className="flex items-center justify-between text-sm">
-                          <div className="flex items-center space-x-2">
-                            <User className="h-4 w-4 text-gray-400" />
-                            <span className="text-gray-600">
-                              {booking.driver_name || 'Motorista TBD'}
-                            </span>
-                          </div>
-                          <div className="font-semibold text-gray-900">
-                            {formatPrice(booking.price_cents, 'USD')}
-                          </div>
-                        </div>
-
-                        {selectedBooking?.id === booking.id && (
-                          <div className="mt-4 pt-4 border-t">
-                            <PassengerStatusTimeline
-                              booking={booking as any}
-                            />
-                          </div>
-                        )}
                       </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center space-x-2">
+                          <User className="h-4 w-4 text-gray-400" />
+                          <span className="text-gray-600">
+                            {booking.driver_name || 'Motorista TBD'}
+                          </span>
+                        </div>
+                        <div className="font-semibold text-gray-900">
+                          {formatPrice(booking.price_cents, 'USD')}
+                        </div>
+                      </div>
+
+                      {selectedBooking?.id === booking.id && (
+                        <div className="mt-4 pt-4 border-t">
+                          <PassengerStatusTimeline
+                            booking={booking as any}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           )}
         </TabsContent>

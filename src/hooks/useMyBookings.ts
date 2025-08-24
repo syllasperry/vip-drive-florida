@@ -36,7 +36,7 @@ export const useMyBookings = () => {
     }
     
     fetchingRef.current = true;
-    console.log('🔄 Starting fetchBookings...');
+    console.log('🔄 Starting fetchBookings with new view...');
     
     try {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -58,85 +58,51 @@ export const useMyBookings = () => {
 
       console.log('✅ User authenticated:', user.id, user.email);
 
-      // Primeiro, vamos verificar quantos bookings existem no total para debug
-      const { count: totalBookings } = await supabase
-        .from('bookings')
-        .select('*', { count: 'exact', head: true });
-      
-      console.log('📊 Total bookings in database:', totalBookings);
-
-      // Buscar o passenger_id primeiro
-      const { data: passengerData, error: passengerError } = await supabase
-        .from('passengers')
-        .select('id, email, full_name')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (passengerError) {
-        console.error('❌ Error fetching passenger profile:', passengerError);
-        throw new Error(`Passenger profile error: ${passengerError.message}`);
-      }
-
-      if (!passengerData) {
-        console.log('❌ No passenger profile found for user');
-        if (mountedRef.current) {
-          setBookings([]);
-          setError('Passenger profile not found');
-          setLoading(false);
-        }
-        return;
-      }
-
-      console.log('✅ Passenger profile found:', passengerData);
-
-      // Verificar se há bookings para este passenger_id
-      const { count: userBookingsCount } = await supabase
-        .from('bookings')
-        .select('*', { count: 'exact', head: true })
-        .eq('passenger_id', passengerData.id);
-      
-      console.log('📊 Bookings for this passenger:', userBookingsCount);
-
-      // Agora buscar os bookings com informações do driver usando LEFT JOIN simples
-      const { data: bookingsData, error: bookingsError } = await supabase
-        .from('bookings')
-        .select(`
-          id,
-          booking_code,
-          status,
-          pickup_location,
-          dropoff_location,
-          pickup_time,
-          created_at,
-          updated_at,
-          driver_id,
-          estimated_price,
-          final_price,
-          estimated_price_cents,
-          final_price_cents,
-          vehicle_type,
-          distance_miles,
-          drivers!driver_id (
-            full_name,
-            phone
-          )
-        `)
-        .eq('passenger_id', passengerData.id)
+      // Use the new corrected view
+      const { data: viewData, error: viewError } = await supabase
+        .from('my_passenger_bookings')
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (bookingsError) {
-        console.error('❌ Error fetching bookings:', bookingsError);
-        throw new Error(`Bookings fetch error: ${bookingsError.message}`);
-      }
+      if (viewError) {
+        console.error('❌ Error fetching from view:', viewError);
+        // Fallback to manual query if view fails
+        const { data: manualData, error: manualError } = await supabase
+          .from('bookings')
+          .select(`
+            id,
+            booking_code,
+            status,
+            pickup_location,
+            dropoff_location,
+            pickup_time,
+            created_at,
+            updated_at,
+            driver_id,
+            estimated_price,
+            final_price,
+            estimated_price_cents,
+            final_price_cents,
+            vehicle_type,
+            distance_miles,
+            passengers!inner (
+              user_id,
+              full_name
+            ),
+            drivers (
+              full_name,
+              phone
+            )
+          `)
+          .eq('passengers.user_id', user.id)
+          .order('created_at', { ascending: false });
 
-      console.log('📊 Raw bookings data from Supabase:', bookingsData);
-      console.log('📊 Number of bookings fetched:', bookingsData?.length || 0);
+        if (manualError) {
+          console.error('❌ Manual query also failed:', manualError);
+          throw new Error(`Bookings fetch error: ${manualError.message}`);
+        }
 
-      if (!mountedRef.current) return;
-
-      const formattedBookings: MyBooking[] = (bookingsData || []).map(booking => {
-        const driverInfo = booking.drivers as any;
-        const formatted = {
+        const formattedBookings: MyBooking[] = (manualData || []).map(booking => ({
           id: booking.id,
           booking_code: booking.booking_code,
           status: booking.status || 'pending',
@@ -146,17 +112,46 @@ export const useMyBookings = () => {
           created_at: booking.created_at,
           updated_at: booking.updated_at,
           driver_id: booking.driver_id,
-          driver_name: driverInfo?.full_name,
-          driver_phone: driverInfo?.phone,
+          driver_name: booking.drivers?.full_name,
+          driver_phone: booking.drivers?.phone,
           estimated_price: booking.estimated_price,
           final_price: booking.final_price,
           price_cents: booking.final_price_cents || booking.estimated_price_cents,
           vehicle_type: booking.vehicle_type,
           distance_miles: booking.distance_miles
-        };
-        console.log('📊 Formatted booking:', formatted);
-        return formatted;
-      });
+        }));
+
+        if (mountedRef.current) {
+          setBookings(formattedBookings);
+          setError(null);
+          setLoading(false);
+          console.log('✅ Manual query successful with', formattedBookings.length, 'bookings');
+        }
+        return;
+      }
+
+      console.log('📊 View data from Supabase:', viewData);
+      console.log('📊 Number of bookings from view:', viewData?.length || 0);
+
+      if (!mountedRef.current) return;
+
+      const formattedBookings: MyBooking[] = (viewData || []).map(booking => ({
+        id: booking.booking_id,
+        booking_code: booking.booking_code,
+        status: booking.status || 'pending',
+        pickup_location: booking.pickup_location,
+        dropoff_location: booking.dropoff_location,
+        pickup_time: booking.pickup_time,
+        created_at: booking.created_at,
+        updated_at: booking.updated_at,
+        driver_id: booking.driver_id,
+        driver_name: booking.driver_name,
+        estimated_price: booking.price_dollars,
+        final_price: booking.price_dollars,
+        price_cents: booking.price_cents,
+        vehicle_type: booking.vehicle_type,
+        distance_miles: booking.distance_miles
+      }));
 
       console.log('✅ Final formatted bookings:', formattedBookings.length, 'bookings');
 
