@@ -1,37 +1,194 @@
 
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { ChevronLeft, ChevronRight, Star } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { 
+  Carousel, 
+  CarouselContent, 
+  CarouselItem, 
+  CarouselNext, 
+  CarouselPrevious 
+} from "@/components/ui/carousel";
+import { ReviewCarousel } from "@/components/review/ReviewCarousel";
+import businessmanImg from "@/assets/onboarding-businessman.jpg";
+import womanBookingImg from "@/assets/onboarding-woman-booking.jpg";
+import chauffeurWelcomeImg from "@/assets/onboarding-chauffeur-welcome.jpg";
 
 const onboardingSlides = [
   {
-    id: 1,
-    image: '/src/assets/onboarding-woman-booking.jpg',
-    title: 'Book Your Perfect Ride',
-    subtitle: 'Quick and easy booking process',
-    description: 'Schedule your premium transportation with just a few taps. Choose from luxury sedans, SUVs, or executive vans.'
+    image: businessmanImg,
+    title: "Airport Transfers",
+    description: "Professional chauffeur service for all major South Florida airports. Arrive in style and comfort."
   },
   {
-    id: 2,
-    image: '/src/assets/onboarding-chauffeur-welcome.jpg', 
-    title: 'Professional Chauffeurs',
-    subtitle: 'Experienced and courteous drivers',
-    description: 'Our vetted professional chauffeurs provide exceptional service with attention to every detail of your journey.'
+    image: chauffeurWelcomeImg,
+    title: "Professional Service",
+    description: "Experienced, courteous drivers providing luxury transportation with the highest standards."
   },
   {
-    id: 3,
-    image: '/src/assets/onboarding-businessman.jpg',
-    title: 'Arrive in Style',
-    subtitle: 'Premium vehicles for every occasion',
-    description: 'Whether for business or leisure, travel in comfort with our fleet of premium vehicles and personalized service.'
+    image: womanBookingImg,
+    title: "Easy Booking",
+    description: "Book your premium ride in just a few taps. Simple, fast, and secure reservation system."
   }
 ];
 
+const airports = [
+  { code: "MIA", name: "Miami International Airport" },
+  { code: "FLL", name: "Fort Lauderdale-Hollywood International Airport" },
+  { code: "PBI", name: "Palm Beach International Airport" },
+  { code: "OPF", name: "Opa-locka Executive Airport" },
+  { code: "FXE", name: "Fort Lauderdale Executive Airport" }
+];
+
+interface Airport {
+  code: string;
+  name: string;
+}
+
+const DeparturesBoard = ({ airports }: { airports: Airport[] }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isFlipping, setIsFlipping] = useState(false);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsFlipping(true);
+      setTimeout(() => {
+        setCurrentIndex((prev) => (prev + 1) % airports.length);
+        setIsFlipping(false);
+      }, 300);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [airports.length]);
+
+  const nextAirport = airports[(currentIndex + 1) % airports.length];
+
+  return (
+    <div className="bg-black rounded-lg border-2 sm:border-4 border-slate-700 p-2 sm:p-6 font-mono overflow-hidden">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-3 sm:mb-4 pb-2 border-b border-amber-400/30">
+        <div className="flex items-center space-x-1 sm:space-x-2">
+          <div className="w-4 h-4 sm:w-6 sm:h-6 bg-amber-400 rounded-sm flex items-center justify-center">
+            <span className="text-black text-xs font-bold">✈</span>
+          </div>
+          <span className="text-amber-400 text-xs sm:text-sm font-bold">DEPARTURES</span>
+        </div>
+        <div className="text-amber-400 text-xs sm:text-sm font-bold hidden md:block">VIP CHAUFFEUR</div>
+        <div className="text-amber-400 text-xs font-bold md:hidden">VIP</div>
+      </div>
+
+      {/* Mobile: Card Layout */}
+      <div className="block sm:hidden space-y-3">
+        <div className="bg-slate-800/50 rounded p-3 border border-amber-400/20">
+          <div className="flex items-center justify-between mb-2">
+            <div className={`text-amber-400 text-lg font-bold transition-all duration-300 ${
+              isFlipping ? 'animate-flip' : ''
+            }`}>
+              {airports[currentIndex].code}
+            </div>
+            <div className="text-green-400 text-xs font-bold px-2 py-1 bg-green-400/10 rounded">
+              AVAILABLE
+            </div>
+          </div>
+          <div className={`text-white text-sm leading-relaxed transition-all duration-300 ${
+            isFlipping ? 'animate-flip' : ''
+          }`}>
+            {airports[currentIndex].name.split(' ').slice(0, 3).join(' ')}
+          </div>
+        </div>
+
+        <div className="bg-slate-800/30 rounded p-3 border border-amber-400/10 opacity-60">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-amber-400 text-lg font-bold">
+              {nextAirport.code}
+            </div>
+            <div className="text-green-400 text-xs font-bold px-2 py-1 bg-green-400/10 rounded">
+              AVAILABLE
+            </div>
+          </div>
+          <div className="text-white text-sm leading-relaxed">
+            {nextAirport.name.split(' ').slice(0, 3).join(' ')}
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop: Table Layout */}
+      <div className="hidden sm:block">
+        <div className="grid grid-cols-12 gap-2 mb-2 text-amber-400/70 text-xs font-bold uppercase">
+          <div className="col-span-2">CODE</div>
+          <div className="col-span-6">DESTINATION</div>
+          <div className="col-span-2">STATUS</div>
+          <div className="col-span-2">GATE</div>
+        </div>
+
+        <div className="grid grid-cols-12 gap-2 items-center py-3 border-t border-amber-400/20">
+          <div className="col-span-2">
+            <div className={`text-amber-400 text-lg font-bold transition-all duration-300 ${
+              isFlipping ? 'animate-flip' : ''
+            }`}>
+              {airports[currentIndex].code}
+            </div>
+          </div>
+          <div className="col-span-6">
+            <div className={`text-white text-sm transition-all duration-300 ${
+              isFlipping ? 'animate-flip' : ''
+            }`}>
+              {airports[currentIndex].name}
+            </div>
+          </div>
+          <div className="col-span-2">
+            <div className="text-green-400 text-xs font-bold">
+              AVAILABLE
+            </div>
+          </div>
+          <div className="col-span-2">
+            <div className="text-amber-400 text-sm font-bold">
+              VIP
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-12 gap-2 items-center py-2 opacity-40 border-t border-amber-400/10">
+          <div className="col-span-2">
+            <div className="text-amber-400 text-lg font-bold">
+              {nextAirport.code}
+            </div>
+          </div>
+          <div className="col-span-6">
+            <div className="text-white text-sm">
+              {nextAirport.name}
+            </div>
+          </div>
+          <div className="col-span-2">
+            <div className="text-green-400 text-xs font-bold">
+              AVAILABLE
+            </div>
+          </div>
+          <div className="col-span-2">
+            <div className="text-amber-400 text-sm font-bold">
+              VIP
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const OnboardingScreen = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [testimonialApi, setTestimonialApi] = useState<any>();
   const navigate = useNavigate();
+
+  // Auto-play image carousel every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % onboardingSlides.length);
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % onboardingSlides.length);
@@ -41,110 +198,101 @@ const OnboardingScreen = () => {
     setCurrentSlide((prev) => (prev - 1 + onboardingSlides.length) % onboardingSlides.length);
   };
 
-  const handleGetStarted = () => {
-    navigate('/home');
-  };
-
-  const handleSkip = () => {
-    navigate('/home');
+  const goToBooking = () => {
+    navigate("/estimate");
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <div className="flex justify-between items-center p-6">
-        <div className="w-16 h-8 bg-red-600 rounded flex items-center justify-center">
-          <span className="text-white font-bold text-sm">VIP</span>
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted">
+      {/* Onboarding Slides */}
+      <div className="relative h-[60vh] overflow-hidden">
+        <div className="absolute inset-0 flex transition-transform duration-500 ease-in-out"
+             style={{ transform: `translateX(-${currentSlide * 100}%)` }}>
+          {onboardingSlides.map((slide, index) => (
+            <div key={index} className="w-full flex-shrink-0 relative">
+              <img 
+                src={slide.image} 
+                alt={slide.title}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black/30 flex items-end">
+                <div className="p-8 text-white space-y-4">
+                  <h2 className="text-3xl font-bold">{slide.title}</h2>
+                  <p className="text-lg opacity-90 max-w-md">{slide.description}</p>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
-        <Button variant="ghost" onClick={handleSkip} className="text-gray-600">
-          Skip
+        
+        {/* Navigation Controls */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={prevSlide}
+          className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 backdrop-blur-sm text-white hover:bg-white/30"
+        >
+          <ChevronLeft className="h-6 w-6" />
         </Button>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 pb-8">
-        <Card className="w-full max-w-md mx-auto">
-          <CardContent className="p-8 text-center">
-            {/* Image */}
-            <div className="mb-8">
-              <div className="w-64 h-48 mx-auto bg-gray-200 rounded-lg overflow-hidden">
-                <img
-                  src={onboardingSlides[currentSlide].image}
-                  alt={onboardingSlides[currentSlide].title}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = `data:image/svg+xml;base64,${btoa(`
-                      <svg width="256" height="192" xmlns="http://www.w3.org/2000/svg">
-                        <rect width="256" height="192" fill="#e5e7eb"/>
-                        <text x="128" y="96" text-anchor="middle" dy="0.35em" font-family="Arial, sans-serif" font-size="14" fill="#6b7280">
-                          ${onboardingSlides[currentSlide].title}
-                        </text>
-                      </svg>
-                    `)}`;
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="space-y-4">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                  {onboardingSlides[currentSlide].title}
-                </h1>
-                <p className="text-lg text-red-600 font-medium mb-3">
-                  {onboardingSlides[currentSlide].subtitle}
-                </p>
-              </div>
-              <p className="text-gray-600 leading-relaxed">
-                {onboardingSlides[currentSlide].description}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
+        
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={nextSlide}
+          className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 backdrop-blur-sm text-white hover:bg-white/30"
+        >
+          <ChevronRight className="h-6 w-6" />
+        </Button>
+        
         {/* Slide Indicators */}
-        <div className="flex space-x-2 mt-8">
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
           {onboardingSlides.map((_, index) => (
-            <div
+            <button
               key={index}
+              onClick={() => setCurrentSlide(index)}
               className={`w-3 h-3 rounded-full transition-colors ${
-                index === currentSlide ? 'bg-red-600' : 'bg-gray-300'
+                index === currentSlide ? "bg-white" : "bg-white/50"
               }`}
             />
           ))}
         </div>
+      </div>
 
-        {/* Navigation */}
-        <div className="flex justify-between items-center w-full max-w-md mt-8">
-          <Button
-            variant="outline"
-            onClick={prevSlide}
-            className="flex items-center gap-2"
-            disabled={currentSlide === 0}
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Previous
-          </Button>
-
-          {currentSlide === onboardingSlides.length - 1 ? (
-            <Button
-              onClick={handleGetStarted}
-              className="bg-red-600 hover:bg-red-700 text-white px-8"
-            >
-              Get Started
-            </Button>
-          ) : (
-            <Button
-              onClick={nextSlide}
-              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
-            >
-              Next
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          )}
+      {/* Customer Reviews Carousel */}
+      <div className="py-12 px-4 bg-gradient-to-b from-background to-muted/50">
+        <div className="text-center mb-8">
+          <h3 className="text-2xl font-bold text-foreground mb-2">
+            What Our Clients Say
+          </h3>
+          <p className="text-muted-foreground">
+            Trusted by hundreds of satisfied passengers
+          </p>
         </div>
+        <ReviewCarousel />
+      </div>
+
+      {/* Mechanical Departures Board */}
+      <div className="py-8 px-4 bg-gradient-to-b from-slate-900 to-slate-800">
+        <h3 className="text-xl font-semibold text-center mb-6 text-white">
+          South Florida Airports We Serve
+        </h3>
+        <div className="max-w-4xl mx-auto">
+          <DeparturesBoard airports={airports} />
+          <p className="text-center text-slate-300 text-sm mt-4 opacity-80">
+            We proudly serve both international and private airports throughout South Florida
+          </p>
+        </div>
+      </div>
+
+      {/* Continue Button */}
+      <div className="p-6">
+        <Button 
+          onClick={goToBooking}
+          className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-4 px-8 rounded-xl text-lg"
+          size="lg"
+        >
+          Get Started
+        </Button>
       </div>
     </div>
   );

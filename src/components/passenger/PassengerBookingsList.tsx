@@ -201,6 +201,4 @@ const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({
   );
 };
 
-// Export as both named and default export to fix import issues
-export { PassengerBookingsList };
 export default PassengerBookingsList;
