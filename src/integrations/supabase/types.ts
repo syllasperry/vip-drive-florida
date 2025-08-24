@@ -3569,18 +3569,21 @@ export type Database = {
           created_at: string
           id: string
           smart_price_enabled: boolean
+          smart_price_markup_cents: number | null
           updated_at: string
         }
         Insert: {
           created_at?: string
           id?: string
           smart_price_enabled?: boolean
+          smart_price_markup_cents?: number | null
           updated_at?: string
         }
         Update: {
           created_at?: string
           id?: string
           smart_price_enabled?: boolean
+          smart_price_markup_cents?: number | null
           updated_at?: string
         }
         Relationships: []
@@ -5414,64 +5417,19 @@ export type Database = {
       }
       v_booking_pricing_preview: {
         Row: {
-          base_fare_cents: number | null
           booking_id: string | null
-          booking_status: string | null
-          category_code: string | null
           distance_miles: number | null
-          fare_cents: number | null
-          fare_dollars: number | null
-          minimum_fare_cents: number | null
-          passenger_id: string | null
-          per_mile_cents: number | null
-          quote_json: Json | null
-          smart_addon_cents: number | null
+          price_cents: number | null
           smart_price_enabled: boolean | null
+          smart_price_markup_cents: number | null
           vehicle_type: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "bookings_passenger_id_fkey"
-            columns: ["passenger_id"]
-            isOneToOne: false
-            referencedRelation: "dispatcher_dashboard_feed"
-            referencedColumns: ["passenger_id"]
-          },
-          {
-            foreignKeyName: "bookings_passenger_id_fkey"
-            columns: ["passenger_id"]
-            isOneToOne: false
-            referencedRelation: "dispatcher_full_bookings"
-            referencedColumns: ["passenger_id"]
-          },
-          {
-            foreignKeyName: "bookings_passenger_id_fkey"
-            columns: ["passenger_id"]
-            isOneToOne: false
-            referencedRelation: "dispatcher_payments_view"
-            referencedColumns: ["passenger_id"]
-          },
-          {
-            foreignKeyName: "bookings_passenger_id_fkey"
-            columns: ["passenger_id"]
-            isOneToOne: false
-            referencedRelation: "dispatcher_recent_bookings"
-            referencedColumns: ["passenger_id"]
-          },
-          {
-            foreignKeyName: "bookings_passenger_id_fkey"
-            columns: ["passenger_id"]
-            isOneToOne: false
-            referencedRelation: "passengers"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       v_system_settings: {
         Row: {
-          created_at: string | null
-          id: string | null
           smart_price_enabled: boolean | null
+          smart_price_markup_cents: number | null
           updated_at: string | null
         }
         Relationships: []
