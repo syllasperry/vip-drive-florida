@@ -1,7 +1,8 @@
 
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CreditCard, DollarSign, CheckCircle, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CreditCard, DollarSign, CheckCircle, Clock, Download, Receipt } from "lucide-react";
 import { format } from 'date-fns';
 
 interface PaymentsTabProps {
@@ -15,16 +16,21 @@ export const PaymentsTab = ({ bookings }: PaymentsTabProps) => {
   );
 
   const getPaymentStatus = (booking: any) => {
-    if (booking.status === 'completed') return 'paid';
-    if (booking.status === 'all_set') return 'confirmed';
-    if (booking.status === 'payment_pending') return 'pending';
+    const paymentStatus = booking.payment_confirmation_status?.toLowerCase();
+    const rideStatus = booking.ride_status?.toLowerCase();
+    
+    if (paymentStatus === 'all_set') return 'completed';
+    if (paymentStatus === 'passenger_paid') return 'paid';
+    if (rideStatus === 'offer_sent') return 'offer_sent';
+    if (paymentStatus === 'waiting_for_payment') return 'pending';
     return 'unknown';
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'paid': return 'bg-green-100 text-green-800 border-green-200';
-      case 'confirmed': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'completed': return 'bg-green-100 text-green-800 border-green-200';
+      case 'paid': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'offer_sent': return 'bg-orange-100 text-orange-800 border-orange-200';
       case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -32,24 +38,30 @@ export const PaymentsTab = ({ bookings }: PaymentsTabProps) => {
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case 'paid': return 'Paid';
-      case 'confirmed': return 'Confirmed';
-      case 'pending': return 'Payment Pending';
+      case 'completed': return 'Completed';
+      case 'paid': return 'Payment Confirmed';
+      case 'offer_sent': return 'Awaiting Payment';
+      case 'pending': return 'Pending Offer';
       default: return 'Unknown';
     }
   };
 
-  const totalPaid = paymentBookings
-    .filter(booking => getPaymentStatus(booking) === 'paid')
+  const totalCompleted = paymentBookings
+    .filter(booking => getPaymentStatus(booking) === 'completed')
     .reduce((sum, booking) => sum + (booking.final_price || booking.estimated_price || 0), 0);
 
   const totalPending = paymentBookings
-    .filter(booking => getPaymentStatus(booking) === 'pending')
+    .filter(booking => ['offer_sent', 'pending'].includes(getPaymentStatus(booking)))
     .reduce((sum, booking) => sum + (booking.final_price || booking.estimated_price || 0), 0);
+
+  const handleDownloadReceipt = (booking: any) => {
+    // This would generate and download a receipt
+    console.log('Downloading receipt for booking:', booking.id);
+  };
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold text-gray-900">Payments</h2>
+      <h2 className="text-lg font-semibold text-gray-900">Payments & Receipts</h2>
       
       {/* Payment Summary */}
       <div className="grid grid-cols-2 gap-4">
@@ -59,17 +71,19 @@ export const PaymentsTab = ({ bookings }: PaymentsTabProps) => {
               <CheckCircle className="w-4 h-4 text-green-600" />
               <span className="text-sm font-medium text-green-800">Total Paid</span>
             </div>
-            <p className="text-2xl font-bold text-green-600">${totalPaid}</p>
+            <p className="text-2xl font-bold text-green-600">${totalCompleted.toFixed(2)}</p>
+            <p className="text-xs text-green-600">Completed rides</p>
           </CardContent>
         </Card>
         
-        <Card className="bg-yellow-50 border-yellow-200">
+        <Card className="bg-orange-50 border-orange-200">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
-              <Clock className="w-4 h-4 text-yellow-600" />
-              <span className="text-sm font-medium text-yellow-800">Pending</span>
+              <Clock className="w-4 h-4 text-orange-600" />
+              <span className="text-sm font-medium text-orange-800">Awaiting Payment</span>
             </div>
-            <p className="text-2xl font-bold text-yellow-600">${totalPending}</p>
+            <p className="text-2xl font-bold text-orange-600">${totalPending.toFixed(2)}</p>
+            <p className="text-xs text-orange-600">Active offers</p>
           </CardContent>
         </Card>
       </div>
@@ -85,26 +99,47 @@ export const PaymentsTab = ({ bookings }: PaymentsTabProps) => {
         </div>
       ) : (
         <div className="space-y-3">
-          <h3 className="font-medium text-gray-900">Payment History</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-medium text-gray-900">Payment History</h3>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Download className="w-4 h-4" />
+              Export All
+            </Button>
+          </div>
+          
           {paymentBookings.map((booking) => {
             const paymentStatus = getPaymentStatus(booking);
+            const canDownload = ['completed', 'paid'].includes(paymentStatus);
+            
             return (
               <Card key={booking.id}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-gray-900">
-                        #{booking.id.slice(-8).toUpperCase()}
+                        #{(booking.booking_code || booking.id.slice(-8)).toUpperCase()}
                       </span>
                       <Badge className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(paymentStatus)}`}>
                         {getStatusLabel(paymentStatus)}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <DollarSign className="w-4 h-4 text-gray-600" />
-                      <span className="font-semibold text-gray-900">
-                        ${booking.final_price || booking.estimated_price || 0}
-                      </span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
+                        <DollarSign className="w-4 h-4 text-gray-600" />
+                        <span className="font-semibold text-gray-900">
+                          ${booking.final_price || booking.estimated_price || 0}
+                        </span>
+                      </div>
+                      {canDownload && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleDownloadReceipt(booking)}
+                          className="gap-1 p-2"
+                        >
+                          <Receipt className="w-3 w-3" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                   
@@ -114,16 +149,45 @@ export const PaymentsTab = ({ bookings }: PaymentsTabProps) => {
                   
                   <div className="flex items-center justify-between text-xs text-gray-500">
                     <span>{format(new Date(booking.pickup_time), 'MMM dd, yyyy')}</span>
-                    {booking.driver_name && (
-                      <span>Driver: {booking.driver_name}</span>
-                    )}
+                    <div className="flex items-center gap-4">
+                      {booking.driver_name && paymentStatus === 'completed' && (
+                        <span>Driver: {booking.driver_name}</span>
+                      )}
+                      {booking.vehicle_type && (
+                        <span>{booking.vehicle_type}</span>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Action button for pending payments */}
+                  {paymentStatus === 'offer_sent' && (
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <Button size="sm" className="w-full">
+                        Review Offer & Pay
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             );
           })}
         </div>
       )}
+
+      {/* Payment Information */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Payment Information</CardTitle>
+        </CardHeader>
+        <CardContent className="p-4">
+          <div className="space-y-2 text-sm text-gray-600">
+            <p>• All payments are processed securely through our payment system</p>
+            <p>• Pricing includes all fees and taxes upfront</p>
+            <p>• Receipts are available for download after payment completion</p>
+            <p>• Cancellation and refund policies apply as per terms of service</p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

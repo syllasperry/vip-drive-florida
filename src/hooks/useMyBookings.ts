@@ -19,6 +19,11 @@ export interface MyBooking {
   price_cents?: number;
   vehicle_type?: string;
   distance_miles?: number;
+  payment_confirmation_status?: string;
+  ride_status?: string;
+  status_passenger?: string;
+  status_driver?: string;
+  passenger_count?: number;
 }
 
 export const useMyBookings = () => {
@@ -80,7 +85,7 @@ export const useMyBookings = () => {
         return;
       }
 
-      // Fetch bookings with proper driver join
+      // Fixed: Fetch bookings with proper driver join using explicit column names
       const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
@@ -99,10 +104,11 @@ export const useMyBookings = () => {
           final_price_cents,
           vehicle_type,
           distance_miles,
-          drivers:driver_id (
-            full_name,
-            phone
-          )
+          payment_confirmation_status,
+          ride_status,
+          status_passenger,
+          status_driver,
+          passenger_count
         `)
         .eq('passenger_id', passengerData.id)
         .order('created_at', { ascending: false });
@@ -117,32 +123,54 @@ export const useMyBookings = () => {
 
       if (!mountedRef.current) return;
 
-      const formattedBookings: MyBooking[] = (bookingsData || []).map(booking => ({
-        id: booking.id,
-        booking_code: booking.booking_code,
-        status: booking.status || 'pending',
-        pickup_location: booking.pickup_location,
-        dropoff_location: booking.dropoff_location,
-        pickup_time: booking.pickup_time,
-        created_at: booking.created_at,
-        updated_at: booking.updated_at,
-        driver_id: booking.driver_id,
-        driver_name: booking.drivers?.full_name,
-        driver_phone: booking.drivers?.phone,
-        estimated_price: booking.estimated_price,
-        final_price: booking.final_price,
-        price_cents: booking.final_price_cents || booking.estimated_price_cents,
-        vehicle_type: booking.vehicle_type,
-        distance_miles: booking.distance_miles
-      }));
+      // Separate query to fetch driver information for each booking
+      const bookingsWithDrivers = await Promise.all(
+        (bookingsData || []).map(async (booking) => {
+          let driverInfo = null;
+          
+          if (booking.driver_id) {
+            const { data: driverData } = await supabase
+              .from('drivers')
+              .select('full_name, phone')
+              .eq('id', booking.driver_id)
+              .single();
+            
+            driverInfo = driverData;
+          }
 
-      console.log('✅ Final formatted bookings:', formattedBookings.length, 'bookings');
+          return {
+            id: booking.id,
+            booking_code: booking.booking_code,
+            status: booking.status || 'pending',
+            pickup_location: booking.pickup_location,
+            dropoff_location: booking.dropoff_location,
+            pickup_time: booking.pickup_time,
+            created_at: booking.created_at,
+            updated_at: booking.updated_at,
+            driver_id: booking.driver_id,
+            driver_name: driverInfo?.full_name,
+            driver_phone: driverInfo?.phone,
+            estimated_price: booking.estimated_price,
+            final_price: booking.final_price,
+            price_cents: booking.final_price_cents || booking.estimated_price_cents,
+            vehicle_type: booking.vehicle_type,
+            distance_miles: booking.distance_miles,
+            payment_confirmation_status: booking.payment_confirmation_status,
+            ride_status: booking.ride_status,
+            status_passenger: booking.status_passenger,
+            status_driver: booking.status_driver,
+            passenger_count: booking.passenger_count
+          };
+        })
+      );
+
+      console.log('✅ Final formatted bookings:', bookingsWithDrivers.length, 'bookings');
 
       if (mountedRef.current) {
-        setBookings(formattedBookings);
+        setBookings(bookingsWithDrivers);
         setError(null);
         setLoading(false);
-        console.log('✅ State updated successfully with', formattedBookings.length, 'bookings');
+        console.log('✅ State updated successfully with', bookingsWithDrivers.length, 'bookings');
       }
 
     } catch (err) {
