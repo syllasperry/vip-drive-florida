@@ -1,254 +1,243 @@
 
-import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Calendar, MapPin, Clock, User, Car, DollarSign, MessageCircle, CreditCard, AlertCircle, Phone } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
-import { useMyBookings } from '@/hooks/useMyBookings';
-import { useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
+import React, { useState } from "react";
+import { useMyBookings } from "@/hooks/useMyBookings";
+import { useReviewNotifications } from "@/hooks/useReviewNotifications";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { MapPin, Clock, Car, Star, MessageCircle, Phone } from "lucide-react";
+import { AirbnbStyleReviewModal } from "@/components/review/AirbnbStyleReviewModal";
 
 export const PassengerBookingsList = () => {
-  const { bookings, loading, error, refetch } = useMyBookings();
-  const [paymentModal, setPaymentModal] = useState<{ isOpen: boolean; booking: any }>({
-    isOpen: false,
-    booking: null
-  });
-  const { toast } = useToast();
+  const { data: bookings = [], isLoading, error } = useMyBookings();
+  const { data: reviewNotifications = [] } = useReviewNotifications();
+  const [selectedBookingForReview, setSelectedBookingForReview] = useState<any>(null);
 
-  const getStatusVariant = (booking: any) => {
-    const status = booking.status?.toLowerCase();
-    const paymentStatus = booking.payment_confirmation_status?.toLowerCase();
-    const rideStatus = booking.ride_status?.toLowerCase();
-
-    // Handle SmartPrice ON/OFF logic - passenger only sees final price
-    if (paymentStatus === 'all_set') {
-      return 'bg-green-100 text-green-800 border-green-200';
-    }
-    if (rideStatus === 'offer_sent' || status === 'offer_sent') {
-      return 'bg-blue-100 text-blue-800 border-blue-200';
-    }
-    if (paymentStatus === 'waiting_for_payment' || paymentStatus === 'passenger_paid') {
-      return 'bg-orange-100 text-orange-800 border-orange-200';
-    }
-    if (status === 'pending' || paymentStatus === 'waiting_for_offer') {
-      return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    }
-    if (status === 'cancelled') {
-      return 'bg-red-100 text-red-800 border-red-200';
-    }
-    
-    return 'bg-gray-100 text-gray-800 border-gray-200';
-  };
-
-  const getStatusLabel = (booking: any) => {
-    const status = booking.status?.toLowerCase();
-    const paymentStatus = booking.payment_confirmation_status?.toLowerCase();
-    const rideStatus = booking.ride_status?.toLowerCase();
-
-    // Simplified booking states as per dispatcher changes
-    if (paymentStatus === 'all_set') {
-      return 'All Set';
-    }
-    if (rideStatus === 'offer_sent' || status === 'offer_sent') {
-      return 'Offer Sent - Review Payment';
-    }
-    if (paymentStatus === 'waiting_for_payment') {
-      return 'Awaiting Payment';
-    }
-    if (paymentStatus === 'passenger_paid') {
-      return 'Payment Confirmed';
-    }
-    if (status === 'pending' || paymentStatus === 'waiting_for_offer') {
-      return 'Request Received';
-    }
-    if (status === 'cancelled') {
-      return 'Cancelled';
-    }
-    
-    return status ? status.replace('_', ' ').toUpperCase() : 'Unknown';
-  };
-
-  const getDriverDisplay = (booking: any) => {
-    // Show driver info only after "All Set" status (when dispatcher assigns)
-    if (!booking.driver_id || !booking.driver_name) {
-      return 'Driver to be assigned';
-    }
-    return booking.driver_name;
-  };
-
-  const canMessageDriver = (booking: any) => {
-    // Can message driver only when All Set (driver assigned and payment confirmed)
-    return booking.driver_id && booking.driver_name && booking.payment_confirmation_status === 'all_set';
-  };
-
-  const shouldShowPaymentButton = (booking: any) => {
-    // Show payment button when offer is sent
-    return booking.ride_status === 'offer_sent' || booking.status === 'offer_sent';
-  };
-
-  const handlePaymentClick = (booking: any) => {
-    // Redirect to payment or show payment modal
-    toast({
-      title: "Payment Required",
-      description: "Redirecting to payment options...",
-    });
-    // This would integrate with actual payment flow
-  };
-
-  const handleMessageDriver = (booking: any) => {
-    toast({
-      title: "Messaging",
-      description: "Opening conversation with your driver...",
-    });
-    // This would open messaging interface
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mx-auto mb-4"></div>
-          <p className="text-gray-500">Loading your bookings...</p>
-        </div>
+        {[1, 2, 3].map((i) => (
+          <Card key={i} className="animate-pulse">
+            <CardContent className="p-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="h-4 bg-muted rounded w-24" />
+                  <div className="h-6 bg-muted rounded w-20" />
+                </div>
+                <div className="space-y-2">
+                  <div className="h-4 bg-muted rounded w-3/4" />
+                  <div className="h-4 bg-muted rounded w-1/2" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center py-8">
-        <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-        <p className="text-red-600 mb-4">Error: {error}</p>
-        <Button onClick={refetch} variant="outline">
-          Try Again
-        </Button>
-      </div>
+      <Card>
+        <CardContent className="p-6 text-center">
+          <p className="text-muted-foreground">Failed to load bookings</p>
+        </CardContent>
+      </Card>
     );
   }
 
-  if (!bookings || bookings.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Car className="w-8 h-8 text-gray-400" />
-        </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings yet</h3>
-        <p className="text-gray-500">Your ride bookings will appear here once you make your first booking.</p>
-      </div>
-    );
-  }
+  // Find bookings that need reviews
+  const bookingsNeedingReview = reviewNotifications.map(notification => {
+    const booking = bookings.find(b => b.booking_id === notification.booking_id);
+    return booking ? { ...booking, reviewNotification: notification } : null;
+  }).filter(Boolean);
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return 'bg-orange-100 text-orange-800';
+      case 'offer_sent': return 'bg-blue-100 text-blue-800';
+      case 'all_set': return 'bg-green-100 text-green-800';
+      case 'completed': return 'bg-emerald-100 text-emerald-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const formatStatus = (status: string) => {
+    return status.split('_').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
+  };
+
+  const formatPrice = (priceCents: number | null, currency = 'USD') => {
+    if (!priceCents) return 'Price TBD';
+    return `$${(priceCents / 100).toFixed(2)} ${currency}`;
+  };
 
   return (
-    <div className="space-y-4">
-      {bookings.map((booking) => (
-        <Card key={booking.id} className="hover:shadow-md transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="bg-red-100 rounded-full p-2">
-                  <Car className="h-4 w-4 text-red-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">
-                    Booking #{booking.booking_code || booking.id.slice(-8).toUpperCase()}
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    Created {format(parseISO(booking.created_at), 'MMM dd, yyyy')}
-                  </p>
-                </div>
-              </div>
-              <Badge className={`px-2 py-1 text-xs border ${getStatusVariant(booking)}`}>
-                {getStatusLabel(booking)}
-              </Badge>
-            </div>
-
-            {/* Trip Details */}
-            <div className="space-y-3 mb-4">
-              <div className="flex items-start gap-2">
-                <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
-                    From: {booking.pickup_location}
-                  </p>
-                  <p className="text-sm text-gray-600 truncate">
-                    To: {booking.dropoff_location}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4 text-sm text-gray-600">
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  <span>{format(parseISO(booking.pickup_time), 'MMM dd, yyyy')}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Clock className="h-4 w-4" />
-                  <span>{format(parseISO(booking.pickup_time), 'HH:mm')}</span>
-                </div>
-                {booking.vehicle_type && (
-                  <div className="flex items-center gap-1">
-                    <Car className="h-4 w-4" />
-                    <span>{booking.vehicle_type}</span>
+    <div className="space-y-6">
+      {/* Review Requests Section */}
+      {bookingsNeedingReview.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Star className="h-5 w-5 text-yellow-500" />
+            Review Your Recent Rides
+          </h3>
+          
+          {bookingsNeedingReview.map((booking) => (
+            <Card key={`review-${booking.booking_id}`} className="border-yellow-200 bg-yellow-50">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-yellow-100 rounded-full">
+                      <Star className="h-6 w-6 text-yellow-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">How was your ride?</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Trip #{booking.booking_code} • {new Date(booking.pickup_time).toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
-                )}
-              </div>
+                  <Button 
+                    onClick={() => setSelectedBookingForReview(booking)}
+                    className="bg-yellow-600 hover:bg-yellow-700"
+                  >
+                    Leave Review
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
-              {/* Driver Info */}
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-gray-400" />
-                <span className="text-sm text-gray-600">
-                  Driver: {getDriverDisplay(booking)}
-                </span>
-                {booking.driver_phone && booking.payment_confirmation_status === 'all_set' && (
-                  <Phone className="h-3 w-3 text-gray-400 ml-2" />
-                )}
-              </div>
+      {/* All Bookings */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Your Bookings</h3>
+        
+        {bookings.length === 0 ? (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <Car className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No bookings yet</h3>
+              <p className="text-muted-foreground">
+                Your ride history will appear here once you make your first booking.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          bookings.map((booking) => (
+            <Card key={booking.booking_id} className="hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <CardTitle className="text-lg">Trip #{booking.booking_code}</CardTitle>
+                    <Badge className={getStatusColor(booking.status)}>
+                      {formatStatus(booking.status)}
+                    </Badge>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-semibold text-primary">
+                      {formatPrice(booking.price_cents, booking.currency)}
+                    </p>
+                    {booking.distance_miles && (
+                      <p className="text-sm text-muted-foreground">
+                        {booking.distance_miles.toFixed(1)} miles
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+              
+              <CardContent className="pt-0">
+                <div className="grid gap-4">
+                  {/* Trip Details */}
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3">
+                      <MapPin className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">From</p>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {booking.pickup_location}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-3">
+                      <MapPin className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">To</p>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {booking.dropoff_location}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <Clock className="h-5 w-5 text-blue-600" />
+                      <div>
+                        <p className="font-medium text-sm">Pickup Time</p>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(booking.pickup_time).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {booking.vehicle_type && (
+                      <div className="flex items-center gap-3">
+                        <Car className="h-5 w-5 text-purple-600" />
+                        <div>
+                          <p className="font-medium text-sm">Vehicle</p>
+                          <p className="text-sm text-muted-foreground">
+                            {booking.vehicle_type}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
-              {/* Price Info - Only final price shown to passenger */}
-              {(booking.estimated_price || booking.final_price) && (
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm font-medium text-gray-900">
-                    ${booking.final_price || booking.estimated_price}
-                  </span>
-                  {booking.distance_miles && (
-                    <span className="text-sm text-gray-500">
-                      ({booking.distance_miles} miles)
-                    </span>
+                  {/* Driver Info */}
+                  {booking.driver_id && booking.driver_name && (
+                    <div className="border-t pt-4">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={booking.driver_avatar_url} />
+                          <AvatarFallback>
+                            {booking.driver_name.split(' ').map((n: string) => n[0]).join('')}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <p className="font-medium">Your Driver</p>
+                          <p className="text-sm text-muted-foreground">{booking.driver_name}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline">
+                            <MessageCircle className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            <Phone className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
 
-            {/* Action Buttons */}
-            <div className="flex gap-2 pt-4 border-t border-gray-100">
-              {shouldShowPaymentButton(booking) && (
-                <Button 
-                  size="sm" 
-                  className="gap-1"
-                  onClick={() => handlePaymentClick(booking)}
-                >
-                  <CreditCard className="h-3 w-3" />
-                  Review & Pay
-                </Button>
-              )}
-              {canMessageDriver(booking) && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="gap-1"
-                  onClick={() => handleMessageDriver(booking)}
-                >
-                  <MessageCircle className="h-3 w-3" />
-                  Message Driver
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+      {/* Review Modal */}
+      {selectedBookingForReview && (
+        <AirbnbStyleReviewModal
+          isOpen={true}
+          onClose={() => setSelectedBookingForReview(null)}
+          booking={selectedBookingForReview}
+        />
+      )}
     </div>
   );
 };

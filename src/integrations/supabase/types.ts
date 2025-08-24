@@ -2586,6 +2586,170 @@ export type Database = {
         }
         Relationships: []
       }
+      review_notifications: {
+        Row: {
+          booking_id: string
+          created_at: string
+          id: string
+          passenger_id: string
+          review_submitted: boolean | null
+          scheduled_for: string
+          sent_at: string | null
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          id?: string
+          passenger_id: string
+          review_submitted?: boolean | null
+          scheduled_for: string
+          sent_at?: string | null
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          id?: string
+          passenger_id?: string
+          review_submitted?: boolean | null
+          scheduled_for?: string
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "booking_notification_prefs_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "review_notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_booking_cards_v"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "review_notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "review_notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "review_notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_bookings_view"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "review_notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "review_notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "review_notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "review_notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "review_notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "review_notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "my_passenger_bookings_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "review_notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v1"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "review_notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_cards_v2"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "review_notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "review_notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "v_booking_pricing_preview"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "review_notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_booking_card"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "review_notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "review_notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["booking_id"]
+          },
+        ]
+      }
       reviews: {
         Row: {
           booking_id: string
@@ -6674,6 +6838,17 @@ export type Database = {
           pickup_time: string
           status: string
           vehicle_type: string
+        }[]
+      }
+      get_published_reviews: {
+        Args: { limit_count?: number }
+        Returns: {
+          created_at: string
+          id: string
+          overall_rating: number
+          passenger_name: string
+          passenger_photo_url: string
+          public_review: string
         }[]
       }
       get_ride_status_summary: {

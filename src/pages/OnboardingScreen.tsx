@@ -10,10 +10,10 @@ import {
   CarouselNext, 
   CarouselPrevious 
 } from "@/components/ui/carousel";
+import { ReviewCarousel } from "@/components/review/ReviewCarousel";
 import businessmanImg from "@/assets/onboarding-businessman.jpg";
 import womanBookingImg from "@/assets/onboarding-woman-booking.jpg";
 import chauffeurWelcomeImg from "@/assets/onboarding-chauffeur-welcome.jpg";
-import sarahJohnsonAvatar from "@/assets/sarah-johnson-avatar.jpg";
 
 const onboardingSlides = [
   {
@@ -30,33 +30,6 @@ const onboardingSlides = [
     image: womanBookingImg,
     title: "Easy Booking",
     description: "Book your premium ride in just a few taps. Simple, fast, and secure reservation system."
-  }
-];
-
-const testimonials = [
-  {
-    name: "Michael Rodriguez",
-    rating: 5,
-    text: "Exceptional service! Always on time and professional.",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face"
-  },
-  {
-    name: "Sarah Johnson",
-    rating: 5,
-    text: "The best chauffeur service in Miami. Highly recommended!",
-    avatar: sarahJohnsonAvatar
-  },
-  {
-    name: "David Chen",
-    rating: 5,
-    text: "Luxury vehicles and outstanding customer service.",
-    avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face"
-  },
-  {
-    name: "Amanda Williams",
-    rating: 5,
-    text: "Perfect for business travel. Professional and reliable.",
-    avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face"
   }
 ];
 
@@ -217,17 +190,6 @@ const OnboardingScreen = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-play testimonials carousel every 4 seconds
-  useEffect(() => {
-    if (!testimonialApi) return;
-
-    const interval = setInterval(() => {
-      testimonialApi.scrollNext();
-    }, 4000);
-
-    return () => clearInterval(interval);
-  }, [testimonialApi]);
-
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % onboardingSlides.length);
   };
@@ -296,48 +258,17 @@ const OnboardingScreen = () => {
         </div>
       </div>
 
-      {/* Testimonials Carousel */}
-      <div className="py-8 px-4">
-        <h3 className="text-xl font-semibold text-center mb-6 text-foreground">
-          What Our Clients Say
-        </h3>
-        <div className="max-w-5xl mx-auto">
-          <Carousel 
-            className="w-full"
-            setApi={setTestimonialApi}
-            opts={{
-              align: "start",
-              loop: true,
-            }}
-          >
-            <CarouselContent className="-ml-2 md:-ml-4">
-              {testimonials.map((testimonial, index) => (
-                <CarouselItem key={index} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/3">
-                  <div className="bg-card p-6 rounded-xl shadow-lg h-full border border-border/20">
-                    <div className="flex items-center space-x-3 mb-4">
-                      <img 
-                        src={testimonial.avatar} 
-                        alt={testimonial.name}
-                        className="w-12 h-12 rounded-full object-cover"
-                      />
-                      <div>
-                        <h4 className="font-medium text-card-foreground">{testimonial.name}</h4>
-                        <div className="flex space-x-1">
-                          {[...Array(testimonial.rating)].map((_, i) => (
-                            <Star key={i} className="w-4 h-4 fill-primary text-primary" />
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                    <p className="text-muted-foreground leading-relaxed">{testimonial.text}</p>
-                  </div>
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-            <CarouselPrevious className="hidden md:flex -left-4" />
-            <CarouselNext className="hidden md:flex -right-4" />
-          </Carousel>
+      {/* Customer Reviews Carousel */}
+      <div className="py-12 px-4 bg-gradient-to-b from-background to-muted/50">
+        <div className="text-center mb-8">
+          <h3 className="text-2xl font-bold text-foreground mb-2">
+            What Our Clients Say
+          </h3>
+          <p className="text-muted-foreground">
+            Trusted by hundreds of satisfied passengers
+          </p>
         </div>
+        <ReviewCarousel />
       </div>
 
       {/* Mechanical Departures Board */}
