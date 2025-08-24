@@ -1,33 +1,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-
-export interface MyBooking {
-  id: string;
-  booking_code?: string;
-  status: string;
-  pickup_location: string;
-  dropoff_location: string;
-  pickup_time: string;
-  created_at: string;
-  updated_at: string;
-  driver_id?: string;
-  driver_name?: string;
-  driver_phone?: string;
-  estimated_price?: number;
-  final_price?: number;
-  price_cents?: number;
-  vehicle_type?: string;
-  distance_miles?: number;
-  payment_confirmation_status?: string;
-  ride_status?: string;
-  status_passenger?: string;
-  status_driver?: string;
-  passenger_count?: number;
-}
+import type { Booking } from '@/lib/types/booking';
 
 export const useMyBookings = () => {
-  const [bookings, setBookings] = useState<MyBooking[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -160,7 +137,7 @@ export const useMyBookings = () => {
             status_passenger: booking.status_passenger,
             status_driver: booking.status_driver,
             passenger_count: booking.passenger_count
-          };
+          } as Booking;
         })
       );
 

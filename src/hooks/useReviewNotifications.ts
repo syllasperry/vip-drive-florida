@@ -19,7 +19,7 @@ interface ReviewNotification {
 }
 
 export const useReviewNotifications = () => {
-  return useQuery({
+  const { data: notifications = [], isLoading: loading, error } = useQuery({
     queryKey: ['review-notifications'],
     queryFn: async () => {
       console.log('🔔 Fetching review notifications...');
@@ -50,6 +50,12 @@ export const useReviewNotifications = () => {
     staleTime: 30000,
     refetchOnWindowFocus: false
   });
+
+  return {
+    notifications,
+    loading,
+    error
+  };
 };
 
 export const useMarkReviewNotificationSent = () => {

@@ -1,253 +1,241 @@
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Star, MessageCircle, Clock, Car, Heart } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import React, { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Star, X, MessageSquare, Shield, Smile, Clock, Car } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import type { Booking } from '@/lib/types/booking';
 
-interface AirbnbStyleReviewModalProps {
+export interface AirbnbStyleReviewModalProps {
   isOpen: boolean;
   onClose: () => void;
-  booking: any;
+  booking: Booking;
+  onReviewSubmitted?: () => void;
 }
 
-type RatingCategory = 'communication' | 'punctuality' | 'driving' | 'comfort';
-
-const ratingCategories = {
-  communication: {
-    icon: MessageCircle,
-    title: "Communication",
-    description: "How well did your driver communicate?"
-  },
-  punctuality: {
-    icon: Clock,
-    title: "Punctuality",
-    description: "Was your driver on time?"
-  },
-  driving: {
-    icon: Car,
-    title: "Driving",
-    description: "How was the driving experience?"
-  },
-  comfort: {
-    icon: Heart,
-    title: "Comfort",
-    description: "How comfortable was your ride?"
-  }
-};
-
-export const AirbnbStyleReviewModal = ({ isOpen, onClose, booking }: AirbnbStyleReviewModalProps) => {
+export const AirbnbStyleReviewModal = ({ 
+  isOpen, 
+  onClose, 
+  booking,
+  onReviewSubmitted 
+}: AirbnbStyleReviewModalProps) => {
   const { toast } = useToast();
-  const [step, setStep] = useState(1);
-  const [ratings, setRatings] = useState<Record<RatingCategory, number>>({
+  const [ratings, setRatings] = useState({
+    overall: 0,
     communication: 0,
     punctuality: 0,
     driving: 0,
     comfort: 0
   });
-  const [publicReview, setPublicReview] = useState("");
-  const [privateFeedback, setPrivateFeedback] = useState("");
+  const [publicReview, setPublicReview] = useState('');
+  const [privateFeedback, setPrivateFeedback] = useState('');
+  const [consentForPublic, setConsentForPublic] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleRatingChange = (category: RatingCategory, rating: number) => {
+  const ratingCategories = [
+    { key: 'communication', label: 'Communication', icon: MessageSquare },
+    { key: 'punctuality', label: 'Punctuality', icon: Clock },
+    { key: 'driving', label: 'Driving', icon: Car },
+    { key: 'comfort', label: 'Comfort', icon: Smile },
+  ];
+
+  const handleRatingChange = (category: keyof typeof ratings, rating: number) => {
     setRatings(prev => ({ ...prev, [category]: rating }));
   };
 
-  const handleNextStep = () => {
-    if (step === 1) {
-      // Check if all ratings are provided
-      const allRated = Object.values(ratings).every(rating => rating > 0);
-      if (!allRated) {
-        toast({
-          title: "Please rate all categories",
-          description: "All rating categories are required",
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-    setStep(step + 1);
+  const renderStars = (category: keyof typeof ratings) => {
+    return (
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            type="button"
+            onClick={() => handleRatingChange(category, star)}
+            className="focus:outline-none transition-colors"
+          >
+            <Star
+              className={`h-6 w-6 ${
+                star <= ratings[category]
+                  ? 'fill-yellow-400 text-yellow-400'
+                  : 'text-gray-300 hover:text-yellow-300'
+              }`}
+            />
+          </button>
+        ))}
+      </div>
+    );
   };
 
   const handleSubmit = async () => {
-    if (!publicReview.trim()) {
+    if (ratings.overall === 0) {
       toast({
-        title: "Public review required",
-        description: "Please write a public review for the driver",
-        variant: "destructive",
+        title: 'Rating required',
+        description: 'Please provide an overall rating',
+        variant: 'destructive'
       });
       return;
     }
 
     setIsSubmitting(true);
+
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      // Get passenger ID
+      const { data: passengerData } = await supabase
+        .from('passengers')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!passengerData) throw new Error('Passenger profile not found');
+
+      // Submit review
       const { error } = await supabase
         .from('ride_reviews')
         .insert({
           booking_id: booking.id,
-          passenger_id: booking.passenger_id,
+          passenger_id: passengerData.id,
           driver_id: booking.driver_id,
+          overall_rating: ratings.overall,
           communication_rating: ratings.communication,
           punctuality_rating: ratings.punctuality,
           driving_rating: ratings.driving,
           comfort_rating: ratings.comfort,
-          public_review: publicReview.trim(),
-          private_feedback: privateFeedback.trim() || null
+          public_review: publicReview.trim() || null,
+          private_feedback: privateFeedback.trim() || null,
+          consent_for_public_use: consentForPublic
         });
 
       if (error) throw error;
 
+      // Mark review notification as submitted
+      await supabase
+        .from('review_notifications')
+        .update({ review_submitted: true })
+        .eq('booking_id', booking.id)
+        .eq('passenger_id', passengerData.id);
+
       toast({
-        title: "Review submitted!",
-        description: "Thank you for your feedback",
+        title: 'Review submitted!',
+        description: 'Thank you for your feedback. It helps us improve our service.',
       });
 
+      onReviewSubmitted?.();
       onClose();
     } catch (error) {
       console.error('Error submitting review:', error);
       toast({
-        title: "Error",
-        description: "Failed to submit review",
-        variant: "destructive",
+        title: 'Error submitting review',
+        description: 'Please try again later',
+        variant: 'destructive'
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const allFiveStars = Object.values(ratings).every(rating => rating === 5);
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="relative">
           <DialogTitle className="text-xl font-semibold text-center">
-            {step === 1 && "Rate your experience"}
-            {step === 2 && "Share your thoughts"}
+            How was your ride?
           </DialogTitle>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="absolute right-0 top-0 p-1"
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {step === 1 && (
-            <>
-              {/* Driver Info */}
-              <div className="text-center border-b pb-4">
-                <h3 className="text-lg font-medium">
-                  How was your ride with {booking.drivers?.full_name || 'your driver'}?
-                </h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {new Date(booking.pickup_time).toLocaleDateString()} • {booking.vehicle_type}
-                </p>
-              </div>
+        <div className="space-y-6 py-4">
+          {/* Driver Info */}
+          <div className="text-center">
+            <p className="text-sm text-gray-600">
+              Driver: {booking.driver_name || 'Your driver'}
+            </p>
+            <p className="text-xs text-gray-500">
+              {booking.pickup_location} → {booking.dropoff_location}
+            </p>
+          </div>
 
-              {/* Rating Categories */}
-              <div className="space-y-6">
-                {Object.entries(ratingCategories).map(([key, config]) => {
-                  const Icon = config.icon;
-                  const categoryKey = key as RatingCategory;
-                  
-                  return (
-                    <div key={key} className="space-y-2">
-                      <div className="flex items-center gap-3">
-                        <Icon className="h-5 w-5 text-muted-foreground" />
-                        <div className="flex-1">
-                          <h4 className="font-medium">{config.title}</h4>
-                          <p className="text-sm text-muted-foreground">{config.description}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex gap-1 ml-8">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <button
-                            key={star}
-                            onClick={() => handleRatingChange(categoryKey, star)}
-                            className="p-1 hover:scale-110 transition-transform"
-                          >
-                            <Star
-                              className={`h-8 w-8 ${
-                                star <= ratings[categoryKey]
-                                  ? 'fill-yellow-400 text-yellow-400'
-                                  : 'text-gray-300'
-                              }`}
-                            />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+          {/* Overall Rating */}
+          <div className="text-center space-y-2">
+            <h3 className="font-medium">Overall Experience</h3>
+            <div className="flex justify-center">
+              {renderStars('overall')}
+            </div>
+          </div>
 
-              <Button onClick={handleNextStep} className="w-full py-3">
-                Continue
-              </Button>
-            </>
-          )}
-
-          {step === 2 && (
-            <>
-              {/* All 5-star notification */}
-              {allFiveStars && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-                  <div className="flex justify-center mb-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Star key={star} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-                    ))}
-                  </div>
-                  <p className="text-sm text-green-800 font-medium">
-                    Excellent! Your 5-star review will be featured on our homepage
-                  </p>
+          {/* Category Ratings */}
+          <div className="space-y-4">
+            {ratingCategories.map(({ key, label, icon: Icon }) => (
+              <div key={key} className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Icon className="h-4 w-4 text-gray-600" />
+                  <span className="text-sm font-medium">{label}</span>
                 </div>
-              )}
-
-              {/* Public Review */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Public Review <span className="text-red-500">*</span>
-                </label>
-                <p className="text-xs text-muted-foreground">
-                  This will be visible to the driver and future passengers
-                </p>
-                <Textarea
-                  placeholder="Share what made your experience great..."
-                  value={publicReview}
-                  onChange={(e) => setPublicReview(e.target.value)}
-                  className="min-h-[100px]"
-                />
+                {renderStars(key as keyof typeof ratings)}
               </div>
+            ))}
+          </div>
 
-              {/* Private Feedback */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Private Feedback <span className="text-muted-foreground">(Optional)</span>
-                </label>
-                <p className="text-xs text-muted-foreground">
-                  This will only be visible to our team for service improvement
-                </p>
-                <Textarea
-                  placeholder="Any suggestions or concerns..."
-                  value={privateFeedback}
-                  onChange={(e) => setPrivateFeedback(e.target.value)}
-                  className="min-h-[80px]"
-                />
-              </div>
+          {/* Public Review */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Share your experience (optional)</label>
+            <Textarea
+              placeholder="Tell others about your ride..."
+              value={publicReview}
+              onChange={(e) => setPublicReview(e.target.value)}
+              className="resize-none"
+              rows={3}
+            />
+          </div>
 
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
-                  Back
-                </Button>
-                <Button 
-                  onClick={handleSubmit} 
-                  disabled={isSubmitting}
-                  className="flex-1"
-                >
-                  {isSubmitting ? "Submitting..." : "Submit Review"}
-                </Button>
-              </div>
-            </>
+          {/* Private Feedback */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Private feedback for us (optional)</label>
+            <Textarea
+              placeholder="Any suggestions or issues? This won't be shared publicly."
+              value={privateFeedback}
+              onChange={(e) => setPrivateFeedback(e.target.value)}
+              className="resize-none"
+              rows={2}
+            />
+          </div>
+
+          {/* Consent */}
+          {publicReview && (
+            <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
+              <input
+                type="checkbox"
+                id="consent"
+                checked={consentForPublic}
+                onChange={(e) => setConsentForPublic(e.target.checked)}
+                className="mt-0.5"
+              />
+              <label htmlFor="consent" className="text-sm text-gray-700 flex-1">
+                <Shield className="inline h-4 w-4 mr-1" />
+                I agree to share my review and photo publicly to help other passengers
+              </label>
+            </div>
           )}
+
+          {/* Submit Button */}
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting || ratings.overall === 0}
+            className="w-full"
+          >
+            {isSubmitting ? 'Submitting...' : 'Submit Review'}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

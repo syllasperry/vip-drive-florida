@@ -9,12 +9,12 @@ import { useMyBookings } from '@/hooks/useMyBookings';
 import { useReviewNotifications } from '@/hooks/useReviewNotifications';
 import { AirbnbStyleReviewModal } from '@/components/review/AirbnbStyleReviewModal';
 import { PaymentModal } from '@/components/dashboard/PaymentModal';
-import type { MyBooking } from '@/lib/types/booking';
+import type { Booking } from '@/lib/types/booking';
 
 export const PassengerBookingsList = () => {
   const { bookings, loading, error, refetch } = useMyBookings();
   const { notifications, loading: notificationsLoading } = useReviewNotifications();
-  const [selectedBooking, setSelectedBooking] = useState<MyBooking | null>(null);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
@@ -37,7 +37,7 @@ export const PassengerBookingsList = () => {
     }
   };
 
-  const getStatusLabel = (booking: MyBooking) => {
+  const getStatusLabel = (booking: Booking) => {
     const status = booking.payment_confirmation_status?.toLowerCase();
     
     if (status === 'all_set') return 'All Set';
@@ -47,12 +47,12 @@ export const PassengerBookingsList = () => {
     return 'Pending';
   };
 
-  const canPayNow = (booking: MyBooking) => {
+  const canPayNow = (booking: Booking) => {
     const status = booking.payment_confirmation_status?.toLowerCase();
     return status === 'waiting_for_payment' || booking.ride_status === 'offer_sent';
   };
 
-  const canLeaveReview = (booking: MyBooking) => {
+  const canLeaveReview = (booking: Booking) => {
     const status = booking.payment_confirmation_status?.toLowerCase();
     const hasReviewNotification = notifications.some(n => 
       n.booking_id === booking.id && !n.review_submitted
@@ -60,12 +60,12 @@ export const PassengerBookingsList = () => {
     return status === 'all_set' && hasReviewNotification;
   };
 
-  const handlePayNow = (booking: MyBooking) => {
+  const handlePayNow = (booking: Booking) => {
     setSelectedBooking(booking);
     setShowPaymentModal(true);
   };
 
-  const handleLeaveReview = (booking: MyBooking) => {
+  const handleLeaveReview = (booking: Booking) => {
     setSelectedBooking(booking);
     setShowReviewModal(true);
   };
