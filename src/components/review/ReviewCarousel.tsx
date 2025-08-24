@@ -16,7 +16,7 @@ const originalReviews = [
   {
     id: '2', 
     passenger_name: 'Michael Chen',
-    passenger_photo_url: null,
+    passenger_photo_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face&auto=format',
     public_review: 'Amazing experience! Clean, comfortable car and very polite driver. Perfect for business trips. Will definitely use again.',
     overall_rating: 5,
     created_at: new Date().toISOString()
@@ -24,7 +24,7 @@ const originalReviews = [
   {
     id: '3',
     passenger_name: 'Emily Rodriguez',
-    passenger_photo_url: null,
+    passenger_photo_url: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face&auto=format',
     public_review: 'Perfect for airport trips. Arrived on time and stress-free. The driver helped with luggage and was very courteous throughout the journey.',
     overall_rating: 5,
     created_at: new Date().toISOString()
