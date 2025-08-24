@@ -1,10 +1,9 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 import { MapPin, ArrowRight, Info, User, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import GoogleMapsAutocomplete from "@/components/GoogleMapsAutocomplete";
 
 const PriceEstimate = () => {
@@ -46,17 +45,36 @@ const PriceEstimate = () => {
       return;
     }
     
-    // Simple estimation logic - in real app this would call Google Distance Matrix API
-    const basePrice = 75;
+    // Uber Premier base + 30% markup + Stripe gross-up calculation
+    const basePrice = 75; // Uber Premier base
+    const markup = basePrice * 0.30; // 30% markup (20% dispatcher + 10% app)
+    const withMarkup = basePrice + markup;
+    
+    // Stripe gross-up (passenger pays Stripe fees)
+    const stripePercentage = 0.029; // 2.9%
+    const stripeFixed = 0.30; // $0.30
+    const stripeFees = (withMarkup * stripePercentage) + stripeFixed;
+    const finalPrice = withMarkup + stripeFees;
+    
+    // Add some randomization for distance-based pricing
     const randomRange = Math.floor(Math.random() * 50) + 25;
-    const estimate = `$${basePrice + randomRange} - $${basePrice + randomRange + 50}`;
+    const estimate = `$${Math.round(finalPrice + randomRange)}`;
     setEstimatedPrice(estimate);
     
-    console.log('💰 Price calculated for route:', { pickup, dropoff, estimate });
+    console.log('💰 Price calculated for route:', { 
+      pickup, 
+      dropoff, 
+      basePrice, 
+      markup, 
+      withMarkup, 
+      stripeFees, 
+      finalPrice: finalPrice + randomRange,
+      estimate 
+    });
   };
 
   const handleContinue = () => {
-    // Check if user is already logged in (in real app, this would check actual auth state)
+    // Check if user is already logged in
     const isLoggedIn = localStorage.getItem("passenger_logged_in") === "true";
     
     if (isLoggedIn) {
@@ -115,10 +133,10 @@ const PriceEstimate = () => {
         <div className="bg-card p-6 rounded-xl shadow-lg space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="pickup" className="text-base font-medium">
+              <label htmlFor="pickup" className="text-base font-medium flex items-center">
                 <MapPin className="inline h-4 w-4 mr-2" />
                 Pickup Location
-              </Label>
+              </label>
               <GoogleMapsAutocomplete
                 id="pickup-location"
                 placeholder="Enter pickup location (e.g., MIA, Fort Lauderdale Airport)"
@@ -131,10 +149,10 @@ const PriceEstimate = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="dropoff" className="text-base font-medium">
+              <label htmlFor="dropoff" className="text-base font-medium flex items-center">
                 <MapPin className="inline h-4 w-4 mr-2" />
                 Drop-off Location
-              </Label>
+              </label>
               <GoogleMapsAutocomplete
                 id="dropoff-location"
                 placeholder="Enter destination (e.g., Miami, 2911 NE 10th Ter)"
@@ -163,9 +181,28 @@ const PriceEstimate = () => {
                 <p className="text-3xl font-bold text-primary mt-2">{estimatedPrice}</p>
               </div>
               
+              {/* Vehicle Categories */}
+              <div className="space-y-2 mt-4">
+                <h4 className="font-semibold text-sm text-muted-foreground">Available Categories:</h4>
+                <div className="grid grid-cols-1 gap-2 text-sm">
+                  <div className="flex justify-between items-center p-2 bg-background rounded">
+                    <span>Premium Sedan</span>
+                    <span className="font-bold">{estimatedPrice}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-background rounded">
+                    <span>Luxury SUV</span>
+                    <span className="font-bold">${Math.round(parseInt(estimatedPrice.replace('$', '')) * 1.2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-background rounded opacity-60">
+                    <span>Executive Van</span>
+                    <span className="font-bold text-muted-foreground">Coming Soon</span>
+                  </div>
+                </div>
+              </div>
+              
               <div className="flex items-start space-x-2 text-sm text-muted-foreground">
                 <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                <p>This is an estimate. Final price will be confirmed by your driver based on actual distance, time, and service requirements.</p>
+                <p>Final price confirmed by your driver based on actual distance, time, and service requirements.</p>
               </div>
 
               <Button 
@@ -173,7 +210,7 @@ const PriceEstimate = () => {
                 className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
                 size="lg"
               >
-                Continue to Book Your Ride
+                Start Booking
                 <ArrowRight className="h-5 w-5 ml-2" />
               </Button>
             </div>

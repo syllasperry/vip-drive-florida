@@ -1,237 +1,96 @@
-import { useState } from "react";
-import { format, addHours, isAfter, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isSameMonth, isToday, isBefore } from "date-fns";
-import { CalendarIcon, Clock, ChevronLeft, ChevronRight, Info } from "lucide-react";
+import React from 'react';
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon, Clock } from "lucide-react";
+import { format, addMinutes, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 
 interface DateTimePickerProps {
-  selectedDate: string;
-  selectedTime: string;
-  onDateChange: (date: string) => void;
-  onTimeChange: (time: string) => void;
+  date: Date;
+  setDate: (date: Date) => void;
+  minDate?: Date;
 }
 
-export const DateTimePicker = ({ 
-  selectedDate, 
-  selectedTime, 
-  onDateChange, 
-  onTimeChange 
-}: DateTimePickerProps) => {
-  const [currentDisplayDate, setCurrentDisplayDate] = useState(new Date());
-  
-  // Calculate minimum date (6 hours from now)
-  const now = new Date();
-  const minDate = addHours(now, 6);
-  
-  // Parse selected date safely to avoid timezone issues
-  const parsedSelectedDate = selectedDate ? (() => {
-    const [year, month, day] = selectedDate.split('-').map(Number);
-    return new Date(year, month - 1, day);
-  })() : null;
+export function DateTimePicker({ date, setDate, minDate }: DateTimePickerProps) {
+  const [isOpen, setIsOpen] = React.useState(false);
 
-  // Generate calendar days for the current month
-  const generateCalendarDays = () => {
-    const start = startOfWeek(startOfMonth(currentDisplayDate));
-    const end = endOfWeek(endOfMonth(currentDisplayDate));
-    return eachDayOfInterval({ start, end });
-  };
-
-  // Generate time options based on selected date
-  const generateTimeOptions = () => {
-    const times = [];
+  // Generate time slots (every 30 minutes)
+  const timeSlots = React.useMemo(() => {
+    const slots = [];
+    const startTime = startOfDay(new Date());
     
-    for (let hour = 0; hour < 24; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
-        const timeSlotDate = new Date(parsedSelectedDate || new Date());
-        timeSlotDate.setHours(hour, minute, 0, 0);
-        
-        // Check 6-hour minimum notice rule
-        if (parsedSelectedDate && isAfter(minDate, timeSlotDate)) {
-          continue; // Skip this time as it's within 6 hours
-        }
-        
-        const timeString = format(timeSlotDate, "h:mm a");
-        times.push({
-          value: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,
-          display: timeString,
-          disabled: parsedSelectedDate && isAfter(minDate, timeSlotDate)
-        });
-      }
+    for (let i = 0; i < 48; i++) {
+      const time = addMinutes(startTime, i * 30);
+      slots.push({
+        value: format(time, 'HH:mm'),
+        label: format(time, 'h:mm a')
+      });
     }
-    return times;
-  };
+    return slots;
+  }, []);
 
-  const timeOptions = generateTimeOptions();
-  const calendarDays = generateCalendarDays();
-
-  const handleDateClick = (date: Date) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    if (isBefore(date, today)) return; // Don't allow past dates
-    
-    // Extract date components directly to avoid timezone issues
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const localDateString = `${year}-${month}-${day}`;
-    
-    onDateChange(localDateString);
-    
-    // Reset time if current time is no longer valid for new date
-    if (selectedTime) {
-      const newTimeOptions = generateTimeOptions();
-      const isCurrentTimeValid = newTimeOptions.some(t => t.value === selectedTime && !t.disabled);
-      if (!isCurrentTimeValid) {
-        onTimeChange("");
-      }
+  const handleDateSelect = (selectedDate: Date | undefined) => {
+    if (selectedDate) {
+      // Keep the current time when changing the date
+      const newDate = new Date(selectedDate);
+      newDate.setHours(date.getHours());
+      newDate.setMinutes(date.getMinutes());
+      setDate(newDate);
     }
   };
 
-  const handleTimeClick = (timeValue: string) => {
-    onTimeChange(timeValue);
+  const handleTimeChange = (timeValue: string) => {
+    const [hours, minutes] = timeValue.split(':').map(Number);
+    const newDate = new Date(date);
+    newDate.setHours(hours);
+    newDate.setMinutes(minutes);
+    setDate(newDate);
   };
-
-  const previousMonth = () => {
-    setCurrentDisplayDate(new Date(currentDisplayDate.getFullYear(), currentDisplayDate.getMonth() - 1));
-  };
-
-  const nextMonth = () => {
-    setCurrentDisplayDate(new Date(currentDisplayDate.getFullYear(), currentDisplayDate.getMonth() + 1));
-  };
-
-  const dayNames = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
   return (
-    <div className="space-y-6">
-      {/* Calendar Header */}
-      <div>
-        <Label className="text-lg font-semibold text-card-foreground mb-3 block">
-          Select Date & Time
-        </Label>
-        
-        {/* Calendar */}
-        <div className="bg-card rounded-xl border shadow-sm">
-          {/* Calendar Navigation */}
-          <div className="flex items-center justify-between px-4 py-3 border-b">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={previousMonth}
-              className="p-2 hover:bg-accent rounded-full"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-            <h2 className="font-semibold text-card-foreground">
-              {format(currentDisplayDate, "MMMM yyyy")}
-            </h2>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={nextMonth}
-              className="p-2 hover:bg-accent rounded-full"
-            >
-              <ChevronRight className="h-5 w-5" />
-            </Button>
-          </div>
+    <div className="flex space-x-2">
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className={cn(
+              "w-full justify-start text-left font-normal",
+              !date && "text-muted-foreground"
+            )}
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {date ? format(date, "MMM d, yyyy") : "Pick a date"}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0">
+          <Calendar
+            mode="single"
+            selected={date}
+            onSelect={handleDateSelect}
+            disabled={(date) => {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              return date < (minDate || today);
+            }}
+            initialFocus
+          />
+        </PopoverContent>
+      </Popover>
 
-          {/* Day Names */}
-          <div className="grid grid-cols-7 gap-1 p-4 pb-2">
-            {dayNames.map(day => (
-              <div key={day} className="text-center text-sm font-medium text-muted-foreground py-2">
-                {day}
-              </div>
-            ))}
-          </div>
-
-          {/* Calendar Days */}
-          <div className="grid grid-cols-7 gap-1 px-4 pb-4">
-            {calendarDays.map((date, index) => {
-              const isCurrentMonth = isSameMonth(date, currentDisplayDate);
-              const isSelected = parsedSelectedDate && isSameDay(date, parsedSelectedDate);
-              const isToday = isSameDay(date, now);
-              const isPast = isBefore(date, new Date(now.getFullYear(), now.getMonth(), now.getDate()));
-              
-              return (
-                <div
-                  key={index}
-                  onClick={() => handleDateClick(date)}
-                  className={cn(
-                    "p-2 rounded-full cursor-pointer flex items-center justify-center w-9 h-9 mx-auto text-sm transition-colors",
-                    !isCurrentMonth && "text-muted-foreground/50",
-                    isPast && "text-muted-foreground/30 cursor-not-allowed",
-                    !isPast && !isSelected && "hover:bg-accent",
-                    isSelected && "bg-primary text-primary-foreground font-semibold shadow-sm",
-                    isToday && !isSelected && "bg-accent text-accent-foreground font-semibold"
-                  )}
-                >
-                  {format(date, "d")}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+      <div className="flex-1">
+        <select
+          value={format(date, 'HH:mm')}
+          onChange={(e) => handleTimeChange(e.target.value)}
+          className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          {timeSlots.map((slot) => (
+            <option key={slot.value} value={slot.value}>
+              {slot.label}
+            </option>
+          ))}
+        </select>
       </div>
-
-      {/* Time Selection */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <Label className="text-lg font-semibold text-card-foreground flex items-center">
-            <Clock className="mr-2 h-5 w-5" />
-            Select Time
-          </Label>
-          <div className="group relative">
-            <Info className="h-5 w-5 text-muted-foreground cursor-help" />
-            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-popover text-popover-foreground text-sm rounded-lg shadow-md border opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none w-48 text-center">
-              Bookings must be made at least 6 hours in advance.
-            </div>
-          </div>
-        </div>
-
-        {selectedDate ? (
-          <div className="grid grid-cols-3 gap-3">
-            {timeOptions.map((time) => (
-              <button
-                key={time.value}
-                type="button"
-                onClick={() => !time.disabled && handleTimeClick(time.value)}
-                disabled={time.disabled}
-                className={cn(
-                  "p-3 rounded-lg text-center cursor-pointer text-sm transition-colors border",
-                  time.disabled 
-                    ? "bg-muted text-muted-foreground cursor-not-allowed border-border" 
-                    : selectedTime === time.value
-                      ? "bg-primary text-primary-foreground font-semibold border-primary shadow-sm"
-                      : "bg-card hover:bg-accent text-card-foreground border-border hover:border-accent-foreground/20"
-                )}
-              >
-                {time.display}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="p-4 bg-muted/50 text-muted-foreground rounded-lg text-sm text-center border border-dashed">
-            Please select a date first
-          </div>
-        )}
-      </div>
-
-      {/* Confirmation Message */}
-      {selectedDate && selectedTime ? (
-        <div className="p-3 bg-primary/10 text-primary rounded-lg text-sm text-center font-medium border border-primary/20">
-          Selected: {parsedSelectedDate ? format(parsedSelectedDate, "EEEE, MMMM d") : "Invalid date"} at {(() => {
-            const [hours, minutes] = selectedTime.split(':').map(Number);
-            const timeDate = new Date();
-            timeDate.setHours(hours, minutes, 0, 0);
-            return format(timeDate, "h:mm a");
-          })()}
-        </div>
-      ) : (
-        <div className="p-3 bg-muted/50 text-muted-foreground rounded-lg text-sm text-center border border-dashed">
-          Please select a time at least 6 hours from now.
-        </div>
-      )}
     </div>
   );
-};
+}
