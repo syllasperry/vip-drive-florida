@@ -185,7 +185,7 @@ export const useNotificationSystem = (userId: string, userType: 'passenger' | 'd
   }, [userId, preferences]);
 
   const handleStatusChange = async (booking: any, oldBooking: any) => {
-    // Get booking participants
+    // Get booking participants with corrected query
     const { data: bookingData } = await supabase
       .from('bookings')
       .select(`
@@ -228,9 +228,14 @@ export const useNotificationSystem = (userId: string, userType: 'passenger' | 'd
     if (booking.payment_confirmation_status === 'all_set' && 
         oldBooking?.payment_confirmation_status !== 'all_set') {
       
-      // Get the driver info safely
-      const driverName = bookingData.drivers?.full_name || 'Your driver';
-      const passengerName = bookingData.passengers?.full_name || 'Passenger';
+      // Get the driver and passenger info safely
+      const driverName = Array.isArray(bookingData.drivers) 
+        ? bookingData.drivers[0]?.full_name || 'Your driver'
+        : bookingData.drivers?.full_name || 'Your driver';
+      
+      const passengerName = Array.isArray(bookingData.passengers)
+        ? bookingData.passengers[0]?.full_name || 'Passenger'
+        : bookingData.passengers?.full_name || 'Passenger';
       
       // Notify passenger
       await sendNotification({

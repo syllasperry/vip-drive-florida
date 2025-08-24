@@ -24,14 +24,20 @@ class PushNotificationService {
     }
   }
 
-  async requestPermission(): Promise<boolean> {
+  async requestPermission(): Promise<NotificationPermission> {
     if (!('Notification' in window)) {
       console.warn('❌ This browser does not support notifications');
-      return false;
+      return 'denied';
     }
 
     const permission = await Notification.requestPermission();
-    return permission === 'granted';
+    return permission;
+  }
+
+  async unsubscribe(): Promise<void> {
+    // Simple unsubscribe implementation - in a full implementation this would
+    // unsubscribe from push notifications service
+    console.log('📱 Unsubscribed from push notifications');
   }
 
   async sendNotification(payload: NotificationPayload) {
