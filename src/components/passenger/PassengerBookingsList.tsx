@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, MapPin, User, Car, AlertCircle, RefreshCw } from "lucide-react";
+import { Clock, MapPin, User, Car, AlertCircle, RefreshCw, Database } from "lucide-react";
 import { format } from "date-fns";
 import { useMyBookings } from '@/hooks/useMyBookings';
 import type { MyBooking } from '@/hooks/useMyBookings';
@@ -43,6 +43,7 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
   const { bookings, loading, error, refetch } = useMyBookings();
   const [activeTab, setActiveTab] = useState('all');
   const [selectedBooking, setSelectedBooking] = useState<MyBooking | null>(null);
+  const [showDebugInfo, setShowDebugInfo] = useState(false);
 
   console.log('🎯 PassengerBookingsList render:', { 
     bookingsCount: bookings.length, 
@@ -77,6 +78,10 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
     console.log('🔄 Showing loading state...');
     return (
       <div className="space-y-4">
+        <div className="text-center py-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mx-auto mb-2"></div>
+          <p className="text-sm text-gray-600">Carregando seus bookings...</p>
+        </div>
         {[1, 2, 3].map((i) => (
           <Card key={i} className="animate-pulse">
             <CardHeader>
@@ -100,17 +105,36 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
       <div className="text-center py-8">
         <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
         <p className="text-red-600 mb-2">{error}</p>
-        <Button 
-          onClick={() => {
-            console.log('🔄 Manual retry clicked');
-            refetch();
-          }}
-          variant="outline"
-          className="gap-2"
-        >
-          <RefreshCw className="h-4 w-4" />
-          Try again
-        </Button>
+        <div className="space-y-2">
+          <Button 
+            onClick={() => {
+              console.log('🔄 Manual retry clicked');
+              refetch();
+            }}
+            variant="outline"
+            className="gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Tentar novamente
+          </Button>
+          <Button 
+            onClick={() => setShowDebugInfo(!showDebugInfo)}
+            variant="ghost"
+            size="sm"
+            className="gap-2"
+          >
+            <Database className="h-4 w-4" />
+            {showDebugInfo ? 'Ocultar' : 'Mostrar'} Debug
+          </Button>
+        </div>
+        
+        {showDebugInfo && (
+          <div className="mt-4 p-4 bg-gray-100 rounded-lg text-left text-sm">
+            <p><strong>Error:</strong> {error}</p>
+            <p><strong>Bookings encontrados:</strong> {bookings.length}</p>
+            <p><strong>Estado loading:</strong> {loading ? 'true' : 'false'}</p>
+          </div>
+        )}
       </div>
     );
   }
@@ -120,14 +144,47 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
 
   return (
     <div className="space-y-6">
+      {/* Debug info header */}
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-gray-600">
+          Total: {bookings.length} bookings encontrados
+        </div>
+        <Button 
+          onClick={() => setShowDebugInfo(!showDebugInfo)}
+          variant="ghost"
+          size="sm"
+          className="gap-2"
+        >
+          <Database className="h-4 w-4" />
+          Debug
+        </Button>
+      </div>
+
+      {showDebugInfo && (
+        <Card className="bg-gray-50">
+          <CardHeader>
+            <CardTitle className="text-sm">Debug Information</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm space-y-2">
+            <p><strong>Total bookings:</strong> {bookings.length}</p>
+            <p><strong>Loading:</strong> {loading ? 'Yes' : 'No'}</p>
+            <p><strong>Error:</strong> {error || 'None'}</p>
+            <p><strong>Bookings IDs:</strong> {bookings.map(b => b.id.slice(0, 8)).join(', ')}</p>
+            <Button onClick={refetch} size="sm" className="mt-2">
+              Refetch Bookings
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="all">All ({bookings.length})</TabsTrigger>
+          <TabsTrigger value="all">Todos ({bookings.length})</TabsTrigger>
           <TabsTrigger value="active">
-            Active ({filterBookings(bookings, 'active').length})
+            Ativos ({filterBookings(bookings, 'active').length})
           </TabsTrigger>
           <TabsTrigger value="completed">
-            Completed ({filterBookings(bookings, 'completed').length})
+            Finalizados ({filterBookings(bookings, 'completed').length})
           </TabsTrigger>
         </TabsList>
         
@@ -136,24 +193,22 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
             <div className="text-center py-8">
               <Car className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-600 mb-2">
-                {activeTab === 'all' ? 'No bookings yet' : `No ${activeTab} bookings`}
+                {activeTab === 'all' ? 'Nenhum booking encontrado' : `Nenhum booking ${activeTab}`}
               </p>
               <p className="text-gray-500 text-sm">
-                {activeTab === 'all' ? 'Book your first ride to get started!' : ''}
+                {activeTab === 'all' ? 'Faça sua primeira viagem para começar!' : ''}
               </p>
-              {bookings.length === 0 && (
-                <Button 
-                  onClick={() => {
-                    console.log('🔄 Refresh bookings clicked');
-                    refetch();
-                  }}
-                  variant="outline"
-                  className="mt-4 gap-2"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Refresh
-                </Button>
-              )}
+              <Button 
+                onClick={() => {
+                  console.log('🔄 Refresh bookings clicked');
+                  refetch();
+                }}
+                variant="outline"
+                className="mt-4 gap-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Atualizar
+              </Button>
             </div>
           ) : (
             <div className="space-y-4">
@@ -203,7 +258,7 @@ export const PassengerBookingsList: React.FC<PassengerBookingsListProps> = ({ on
                           <div className="flex items-center space-x-2">
                             <User className="h-4 w-4 text-gray-400" />
                             <span className="text-gray-600">
-                              {booking.driver_name || 'Driver TBD'}
+                              {booking.driver_name || 'Motorista TBD'}
                             </span>
                           </div>
                           <div className="font-semibold text-gray-900">

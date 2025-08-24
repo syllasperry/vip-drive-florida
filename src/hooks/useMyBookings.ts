@@ -58,10 +58,17 @@ export const useMyBookings = () => {
 
       console.log('✅ User authenticated:', user.id, user.email);
 
-      // Step 1: Get passenger_id for the authenticated user
+      // Primeiro, vamos verificar quantos bookings existem no total para debug
+      const { count: totalBookings } = await supabase
+        .from('bookings')
+        .select('*', { count: 'exact', head: true });
+      
+      console.log('📊 Total bookings in database:', totalBookings);
+
+      // Buscar o passenger_id primeiro
       const { data: passengerData, error: passengerError } = await supabase
         .from('passengers')
-        .select('id')
+        .select('id, email, full_name')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -80,9 +87,17 @@ export const useMyBookings = () => {
         return;
       }
 
-      console.log('✅ Passenger profile found:', passengerData.id);
+      console.log('✅ Passenger profile found:', passengerData);
 
-      // Step 2: Fetch bookings for this passenger with driver info
+      // Verificar se há bookings para este passenger_id
+      const { count: userBookingsCount } = await supabase
+        .from('bookings')
+        .select('*', { count: 'exact', head: true })
+        .eq('passenger_id', passengerData.id);
+      
+      console.log('📊 Bookings for this passenger:', userBookingsCount);
+
+      // Agora buscar os bookings com informações do driver usando LEFT JOIN simples
       const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
@@ -101,7 +116,7 @@ export const useMyBookings = () => {
           final_price_cents,
           vehicle_type,
           distance_miles,
-          drivers (
+          drivers!driver_id (
             full_name,
             phone
           )
@@ -115,10 +130,12 @@ export const useMyBookings = () => {
       }
 
       console.log('📊 Raw bookings data from Supabase:', bookingsData);
+      console.log('📊 Number of bookings fetched:', bookingsData?.length || 0);
 
       if (!mountedRef.current) return;
 
       const formattedBookings: MyBooking[] = (bookingsData || []).map(booking => {
+        const driverInfo = booking.drivers as any;
         const formatted = {
           id: booking.id,
           booking_code: booking.booking_code,
@@ -129,8 +146,8 @@ export const useMyBookings = () => {
           created_at: booking.created_at,
           updated_at: booking.updated_at,
           driver_id: booking.driver_id,
-          driver_name: booking.drivers?.full_name,
-          driver_phone: booking.drivers?.phone,
+          driver_name: driverInfo?.full_name,
+          driver_phone: driverInfo?.phone,
           estimated_price: booking.estimated_price,
           final_price: booking.final_price,
           price_cents: booking.final_price_cents || booking.estimated_price_cents,
