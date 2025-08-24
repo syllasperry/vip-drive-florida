@@ -76,7 +76,7 @@ export const useMyBookings = () => {
       }
 
       // Now fetch bookings for this passenger
-      const { data: bookings, error: bookingsError } = await supabase
+      const { data: rawBookings, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
           id,
@@ -115,8 +115,17 @@ export const useMyBookings = () => {
         throw bookingsError;
       }
 
-      console.log('✅ Bookings fetched successfully:', bookings?.length || 0);
-      return bookings || [];
+      console.log('✅ Bookings fetched successfully:', rawBookings?.length || 0);
+      
+      // Map the raw data to ensure type safety
+      const bookings: Booking[] = (rawBookings || []).map(booking => ({
+        ...booking,
+        drivers: booking.drivers && typeof booking.drivers === 'object' && !Array.isArray(booking.drivers) 
+          ? booking.drivers 
+          : null
+      }));
+
+      return bookings;
     },
     retry: 2,
     refetchOnWindowFocus: false
