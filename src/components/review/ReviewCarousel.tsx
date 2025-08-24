@@ -6,8 +6,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export const ReviewCarousel: React.FC = () => {
-  const { data: reviews = [], isLoading } = usePublishedReviews(6);
+  const { data: reviews = [], isLoading, error } = usePublishedReviews(6);
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  console.log('ReviewCarousel - Reviews:', reviews, 'Loading:', isLoading, 'Error:', error);
 
   // Auto-rotate carousel every 4 seconds
   useEffect(() => {
@@ -20,7 +22,8 @@ export const ReviewCarousel: React.FC = () => {
     return () => clearInterval(interval);
   }, [reviews.length]);
 
-  if (isLoading || reviews.length === 0) {
+  // Show loading state only briefly, then show content or fallback
+  if (isLoading && reviews.length === 0) {
     return (
       <div className="w-full max-w-4xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -50,7 +53,7 @@ export const ReviewCarousel: React.FC = () => {
     );
   }
 
-  // Show all reviews in a grid for desktop, carousel for mobile
+  // Always show reviews (either from API or fallback data)
   return (
     <div className="w-full max-w-6xl mx-auto">
       {/* Desktop Grid View */}
@@ -95,7 +98,7 @@ export const ReviewCarousel: React.FC = () => {
 };
 
 const ReviewCard: React.FC<{ review: any }> = ({ review }) => {
-  const firstName = review.passenger_name?.split(' ')[0] || 'Anonymous';
+  const firstName = review.passenger_name?.split(' ')[0] || 'Cliente';
   
   return (
     <Card className="h-full bg-gradient-to-br from-background to-muted/20 border-border/50 shadow-lg hover:shadow-xl transition-shadow">
@@ -116,7 +119,11 @@ const ReviewCard: React.FC<{ review: any }> = ({ review }) => {
               {[1, 2, 3, 4, 5].map((star) => (
                 <Star 
                   key={star} 
-                  className="w-4 h-4 fill-yellow-400 text-yellow-400" 
+                  className={`w-4 h-4 ${
+                    star <= (review.overall_rating || 5) 
+                      ? 'fill-yellow-400 text-yellow-400' 
+                      : 'text-gray-300'
+                  }`}
                 />
               ))}
             </div>
@@ -129,7 +136,7 @@ const ReviewCard: React.FC<{ review: any }> = ({ review }) => {
         
         <div className="mt-4 pt-4 border-t border-border/30">
           <p className="text-xs text-muted-foreground">
-            VIP Chauffeur Service • {new Date(review.created_at).toLocaleDateString()}
+            VIP Chauffeur Service • {new Date(review.created_at).toLocaleDateString('pt-BR')}
           </p>
         </div>
       </CardContent>
