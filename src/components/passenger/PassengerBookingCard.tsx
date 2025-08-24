@@ -123,7 +123,7 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
               <div>
                 <p className="text-xs text-gray-500">Price</p>
                 <p className="text-sm font-medium">
-                  {formatPrice(booking.final_price_cents || booking.offer_price_cents)}
+                  {formatPrice(booking.final_price_cents || booking.estimated_price_cents)}
                 </p>
               </div>
             </div>

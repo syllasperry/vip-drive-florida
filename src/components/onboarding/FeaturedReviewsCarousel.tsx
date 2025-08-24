@@ -21,31 +21,14 @@ export const FeaturedReviewsCarousel: React.FC = () => {
   useEffect(() => {
     const fetchFeaturedReviews = async () => {
       try {
-        // Fetch only 5-star reviews with consent for public use
-        const { data, error } = await supabase
-          .from('ride_reviews')
-          .select(`
-            id,
-            public_review,
-            overall_rating,
-            created_at,
-            passengers!inner(
-              full_name,
-              profile_photo_url
-            )
-          `)
-          .eq('overall_rating', 5)
-          .eq('consent_for_public_use', true)
-          .eq('is_published', true)
-          .not('public_review', 'is', null)
-          .order('created_at', { ascending: false })
-          .limit(6);
+        // Use the RPC function to get published reviews safely
+        const { data, error } = await supabase.rpc('get_published_reviews', { limit_count: 6 });
 
         if (!error && data && data.length > 0) {
           const formattedReviews = data.map(review => ({
             id: review.id,
-            passenger_name: review.passengers.full_name,
-            passenger_photo_url: review.passengers.profile_photo_url,
+            passenger_name: review.passenger_name,
+            passenger_photo_url: review.passenger_photo_url,
             public_review: review.public_review,
             overall_rating: review.overall_rating,
             created_at: review.created_at
@@ -53,7 +36,7 @@ export const FeaturedReviewsCarousel: React.FC = () => {
           
           setFeaturedReviews(formattedReviews);
         } else {
-          // Fallback to original reviews if no database reviews found
+          // Fallback to original static reviews
           setFeaturedReviews([
             {
               id: '1',

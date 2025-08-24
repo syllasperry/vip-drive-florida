@@ -9,7 +9,6 @@ interface NotificationPreferences {
   user_type: 'passenger' | 'driver' | 'dispatcher';
   push_enabled: boolean;
   email_enabled: boolean;
-  in_app_enabled: boolean;
   booking_updates_enabled: boolean;
   driver_messages_enabled: boolean;
   sound_enabled: boolean;
@@ -30,15 +29,24 @@ export const useNotificationSystem = (userId: string, userType: 'passenger' | 'd
         .single();
 
       if (data) {
-        setPreferences(data as NotificationPreferences);
+        // Map the database fields to our interface
+        const mappedPreferences: NotificationPreferences = {
+          user_id: data.user_id,
+          user_type: data.user_type as 'passenger' | 'driver' | 'dispatcher',
+          push_enabled: data.push_enabled || false,
+          email_enabled: data.email_enabled || true,
+          booking_updates_enabled: data.booking_updates_enabled || true,
+          driver_messages_enabled: data.driver_messages_enabled || true,
+          sound_enabled: data.sound_enabled || false
+        };
+        setPreferences(mappedPreferences);
       } else {
         // Create default preferences
-        const defaultPrefs = {
+        const defaultPrefs: NotificationPreferences = {
           user_id: userId,
           user_type: userType,
           push_enabled: false,
           email_enabled: true,
-          in_app_enabled: true,
           booking_updates_enabled: true,
           driver_messages_enabled: true,
           sound_enabled: false
@@ -72,7 +80,7 @@ export const useNotificationSystem = (userId: string, userType: 'passenger' | 'd
     console.log('📧 Sending notification:', notification.type, 'to', notification.recipientType);
 
     // In-app notification (always send if enabled)
-    if (preferences.in_app_enabled && preferences.booking_updates_enabled) {
+    if (preferences.booking_updates_enabled) {
       try {
         await supabase.from('messages').insert({
           booking_id: notification.bookingId,
@@ -119,7 +127,7 @@ export const useNotificationSystem = (userId: string, userType: 'passenger' | 'd
         const pushPayload = {
           title: notification.title,
           body: notification.message,
-          type: 'ride_status',
+          type: 'ride_status' as const,
           bookingId: notification.bookingId,
           userId: notification.recipientId,
           userType: notification.recipientType,
@@ -220,15 +228,19 @@ export const useNotificationSystem = (userId: string, userType: 'passenger' | 'd
     if (booking.payment_confirmation_status === 'all_set' && 
         oldBooking?.payment_confirmation_status !== 'all_set') {
       
+      // Get the driver info safely
+      const driverName = bookingData.drivers?.full_name || 'Your driver';
+      const passengerName = bookingData.passengers?.full_name || 'Passenger';
+      
       // Notify passenger
       await sendNotification({
         type: 'all_set',
         bookingId: booking.id,
         title: 'Ride Confirmed!',
-        message: `Your driver ${bookingData.drivers?.full_name} has been assigned and payment confirmed`,
+        message: `Your driver ${driverName} has been assigned and payment confirmed`,
         recipientId: booking.passenger_id,
         recipientType: 'passenger',
-        metadata: { driverName: bookingData.drivers?.full_name }
+        metadata: { driverName }
       });
 
       // Notify driver
@@ -237,11 +249,11 @@ export const useNotificationSystem = (userId: string, userType: 'passenger' | 'd
           type: 'all_set',
           bookingId: booking.id,
           title: 'New Ride Assignment',
-          message: `You've been assigned to pick up ${bookingData.passengers?.full_name}`,
+          message: `You've been assigned to pick up ${passengerName}`,
           recipientId: booking.driver_id,
           recipientType: 'driver',
           metadata: { 
-            passengerName: bookingData.passengers?.full_name,
+            passengerName,
             pickupLocation: booking.pickup_location,
             dropoffLocation: booking.dropoff_location
           }
