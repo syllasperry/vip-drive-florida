@@ -15,9 +15,9 @@ export const PaymentsTab = ({ bookings }: PaymentsTabProps) => {
   );
 
   const getPaymentStatus = (booking: any) => {
-    if (booking.simple_status === 'completed') return 'paid';
-    if (booking.simple_status === 'all_set') return 'confirmed';
-    if (booking.simple_status === 'payment_pending') return 'pending';
+    if (booking.status === 'completed') return 'paid';
+    if (booking.status === 'all_set') return 'confirmed';
+    if (booking.status === 'payment_pending') return 'pending';
     return 'unknown';
   };
 
@@ -114,8 +114,8 @@ export const PaymentsTab = ({ bookings }: PaymentsTabProps) => {
                   
                   <div className="flex items-center justify-between text-xs text-gray-500">
                     <span>{format(new Date(booking.pickup_time), 'MMM dd, yyyy')}</span>
-                    {booking.driver_profiles && (
-                      <span>Driver: {booking.driver_profiles.full_name}</span>
+                    {booking.driver_name && (
+                      <span>Driver: {booking.driver_name}</span>
                     )}
                   </div>
                 </CardContent>

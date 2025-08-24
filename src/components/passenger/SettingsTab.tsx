@@ -1,301 +1,244 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
-import { Bell, Shield, HelpCircle, LogOut, Settings as SettingsIcon, User } from "lucide-react";
-import { NotificationSettingsCard } from "./NotificationSettingsCard";
-import { PrivacySecurityCard } from "./PrivacySecurityCard";
-import { HelpSupportCard } from "./HelpSupportCard";
-import { ProfileSettingsCard } from "./ProfileSettingsCard";
-import { ProfileSettingsModal } from "./ProfileSettingsModal";
-import { getMyPassengerProfile } from "@/lib/api/profiles";
+
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Bell, User, Shield, HelpCircle, LogOut } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+
+interface PassengerInfo {
+  id: string;
+  full_name: string;
+  email: string;
+  phone?: string;
+  profile_photo_url?: string;
+}
 
 interface SettingsTabProps {
-  passengerInfo: any;
+  passengerInfo: PassengerInfo;
+  onUpdate: () => void;
 }
 
-interface PassengerProfile {
-  first_name: string;
-  last_name: string;
-  phone: string;
-  email: string;
-  avatarUrl: string | null;
-}
-
-export const SettingsTab = ({ passengerInfo }: SettingsTabProps) => {
-  const navigate = useNavigate();
+export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    full_name: passengerInfo.full_name || '',
+    phone: passengerInfo.phone || '',
+  });
+  const [notifications, setNotifications] = useState({
+    email: true,
+    push: true,
+    sms: false,
+  });
   const { toast } = useToast();
-  const [activeModal, setActiveModal] = useState<'notifications' | 'privacy' | 'help' | 'preferences' | 'profileSettings' | null>(null);
-  const [currentPassengerInfo, setCurrentPassengerInfo] = useState(passengerInfo);
-  const [passengerProfile, setPassengerProfile] = useState<PassengerProfile | null>(null);
-  const [profileLoading, setProfileLoading] = useState(false);
 
-  // Update local state when passengerInfo prop changes
-  useEffect(() => {
-    setCurrentPassengerInfo(passengerInfo);
-  }, [passengerInfo]);
-
-  // Load passenger profile when component mounts
-  useEffect(() => {
-    loadPassengerProfile();
-  }, []);
-
-  const loadPassengerProfile = async () => {
-    setProfileLoading(true);
+  const handleSave = async () => {
     try {
-      const profile = await getMyPassengerProfile();
-      setPassengerProfile(profile);
-    } catch (error) {
-      console.error('Error loading passenger profile:', error);
-    } finally {
-      setProfileLoading(false);
-    }
-  };
+      const { error } = await supabase
+        .from('passengers')
+        .update({
+          full_name: formData.full_name,
+          phone: formData.phone,
+        })
+        .eq('id', passengerInfo.id);
 
-  const handleProfileUpdate = async () => {
-    // Refresh passenger info after profile update
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: passenger, error } = await supabase
-          .from('passengers')
-          .select('*')
-          .eq('id', user.id)
-          .single();
+      if (error) throw error;
 
-        if (!error && passenger) {
-          setCurrentPassengerInfo(passenger);
-        }
-      }
-    } catch (error) {
-      console.error('Error refreshing passenger info:', error);
-    }
-    
-    // Also reload the profile data
-    await loadPassengerProfile();
-  };
-
-  const handleLogout = async () => {
-    try {
-      console.log('🚪 Iniciando logout...');
-      
-      // Limpar storage local primeiro
-      Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-          localStorage.removeItem(key);
-        }
-      });
-      
-      // Tentar logout global
-      const { error } = await supabase.auth.signOut({ scope: 'global' });
-      
-      if (error) {
-        console.error('Erro no logout:', error);
-        toast({
-          title: "Erro no logout",
-          description: "Houve um problema ao fazer logout. Tente novamente.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log('✅ Logout realizado com sucesso');
-      
       toast({
-        title: "Logout realizado",
-        description: "Você foi desconectado com sucesso.",
+        title: "Settings Updated",
+        description: "Your profile has been updated successfully.",
       });
-      
-      // Redirecionar para login forçando refresh da página
-      window.location.href = '/passenger/login';
-      
+
+      setIsEditing(false);
+      onUpdate();
     } catch (error) {
-      console.error('❌ Erro inesperado no logout:', error);
+      console.error('Error updating profile:', error);
       toast({
-        title: "Erro",
-        description: "Erro inesperado ao fazer logout.",
+        title: "Error",
+        description: "Failed to update profile. Please try again.",
         variant: "destructive",
       });
     }
   };
 
-  const handleProfileSettingsUpdate = (updatedProfile: PassengerProfile) => {
-    setPassengerProfile(updatedProfile);
-    handleProfileUpdate();
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      window.location.href = '/passenger/login';
+    } catch (error) {
+      console.error('Error logging out:', error);
+      toast({
+        title: "Error",
+        description: "Failed to log out. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  if (activeModal === 'notifications') {
-    return (
-      <div className="space-y-4">
-        <Button 
-          variant="ghost" 
-          onClick={() => setActiveModal(null)}
-          className="mb-4"
-        >
-          ← Back to Settings
-        </Button>
-        <NotificationSettingsCard 
-          userId={currentPassengerInfo?.id} 
-          onClose={() => setActiveModal(null)} 
-        />
-      </div>
-    );
-  }
-
-  if (activeModal === 'privacy') {
-    return (
-      <div className="space-y-4">
-        <Button 
-          variant="ghost" 
-          onClick={() => setActiveModal(null)}
-          className="mb-4"
-        >
-          ← Back to Settings
-        </Button>
-        <PrivacySecurityCard onClose={() => setActiveModal(null)} />
-      </div>
-    );
-  }
-
-  if (activeModal === 'help') {
-    return (
-      <div className="space-y-4">
-        <Button 
-          variant="ghost" 
-          onClick={() => setActiveModal(null)}
-          className="mb-4"
-        >
-          ← Back to Settings
-        </Button>
-        <HelpSupportCard onClose={() => setActiveModal(null)} />
-      </div>
-    );
-  }
-
-  if (activeModal === 'preferences') {
-    return (
-      <div className="space-y-4">
-        <Button 
-          variant="ghost" 
-          onClick={() => setActiveModal(null)}
-          className="mb-4"
-        >
-          ← Back to Settings
-        </Button>
-        <ProfileSettingsCard 
-          passengerInfo={currentPassengerInfo}
-          onProfileUpdate={handleProfileUpdate}
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <h2 className="text-lg font-semibold text-gray-900">Settings</h2>
       
-      {/* Settings Options */}
-      <div className="space-y-3">
-        <Card 
-          className="cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => setActiveModal('notifications')}
-        >
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <Bell className="w-5 h-5 text-gray-600" />
-              <div className="flex-1">
-                <h3 className="font-medium text-gray-900">Notifications</h3>
-                <p className="text-sm text-gray-500">Manage your notification preferences</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Edit Profile Button - Added after Notifications */}
-        <Card 
-          className="cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => setActiveModal('profileSettings')}
-        >
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <User className="w-5 h-5 text-gray-600" />
-              <div className="flex-1">
-                <h3 className="font-medium text-gray-900">Edit Profile</h3>
-                <p className="text-sm text-gray-500">Update your personal information and photo</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => setActiveModal('privacy')}
-        >
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <Shield className="w-5 h-5 text-gray-600" />
-              <div className="flex-1">
-                <h3 className="font-medium text-gray-900">Privacy & Security</h3>
-                <p className="text-sm text-gray-500">Account security settings</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => setActiveModal('preferences')}
-        >
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <SettingsIcon className="w-5 h-5 text-gray-600" />
-              <div className="flex-1">
-                <h3 className="font-medium text-gray-900">Preferences</h3>
-                <p className="text-sm text-gray-500">Profile and account preferences</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => setActiveModal('help')}
-        >
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <HelpCircle className="w-5 h-5 text-gray-600" />
-              <div className="flex-1">
-                <h3 className="font-medium text-gray-900">Help & Support</h3>
-                <p className="text-sm text-gray-500">Get help and contact support</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Logout Button */}
+      {/* Profile Settings */}
       <Card>
-        <CardContent className="p-4">
-          <Button 
-            onClick={handleLogout}
-            variant="destructive" 
-            className="w-full flex items-center gap-2"
-          >
-            <LogOut className="w-4 h-4" />
-            Sign Out
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="h-4 w-4" />
+            Profile Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="full_name">Full Name</Label>
+            <Input
+              id="full_name"
+              value={formData.full_name}
+              onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+              disabled={!isEditing}
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              value={passengerInfo.email}
+              disabled
+              className="bg-gray-50"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="phone">Phone</Label>
+            <Input
+              id="phone"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              disabled={!isEditing}
+            />
+          </div>
+
+          <div className="flex gap-2">
+            {isEditing ? (
+              <>
+                <Button onClick={handleSave}>Save Changes</Button>
+                <Button variant="outline" onClick={() => setIsEditing(false)}>
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => setIsEditing(true)}>Edit Profile</Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Notification Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="h-4 w-4" />
+            Notifications
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="email-notifications">Email Notifications</Label>
+            <Switch
+              id="email-notifications"
+              checked={notifications.email}
+              onCheckedChange={(checked) =>
+                setNotifications({ ...notifications, email: checked })
+              }
+            />
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <Label htmlFor="push-notifications">Push Notifications</Label>
+            <Switch
+              id="push-notifications"
+              checked={notifications.push}
+              onCheckedChange={(checked) =>
+                setNotifications({ ...notifications, push: checked })
+              }
+            />
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <Label htmlFor="sms-notifications">SMS Notifications</Label>
+            <Switch
+              id="sms-notifications"
+              checked={notifications.sms}
+              onCheckedChange={(checked) =>
+                setNotifications({ ...notifications, sms: checked })
+              }
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Privacy & Security */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            Privacy & Security
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Button variant="outline" className="w-full justify-start">
+            Change Password
+          </Button>
+          <Button variant="outline" className="w-full justify-start">
+            Two-Factor Authentication
+          </Button>
+          <Button variant="outline" className="w-full justify-start">
+            Download My Data
           </Button>
         </CardContent>
       </Card>
 
-      {/* Profile Settings Modal */}
-      <ProfileSettingsModal
-        isOpen={activeModal === 'profileSettings'}
-        onClose={() => setActiveModal(null)}
-        profile={passengerProfile}
-        onProfileUpdate={handleProfileSettingsUpdate}
-      />
+      {/* Help & Support */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <HelpCircle className="h-4 w-4" />
+            Help & Support
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Button variant="outline" className="w-full justify-start">
+            FAQ
+          </Button>
+          <Button variant="outline" className="w-full justify-start">
+            Contact Support
+          </Button>
+          <Button variant="outline" className="w-full justify-start">
+            Terms of Service
+          </Button>
+          <Button variant="outline" className="w-full justify-start">
+            Privacy Policy
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Logout */}
+      <Card>
+        <CardContent className="pt-6">
+          <Button
+            variant="destructive"
+            onClick={handleLogout}
+            className="w-full gap-2"
+          >
+            <LogOut className="h-4 w-4" />
+            Log Out
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 };

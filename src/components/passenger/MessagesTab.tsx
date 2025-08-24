@@ -17,7 +17,7 @@ export const MessagesTab = ({ bookings, currentUserId, currentUserName }: Messag
   // Filter bookings that have assigned drivers for messaging
   const messagingBookings = bookings.filter(booking => 
     booking.driver_id && 
-    ['payment_pending', 'all_set', 'in_progress'].includes(booking.simple_status)
+    ['payment_pending', 'all_set', 'in_progress'].includes(booking.status)
   );
 
   const handleOpenChat = (booking: any) => {
@@ -34,8 +34,8 @@ export const MessagesTab = ({ bookings, currentUserId, currentUserName }: Messag
         onClose={() => setShowMessaging(false)}
         currentUserId={currentUserId}
         currentUserName={currentUserName}
-        otherUserName={selectedBooking.driver_profiles?.full_name}
-        otherUserAvatar={selectedBooking.driver_profiles?.profile_photo_url}
+        otherUserName={selectedBooking.driver_name}
+        otherUserAvatar={selectedBooking.driver_avatar_url}
       />
     );
   }
@@ -66,7 +66,7 @@ export const MessagesTab = ({ bookings, currentUserId, currentUserName }: Messag
                     <div className="flex items-center gap-2 mb-2">
                       <MessageCircle className="w-4 h-4 text-red-500" />
                       <span className="font-medium text-gray-900">
-                        {booking.driver_profiles?.full_name || 'Your Driver'}
+                        {booking.driver_name || 'Your Driver'}
                       </span>
                     </div>
                     <p className="text-sm text-gray-600 mb-2">

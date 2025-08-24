@@ -35,6 +35,7 @@ const App = () => {
             <Route path="/estimate" element={<PriceEstimate />} />
             <Route path="/get-started" element={<PriceEstimate />} />
             <Route path="/passenger/price-estimate" element={<PriceEstimate />} />
+            <Route path="/passenger/booking" element={<PriceEstimate />} />
             <Route path="/cars" element={<ChooseVehicle />} />
             <Route path="/passenger/choose-vehicle" element={<ChooseVehicle />} />
             <Route path="/booking/details" element={<BookingForm />} />

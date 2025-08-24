@@ -36,7 +36,7 @@ export const useMyBookings = () => {
     }
     
     fetchingRef.current = true;
-    console.log('🔄 Starting fetchBookings with new view...');
+    console.log('🔄 Starting fetchBookings...');
     
     try {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -58,7 +58,7 @@ export const useMyBookings = () => {
 
       console.log('✅ User authenticated:', user.id, user.email);
 
-      // Use the new corrected view
+      // Use the view first, then fallback to manual query
       const { data: viewData, error: viewError } = await supabase
         .from('my_passenger_bookings')
         .select('*')
@@ -66,7 +66,7 @@ export const useMyBookings = () => {
 
       if (viewError) {
         console.error('❌ Error fetching from view:', viewError);
-        // Fallback to manual query if view fails
+        // Fallback to manual query with proper join syntax
         const { data: manualData, error: manualError } = await supabase
           .from('bookings')
           .select(`

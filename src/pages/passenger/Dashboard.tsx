@@ -12,6 +12,7 @@ import { SettingsTab } from '@/components/passenger/SettingsTab';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { useMyBookings } from '@/hooks/useMyBookings';
 
 export default function PassengerDashboard() {
   const navigate = useNavigate();
@@ -20,6 +21,7 @@ export default function PassengerDashboard() {
   const [authLoading, setAuthLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const { bookings } = useMyBookings();
   const MAX_RETRIES = 3;
 
   const fetchUserProfile = async (forceRefresh = false) => {
@@ -115,7 +117,7 @@ export default function PassengerDashboard() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando seu painel...</p>
+          <p className="text-gray-600">Loading your dashboard...</p>
         </div>
       </div>
     );
@@ -126,12 +128,12 @@ export default function PassengerDashboard() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center max-w-md p-6">
           <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Erro ao Carregar Perfil</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Profile</h2>
           <p className="text-gray-600 mb-4">{profileError}</p>
           <div className="space-y-2">
             <Button onClick={handleRetry} className="w-full gap-2">
               <RefreshCw className="h-4 w-4" />
-              Tentar Novamente
+              Try Again
             </Button>
             {retryCount >= MAX_RETRIES && (
               <Button 
@@ -139,7 +141,7 @@ export default function PassengerDashboard() {
                 onClick={() => navigate('/passenger/login')}
                 className="w-full"
               >
-                Voltar ao Login
+                Back to Login
               </Button>
             )}
           </div>
@@ -147,6 +149,9 @@ export default function PassengerDashboard() {
       </div>
     );
   }
+
+  const currentUserId = userProfile?.id || '';
+  const currentUserName = userProfile?.passenger_profile?.full_name || userProfile?.email?.split('@')[0] || 'User';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -160,7 +165,7 @@ export default function PassengerDashboard() {
               </h1>
               <p className="text-gray-600">Manage your rides and preferences</p>
             </div>
-            <Button onClick={() => navigate('/passenger/booking')} className="gap-2">
+            <Button onClick={() => navigate('/passenger/price-estimate')} className="gap-2">
               <Plus className="h-4 w-4" />
               New Booking
             </Button>
@@ -189,11 +194,15 @@ export default function PassengerDashboard() {
           </TabsContent>
 
           <TabsContent value="messages">
-            <MessagesTab />
+            <MessagesTab 
+              bookings={bookings}
+              currentUserId={currentUserId}
+              currentUserName={currentUserName}
+            />
           </TabsContent>
 
           <TabsContent value="payments">
-            <PaymentsTab />
+            <PaymentsTab bookings={bookings} />
           </TabsContent>
 
           <TabsContent value="preferences">
@@ -201,7 +210,10 @@ export default function PassengerDashboard() {
           </TabsContent>
 
           <TabsContent value="settings">
-            <SettingsTab />
+            <SettingsTab 
+              passengerInfo={userProfile?.passenger_profile}
+              onUpdate={() => fetchUserProfile(true)}
+            />
           </TabsContent>
         </Tabs>
 
@@ -210,7 +222,6 @@ export default function PassengerDashboard() {
           <ProfileSettingsModal
             isOpen={showProfileModal}
             onClose={() => setShowProfileModal(false)}
-            onUpdate={() => fetchUserProfile(true)}
           />
         )}
       </div>
