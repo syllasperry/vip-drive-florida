@@ -1,69 +1,82 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import type { Booking } from '@/lib/types/booking';
+
+export interface Booking {
+  id: string;
+  booking_code: string | null;
+  status: string;
+  pickup_location: string;
+  dropoff_location: string;
+  pickup_time: string;
+  created_at: string;
+  updated_at: string;
+  passenger_id: string;
+  driver_id: string | null;
+  vehicle_type: string | null;
+  final_price: number | null;
+  estimated_price: number | null;
+  payment_confirmation_status: string | null;
+  ride_status: string | null;
+  passenger_count: number;
+  luggage_count: number;
+  flight_info: string | null;
+  drivers?: {
+    full_name: string;
+    phone: string;
+    car_make: string | null;
+    car_model: string | null;
+    car_color: string | null;
+    license_plate: string | null;
+    avatar_url: string | null;
+  } | null;
+}
 
 export const useMyBookings = () => {
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  const mountedRef = useRef(true);
-  const fetchingRef = useRef(false);
-
-  const fetchBookings = async () => {
-    if (fetchingRef.current || !mountedRef.current) {
-      console.log('🚫 Fetch blocked - already fetching or unmounted');
-      return;
-    }
-    
-    fetchingRef.current = true;
-    console.log('🔄 Starting fetchBookings...');
-    
-    try {
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: bookings = [], isLoading, error, refetch } = useQuery({
+    queryKey: ['my-bookings'],
+    queryFn: async (): Promise<Booking[]> => {
+      console.log('🔄 Fetching passenger bookings...');
       
-      if (authError) {
-        console.error('❌ Auth error:', authError);
-        throw new Error(`Authentication error: ${authError.message}`);
-      }
-      
-      if (!user?.id) {
-        console.log('❌ No authenticated user');
-        if (mountedRef.current) {
-          setBookings([]);
-          setError('User not authenticated');
-          setLoading(false);
-        }
-        return;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('❌ No authenticated user');
+        return [];
       }
 
-      console.log('✅ User authenticated:', user.id, user.email);
-
-      // Get passenger ID first
-      const { data: passengerData, error: passengerError } = await supabase
+      // First, get or create passenger profile
+      let { data: passenger, error: passengerError } = await supabase
         .from('passengers')
         .select('id')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (passengerError) {
+      if (passengerError && passengerError.code !== 'PGRST116') {
         console.error('❌ Error fetching passenger:', passengerError);
-        throw new Error(`Passenger fetch error: ${passengerError.message}`);
+        throw passengerError;
       }
 
-      if (!passengerData) {
-        console.log('❌ No passenger profile found');
-        if (mountedRef.current) {
-          setBookings([]);
-          setError('Passenger profile not found');
-          setLoading(false);
+      if (!passenger) {
+        console.log('🔨 Creating passenger profile...');
+        const { data: newPassenger, error: createError } = await supabase
+          .from('passengers')
+          .insert([{
+            user_id: user.id,
+            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+            email: user.email || ''
+          }])
+          .select('id')
+          .single();
+
+        if (createError) {
+          console.error('❌ Error creating passenger:', createError);
+          throw createError;
         }
-        return;
+        passenger = newPassenger;
       }
 
-      // Fixed: Fetch bookings with proper driver join using explicit column names
-      const { data: bookingsData, error: bookingsError } = await supabase
+      // Now fetch bookings for this passenger
+      const { data: bookings, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
           id,
@@ -74,149 +87,44 @@ export const useMyBookings = () => {
           pickup_time,
           created_at,
           updated_at,
+          passenger_id,
           driver_id,
-          estimated_price,
-          final_price,
-          estimated_price_cents,
-          final_price_cents,
           vehicle_type,
-          distance_miles,
+          final_price,
+          estimated_price,
           payment_confirmation_status,
           ride_status,
-          status_passenger,
-          status_driver,
-          passenger_count
+          passenger_count,
+          luggage_count,
+          flight_info,
+          drivers:driver_id (
+            full_name,
+            phone,
+            car_make,
+            car_model,
+            car_color,
+            license_plate,
+            avatar_url
+          )
         `)
-        .eq('passenger_id', passengerData.id)
+        .eq('passenger_id', passenger.id)
         .order('created_at', { ascending: false });
 
       if (bookingsError) {
         console.error('❌ Error fetching bookings:', bookingsError);
-        throw new Error(`Bookings fetch error: ${bookingsError.message}`);
+        throw bookingsError;
       }
 
-      console.log('📊 Bookings data from Supabase:', bookingsData);
-      console.log('📊 Number of bookings:', bookingsData?.length || 0);
-
-      if (!mountedRef.current) return;
-
-      // Separate query to fetch driver information for each booking
-      const bookingsWithDrivers = await Promise.all(
-        (bookingsData || []).map(async (booking) => {
-          let driverInfo = null;
-          
-          if (booking.driver_id) {
-            const { data: driverData } = await supabase
-              .from('drivers')
-              .select('full_name, phone')
-              .eq('id', booking.driver_id)
-              .single();
-            
-            driverInfo = driverData;
-          }
-
-          return {
-            id: booking.id,
-            booking_code: booking.booking_code,
-            status: booking.status || 'pending',
-            pickup_location: booking.pickup_location,
-            dropoff_location: booking.dropoff_location,
-            pickup_time: booking.pickup_time,
-            created_at: booking.created_at,
-            updated_at: booking.updated_at,
-            driver_id: booking.driver_id,
-            driver_name: driverInfo?.full_name,
-            driver_phone: driverInfo?.phone,
-            estimated_price: booking.estimated_price,
-            final_price: booking.final_price,
-            price_cents: booking.final_price_cents || booking.estimated_price_cents,
-            vehicle_type: booking.vehicle_type,
-            distance_miles: booking.distance_miles,
-            payment_confirmation_status: booking.payment_confirmation_status,
-            ride_status: booking.ride_status,
-            status_passenger: booking.status_passenger,
-            status_driver: booking.status_driver,
-            passenger_count: booking.passenger_count
-          } as Booking;
-        })
-      );
-
-      console.log('✅ Final formatted bookings:', bookingsWithDrivers.length, 'bookings');
-
-      if (mountedRef.current) {
-        setBookings(bookingsWithDrivers);
-        setError(null);
-        setLoading(false);
-        console.log('✅ State updated successfully with', bookingsWithDrivers.length, 'bookings');
-      }
-
-    } catch (err) {
-      console.error('❌ Error in fetchBookings:', err);
-      if (mountedRef.current) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to fetch bookings';
-        setError(errorMessage);
-        setBookings([]);
-        setLoading(false);
-      }
-    } finally {
-      fetchingRef.current = false;
-      console.log('🏁 fetchBookings completed');
-    }
-  };
-
-  useEffect(() => {
-    mountedRef.current = true;
-    console.log('🚀 useMyBookings hook initialized');
-    
-    // Initial fetch
-    fetchBookings();
-
-    // Set up real-time subscription for bookings table
-    const channel = supabase
-      .channel('passenger_bookings_realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'bookings'
-        },
-        (payload) => {
-          console.log('📡 Realtime booking update:', payload);
-          // Refetch after a short delay to ensure data consistency
-          setTimeout(() => {
-            if (mountedRef.current && !fetchingRef.current) {
-              console.log('🔄 Triggering refetch from realtime update');
-              fetchBookings();
-            }
-          }, 500);
-        }
-      )
-      .subscribe((status) => {
-        console.log('📡 Realtime subscription status:', status);
-      });
-
-    return () => {
-      mountedRef.current = false;
-      fetchingRef.current = false;
-      supabase.removeChannel(channel);
-      console.log('🧹 useMyBookings cleanup completed');
-    };
-  }, []);
-
-  const refetch = async () => {
-    if (mountedRef.current) {
-      console.log('🔄 Manual refetch triggered');
-      setLoading(true);
-      await fetchBookings();
-    }
-  };
-
-  console.log('📊 useMyBookings returning:', { bookings: bookings.length, loading, error });
+      console.log('✅ Bookings fetched successfully:', bookings?.length || 0);
+      return bookings || [];
+    },
+    retry: 2,
+    refetchOnWindowFocus: false
+  });
 
   return {
     bookings,
-    loading,
+    isLoading,
     error,
     refetch
   };

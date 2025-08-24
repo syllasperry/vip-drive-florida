@@ -1,78 +1,101 @@
 
 import { useState } from 'react';
-import { createPassengerBooking, CreateBookingData } from '@/lib/passenger/bookingApi';
-import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+interface BookingData {
+  pickup_location: string;
+  dropoff_location: string;
+  pickup_time: string;
+  vehicle_type: string;
+  passenger_count: number;
+  luggage_count: number;
+  flight_info?: string;
+}
 
 export const useBookingCreation = () => {
   const [isCreating, setIsCreating] = useState(false);
-  const { toast } = useToast();
   const navigate = useNavigate();
 
-  const createBooking = async (bookingData: CreateBookingData) => {
-    if (isCreating) {
-      console.warn('⚠️ Booking creation already in progress');
-      return;
-    }
-
+  const createBooking = async (bookingData: BookingData) => {
     setIsCreating(true);
     
     try {
-      console.log('🚀 Starting booking creation process...', bookingData);
+      console.log('🚀 Creating booking with data:', bookingData);
       
-      const newBooking = await createPassengerBooking(bookingData);
-      
-      console.log('🎉 Booking created successfully:', newBooking);
-      
-      toast({
-        title: "Booking Created Successfully!",
-        description: `Your ride request has been submitted. Booking ID: ${newBooking.id.slice(0, 8)}...`,
-        variant: "default",
-      });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('You must be logged in to create a booking');
+        navigate('/passenger/login');
+        return;
+      }
 
-      // Force navigate to confirmation page
-      console.log('🚀 Navigating to confirmation page...');
-      navigate('/passenger/confirmation', { 
-        state: { 
-          booking: newBooking,
-          bookingId: newBooking.id,
-          pickupLocation: bookingData.pickup_location,
-          dropoffLocation: bookingData.dropoff_location,
-          selectedDateTime: bookingData.pickup_time,
-          vehicleType: bookingData.vehicle_type,
-          passengerCount: bookingData.passenger_count,
-          luggageCount: bookingData.luggage_count,
-          flightInfo: bookingData.flight_info
-        } 
-      });
+      // Get or create passenger profile
+      let { data: passenger, error: passengerError } = await supabase
+        .from('passengers')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (passengerError && passengerError.code !== 'PGRST116') {
+        console.error('❌ Error fetching passenger:', passengerError);
+        throw passengerError;
+      }
+
+      if (!passenger) {
+        console.log('🔨 Creating passenger profile...');
+        const { data: newPassenger, error: createError } = await supabase
+          .from('passengers')
+          .insert([{
+            user_id: user.id,
+            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+            email: user.email || '',
+            phone: user.user_metadata?.phone || ''
+          }])
+          .select('id')
+          .single();
+
+        if (createError) {
+          console.error('❌ Error creating passenger:', createError);
+          throw createError;
+        }
+        passenger = newPassenger;
+      }
+
+      // Create the booking
+      const { data: booking, error: bookingError } = await supabase
+        .from('bookings')
+        .insert([{
+          passenger_id: passenger.id,
+          pickup_location: bookingData.pickup_location,
+          dropoff_location: bookingData.dropoff_location,
+          pickup_time: bookingData.pickup_time,
+          vehicle_type: bookingData.vehicle_type,
+          passenger_count: bookingData.passenger_count,
+          luggage_count: bookingData.luggage_count,
+          flight_info: bookingData.flight_info || '',
+          status: 'pending',
+          payment_confirmation_status: 'waiting_for_offer',
+          ride_status: 'pending_driver'
+        }])
+        .select()
+        .single();
+
+      if (bookingError) {
+        console.error('❌ Error creating booking:', bookingError);
+        throw bookingError;
+      }
+
+      console.log('✅ Booking created successfully:', booking);
+      toast.success('Booking created successfully!');
       
-      return newBooking;
+      // Navigate to passenger dashboard
+      navigate('/passenger/dashboard');
       
     } catch (error) {
-      console.error('❌ Failed to create booking:', error);
-      
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create booking';
-      
-      // Provide more user-friendly error messages
-      let userMessage = errorMessage;
-      if (errorMessage.includes('not authenticated')) {
-        userMessage = 'Please log in to create a booking.';
-      } else if (errorMessage.includes('Permission denied')) {
-        userMessage = 'You do not have permission to create bookings. Please contact support.';
-      } else if (errorMessage.includes('RLS') || errorMessage.includes('row-level security')) {
-        userMessage = 'There was a security issue. Please try logging out and back in.';
-      } else if (errorMessage.includes('Pre-flight check failed')) {
-        userMessage = 'System checks failed. Please try again or contact support.';
-      } else if (errorMessage.includes('create passenger profile')) {
-        userMessage = 'Could not set up your profile. Please try again.';
-      }
-      
-      toast({
-        title: "Booking Failed",
-        description: userMessage,
-        variant: "destructive",
-      });
-      
+      console.error('❌ Booking creation failed:', error);
+      toast.error('Failed to create booking. Please try again.');
       throw error;
     } finally {
       setIsCreating(false);

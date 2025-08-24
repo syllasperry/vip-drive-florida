@@ -1,251 +1,214 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { useScrollToTop } from "@/hooks/useScrollToTop";
-import { Users, Luggage, Check, User } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { supabase } from "@/integrations/supabase/client";
-import CelebrationModal from "@/components/CelebrationModal";
-import teslaImg from "@/assets/tesla-model-y.jpg";
-import bmwImg from "@/assets/bmw-sedan.jpg";
-import chevroletImg from "@/assets/chevrolet-suv.jpg";
-import mercedesImg from "@/assets/mercedes-van.jpg";
 
-const vehicles = [
+import React, { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Users, Luggage, Star, Wifi, Snowflake } from 'lucide-react';
+
+interface VehicleOption {
+  id: string;
+  name: string;
+  category: string;
+  image: string;
+  capacity: number;
+  luggage: number;
+  features: string[];
+  priceMultiplier: number;
+  description: string;
+}
+
+const vehicles: VehicleOption[] = [
   {
-    id: "tesla-y",
-    name: "Tesla Model Y",
-    make: "Tesla",
-    model: "Model Y",
-    codeType: "electric_car",
-    image: teslaImg,
-    passengers: 4,
+    id: 'premium-sedan',
+    name: 'Premium Sedan',
+    category: 'Sedan',
+    image: '/lovable-uploads/bmw-sedan.jpg',
+    capacity: 4,
     luggage: 3,
-    description: "Premium electric vehicle with advanced features",
-    available: true
+    features: ['Wi-Fi', 'Climate Control', 'Premium Audio', 'Phone Charger'],
+    priceMultiplier: 1.0,
+    description: 'Comfortable and elegant for business trips'
   },
   {
-    id: "bmw-sedan",
-    name: "BMW 5 Series",
-    make: "BMW",
-    model: "5 Series",
-    codeType: "luxury_sedan",
-    image: bmwImg,
-    passengers: 4,
-    luggage: 2,
-    description: "Luxury sedan with sophisticated comfort",
-    available: true
-  },
-  {
-    id: "chevrolet-suv",
-    name: "Chevrolet Tahoe",
-    make: "Chevrolet",
-    model: "Tahoe",
-    codeType: "luxury_suv",
-    image: chevroletImg,
-    passengers: 7,
+    id: 'luxury-suv',
+    name: 'Luxury SUV', 
+    category: 'SUV',
+    image: '/lovable-uploads/chevrolet-suv.jpg',
+    capacity: 6,
     luggage: 5,
-    description: "Spacious SUV perfect for groups and families",
-    available: true
+    features: ['Wi-Fi', 'Climate Control', 'Premium Audio', 'Extra Space'],
+    priceMultiplier: 1.2,
+    description: 'Perfect for groups and families'
   },
   {
-    id: "mercedes-van",
-    name: "Mercedes-Benz Sprinter",
-    make: "Mercedes-Benz",
-    model: "Sprinter",
-    codeType: "luxury_van",
-    image: mercedesImg,
-    passengers: 8,
+    id: 'executive-van',
+    name: 'Executive Van',
+    category: 'Van',
+    image: '/lovable-uploads/mercedes-van.jpg',
+    capacity: 8,
     luggage: 8,
-    description: "Premium van for large groups",
-    available: false,
-    comingSoon: true
+    features: ['Wi-Fi', 'Climate Control', 'Premium Audio', 'Maximum Space'],
+    priceMultiplier: 1.5,
+    description: 'Ideal for large groups and events'
   }
 ];
 
-const ChooseVehicle = () => {
-  const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
-  const [user, setUser] = useState<any>(null);
-  const [showCelebration, setShowCelebration] = useState(false);
-  const navigate = useNavigate();
+const ChooseVehicle: React.FC = () => {
   const location = useLocation();
-  const bookingData = location.state;
+  const navigate = useNavigate();
+  const { pickup, dropoff, estimatedPrice } = location.state || {};
   
-  // Auto-scroll to top when this page loads
-  useScrollToTop();
-
-  useEffect(() => {
-    const fetchUserData = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        // Fetch passenger data
-        const { data: passenger } = await supabase
-          .from('passengers')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        
-        setUser(passenger);
-      }
-    };
-
-    fetchUserData();
-
-    // Check if we should show welcome celebration
-    const shouldShowCelebration = localStorage.getItem("show_welcome_celebration");
-    if (shouldShowCelebration === "true") {
-      setShowCelebration(true);
-      localStorage.removeItem("show_welcome_celebration");
-    }
-  }, []);
-
-  // Handle vehicle selection - NO driver fetching
-  const handleVehicleSelect = (vehicleId: string) => {
-    setSelectedVehicle(vehicleId);
-    console.log(`Vehicle ${vehicleId} selected - driver will be assigned by dispatcher`);
-  };
+  const [selectedVehicle, setSelectedVehicle] = useState<VehicleOption | null>(null);
 
   const handleContinue = () => {
-    if (selectedVehicle) {
-      const vehicle = vehicles.find(v => v.id === selectedVehicle);
-      navigate("/passenger/booking-form", { 
-        state: { 
-          ...bookingData, 
-          selectedVehicle: vehicle
-          // No driver info passed - will be assigned by dispatcher
-        } 
-      });
-    }
+    if (!selectedVehicle) return;
+    
+    navigate('/passenger/booking-form', {
+      state: {
+        pickup,
+        dropoff,
+        estimatedPrice,
+        selectedVehicle
+      }
+    });
   };
 
-  const handleDashboardClick = () => {
-    navigate("/passenger/dashboard");
+  const calculatePrice = (basePrice: string, multiplier: number) => {
+    const price = parseInt(basePrice.replace('$', ''));
+    return `$${Math.round(price * multiplier)}`;
   };
+
+  if (!pickup || !dropoff) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">No trip information found</h2>
+          <Button onClick={() => navigate('/estimate')}>Start New Booking</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4">
-      <div className="max-w-2xl mx-auto pt-8">
-        {/* User profile header */}
-        <div className="flex justify-end mb-6">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleDashboardClick}
-            className="text-muted-foreground hover:text-foreground text-base"
-          >
-            <Avatar className="w-6 h-6 mr-2">
-              <AvatarImage 
-                src={user?.profile_photo_url || undefined} 
-                alt={user?.full_name || "User"} 
-              />
-              <AvatarFallback>
-                {user?.full_name ? user.full_name.charAt(0).toUpperCase() : <User className="h-4 w-4" />}
-              </AvatarFallback>
-            </Avatar>
-            <span>{user?.full_name?.split(' ')[0] || 'User'}</span>
-            <span className="mx-1">•</span>
-            <span className="text-green-500">Online</span>
-            <span className="ml-1">— Go to Dashboard</span>
-          </Button>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4">
+        <Button
+          variant="ghost"
+          onClick={() => navigate(-1)}
+          className="mb-6 text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Price Estimate
+        </Button>
+
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Choose Your Vehicle</h1>
+          <p className="text-gray-600">Select the perfect vehicle for your journey</p>
         </div>
 
-        <div className="text-center mb-8 space-y-2">
-          <h1 className="text-3xl font-bold text-foreground">Choose Your Vehicle</h1>
-          <p className="text-muted-foreground">Select the perfect ride for your journey</p>
-        </div>
-
-        <div className="space-y-4 mb-8">
-          {vehicles.map((vehicle) => (
-            <div
-              key={vehicle.id}
-              className={`bg-card rounded-xl shadow-lg overflow-hidden transition-all duration-300 ${
-                selectedVehicle === vehicle.id 
-                  ? "ring-2 ring-primary transform scale-[1.02]" 
-                  : "hover:shadow-xl"
-              } ${
-                !vehicle.available 
-                  ? "opacity-60" 
-                  : "cursor-pointer"
-              }`}
-              onClick={() => vehicle.available && handleVehicleSelect(vehicle.id)}
-            >
-              <div className="relative">
-                <img 
-                  src={vehicle.image} 
-                  alt={vehicle.name}
-                  className="w-full h-48 object-cover"
-                />
-                {vehicle.comingSoon && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                    <span className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-semibold">
-                      Coming Soon
-                    </span>
-                  </div>
-                )}
-                {selectedVehicle === vehicle.id && vehicle.available && (
-                  <div className="absolute top-4 right-4 bg-primary text-primary-foreground rounded-full p-2">
-                    <Check className="h-5 w-5" />
-                  </div>
-                )}
+        {/* Trip Summary */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Trip Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="font-medium text-gray-900">From:</p>
+                <p className="text-gray-600">{pickup}</p>
               </div>
-              
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xl font-bold text-card-foreground">{vehicle.name}</h3>
-                  {selectedVehicle === vehicle.id && vehicle.available && (
-                    <div className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium">
-                      Selected
+              <div>
+                <p className="font-medium text-gray-900">To:</p>
+                <p className="text-gray-600">{dropoff}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Vehicle Options */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {vehicles.map((vehicle) => (
+            <Card
+              key={vehicle.id}
+              className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${
+                selectedVehicle?.id === vehicle.id
+                  ? 'ring-2 ring-blue-500 shadow-lg'
+                  : 'hover:shadow-md'
+              }`}
+              onClick={() => setSelectedVehicle(vehicle)}
+            >
+              <CardContent className="p-6">
+                <div className="aspect-video mb-4 rounded-lg overflow-hidden bg-gray-100">
+                  <img
+                    src={vehicle.image}
+                    alt={vehicle.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk0YTNiOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkNhciBJbWFnZTwvdGV4dD48L3N2Zz4=';
+                    }}
+                  />
+                </div>
+                
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-gray-900">{vehicle.name}</h3>
+                    <Badge variant="secondary">{vehicle.category}</Badge>
+                  </div>
+                  
+                  <p className="text-sm text-gray-600">{vehicle.description}</p>
+                  
+                  <div className="flex items-center gap-4 text-sm text-gray-500">
+                    <div className="flex items-center gap-1">
+                      <Users className="h-4 w-4" />
+                      <span>{vehicle.capacity} seats</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Luggage className="h-4 w-4" />
+                      <span>{vehicle.luggage} bags</span>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-gray-900">Features:</p>
+                    <div className="flex flex-wrap gap-1">
+                      {vehicle.features.map((feature) => (
+                        <Badge key={feature} variant="outline" className="text-xs">
+                          {feature}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {estimatedPrice && (
+                    <div className="pt-2 border-t">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Estimated Price:</span>
+                        <span className="text-lg font-bold text-gray-900">
+                          {calculatePrice(estimatedPrice, vehicle.priceMultiplier)}
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>
-                
-                <p className="text-muted-foreground mb-4">{vehicle.description}</p>
-                
-                <div className="flex items-center space-x-6">
-                  <div className="flex items-center space-x-2">
-                    <Users className="h-5 w-5 text-primary" />
-                    <span className="text-sm text-card-foreground">
-                      {vehicle.passengers} passengers
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Luggage className="h-5 w-5 text-primary" />
-                    <span className="text-sm text-card-foreground">
-                      {vehicle.luggage} luggage
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
 
-        <Button
-          onClick={handleContinue}
-          disabled={!selectedVehicle}
-          variant="luxury"
-          size="lg"
-          className="w-full"
-        >
-          Continue with Selected Vehicle
-        </Button>
-
-        <div className="text-center mt-6">
-          <p className="text-sm text-muted-foreground">
-            All vehicles are professionally maintained and chauffeur-driven
-          </p>
+        {/* Continue Button */}
+        <div className="flex justify-center">
+          <Button
+            onClick={handleContinue}
+            disabled={!selectedVehicle}
+            className="w-full max-w-md bg-red-600 hover:bg-red-700 text-white font-semibold py-3 text-lg"
+            size="lg"
+          >
+            {selectedVehicle ? `Continue with ${selectedVehicle.name}` : 'Select a vehicle to continue'}
+          </Button>
         </div>
       </div>
-
-      <CelebrationModal
-        isOpen={showCelebration}
-        onClose={() => setShowCelebration(false)}
-        title={`🎉 Welcome, ${user?.full_name?.split(' ')[0] || 'VIP'}! 🥂`}
-        message="You are now a VIP member. Your exclusive ride experience begins now."
-        actionText="Choose Your Vehicle"
-        onAction={() => setShowCelebration(false)}
-        showConfetti={true}
-      />
     </div>
   );
 };

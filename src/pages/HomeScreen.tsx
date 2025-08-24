@@ -1,101 +1,113 @@
-import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { useEffect, useState } from "react";
 
-const HomeScreen = () => {
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { MapPin, Clock, Star, Shield } from 'lucide-react';
+
+const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    checkAuthAndRedirect();
-  }, []);
-
-  const checkAuthAndRedirect = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user?.email) {
-        console.log('User found:', user.email);
-        
-        // Check if user is dispatcher - exact email match
-        if (user.email === 'syllasperry@gmail.com') {
-          console.log('Dispatcher detected, redirecting to dispatcher dashboard');
-          navigate('/dispatcher/dashboard');
-          return;
-        }
-        
-        // Otherwise, redirect to passenger dashboard
-        console.log('Regular user, redirecting to passenger dashboard');
-        navigate('/passenger/dashboard');
-      }
-    } catch (error) {
-      console.error('Error checking auth:', error);
-    } finally {
-      setLoading(false);
+  const features = [
+    {
+      icon: <MapPin className="h-8 w-8 text-red-500" />,
+      title: "Airport Transfers",
+      description: "Professional service to all major South Florida airports"
+    },
+    {
+      icon: <Clock className="h-8 w-8 text-red-500" />,
+      title: "Always On Time",
+      description: "Punctual service with real-time tracking and updates"
+    },
+    {
+      icon: <Star className="h-8 w-8 text-red-500" />,
+      title: "Premium Experience",
+      description: "Luxury vehicles with professional chauffeurs"
+    },
+    {
+      icon: <Shield className="h-8 w-8 text-red-500" />,
+      title: "Safe & Reliable",
+      description: "Insured, licensed drivers with excellent safety records"
     }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
-      <div className="container mx-auto px-4 py-12">
-        <div className="max-w-md mx-auto text-center">
-          <div className="mb-10">
-            {/* VIP Service Badge */}
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-primary rounded-2xl mb-6 mx-auto shadow-lg">
-              <div className="text-primary-foreground font-bold text-lg">VIP</div>
-            </div>
-            
-            <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4 tracking-tight">
+      {/* Hero Section */}
+      <div className="relative h-96 bg-gradient-to-r from-red-600 to-red-700 text-white">
+        <div className="absolute inset-0 bg-black/20"></div>
+        <div className="relative z-10 flex items-center justify-center h-full px-4">
+          <div className="text-center max-w-2xl">
+            <h1 className="text-5xl font-bold mb-4">
               VIP Chauffeur Service
             </h1>
-            <p className="text-base text-muted-foreground mb-8 max-w-sm mx-auto leading-relaxed px-4">
-              Experience luxury transportation with our premium chauffeur service. 
-              Professional, reliable, and comfortable rides for all your needs.
+            <p className="text-xl mb-8 text-red-100">
+              Premium transportation for discerning clients throughout South Florida
+            </p>
+            <Button 
+              onClick={() => navigate('/onboarding')}
+              size="lg"
+              className="bg-white text-red-600 hover:bg-red-50 text-lg px-8 py-3"
+            >
+              Get Started
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Features Section */}
+      <div className="py-16 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-foreground mb-4">
+              Why Choose VIP Chauffeur?
+            </h2>
+            <p className="text-muted-foreground text-lg">
+              Experience the difference of premium transportation
             </p>
           </div>
 
-          <div className="space-y-4">
-            <Button 
-              variant="luxury" 
-              size="lg" 
-              className="w-full h-14 text-base font-medium shadow-lg hover:shadow-xl transition-all duration-300"
-              onClick={() => navigate('/passenger/price-estimate')}
-            >
-              <div className="text-center">
-                <div>Book Your Ride</div>
-                <div className="text-sm font-normal opacity-90">Get started now</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {features.map((feature, index) => (
+              <div key={index} className="text-center p-6 rounded-lg bg-card shadow-sm">
+                <div className="flex justify-center mb-4">
+                  {feature.icon}
+                </div>
+                <h3 className="text-xl font-semibold mb-2 text-foreground">
+                  {feature.title}
+                </h3>
+                <p className="text-muted-foreground">
+                  {feature.description}
+                </p>
               </div>
-            </Button>
-            
-            <Button 
-              variant="outline" 
-              size="lg" 
-              className="w-full h-14 text-base font-medium border-2 hover:bg-muted transition-all duration-300"
-              onClick={() => navigate('/passenger/login')}
-            >
-              <div className="text-center">
-                <div>Passenger Login</div>
-                <div className="text-sm font-normal opacity-70">Access your account</div>
-              </div>
-            </Button>
+            ))}
+          </div>
+        </div>
+      </div>
 
-            <div className="pt-6 border-t border-border/50 mt-8">
-              <p className="text-sm text-muted-foreground">
-                Need assistance? Contact our customer service team
-              </p>
-            </div>
+      {/* CTA Section */}
+      <div className="bg-muted/50 py-16 px-4">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-3xl font-bold text-foreground mb-4">
+            Ready to Experience Premium Transportation?
+          </h2>
+          <p className="text-muted-foreground text-lg mb-8">
+            Book your ride in just a few minutes and enjoy the VIP treatment
+          </p>
+          <div className="space-y-4 sm:space-y-0 sm:space-x-4 sm:flex sm:justify-center">
+            <Button 
+              onClick={() => navigate('/estimate')}
+              size="lg"
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Get Price Estimate
+            </Button>
+            <Button 
+              onClick={() => navigate('/passenger/login')}
+              variant="outline"
+              size="lg"
+            >
+              Sign In
+            </Button>
           </div>
         </div>
       </div>

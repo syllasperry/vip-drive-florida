@@ -1,126 +1,53 @@
 
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Star, Shield } from "lucide-react";
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-const SplashScreen = () => {
-  const [isVisible, setIsVisible] = useState(true);
+const SplashScreen: React.FC = () => {
   const navigate = useNavigate();
+  const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsVisible(false);
-      setTimeout(() => navigate("/onboarding"), 500);
-    }, 7000); // 7 segundos conforme solicitado
+      setTimeout(() => {
+        navigate('/onboarding');
+      }, 500); // Allow fade out animation to complete
+    }, 2000);
 
     return () => clearTimeout(timer);
   }, [navigate]);
 
   return (
-    <div className={`fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center z-50 transition-opacity duration-500 ${
-      isVisible ? "opacity-100" : "opacity-0"
+    <div className={`fixed inset-0 bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center transition-opacity duration-500 ${
+      isVisible ? 'opacity-100' : 'opacity-0'
     }`}>
-      <div className="text-center space-y-12 relative">
-        {/* Elegant Shield Background */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-10">
-          <Shield className="w-96 h-96 text-yellow-400 animate-pulse" />
-        </div>
-
-        {/* Five Stars with improved animation */}
-        <div className="flex justify-center space-x-6 mb-8">
-          <Star 
-            className="w-8 h-8 text-yellow-400 fill-yellow-400 animate-bounce" 
-            style={{ 
-              animationDelay: '0ms',
-              animationDuration: '2s'
-            }} 
-          />
-          <Star 
-            className="w-10 h-10 text-yellow-400 fill-yellow-400 animate-bounce" 
-            style={{ 
-              animationDelay: '300ms',
-              animationDuration: '2s'
-            }} 
-          />
-          <Star 
-            className="w-12 h-12 text-yellow-400 fill-yellow-400 animate-bounce" 
-            style={{ 
-              animationDelay: '600ms',
-              animationDuration: '2s'
-            }} 
-          />
-          <Star 
-            className="w-10 h-10 text-yellow-400 fill-yellow-400 animate-bounce" 
-            style={{ 
-              animationDelay: '900ms',
-              animationDuration: '2s'
-            }} 
-          />
-          <Star 
-            className="w-8 h-8 text-yellow-400 fill-yellow-400 animate-bounce" 
-            style={{ 
-              animationDelay: '1200ms',
-              animationDuration: '2s'
-            }} 
-          />
+      <div className="text-center text-white">
+        <div className="mb-8 relative">
+          <div className="w-24 h-24 mx-auto bg-white rounded-full flex items-center justify-center animate-pulse">
+            <span className="text-3xl font-bold text-red-600">VIP</span>
+          </div>
+          <div className="absolute -inset-2 bg-white/20 rounded-full animate-ping"></div>
         </div>
         
-        {/* VIP Logo with improved scaling animation */}
-        <div className="relative">
-          <h1 className="text-8xl md:text-9xl font-black tracking-wider relative">
-            <span 
-              className="bg-gradient-to-b from-yellow-300 via-yellow-400 to-yellow-600 bg-clip-text text-transparent 
-                         drop-shadow-2xl relative z-10 animate-pulse"
-              style={{
-                animationDuration: '3s',
-                transform: 'scale(1)',
-                transition: 'transform 0.8s ease-out'
-              }}
-            >
-              VIP
-            </span>
-          </h1>
-        </div>
+        <h1 className="text-4xl font-bold mb-2 animate-fade-in">
+          VIP Chauffeur
+        </h1>
+        <p className="text-xl text-red-100 animate-fade-in-delay">
+          Premium Transportation
+        </p>
         
-        {/* Subtitle adjusted to fit in one line */}
-        <div 
-          className="opacity-0 animate-fade-in" 
-          style={{ 
-            animationDelay: '2s', 
-            animationFillMode: 'forwards',
-            animationDuration: '1s'
-          }}
-        >
-          <p className="text-xl md:text-2xl text-slate-100 font-light tracking-wide leading-relaxed px-4 mb-6 whitespace-nowrap">
-            Chauffeur Service in South Florida
-          </p>
-          <div 
-            className="w-32 h-0.5 bg-gradient-to-r from-transparent via-yellow-400 to-transparent mx-auto opacity-0 animate-fade-in" 
-            style={{ 
-              animationDelay: '3s', 
-              animationFillMode: 'forwards',
-              animationDuration: '1s'
-            }}
-          />
+        <div className="mt-8">
+          <div className="flex space-x-1 justify-center">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="w-2 h-2 bg-white rounded-full animate-bounce"
+                style={{ animationDelay: `${i * 0.2}s` }}
+              ></div>
+            ))}
+          </div>
         </div>
       </div>
-
-      <style>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        .animate-fade-in {
-          animation: fade-in 0.8s ease-out;
-        }
-      `}</style>
     </div>
   );
 };
