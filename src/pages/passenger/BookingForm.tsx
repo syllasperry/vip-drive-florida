@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { DateTimePicker } from "@/components/DateTimePicker";
 import { ArrowLeft, Calendar, Clock, User, MessageSquare } from 'lucide-react';
 import { format, addHours } from 'date-fns';
+import { fetchMyPassengerProfile } from '@/lib/passenger/me';
 
 const BookingForm: React.FC = () => {
   const location = useLocation();
@@ -24,12 +26,36 @@ const BookingForm: React.FC = () => {
   const [contactName, setContactName] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [contactEmail, setContactEmail] = useState('');
+  const [bookingForOthers, setBookingForOthers] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
   useEffect(() => {
     if (!pickup || !dropoff || !selectedVehicle) {
       navigate('/estimate');
     }
   }, [pickup, dropoff, selectedVehicle, navigate]);
+
+  // Load passenger profile data
+  useEffect(() => {
+    const loadPassengerProfile = async () => {
+      try {
+        setIsLoadingProfile(true);
+        const profile = await fetchMyPassengerProfile();
+        
+        if (profile) {
+          setContactName(profile.full_name || '');
+          // We'll need to get email and phone from the auth user or passengers table
+          // For now, we'll leave them empty as the current API doesn't return them
+        }
+      } catch (error) {
+        console.error('Error loading passenger profile:', error);
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    };
+
+    loadPassengerProfile();
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +72,8 @@ const BookingForm: React.FC = () => {
       contactName,
       contactPhone,
       contactEmail,
-      estimatedPrice
+      estimatedPrice,
+      bookingForOthers
     };
 
     navigate('/passenger/confirmation', { state: bookingData });
@@ -101,22 +128,32 @@ const BookingForm: React.FC = () => {
         </Card>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Date and Time */}
-          <Card>
+          {/* Date and Time - More Prominent */}
+          <Card className="border-2 border-blue-200 bg-blue-50/30">
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Calendar className="h-5 w-5 text-blue-600" />
-                <span>When do you need your ride?</span>
+              <CardTitle className="flex items-center space-x-2 text-xl">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Calendar className="h-6 w-6 text-blue-600" />
+                </div>
+                <span className="text-blue-900">When do you need your ride?</span>
               </CardTitle>
+              <p className="text-blue-700 text-sm">Select your pickup date and time</p>
             </CardHeader>
-            <CardContent>
-              <DateTimePicker
-                date={selectedDateTime}
-                setDate={setSelectedDateTime}
-              />
-              <p className="text-sm text-gray-500 mt-2">
-                Selected: {format(selectedDateTime, 'MMM d, yyyy \'at\' h:mm a')}
-              </p>
+            <CardContent className="pt-4">
+              <div className="bg-white p-4 rounded-lg border border-blue-200">
+                <DateTimePicker
+                  date={selectedDateTime}
+                  setDate={setSelectedDateTime}
+                />
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <Clock className="h-4 w-4 text-blue-600" />
+                    <p className="text-sm font-medium text-blue-900">
+                      Selected: {format(selectedDateTime, 'MMM d, yyyy \'at\' h:mm a')}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -155,43 +192,78 @@ const BookingForm: React.FC = () => {
                 </div>
               </div>
 
+              {/* Booking for Others Toggle */}
+              <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
+                <Switch
+                  id="booking-for-others"
+                  checked={bookingForOthers}
+                  onCheckedChange={setBookingForOthers}
+                />
+                <div className="flex-1">
+                  <Label htmlFor="booking-for-others" className="text-sm font-medium">
+                    Booking for someone else
+                  </Label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Enable this if you're making a reservation for another person
+                  </p>
+                </div>
+              </div>
+
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="contactName">Contact Name</Label>
+                  <Label htmlFor="contactName">
+                    Contact Name {!bookingForOthers && <span className="text-gray-500">(Your name)</span>}
+                  </Label>
                   <Input
                     id="contactName"
                     value={contactName}
                     onChange={(e) => setContactName(e.target.value)}
-                    placeholder="Primary contact for this trip"
-                    required
+                    placeholder={bookingForOthers ? "Name of the passenger" : "Your name"}
+                    required={bookingForOthers}
+                    disabled={isLoadingProfile && !bookingForOthers}
                   />
+                  {isLoadingProfile && !bookingForOthers && (
+                    <p className="text-xs text-gray-500">Loading your profile...</p>
+                  )}
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="contactPhone">Contact Phone</Label>
+                    <Label htmlFor="contactPhone">
+                      Contact Phone {bookingForOthers && <span className="text-red-500">*</span>}
+                    </Label>
                     <Input
                       id="contactPhone"
                       type="tel"
                       value={contactPhone}
                       onChange={(e) => setContactPhone(e.target.value)}
                       placeholder="(555) 123-4567"
-                      required
+                      required={bookingForOthers}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="contactEmail">Contact Email</Label>
+                    <Label htmlFor="contactEmail">
+                      Contact Email {bookingForOthers && <span className="text-red-500">*</span>}
+                    </Label>
                     <Input
                       id="contactEmail"
                       type="email"
                       value={contactEmail}
                       onChange={(e) => setContactEmail(e.target.value)}
                       placeholder="email@example.com"
-                      required
+                      required={bookingForOthers}
                     />
                   </div>
                 </div>
               </div>
+
+              {bookingForOthers && (
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800">
+                    <span className="font-medium">Booking for someone else:</span> Please ensure all contact details are correct as notifications will be sent to these contacts.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
