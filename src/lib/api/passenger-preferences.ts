@@ -14,13 +14,16 @@ export interface PassengerPreferences {
 
 export async function savePassengerPreferences(preferences: PassengerPreferences) {
   try {
+    // Map the conversation preference values to match database constraints
+    const mappedConversationPreference = mapConversationPreference(preferences.conversation_preference);
+    
     const { error } = await supabase.rpc('upsert_my_passenger_preferences', {
       _air_conditioning: preferences.air_conditioning,
       _preferred_temperature: preferences.preferred_temperature,
       _temperature_unit: preferences.temperature_unit,
       _radio_on: preferences.radio_on,
       _preferred_music: preferences.preferred_music,
-      _conversation_preference: preferences.conversation_preference,
+      _conversation_preference: mappedConversationPreference,
       _trip_purpose: preferences.trip_purpose,
       _trip_notes: preferences.trip_notes
     });
@@ -33,6 +36,20 @@ export async function savePassengerPreferences(preferences: PassengerPreferences
     console.error('Unexpected error saving passenger preferences:', error);
     throw error;
   }
+}
+
+// Map conversation preference values to match database constraints
+function mapConversationPreference(value: string): string {
+  const mapping: { [key: string]: string } = {
+    'friendly': 'chatty',
+    'quiet': 'prefers_silence', 
+    'no_preference': 'depends',
+    'chatty': 'chatty',
+    'prefers_silence': 'prefers_silence',
+    'depends': 'depends'
+  };
+  
+  return mapping[value] || 'depends';
 }
 
 export async function getPassengerPreferences(): Promise<PassengerPreferences | null> {

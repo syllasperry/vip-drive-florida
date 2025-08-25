@@ -30,6 +30,7 @@ interface SettingsTabProps {
 export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [isSavingPreferences, setIsSavingPreferences] = useState(false);
   const [formData, setFormData] = useState({
     full_name: passengerInfo.full_name || '',
     phone: passengerInfo.phone || '',
@@ -40,7 +41,7 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
     temperature_unit: 'F',
     radio_on: true,
     preferred_music: 'no_preference',
-    conversation_preference: 'no_preference',
+    conversation_preference: 'depends',
     trip_purpose: 'business',
     trip_notes: ''
   });
@@ -120,7 +121,11 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
 
   const handlePreferencesUpdate = async () => {
     try {
+      setIsSavingPreferences(true);
+      console.log('Saving preferences:', preferences);
+      
       await savePassengerPreferences(preferences);
+      
       toast({
         title: "Preferences Updated",
         description: "Your ride preferences have been saved successfully.",
@@ -132,6 +137,8 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
         description: "Failed to save preferences. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsSavingPreferences(false);
     }
   };
 
@@ -139,6 +146,7 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
     key: K,
     value: PassengerPreferences[K]
   ) => {
+    console.log(`Updating preference ${key}:`, value);
     setPreferences(prev => ({
       ...prev,
       [key]: value
@@ -409,9 +417,10 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
 
           <Button
             onClick={handlePreferencesUpdate}
+            disabled={isSavingPreferences}
             className="w-full bg-[#FF385C] hover:bg-[#E31C5F] text-white"
           >
-            Save Preferences
+            {isSavingPreferences ? 'Saving...' : 'Save Preferences'}
           </Button>
         </CardContent>
       </Card>
