@@ -50,14 +50,14 @@ export const PreferencesStep: React.FC<PreferencesStepProps> = ({
         </p>
       </div>
 
-      <div className="space-y-8">
+      <div className="space-y-6">
         {/* Temperature */}
-        <div className="bg-gray-50 rounded-xl p-6 space-y-4">
+        <div className="bg-gray-50 rounded-2xl p-6 space-y-4">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
               <Thermometer className="w-5 h-5 text-blue-600" />
             </div>
-            <Label className="text-lg font-medium text-gray-900">Climate</Label>
+            <Label className="text-lg font-semibold text-gray-900">Climate</Label>
           </div>
           
           <div className="flex items-center justify-between py-2">
@@ -95,12 +95,12 @@ export const PreferencesStep: React.FC<PreferencesStepProps> = ({
         </div>
 
         {/* Music */}
-        <div className="bg-gray-50 rounded-xl p-6 space-y-4">
+        <div className="bg-gray-50 rounded-2xl p-6 space-y-4">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
               <Music className="w-5 h-5 text-purple-600" />
             </div>
-            <Label className="text-lg font-medium text-gray-900">Music</Label>
+            <Label className="text-lg font-semibold text-gray-900">Music</Label>
           </div>
           
           <div className="flex items-center justify-between py-2">
@@ -121,7 +121,7 @@ export const PreferencesStep: React.FC<PreferencesStepProps> = ({
                 value={preferences.preferred_music}
                 onValueChange={(value) => updatePreference('preferred_music', value)}
               >
-                <SelectTrigger className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-lg">
+                <SelectTrigger className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-xl h-12">
                   <SelectValue placeholder="Choose a style" />
                 </SelectTrigger>
                 <SelectContent>
@@ -139,34 +139,34 @@ export const PreferencesStep: React.FC<PreferencesStepProps> = ({
         </div>
 
         {/* Conversation */}
-        <div className="bg-gray-50 rounded-xl p-6 space-y-4">
+        <div className="bg-gray-50 rounded-2xl p-6 space-y-4">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
               <MessageCircle className="w-5 h-5 text-green-600" />
             </div>
-            <Label className="text-lg font-medium text-gray-900">Conversation</Label>
+            <Label className="text-lg font-semibold text-gray-900">Conversation</Label>
           </div>
           
           <RadioGroup
             value={preferences.conversation_preference}
             onValueChange={(value) => updatePreference('conversation_preference', value)}
-            className="space-y-4"
+            className="space-y-3"
           >
-            <div className="flex items-center space-x-3 p-3 rounded-lg border border-gray-200 hover:bg-white transition-colors">
+            <div className="flex items-center space-x-3 p-4 rounded-xl border border-gray-200 hover:bg-white transition-colors">
               <RadioGroupItem value="friendly" id="friendly" />
               <Label htmlFor="friendly" className="text-sm font-medium text-gray-700 cursor-pointer">
                 😊 I enjoy chatting during rides
               </Label>
             </div>
-            <div className="flex items-center space-x-3 p-3 rounded-lg border border-gray-200 hover:bg-white transition-colors">
+            <div className="flex items-center space-x-3 p-4 rounded-xl border border-gray-200 hover:bg-white transition-colors">
               <RadioGroupItem value="quiet" id="quiet" />
               <Label htmlFor="quiet" className="text-sm font-medium text-gray-700 cursor-pointer">
                 🤫 I prefer quiet rides
               </Label>
             </div>
-            <div className="flex items-center space-x-3 p-3 rounded-lg border border-gray-200 hover:bg-white transition-colors">
+            <div className="flex items-center space-x-3 p-4 rounded-xl border border-gray-200 hover:bg-white transition-colors">
               <RadioGroupItem value="no_preference" id="no_pref" />
-              <Label htmlFor="no_pref" className="text-sm font-medium text-gray-700 cursor-pointe">
+              <Label htmlFor="no_pref" className="text-sm font-medium text-gray-700 cursor-pointer">
                 🤷‍♂️ Depends on my mood
               </Label>
             </div>
@@ -174,19 +174,19 @@ export const PreferencesStep: React.FC<PreferencesStepProps> = ({
         </div>
 
         {/* Trip Purpose */}
-        <div className="bg-gray-50 rounded-xl p-6 space-y-4">
+        <div className="bg-gray-50 rounded-2xl p-6 space-y-4">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
               <MapPin className="w-5 h-5 text-orange-600" />
             </div>
-            <Label className="text-lg font-medium text-gray-900">Main purpose of your trips</Label>
+            <Label className="text-lg font-semibold text-gray-900">Main purpose of your trips</Label>
           </div>
           
           <Select
             value={preferences.trip_purpose}
             onValueChange={(value) => updatePreference('trip_purpose', value)}
           >
-            <SelectTrigger className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-lg">
+            <SelectTrigger className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-xl h-12">
               <SelectValue placeholder="Select purpose" />
             </SelectTrigger>
             <SelectContent>
@@ -201,12 +201,12 @@ export const PreferencesStep: React.FC<PreferencesStepProps> = ({
         </div>
 
         {/* Additional Notes */}
-        <div className="bg-gray-50 rounded-xl p-6 space-y-4">
+        <div className="bg-gray-50 rounded-2xl p-6 space-y-4">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
               <NotebookPen className="w-5 h-5 text-gray-600" />
             </div>
-            <Label className="text-lg font-medium text-gray-900">Special notes (optional)</Label>
+            <Label className="text-lg font-semibold text-gray-900">Special notes (optional)</Label>
           </div>
           
           <Textarea
@@ -214,7 +214,7 @@ export const PreferencesStep: React.FC<PreferencesStepProps> = ({
             value={preferences.trip_notes}
             onChange={(e) => updatePreference('trip_notes', e.target.value)}
             rows={3}
-            className="resize-none border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-lg"
+            className="resize-none border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-xl"
           />
         </div>
       </div>

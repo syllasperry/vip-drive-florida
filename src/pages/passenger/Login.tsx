@@ -186,7 +186,7 @@ const Login = () => {
                   onChange={(e) => setFirstName(e.target.value)}
                   required
                   placeholder="John"
-                  className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-lg h-12"
+                  className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-xl h-14 text-base placeholder:text-gray-400"
                 />
               </div>
               <div className="space-y-2">
@@ -197,7 +197,7 @@ const Login = () => {
                   onChange={(e) => setLastName(e.target.value)}
                   required
                   placeholder="Doe"
-                  className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-lg h-12"
+                  className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-xl h-14 text-base placeholder:text-gray-400"
                 />
               </div>
             </div>
@@ -211,7 +211,7 @@ const Login = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="john@example.com"
-                className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-lg h-12"
+                className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-xl h-14 text-base placeholder:text-gray-400"
               />
             </div>
             
@@ -224,7 +224,7 @@ const Login = () => {
                 onChange={(e) => setPhone(e.target.value)}
                 required
                 placeholder="(555) 123-4567"
-                className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-lg h-12"
+                className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-xl h-14 text-base placeholder:text-gray-400"
               />
             </div>
             
@@ -239,13 +239,13 @@ const Login = () => {
                   required
                   placeholder="Create a password"
                   minLength={6}
-                  className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-lg h-12 pr-12"
+                  className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-xl h-14 text-base placeholder:text-gray-400 pr-12"
                 />
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-gray-100"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-gray-100"
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4 text-gray-500" /> : <Eye className="h-4 w-4 text-gray-500" />}
@@ -255,11 +255,11 @@ const Login = () => {
 
             <Button 
               type="submit" 
-              className="w-full bg-[#FF385C] hover:bg-[#E31C5F] text-white h-12 text-base font-medium rounded-lg transition-colors duration-200" 
+              className="w-full bg-[#FF385C] hover:bg-[#E31C5F] text-white h-14 text-base font-semibold rounded-xl transition-colors duration-200 flex items-center justify-center gap-2" 
               disabled={isLoading}
             >
               Continue
-              <ArrowRight className="w-4 h-4 ml-2" />
+              <ArrowRight className="w-5 h-5" />
             </Button>
           </form>
         );
@@ -280,16 +280,16 @@ const Login = () => {
               <Button
                 variant="outline"
                 onClick={() => setCurrentStep(1)}
-                className="flex-1 h-12 text-base border-gray-300 hover:bg-gray-50 rounded-lg"
+                className="flex-1 h-14 text-base border-gray-300 hover:bg-gray-50 rounded-xl font-medium"
               >
                 Back
               </Button>
               <Button
                 onClick={handlePhotoStep}
-                className="flex-1 bg-[#FF385C] hover:bg-[#E31C5F] text-white h-12 text-base font-medium rounded-lg"
+                className="flex-1 bg-[#FF385C] hover:bg-[#E31C5F] text-white h-14 text-base font-semibold rounded-xl flex items-center justify-center gap-2"
               >
                 Continue
-                <ArrowRight className="w-4 h-4 ml-2" />
+                <ArrowRight className="w-5 h-5" />
               </Button>
             </div>
           </div>
@@ -307,20 +307,20 @@ const Login = () => {
               <Button
                 variant="outline"
                 onClick={() => setCurrentStep(2)}
-                className="flex-1 h-12 text-base border-gray-300 hover:bg-gray-50 rounded-lg"
+                className="flex-1 h-14 text-base border-gray-300 hover:bg-gray-50 rounded-xl font-medium"
                 disabled={isLoading}
               >
                 Back
               </Button>
               <Button
                 onClick={handleCompleteSignUp}
-                className="flex-1 bg-[#FF385C] hover:bg-[#E31C5F] text-white h-12 text-base font-medium rounded-lg"
+                className="flex-1 bg-[#FF385C] hover:bg-[#E31C5F] text-white h-14 text-base font-semibold rounded-xl flex items-center justify-center gap-2"
                 disabled={isLoading}
               >
                 {isLoading ? "Creating account..." : (
                   <>
                     Complete
-                    <Check className="w-4 h-4 ml-2" />
+                    <Check className="w-5 h-5" />
                   </>
                 )}
               </Button>
@@ -334,23 +334,23 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <Button
           variant="ghost"
           onClick={() => navigate(-1)}
-          className="mb-6 text-gray-600 hover:text-gray-900 hover:bg-gray-100 p-2 rounded-lg"
+          className="mb-6 text-gray-600 hover:text-gray-900 hover:bg-white/80 p-3 rounded-xl font-medium flex items-center gap-2"
         >
-          <ArrowLeft className="h-5 w-5 mr-2" />
+          <ArrowLeft className="h-5 w-5" />
           Back
         </Button>
 
-        <Card className="border-0 shadow-lg rounded-2xl">
-          <CardHeader className="text-center pb-8 pt-8">
-            <CardTitle className="text-2xl font-semibold text-gray-900">
+        <Card className="border-0 shadow-lg rounded-3xl bg-white">
+          <CardHeader className="text-center pb-8 pt-8 px-8">
+            <CardTitle className="text-2xl font-bold text-gray-900">
               {currentStep > 1 ? "Complete your profile" : "Welcome to VIP Chauffeur"}
             </CardTitle>
-            <CardDescription className="text-gray-600 text-base mt-2">
+            <CardDescription className="text-gray-600 text-base mt-3">
               {currentStep === 2 
                 ? "Add your photo (optional)" 
                 : currentStep === 3
@@ -359,12 +359,12 @@ const Login = () => {
               }
             </CardDescription>
             {currentStep > 1 && (
-              <div className="flex justify-center mt-4">
+              <div className="flex justify-center mt-6">
                 <div className="flex space-x-2">
                   {[1, 2, 3].map((step) => (
                     <div
                       key={step}
-                      className={`w-2 h-2 rounded-full ${
+                      className={`w-2.5 h-2.5 rounded-full transition-colors duration-200 ${
                         step <= currentStep ? 'bg-[#FF385C]' : 'bg-gray-300'
                       }`}
                     />
@@ -376,16 +376,16 @@ const Login = () => {
           <CardContent className="px-8 pb-8">
             {currentStep === 1 ? (
               <Tabs defaultValue="login" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-8 bg-gray-100 p-1 rounded-lg">
+                <TabsList className="grid w-full grid-cols-2 mb-8 bg-gray-100 p-1 rounded-xl h-12">
                   <TabsTrigger 
                     value="login" 
-                    className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-600 font-medium py-2 rounded-md"
+                    className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-600 font-semibold py-3 rounded-lg transition-all duration-200"
                   >
                     Sign in
                   </TabsTrigger>
                   <TabsTrigger 
                     value="register"
-                    className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-600 font-medium py-2 rounded-md"
+                    className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-600 font-semibold py-3 rounded-lg transition-all duration-200"
                   >
                     Create account
                   </TabsTrigger>
@@ -402,7 +402,7 @@ const Login = () => {
                         onChange={(e) => setEmail(e.target.value)}
                         required
                         placeholder="Enter your email"
-                        className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-lg h-12"
+                        className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-xl h-14 text-base placeholder:text-gray-400"
                       />
                     </div>
                     
@@ -416,13 +416,13 @@ const Login = () => {
                           onChange={(e) => setPassword(e.target.value)}
                           required
                           placeholder="Enter your password"
-                          className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-lg h-12 pr-12"
+                          className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-xl h-14 text-base placeholder:text-gray-400 pr-12"
                         />
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-gray-100"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-gray-100"
                           onClick={() => setShowPassword(!showPassword)}
                         >
                           {showPassword ? <EyeOff className="h-4 w-4 text-gray-500" /> : <Eye className="h-4 w-4 text-gray-500" />}
@@ -432,7 +432,7 @@ const Login = () => {
 
                     <Button 
                       type="submit" 
-                      className="w-full bg-[#FF385C] hover:bg-[#E31C5F] text-white h-12 text-base font-medium rounded-lg transition-colors duration-200" 
+                      className="w-full bg-[#FF385C] hover:bg-[#E31C5F] text-white h-14 text-base font-semibold rounded-xl transition-colors duration-200" 
                       disabled={isLoading}
                     >
                       {isLoading ? "Signing in..." : "Sign in"}
@@ -449,12 +449,12 @@ const Login = () => {
             )}
 
             {currentStep === 1 && (
-              <div className="mt-6 text-center">
+              <div className="mt-8 text-center">
                 <Button
                   variant="link"
                   onClick={handleForgotPassword}
                   disabled={isLoading || !email}
-                  className="text-sm text-gray-600 hover:text-[#FF385C] transition-colors duration-200"
+                  className="text-sm text-gray-600 hover:text-[#FF385C] transition-colors duration-200 font-medium"
                 >
                   Forgot your password?
                 </Button>
