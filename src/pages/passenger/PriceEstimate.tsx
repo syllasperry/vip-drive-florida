@@ -186,6 +186,10 @@ const PriceEstimate = () => {
                 <h4 className="font-semibold text-sm text-muted-foreground">Available Categories:</h4>
                 <div className="grid grid-cols-1 gap-2 text-sm">
                   <div className="flex justify-between items-center p-2 bg-background rounded">
+                    <span>Tesla Model Y</span>
+                    <span className="font-bold">${Math.round(parseInt(estimatedPrice.replace('$', '')) * 0.9)}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-background rounded">
                     <span>Premium Sedan</span>
                     <span className="font-bold">{estimatedPrice}</span>
                   </div>
@@ -193,9 +197,9 @@ const PriceEstimate = () => {
                     <span>Luxury SUV</span>
                     <span className="font-bold">${Math.round(parseInt(estimatedPrice.replace('$', '')) * 1.2)}</span>
                   </div>
-                  <div className="flex justify-between items-center p-2 bg-background rounded opacity-60">
+                  <div className="flex justify-between items-center p-2 bg-background rounded">
                     <span>Executive Van</span>
-                    <span className="font-bold text-muted-foreground">Coming Soon</span>
+                    <span className="font-bold">${Math.round(parseInt(estimatedPrice.replace('$', '')) * 1.5)}</span>
                   </div>
                 </div>
               </div>
