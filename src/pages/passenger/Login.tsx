@@ -55,7 +55,7 @@ const Login = () => {
 
       if (error) throw error;
 
-      toast.success("Bem-vindo de volta!");
+      toast.success("Welcome back!");
       
       if (bookingData) {
         navigate("/cars", { state: bookingData });
@@ -63,7 +63,7 @@ const Login = () => {
         navigate("/passenger/dashboard");
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Falha no login");
+      toast.error(error instanceof Error ? error.message : "Sign in failed");
     } finally {
       setIsLoading(false);
     }
@@ -132,7 +132,7 @@ const Login = () => {
           console.warn("Preferences saving failed:", preferencesError);
         }
 
-        toast.success("Conta criada com sucesso!");
+        toast.success("Account created successfully!");
         
         localStorage.setItem("show_welcome_celebration", "true");
         
@@ -143,7 +143,7 @@ const Login = () => {
         }
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Falha na criação da conta");
+      toast.error(error instanceof Error ? error.message : "Account creation failed");
     } finally {
       setIsLoading(false);
     }
@@ -152,7 +152,7 @@ const Login = () => {
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
-      toast.error("Por favor, digite seu email");
+      toast.error("Please enter your email");
       return;
     }
 
@@ -164,9 +164,9 @@ const Login = () => {
 
       if (error) throw error;
       
-      toast.success("Email de recuperação enviado!");
+      toast.success("Reset email sent!");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Falha ao enviar email de recuperação");
+      toast.error(error instanceof Error ? error.message : "Failed to send reset email");
     } finally {
       setIsLoading(false);
     }
@@ -176,56 +176,60 @@ const Login = () => {
     switch (currentStep) {
       case 1:
         return (
-          <form onSubmit={handleBasicSignUp} className="space-y-4">
+          <form onSubmit={handleBasicSignUp} className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="firstName">Nome</Label>
+                <Label htmlFor="firstName" className="text-sm font-medium text-gray-700">First name</Label>
                 <Input
                   id="firstName"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   required
-                  placeholder="João"
+                  placeholder="John"
+                  className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-lg h-12"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lastName">Sobrenome</Label>
+                <Label htmlFor="lastName" className="text-sm font-medium text-gray-700">Last name</Label>
                 <Input
                   id="lastName"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   required
-                  placeholder="Silva"
+                  placeholder="Doe"
+                  className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-lg h-12"
                 />
               </div>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="registerEmail">Email</Label>
+              <Label htmlFor="registerEmail" className="text-sm font-medium text-gray-700">Email</Label>
               <Input
                 id="registerEmail"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="joao@exemplo.com"
+                placeholder="john@example.com"
+                className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-lg h-12"
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="phone">Telefone</Label>
+              <Label htmlFor="phone" className="text-sm font-medium text-gray-700">Phone</Label>
               <Input
                 id="phone"
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 required
-                placeholder="(11) 99999-9999"
+                placeholder="(555) 123-4567"
+                className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-lg h-12"
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="registerPassword">Senha</Label>
+              <Label htmlFor="registerPassword" className="text-sm font-medium text-gray-700">Password</Label>
               <div className="relative">
                 <Input
                   id="registerPassword"
@@ -233,23 +237,28 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  placeholder="Crie uma senha"
+                  placeholder="Create a password"
                   minLength={6}
+                  className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-lg h-12 pr-12"
                 />
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-gray-100"
                   onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? <EyeOff className="h-4 w-4 text-gray-500" /> : <Eye className="h-4 w-4 text-gray-500" />}
                 </Button>
               </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              Continuar
+            <Button 
+              type="submit" 
+              className="w-full bg-[#FF385C] hover:bg-[#E31C5F] text-white h-12 text-base font-medium rounded-lg transition-colors duration-200" 
+              disabled={isLoading}
+            >
+              Continue
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </form>
@@ -257,7 +266,7 @@ const Login = () => {
 
       case 2:
         return (
-          <div className="space-y-6">
+          <div className="space-y-8">
             <PhotoUploadStep
               onPhotoSelect={(file, preview) => {
                 setSelectedPhoto(file);
@@ -271,15 +280,15 @@ const Login = () => {
               <Button
                 variant="outline"
                 onClick={() => setCurrentStep(1)}
-                className="flex-1"
+                className="flex-1 h-12 text-base border-gray-300 hover:bg-gray-50 rounded-lg"
               >
-                Voltar
+                Back
               </Button>
               <Button
                 onClick={handlePhotoStep}
-                className="flex-1"
+                className="flex-1 bg-[#FF385C] hover:bg-[#E31C5F] text-white h-12 text-base font-medium rounded-lg"
               >
-                Continuar
+                Continue
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>
@@ -288,7 +297,7 @@ const Login = () => {
 
       case 3:
         return (
-          <div className="space-y-6">
+          <div className="space-y-8">
             <PreferencesStep
               preferences={preferences}
               onPreferencesChange={setPreferences}
@@ -298,19 +307,19 @@ const Login = () => {
               <Button
                 variant="outline"
                 onClick={() => setCurrentStep(2)}
-                className="flex-1"
+                className="flex-1 h-12 text-base border-gray-300 hover:bg-gray-50 rounded-lg"
                 disabled={isLoading}
               >
-                Voltar
+                Back
               </Button>
               <Button
                 onClick={handleCompleteSignUp}
-                className="flex-1"
+                className="flex-1 bg-[#FF385C] hover:bg-[#E31C5F] text-white h-12 text-base font-medium rounded-lg"
                 disabled={isLoading}
               >
-                {isLoading ? "Criando conta..." : (
+                {isLoading ? "Creating account..." : (
                   <>
-                    Finalizar
+                    Complete
                     <Check className="w-4 h-4 ml-2" />
                   </>
                 )}
@@ -325,53 +334,80 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <Button
           variant="ghost"
           onClick={() => navigate(-1)}
-          className="mb-4 text-muted-foreground hover:text-foreground"
+          className="mb-6 text-gray-600 hover:text-gray-900 hover:bg-gray-100 p-2 rounded-lg"
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Voltar
+          <ArrowLeft className="h-5 w-5 mr-2" />
+          Back
         </Button>
 
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold">
-              {currentStep > 1 ? "Complete seu perfil" : "Bem-vindo ao VIP Chauffeur"}
+        <Card className="border-0 shadow-lg rounded-2xl">
+          <CardHeader className="text-center pb-8 pt-8">
+            <CardTitle className="text-2xl font-semibold text-gray-900">
+              {currentStep > 1 ? "Complete your profile" : "Welcome to VIP Chauffeur"}
             </CardTitle>
-            <CardDescription>
-              {currentStep > 1 
-                ? `Passo ${currentStep} de 3` 
-                : "Entre na sua conta ou crie uma nova"
+            <CardDescription className="text-gray-600 text-base mt-2">
+              {currentStep === 2 
+                ? "Add your photo (optional)" 
+                : currentStep === 3
+                ? "Tell us your preferences"
+                : "Sign in to your account or create a new one"
               }
             </CardDescription>
+            {currentStep > 1 && (
+              <div className="flex justify-center mt-4">
+                <div className="flex space-x-2">
+                  {[1, 2, 3].map((step) => (
+                    <div
+                      key={step}
+                      className={`w-2 h-2 rounded-full ${
+                        step <= currentStep ? 'bg-[#FF385C]' : 'bg-gray-300'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-8 pb-8">
             {currentStep === 1 ? (
               <Tabs defaultValue="login" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="login">Entrar</TabsTrigger>
-                  <TabsTrigger value="register">Criar conta</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-2 mb-8 bg-gray-100 p-1 rounded-lg">
+                  <TabsTrigger 
+                    value="login" 
+                    className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-600 font-medium py-2 rounded-md"
+                  >
+                    Sign in
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="register"
+                    className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-600 font-medium py-2 rounded-md"
+                  >
+                    Create account
+                  </TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="login">
-                  <form onSubmit={handleLogin} className="space-y-4">
+                  <form onSubmit={handleLogin} className="space-y-6">
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
+                      <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email</Label>
                       <Input
                         id="email"
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
-                        placeholder="Digite seu email"
+                        placeholder="Enter your email"
+                        className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-lg h-12"
                       />
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="password">Senha</Label>
+                      <Label htmlFor="password" className="text-sm font-medium text-gray-700">Password</Label>
                       <div className="relative">
                         <Input
                           id="password"
@@ -379,22 +415,27 @@ const Login = () => {
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           required
-                          placeholder="Digite sua senha"
+                          placeholder="Enter your password"
+                          className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-lg h-12 pr-12"
                         />
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-gray-100"
                           onClick={() => setShowPassword(!showPassword)}
                         >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          {showPassword ? <EyeOff className="h-4 w-4 text-gray-500" /> : <Eye className="h-4 w-4 text-gray-500" />}
                         </Button>
                       </div>
                     </div>
 
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? "Entrando..." : "Entrar"}
+                    <Button 
+                      type="submit" 
+                      className="w-full bg-[#FF385C] hover:bg-[#E31C5F] text-white h-12 text-base font-medium rounded-lg transition-colors duration-200" 
+                      disabled={isLoading}
+                    >
+                      {isLoading ? "Signing in..." : "Sign in"}
                     </Button>
                   </form>
                 </TabsContent>
@@ -408,14 +449,14 @@ const Login = () => {
             )}
 
             {currentStep === 1 && (
-              <div className="mt-4 text-center">
+              <div className="mt-6 text-center">
                 <Button
                   variant="link"
                   onClick={handleForgotPassword}
                   disabled={isLoading || !email}
-                  className="text-sm text-muted-foreground"
+                  className="text-sm text-gray-600 hover:text-[#FF385C] transition-colors duration-200"
                 >
-                  Esqueceu sua senha?
+                  Forgot your password?
                 </Button>
               </div>
             )}

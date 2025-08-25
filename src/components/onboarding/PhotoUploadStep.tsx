@@ -64,58 +64,54 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="text-center">
-        <h3 className="text-xl font-semibold text-foreground mb-2">
-          Adicione sua foto
+        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+          Add your photo
         </h3>
-        <p className="text-muted-foreground text-sm">
-          Isso ajuda motoristas e outros passageiros a te reconhecer (opcional)
+        <p className="text-gray-600 text-sm">
+          This helps drivers and other passengers recognize you (optional)
         </p>
       </div>
 
-      <div className="flex flex-col items-center space-y-4">
+      <div className="flex flex-col items-center space-y-6">
         <div className="relative">
-          <Avatar className="w-24 h-24 border-4 border-border">
-            <AvatarImage src={currentPhoto || undefined} alt={userName} />
-            <AvatarFallback className="text-lg bg-muted">
-              {userName ? getInitials(userName) : <User className="w-8 h-8" />}
+          <Avatar className="w-28 h-28 border-4 border-white shadow-lg">
+            <AvatarImage src={currentPhoto || undefined} alt={userName} className="object-cover" />
+            <AvatarFallback className="text-xl bg-gray-100 text-gray-600 font-medium">
+              {userName ? getInitials(userName) : <User className="w-10 h-10" />}
             </AvatarFallback>
           </Avatar>
           
           <Button
             type="button"
             size="sm"
-            className="absolute -bottom-1 -right-1 rounded-full w-8 h-8 p-0 bg-primary hover:bg-primary/90"
+            className="absolute -bottom-1 -right-1 rounded-full w-10 h-10 p-0 bg-[#FF385C] hover:bg-[#E31C5F] border-4 border-white shadow-lg"
             onClick={() => fileInputRef.current?.click()}
           >
-            <Camera className="w-4 h-4" />
+            <Camera className="w-5 h-5 text-white" />
           </Button>
         </div>
 
         <div
-          className={`w-full max-w-sm border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+          className={`w-full max-w-sm border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer ${
             dragActive 
-              ? 'border-primary bg-primary/5' 
-              : 'border-muted-foreground/25 hover:border-muted-foreground/50'
+              ? 'border-[#FF385C] bg-red-50' 
+              : 'border-gray-300 hover:border-gray-400 bg-gray-50'
           }`}
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
         >
-          <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground mb-2">
-            Arraste uma foto aqui ou clique para selecionar
+          <Upload className="w-10 h-10 mx-auto mb-4 text-gray-400" />
+          <p className="text-sm text-gray-700 mb-1 font-medium">
+            Drag a photo here or click to select
           </p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            Escolher arquivo
-          </Button>
+          <p className="text-xs text-gray-500">
+            JPG, PNG up to 10MB
+          </p>
         </div>
 
         <input
@@ -132,9 +128,9 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
             variant="ghost"
             size="sm"
             onClick={() => onPhotoSelect(null, null)}
-            className="text-muted-foreground hover:text-foreground"
+            className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
           >
-            Remover foto
+            Remove photo
           </Button>
         )}
       </div>
