@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +22,7 @@ const vehicles: VehicleOption[] = [
     id: 'tesla-model-y',
     name: 'Tesla Model Y',
     category: 'Electric',
-    image: '/lovable-uploads/c9d111f3-4cc2-4c9a-956e-e5238177f67c.png',
+    image: '/lovable-uploads/b69de5ff-ba48-4187-8d37-5673866975ba.png',
     capacity: 4,
     luggage: 3,
     features: ['Wi-Fi', 'Climate Control', 'Premium Audio', 'Auto Pilot'],
@@ -34,7 +33,7 @@ const vehicles: VehicleOption[] = [
     id: 'premium-sedan',
     name: 'BMW 5 Series',
     category: 'Sedan',
-    image: '/lovable-uploads/e3743181-33d0-48f2-b3a5-922b77ffe0c9.png',
+    image: '/lovable-uploads/50fb0053-2860-4417-b88e-318de1c999b2.png',
     capacity: 4,
     luggage: 2,
     features: ['Wi-Fi', 'Climate Control', 'Premium Audio', 'Phone Charger'],
@@ -45,7 +44,7 @@ const vehicles: VehicleOption[] = [
     id: 'luxury-suv',
     name: 'Chevrolet Tahoe', 
     category: 'SUV',
-    image: '/lovable-uploads/7a2edd95-6e8c-458a-a3a5-93441bc2ad44.png',
+    image: '/lovable-uploads/977929a7-97d1-4af6-a844-625555972357.png',
     capacity: 7,
     luggage: 5,
     features: ['Wi-Fi', 'Climate Control', 'Premium Audio', 'Extra Space'],
@@ -150,11 +149,11 @@ const ChooseVehicle: React.FC = () => {
               onClick={() => setSelectedVehicle(vehicle)}
             >
               <CardContent className="p-6">
-                <div className="aspect-video mb-4 rounded-lg overflow-hidden bg-gray-100">
+                <div className="aspect-[4/3] mb-4 rounded-lg overflow-hidden bg-gray-100">
                   <img
                     src={vehicle.image}
                     alt={vehicle.name}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover object-center"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk0YTNiOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkNhciBJbWFnZTwvdGV4dD48L3N2Zz4=';
