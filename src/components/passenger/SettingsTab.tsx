@@ -157,12 +157,18 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
         title: "Preferences Updated",
         description: "Your ride preferences have been saved successfully.",
       });
+
+      // Reload preferences to confirm they were saved
+      await loadPreferences();
+      
     } catch (error) {
       console.error('=== PREFERENCES SAVE FAILED ===');
       console.error('Error details:', error);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       toast({
         title: "Error",
-        description: `Failed to save preferences: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
