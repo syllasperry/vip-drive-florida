@@ -39,7 +39,7 @@ export async function getDispatcherPassengerProfile(bookingId: string) {
 
 export function publicAvatarUrl(pathOrUrl?: string) {
   if (!pathOrUrl) {
-    return supabase.storage.from('avatars').getPublicUrl('').data.publicUrl;
+    return null;
   }
   
   if (pathOrUrl.startsWith('http')) {
@@ -191,6 +191,12 @@ export async function uploadAvatar(file: File) {
     const { data: { publicUrl } } = supabase.storage
       .from('avatars')
       .getPublicUrl(filePath);
+
+    // Update passenger profile with new avatar URL
+    await supabase
+      .from('passengers')
+      .update({ profile_photo_url: publicUrl })
+      .eq('user_id', user.id);
 
     return publicUrl;
   } catch (error) {

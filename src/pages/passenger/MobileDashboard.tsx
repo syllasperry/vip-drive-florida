@@ -13,6 +13,7 @@ import { ProfileSettingsModal } from '@/components/passenger/ProfileSettingsModa
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useMyBookings } from '@/hooks/useMyBookings';
+import { getMyPassengerProfile } from '@/lib/api/profiles';
 
 interface PassengerProfile {
   first_name: string;
@@ -106,16 +107,23 @@ export default function MobileDashboard() {
         passenger_profile: passenger
       });
 
-      // Set passenger profile for modal
-      if (passenger) {
-        const nameParts = passenger.full_name?.split(' ') || [''];
-        setPassengerProfile({
-          first_name: nameParts[0] || '',
-          last_name: nameParts.slice(1).join(' ') || '',
-          phone: passenger.phone || '',
-          email: passenger.email || user.email || '',
-          avatarUrl: passenger.profile_photo_url || null
-        });
+      // Load detailed profile with avatar
+      try {
+        const detailedProfile = await getMyPassengerProfile();
+        setPassengerProfile(detailedProfile);
+      } catch (profileError) {
+        console.error('Error loading detailed profile:', profileError);
+        // Fallback to basic profile
+        if (passenger) {
+          const nameParts = passenger.full_name?.split(' ') || [''];
+          setPassengerProfile({
+            first_name: nameParts[0] || '',
+            last_name: nameParts.slice(1).join(' ') || '',
+            phone: passenger.phone || '',
+            email: passenger.email || user.email || '',
+            avatarUrl: passenger.profile_photo_url || null
+          });
+        }
       }
       
     } catch (error) {
@@ -160,7 +168,15 @@ export default function MobileDashboard() {
   const currentUserName = userProfile?.passenger_profile?.full_name || 'User';
   
   const passenger = userProfile?.passenger_profile;
-  const nameParts = passenger?.full_name?.split(' ') || [''];
+  
+  // Use passengerProfile for display if available, fallback to passenger
+  const displayProfile = passengerProfile || {
+    first_name: passenger?.full_name?.split(' ')[0] || '',
+    last_name: passenger?.full_name?.split(' ').slice(1).join(' ') || '',
+    phone: passenger?.phone || '',
+    email: passenger?.email || userProfile?.email || '',
+    avatarUrl: passenger?.profile_photo_url || null
+  };
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -213,7 +229,7 @@ export default function MobileDashboard() {
                   <EnhancedBookingCard
                     key={booking.id}
                     booking={booking}
-                    passengerInfo={passenger}
+                    passengerInfo={displayProfile}
                     onViewDetails={() => console.log('View details for:', booking.id)}
                   />
                 ))
@@ -277,10 +293,10 @@ export default function MobileDashboard() {
           onClick={() => setShowProfileModal(true)}
         >
           <ProfileHeader
-            photoUrl={passenger?.profile_photo_url}
-            firstName={nameParts[0] || ''}
-            lastName={nameParts.slice(1).join(' ') || ''}
-            email={passenger?.email || userProfile?.email}
+            photoUrl={displayProfile.avatarUrl}
+            firstName={displayProfile.first_name}
+            lastName={displayProfile.last_name}
+            email={displayProfile.email}
             showEmail={true}
             size="md"
           />
@@ -330,7 +346,7 @@ export default function MobileDashboard() {
       </div>
 
       {/* Profile Settings Modal */}
-      {showProfileModal && passengerProfile && (
+      {showProfileModal && (
         <ProfileSettingsModal
           isOpen={showProfileModal}
           onClose={() => setShowProfileModal(false)}

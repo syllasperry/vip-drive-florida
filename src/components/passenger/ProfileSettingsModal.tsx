@@ -73,8 +73,18 @@ export const ProfileSettingsModal = ({
     try {
       const newAvatarUrl = await uploadAvatar(file);
       setAvatarUrl(newAvatarUrl);
+      
+      toast({
+        title: "Sucesso",
+        description: "Foto atualizada com sucesso!"
+      });
     } catch (error) {
       console.error('Photo upload failed:', error);
+      toast({
+        title: "Erro no upload",
+        description: "Falha ao fazer upload da foto. Tente novamente.",
+        variant: "destructive"
+      });
       throw error;
     } finally {
       setIsUploadingPhoto(false);
