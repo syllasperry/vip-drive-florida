@@ -29,94 +29,57 @@ export async function savePassengerPreferences(preferences: PassengerPreferences
     console.log('Authenticated user:', user.id);
     console.log('Original preferences:', preferences);
 
-    // Map the conversation preference values to match database constraints
-    const mappedConversationPreference = mapConversationPreference(preferences.conversation_preference);
-    const mappedTripPurpose = mapTripPurpose(preferences.trip_purpose);
-    const mappedMusicPreference = mapMusicPreference(preferences.preferred_music);
-    
-    console.log('Mapped conversation preference:', mappedConversationPreference);
-    console.log('Mapped trip purpose:', mappedTripPurpose);
-    console.log('Mapped music preference:', mappedMusicPreference);
-    
-    const rpcParams = {
+    // Validate and map values to match database constraints
+    const mappedPreferences = {
       _air_conditioning: preferences.air_conditioning,
-      _preferred_temperature: preferences.preferred_temperature,
+      _preferred_temperature: Math.max(60, Math.min(85, preferences.preferred_temperature)),
       _temperature_unit: preferences.temperature_unit,
       _radio_on: preferences.radio_on,
-      _preferred_music: mappedMusicPreference,
-      _conversation_preference: mappedConversationPreference,
-      _trip_purpose: mappedTripPurpose,
+      _preferred_music: mapMusicPreference(preferences.preferred_music, preferences.radio_on),
+      _conversation_preference: mapConversationPreference(preferences.conversation_preference),
+      _trip_purpose: mapTripPurpose(preferences.trip_purpose),
       _trip_notes: preferences.trip_notes || ''
     };
     
-    console.log('RPC parameters:', rpcParams);
+    console.log('Mapped RPC parameters:', mappedPreferences);
 
-    const { data, error } = await supabase.rpc('upsert_my_passenger_preferences', rpcParams);
+    const { data, error } = await supabase.rpc('upsert_my_passenger_preferences', mappedPreferences);
 
     if (error) {
       console.error('Supabase RPC error:', error);
-      console.error('Error details:', {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code
-      });
       
-      // Provide more specific error messages
+      // Provide specific error messages based on constraint violations
+      if (error.message?.includes('preferred_temperature_check')) {
+        throw new Error('Temperature must be between 60°F and 85°F');
+      }
+      if (error.message?.includes('preferred_music_check')) {
+        throw new Error('Invalid music preference selected');
+      }
+      if (error.message?.includes('conversation_preference_check')) {
+        throw new Error('Invalid conversation preference selected');
+      }
       if (error.message?.includes('trip_purpose_check')) {
-        throw new Error('Invalid trip purpose selected. Please choose from the available options.');
-      }
-      if (error.message?.includes('conversation_preference')) {
-        throw new Error('Invalid conversation preference selected. Please choose from the available options.');
-      }
-      if (error.message?.includes('preferred_music')) {
-        throw new Error('Invalid music preference selected. Please choose from the available options.');
+        throw new Error('Invalid trip purpose selected');
       }
       
       throw new Error(`Failed to save preferences: ${error.message}`);
     }
 
-    console.log('Successfully saved preferences, RPC response:', data);
+    console.log('Successfully saved preferences');
     return data;
   } catch (error) {
-    console.error('Unexpected error saving passenger preferences:', error);
+    console.error('Error saving passenger preferences:', error);
     throw error;
   }
 }
 
-// Map conversation preference values to match database constraints
-function mapConversationPreference(value: string): string {
-  const mapping: { [key: string]: string } = {
-    'friendly': 'chatty',
-    'quiet': 'prefers_silence', 
-    'no_preference': 'depends',
-    'chatty': 'chatty',
-    'prefers_silence': 'prefers_silence',
-    'depends': 'depends'
-  };
+// Map music preference values to database enum
+function mapMusicPreference(value: string, radioOn: boolean): string {
+  // If radio is off, always return 'off'
+  if (!radioOn) {
+    return 'off';
+  }
   
-  console.log('Mapping conversation preference:', value, 'to:', mapping[value] || 'depends');
-  return mapping[value] || 'depends';
-}
-
-// Map trip purpose values to match database constraints
-function mapTripPurpose(value: string): string {
-  const mapping: { [key: string]: string } = {
-    'business': 'business',
-    'leisure': 'leisure', 
-    'airport': 'airport',
-    'event': 'events',
-    'events': 'events',
-    'medical': 'medical',
-    'other': 'other'
-  };
-  
-  console.log('Mapping trip purpose:', value, 'to:', mapping[value] || 'business');
-  return mapping[value] || 'business';
-}
-
-// Map music preference values to match database constraints
-function mapMusicPreference(value: string): string {
   const mapping: { [key: string]: string } = {
     'no_preference': 'no_preference',
     'classical': 'classical',
@@ -127,8 +90,37 @@ function mapMusicPreference(value: string): string {
     'off': 'off'
   };
   
-  console.log('Mapping music preference:', value, 'to:', mapping[value] || 'no_preference');
   return mapping[value] || 'no_preference';
+}
+
+// Map conversation preference values to database enum
+function mapConversationPreference(value: string): string {
+  const mapping: { [key: string]: string } = {
+    'friendly': 'chatty',
+    'chatty': 'chatty',
+    'quiet': 'prefers_silence',
+    'prefers_silence': 'prefers_silence',
+    'no_preference': 'depends',
+    'depends': 'depends'
+  };
+  
+  return mapping[value] || 'depends';
+}
+
+// Map trip purpose values to database enum
+function mapTripPurpose(value: string): string {
+  const mapping: { [key: string]: string } = {
+    'business': 'business',
+    'leisure': 'leisure',
+    'airport': 'airport',
+    'event': 'events',
+    'events': 'events',
+    'medical': 'medical',
+    'other': 'other',
+    'work': 'business' // Map common alternative
+  };
+  
+  return mapping[value] || 'other';
 }
 
 export async function getPassengerPreferences(): Promise<PassengerPreferences | null> {

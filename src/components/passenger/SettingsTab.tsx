@@ -37,12 +37,12 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
   });
   const [preferences, setPreferences] = useState<PassengerPreferences>({
     air_conditioning: true,
-    preferred_temperature: 72,
+    preferred_temperature: 71,
     temperature_unit: 'F',
-    radio_on: true,
+    radio_on: false,
     preferred_music: 'no_preference',
     conversation_preference: 'depends',
-    trip_purpose: 'business',
+    trip_purpose: 'other',
     trip_notes: ''
   });
   const [notifications, setNotifications] = useState({
@@ -129,27 +129,6 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
       console.log('=== SAVING PREFERENCES ===');
       console.log('Current preferences state:', preferences);
       
-      // Validate preferences before saving
-      if (typeof preferences.air_conditioning !== 'boolean') {
-        throw new Error('Invalid air_conditioning value');
-      }
-      if (typeof preferences.preferred_temperature !== 'number' || preferences.preferred_temperature < 60 || preferences.preferred_temperature > 85) {
-        throw new Error('Invalid preferred_temperature value');
-      }
-      if (!preferences.temperature_unit || !['F', 'C'].includes(preferences.temperature_unit)) {
-        throw new Error('Invalid temperature_unit value');
-      }
-      if (typeof preferences.radio_on !== 'boolean') {
-        throw new Error('Invalid radio_on value');
-      }
-      if (!preferences.conversation_preference) {
-        throw new Error('Invalid conversation_preference value');
-      }
-      if (!preferences.trip_purpose) {
-        throw new Error('Invalid trip_purpose value');
-      }
-      
-      console.log('Validation passed, calling savePassengerPreferences...');
       await savePassengerPreferences(preferences);
       console.log('=== PREFERENCES SAVED SUCCESSFULLY ===');
       
@@ -158,14 +137,14 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
         description: "Your ride preferences have been saved successfully.",
       });
 
-      // Reload preferences to confirm they were saved
+      // Reload preferences to confirm they were saved and update UI
       await loadPreferences();
       
     } catch (error) {
       console.error('=== PREFERENCES SAVE FAILED ===');
       console.error('Error details:', error);
       
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save preferences. Please try again.';
       toast({
         title: "Error",
         description: errorMessage,
@@ -388,20 +367,20 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
               className="space-y-3"
             >
               <div className="flex items-center space-x-3 p-4 rounded-xl border border-gray-200 hover:bg-white transition-colors">
-                <RadioGroupItem value="friendly" id="friendly" />
-                <Label htmlFor="friendly" className="text-sm font-medium text-gray-700 cursor-pointer">
+                <RadioGroupItem value="chatty" id="chatty" />
+                <Label htmlFor="chatty" className="text-sm font-medium text-gray-700 cursor-pointer">
                   😊 I enjoy chatting during rides
                 </Label>
               </div>
               <div className="flex items-center space-x-3 p-4 rounded-xl border border-gray-200 hover:bg-white transition-colors">
-                <RadioGroupItem value="quiet" id="quiet" />
-                <Label htmlFor="quiet" className="text-sm font-medium text-gray-700 cursor-pointer">
+                <RadioGroupItem value="prefers_silence" id="prefers_silence" />
+                <Label htmlFor="prefers_silence" className="text-sm font-medium text-gray-700 cursor-pointer">
                   🤫 I prefer quiet rides
                 </Label>
               </div>
               <div className="flex items-center space-x-3 p-4 rounded-xl border border-gray-200 hover:bg-white transition-colors">
-                <RadioGroupItem value="no_preference" id="no_pref" />
-                <Label htmlFor="no_pref" className="text-sm font-medium text-gray-700 cursor-pointer">
+                <RadioGroupItem value="depends" id="depends" />
+                <Label htmlFor="depends" className="text-sm font-medium text-gray-700 cursor-pointer">
                   🤷‍♂️ Depends on my mood
                 </Label>
               </div>
@@ -428,7 +407,7 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
                 <SelectItem value="business">Business</SelectItem>
                 <SelectItem value="leisure">Leisure</SelectItem>
                 <SelectItem value="airport">Airport</SelectItem>
-                <SelectItem value="event">Events</SelectItem>
+                <SelectItem value="events">Events</SelectItem>
                 <SelectItem value="medical">Medical</SelectItem>
                 <SelectItem value="other">Other</SelectItem>
               </SelectContent>
