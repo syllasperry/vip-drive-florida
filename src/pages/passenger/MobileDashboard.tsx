@@ -178,6 +178,15 @@ export default function MobileDashboard() {
     avatarUrl: passenger?.profile_photo_url || null
   };
 
+  // Create PassengerInfo object with required id property
+  const passengerInfo = {
+    id: passenger?.id || currentUserId,
+    full_name: `${displayProfile.first_name} ${displayProfile.last_name}`.trim(),
+    profile_photo_url: displayProfile.avatarUrl,
+    phone: displayProfile.phone,
+    email: displayProfile.email
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'bookings':
@@ -229,7 +238,7 @@ export default function MobileDashboard() {
                   <EnhancedBookingCard
                     key={booking.id}
                     booking={booking}
-                    passengerInfo={displayProfile}
+                    passengerInfo={passengerInfo}
                     onViewDetails={() => console.log('View details for:', booking.id)}
                   />
                 ))
