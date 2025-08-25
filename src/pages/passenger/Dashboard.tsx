@@ -2,14 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, User, Settings, MessageSquare, CreditCard, AlertCircle, RefreshCw } from 'lucide-react';
+import { Plus, User, AlertCircle, RefreshCw } from 'lucide-react';
 import PassengerBookingsList from '@/components/passenger/PassengerBookingsList';
 import { ProfileSettingsModal } from '@/components/passenger/ProfileSettingsModal';
 import { PassengerPreferencesCard } from '@/components/passenger/PassengerPreferencesCard';
 import { MessagesTab } from '@/components/passenger/MessagesTab';
 import { PaymentsTab } from '@/components/passenger/PaymentsTab';
 import { SettingsTab } from '@/components/passenger/SettingsTab';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { BottomNavigation } from '@/components/dashboard/BottomNavigation';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useMyBookings } from '@/hooks/useMyBookings';
@@ -24,6 +24,7 @@ interface PassengerProfile {
 
 export default function PassengerDashboard() {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('bookings');
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -105,7 +106,7 @@ export default function PassengerDashboard() {
       }
       
       console.log('✅ Profile loaded successfully');
-      setRetryCount(0); // Reset retry count on success
+      setRetryCount(0);
       
     } catch (error) {
       console.error('❌ Error in fetchUserProfile:', error);
@@ -116,7 +117,7 @@ export default function PassengerDashboard() {
       if (retryCount < MAX_RETRIES) {
         console.log(`🔄 Auto-retrying... Attempt ${retryCount + 1}/${MAX_RETRIES}`);
         setRetryCount(prev => prev + 1);
-        setTimeout(() => fetchUserProfile(true), 2000 * (retryCount + 1)); // Exponential backoff
+        setTimeout(() => fetchUserProfile(true), 2000 * (retryCount + 1));
       }
     } finally {
       setAuthLoading(false);
@@ -135,15 +136,21 @@ export default function PassengerDashboard() {
 
   const handleProfileUpdate = (updatedProfile: PassengerProfile) => {
     setPassengerProfile(updatedProfile);
-    // Refresh the user profile to get latest data
     fetchUserProfile(true);
+  };
+
+  const getUnreadCount = () => {
+    return bookings.filter(booking => 
+      booking.status === 'offer_sent' || 
+      booking.payment_confirmation_status === 'waiting_for_payment'
+    ).length;
   };
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FF385C] mx-auto mb-4"></div>
           <p className="text-gray-600">Loading your dashboard...</p>
         </div>
       </div>
@@ -152,13 +159,13 @@ export default function PassengerDashboard() {
 
   if (profileError) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center max-w-md p-6">
-          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+          <AlertCircle className="h-16 w-16 text-[#FF385C] mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Profile</h2>
           <p className="text-gray-600 mb-4">{profileError}</p>
           <div className="space-y-2">
-            <Button onClick={handleRetry} className="w-full gap-2">
+            <Button onClick={handleRetry} className="w-full gap-2 bg-[#FF385C] hover:bg-[#E31C5F]">
               <RefreshCw className="h-4 w-4" />
               Try Again
             </Button>
@@ -180,80 +187,99 @@ export default function PassengerDashboard() {
   const currentUserId = userProfile?.id || '';
   const currentUserName = userProfile?.passenger_profile?.full_name || userProfile?.email?.split('@')[0] || 'User';
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Welcome back, {userProfile?.passenger_profile?.full_name || userProfile?.email?.split('@')[0]}
-              </h1>
-              <p className="text-gray-600">Manage your rides and preferences</p>
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'bookings':
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between px-4 pt-4">
+              <div>
+                <h1 className="text-2xl font-semibold text-gray-900">Your trips</h1>
+                <p className="text-gray-500 text-sm">Welcome back, {currentUserName}</p>
+              </div>
+              <Button 
+                onClick={() => navigate('/passenger/price-estimate')} 
+                className="bg-[#FF385C] hover:bg-[#E31C5F] text-white rounded-full px-6"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Book
+              </Button>
             </div>
-            <Button onClick={() => navigate('/passenger/price-estimate')} className="gap-2">
-              <Plus className="h-4 w-4" />
-              New Booking
-            </Button>
+            <div className="px-4">
+              <PassengerBookingsList showHeader={false} />
+            </div>
           </div>
-        </div>
-
-        {/* Main Content */}
-        <Tabs defaultValue="bookings" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="bookings">My Rides</TabsTrigger>
-            <TabsTrigger value="messages">Messages</TabsTrigger>
-            <TabsTrigger value="payments">Payments</TabsTrigger>
-            <TabsTrigger value="preferences">Preferences</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="bookings">
-            <Card>
-              <CardHeader>
-                <CardTitle>My Bookings</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <PassengerBookingsList />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="messages">
+        );
+      case 'messages':
+        return (
+          <div className="p-4">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Messages</h2>
             <MessagesTab 
               bookings={bookings}
               currentUserId={currentUserId}
               currentUserName={currentUserName}
             />
-          </TabsContent>
-
-          <TabsContent value="payments">
+          </div>
+        );
+      case 'payments':
+        return (
+          <div className="p-4">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Payments</h2>
             <PaymentsTab bookings={bookings} />
-          </TabsContent>
-
-          <TabsContent value="preferences">
-            <PassengerPreferencesCard />
-          </TabsContent>
-
-          <TabsContent value="settings">
+          </div>
+        );
+      case 'settings':
+        return (
+          <div className="p-4">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Profile & Settings</h2>
             <SettingsTab 
               passengerInfo={userProfile?.passenger_profile}
               onUpdate={() => fetchUserProfile(true)}
             />
-          </TabsContent>
-        </Tabs>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
 
-        {/* Profile Settings Modal */}
-        {showProfileModal && passengerProfile && (
-          <ProfileSettingsModal
-            isOpen={showProfileModal}
-            onClose={() => setShowProfileModal(false)}
-            profile={passengerProfile}
-            onProfileUpdate={handleProfileUpdate}
-          />
-        )}
+  return (
+    <div className="min-h-screen bg-white flex flex-col">
+      {/* Status Bar Spacer */}
+      <div className="pt-safe-top" />
+      
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-white">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-[#FF385C] rounded-lg flex items-center justify-center">
+            <User className="h-5 w-5 text-white" />
+          </div>
+          <span className="text-lg font-semibold text-gray-900">Passenger</span>
+        </div>
       </div>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-auto safe-bottom">
+        {renderTabContent()}
+      </div>
+
+      {/* Bottom Navigation */}
+      <BottomNavigation
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        userType="passenger"
+        pendingActionsCount={getUnreadCount()}
+      />
+
+      {/* Profile Settings Modal */}
+      {showProfileModal && passengerProfile && (
+        <ProfileSettingsModal
+          isOpen={showProfileModal}
+          onClose={() => setShowProfileModal(false)}
+          profile={passengerProfile}
+          onProfileUpdate={handleProfileUpdate}
+        />
+      )}
     </div>
   );
 }
