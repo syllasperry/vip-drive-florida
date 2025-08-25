@@ -107,7 +107,7 @@ export default function MobileDashboard() {
         passenger_profile: passenger
       });
 
-      // Load detailed profile with avatar
+      // Load detailed profile with avatar using the updated API
       try {
         const detailedProfile = await getMyPassengerProfile();
         setPassengerProfile(detailedProfile);

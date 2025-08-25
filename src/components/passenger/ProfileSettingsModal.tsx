@@ -1,12 +1,12 @@
 
-import { useState, useEffect } from "react";
-import { X, User, Save, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
-import { getMyPassengerProfile, upsertMyPassengerProfile, uploadAvatar } from "@/lib/api/profiles";
-import { PhotoUpload } from "@/components/profile/PhotoUpload";
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { PhotoUpload } from '@/components/profile/PhotoUpload';
+import { upsertMyPassengerProfile, uploadAvatar } from '@/lib/api/profiles';
+import { useToast } from '@/hooks/use-toast';
 
 interface PassengerProfile {
   first_name: string;
@@ -20,266 +20,184 @@ interface ProfileSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   profile: PassengerProfile | null;
-  onProfileUpdate: (profile: PassengerProfile) => void;
+  onProfileUpdate: (updatedProfile: PassengerProfile) => void;
 }
 
-export const ProfileSettingsModal = ({ 
-  isOpen, 
-  onClose, 
-  profile: initialProfile,
+export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
+  isOpen,
+  onClose,
+  profile,
   onProfileUpdate
-}: ProfileSettingsModalProps) => {
+}) => {
   const { toast } = useToast();
-  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<PassengerProfile>({
     first_name: '',
     last_name: '',
     phone: '',
-    email: ''
+    email: '',
+    avatarUrl: null
   });
 
-  // Load profile data when modal opens
   useEffect(() => {
-    if (isOpen) {
-      loadProfileData();
+    if (profile) {
+      setFormData(profile);
     }
-  }, [isOpen]);
+  }, [profile]);
 
-  const loadProfileData = async () => {
-    try {
-      const profile = await getMyPassengerProfile();
-      setFormData({
-        first_name: profile.first_name || '',
-        last_name: profile.last_name || '',
-        phone: profile.phone || '',
-        email: profile.email || ''
-      });
-      setAvatarUrl(profile.avatarUrl);
-    } catch (error) {
-      console.error('Error loading profile data:', error);
-      toast({
-        title: "Erro",
-        description: "Falha ao carregar dados do perfil",
-        variant: "destructive"
-      });
-    }
+  const handleInputChange = (field: keyof PassengerProfile, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   const handlePhotoUpload = async (file: File) => {
-    setIsUploadingPhoto(true);
     try {
-      const newAvatarUrl = await uploadAvatar(file);
-      setAvatarUrl(newAvatarUrl);
+      setIsUploadingPhoto(true);
+      console.log('Uploading photo...', file.name);
       
+      const avatarUrl = await uploadAvatar(file);
+      
+      setFormData(prev => ({
+        ...prev,
+        avatarUrl
+      }));
+
       toast({
-        title: "Sucesso",
-        description: "Foto atualizada com sucesso!"
+        title: "Foto enviada com sucesso!",
+        description: "Sua foto de perfil foi atualizada.",
       });
     } catch (error) {
-      console.error('Photo upload failed:', error);
+      console.error('Error uploading photo:', error);
       toast({
         title: "Erro no upload",
-        description: "Falha ao fazer upload da foto. Tente novamente.",
+        description: "Não foi possível enviar a foto. Tente novamente.",
         variant: "destructive"
       });
-      throw error;
     } finally {
       setIsUploadingPhoto(false);
     }
   };
 
   const handleSave = async () => {
-    // Validate required fields
-    if (!formData.first_name.trim() || !formData.last_name.trim()) {
-      toast({
-        title: "Erro de Validação",
-        description: "Nome e sobrenome são obrigatórios",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsSaving(true);
-    
     try {
-      const firstName = formData.first_name.trim() || 'User';
-      const lastName = formData.last_name.trim() || '';
+      setIsLoading(true);
       
       await upsertMyPassengerProfile({
-        first_name: firstName,
-        last_name: lastName,
-        phone: formData.phone.trim(),
-        email: formData.email.trim()
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        phone: formData.phone,
+        email: formData.email
       });
 
-      // Create updated profile object
-      const updatedProfile: PassengerProfile = {
-        first_name: firstName,
-        last_name: lastName,
-        phone: formData.phone.trim(),
-        email: formData.email.trim(),
-        avatarUrl: avatarUrl
-      };
-
-      // Notify parent and close
-      onProfileUpdate(updatedProfile);
-      onClose();
-
+      onProfileUpdate(formData);
+      
       toast({
-        title: "Sucesso",
-        description: "Perfil atualizado com sucesso"
+        title: "Perfil atualizado!",
+        description: "Suas informações foram salvas com sucesso.",
       });
-
+      
+      onClose();
     } catch (error) {
       console.error('Error updating profile:', error);
       toast({
-        title: "Erro",
-        description: error instanceof Error ? error.message : "Falha ao atualizar perfil",
+        title: "Erro ao salvar",
+        description: "Não foi possível atualizar o perfil. Tente novamente.",
         variant: "destructive"
       });
     } finally {
-      setIsSaving(false);
+      setIsLoading(false);
     }
   };
-
-  const handleCancel = () => {
-    // Reset form data
-    if (initialProfile) {
-      setFormData({
-        first_name: initialProfile.first_name || '',
-        last_name: initialProfile.last_name || '',
-        phone: initialProfile.phone || '',
-        email: initialProfile.email || ''
-      });
-      setAvatarUrl(initialProfile.avatarUrl);
-    }
-    onClose();
-  };
-
-  if (!isOpen) return null;
-
-  const displayName = `${formData.first_name} ${formData.last_name}`.trim() || 'Usuário';
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl w-full max-w-md max-h-[90vh] shadow-xl flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-100">
-          <div className="flex items-center space-x-2">
-            <User className="h-5 w-5 text-[#FF385C]" />
-            <h2 className="text-lg font-semibold text-gray-900">
-              Editar Perfil
-            </h2>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md mx-auto">
+        <DialogHeader>
+          <DialogTitle>Editar Perfil</DialogTitle>
+        </DialogHeader>
+        
+        <div className="space-y-6 py-4">
+          {/* Photo Upload */}
+          <div className="flex justify-center">
+            <PhotoUpload
+              currentPhotoUrl={formData.avatarUrl}
+              userName={`${formData.first_name} ${formData.last_name}`.trim() || 'User'}
+              onPhotoUpload={handlePhotoUpload}
+              isUploading={isUploadingPhoto}
+              size="lg"
+            />
           </div>
-          <Button variant="ghost" size="sm" onClick={handleCancel}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="space-y-6">
-            {/* Photo Upload Section */}
-            <div className="text-center">
-              <PhotoUpload
-                currentPhotoUrl={avatarUrl}
-                userName={displayName}
-                onPhotoUpload={handlePhotoUpload}
-                isUploading={isUploadingPhoto}
-                size="lg"
+          {/* Form Fields */}
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="first_name">Nome</Label>
+              <Input
+                id="first_name"
+                type="text"
+                value={formData.first_name}
+                onChange={(e) => handleInputChange('first_name', e.target.value)}
+                placeholder="Seu nome"
               />
             </div>
 
-            {/* Form Fields */}
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="firstName">Nome *</Label>
-                  <Input
-                    id="firstName"
-                    value={formData.first_name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, first_name: e.target.value }))}
-                    disabled={isSaving}
-                    placeholder="Seu nome"
-                    className="focus:ring-[#FF385C] focus:border-[#FF385C]"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="lastName">Sobrenome *</Label>
-                  <Input
-                    id="lastName"
-                    value={formData.last_name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, last_name: e.target.value }))}
-                    disabled={isSaving}
-                    placeholder="Seu sobrenome"
-                    className="focus:ring-[#FF385C] focus:border-[#FF385C]"
-                  />
-                </div>
-              </div>
+            <div>
+              <Label htmlFor="last_name">Sobrenome</Label>
+              <Input
+                id="last_name"
+                type="text"
+                value={formData.last_name}
+                onChange={(e) => handleInputChange('last_name', e.target.value)}
+                placeholder="Seu sobrenome"
+              />
+            </div>
 
-              <div>
-                <Label htmlFor="phone">Telefone</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                  disabled={isSaving}
-                  placeholder="Seu telefone"
-                  className="focus:ring-[#FF385C] focus:border-[#FF385C]"
-                />
-              </div>
+            <div>
+              <Label htmlFor="phone">Telefone</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
+                placeholder="(11) 99999-9999"
+              />
+            </div>
 
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  disabled={isSaving}
-                  placeholder="Seu email"
-                  className="focus:ring-[#FF385C] focus:border-[#FF385C]"
-                />
-              </div>
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                placeholder="seu@email.com"
+              />
             </div>
           </div>
-        </div>
 
-        {/* Footer */}
-        <div className="p-6 border-t border-gray-100">
-          <div className="flex gap-3">
-            <Button 
-              onClick={handleSave}
-              disabled={isSaving || isUploadingPhoto}
-              className="flex-1 bg-[#FF385C] hover:bg-[#E31C5F] text-white"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Salvando...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" />
-                  Salvar
-                </>
-              )}
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={handleCancel}
-              disabled={isSaving}
+          {/* Action Buttons */}
+          <div className="flex gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={onClose}
               className="flex-1"
+              disabled={isLoading}
             >
               Cancelar
             </Button>
+            <Button
+              onClick={handleSave}
+              className="flex-1 bg-[#FF385C] hover:bg-[#E31C5F]"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Salvando...' : 'Salvar'}
+            </Button>
           </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
