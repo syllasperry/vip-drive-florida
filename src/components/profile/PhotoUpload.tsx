@@ -118,7 +118,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
       {/* Upload Instructions */}
       <div className="text-center">
         <p className="text-sm text-gray-600 mb-2">
-          Clique ou arraste uma foto aqui
+          Click or drag a photo here
         </p>
         <Button
           variant="outline"
@@ -130,12 +130,12 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
           {isUploading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Enviando...
+              Uploading...
             </>
           ) : (
             <>
               <Upload className="w-4 h-4 mr-2" />
-              Escolher Foto
+              Choose Photo
             </>
           )}
         </Button>
