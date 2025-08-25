@@ -12,7 +12,7 @@ const SplashScreen: React.FC = () => {
       setTimeout(() => {
         navigate('/onboarding');
       }, 500); // Allow fade out animation to complete
-    }, 2000);
+    }, 5000); // Changed to 5 seconds
 
     return () => clearTimeout(timer);
   }, [navigate]);
@@ -21,35 +21,14 @@ const SplashScreen: React.FC = () => {
     <div className={`fixed inset-0 bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center transition-opacity duration-500 ${
       isVisible ? 'opacity-100' : 'opacity-0'
     }`}>
-      <div className="text-center text-white">
-        <div className="mb-8 relative">
-          <div className="w-32 h-32 mx-auto flex items-center justify-center animate-pulse">
-            <img 
-              src="/lovable-uploads/977929a7-97d1-4af6-a844-625555972357.png" 
-              alt="VIP Chauffeur Service Logo"
-              className="w-full h-full object-contain animate-pulse"
-            />
-          </div>
-          <div className="absolute -inset-4 bg-white/10 rounded-full animate-ping"></div>
-        </div>
-        
-        <h1 className="text-4xl font-bold mb-2 animate-fade-in text-white">
-          VIP Chauffeur
-        </h1>
-        <p className="text-xl text-slate-300 animate-fade-in-delay">
-          Premium Transportation in South Florida
-        </p>
-        
-        <div className="mt-8">
-          <div className="flex space-x-1 justify-center">
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className="w-2 h-2 bg-white rounded-full animate-bounce"
-                style={{ animationDelay: `${i * 0.2}s` }}
-              ></div>
-            ))}
-          </div>
+      <div className="flex items-center justify-center">
+        <div className="relative">
+          <img 
+            src="/lovable-uploads/50fb0053-2860-4417-b88e-318de1c999b2.png" 
+            alt="VIP Chauffeur Service Logo"
+            className="w-64 h-64 object-contain animate-pulse"
+          />
+          <div className="absolute -inset-8 bg-yellow-400/10 rounded-full animate-ping"></div>
         </div>
       </div>
     </div>
