@@ -18,22 +18,26 @@ const SplashScreen: React.FC = () => {
   }, [navigate]);
 
   return (
-    <div className={`fixed inset-0 bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center transition-opacity duration-500 ${
+    <div className={`fixed inset-0 bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center transition-opacity duration-500 ${
       isVisible ? 'opacity-100' : 'opacity-0'
     }`}>
       <div className="text-center text-white">
         <div className="mb-8 relative">
-          <div className="w-24 h-24 mx-auto bg-white rounded-full flex items-center justify-center animate-pulse">
-            <span className="text-3xl font-bold text-red-600">VIP</span>
+          <div className="w-32 h-32 mx-auto flex items-center justify-center animate-pulse">
+            <img 
+              src="/lovable-uploads/977929a7-97d1-4af6-a844-625555972357.png" 
+              alt="VIP Chauffeur Service Logo"
+              className="w-full h-full object-contain animate-pulse"
+            />
           </div>
-          <div className="absolute -inset-2 bg-white/20 rounded-full animate-ping"></div>
+          <div className="absolute -inset-4 bg-white/10 rounded-full animate-ping"></div>
         </div>
         
-        <h1 className="text-4xl font-bold mb-2 animate-fade-in">
+        <h1 className="text-4xl font-bold mb-2 animate-fade-in text-white">
           VIP Chauffeur
         </h1>
-        <p className="text-xl text-red-100 animate-fade-in-delay">
-          Premium Transportation
+        <p className="text-xl text-slate-300 animate-fade-in-delay">
+          Premium Transportation in South Florida
         </p>
         
         <div className="mt-8">
