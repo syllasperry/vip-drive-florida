@@ -20,37 +20,48 @@ interface VehicleOption {
 
 const vehicles: VehicleOption[] = [
   {
-    id: 'premium-sedan',
-    name: 'Premium Sedan',
-    category: 'Sedan',
-    image: '/lovable-uploads/bmw-sedan.jpg',
+    id: 'tesla-model-y',
+    name: 'Tesla Model Y',
+    category: 'Electric',
+    image: '/lovable-uploads/c9d111f3-4cc2-4c9a-956e-e5238177f67c.png',
     capacity: 4,
     luggage: 3,
+    features: ['Wi-Fi', 'Climate Control', 'Premium Audio', 'Auto Pilot'],
+    priceMultiplier: 0.9,
+    description: 'Premium electric vehicle with advanced features'
+  },
+  {
+    id: 'premium-sedan',
+    name: 'BMW 5 Series',
+    category: 'Sedan',
+    image: '/lovable-uploads/e3743181-33d0-48f2-b3a5-922b77ffe0c9.png',
+    capacity: 4,
+    luggage: 2,
     features: ['Wi-Fi', 'Climate Control', 'Premium Audio', 'Phone Charger'],
     priceMultiplier: 1.0,
-    description: 'Comfortable and elegant for business trips'
+    description: 'Luxury sedan with sophisticated comfort'
   },
   {
     id: 'luxury-suv',
-    name: 'Luxury SUV', 
+    name: 'Chevrolet Tahoe', 
     category: 'SUV',
-    image: '/lovable-uploads/chevrolet-suv.jpg',
-    capacity: 6,
+    image: '/lovable-uploads/7a2edd95-6e8c-458a-a3a5-93441bc2ad44.png',
+    capacity: 7,
     luggage: 5,
     features: ['Wi-Fi', 'Climate Control', 'Premium Audio', 'Extra Space'],
     priceMultiplier: 1.2,
-    description: 'Perfect for groups and families'
+    description: 'Spacious SUV perfect for groups and families'
   },
   {
     id: 'executive-van',
-    name: 'Executive Van',
+    name: 'Mercedes-Benz Sprinter',
     category: 'Van',
-    image: '/lovable-uploads/mercedes-van.jpg',
+    image: '/lovable-uploads/525c9a73-0f5d-4805-855b-5ffe7c660eec.png',
     capacity: 8,
     luggage: 8,
     features: ['Wi-Fi', 'Climate Control', 'Premium Audio', 'Maximum Space'],
     priceMultiplier: 1.5,
-    description: 'Ideal for large groups and events'
+    description: 'Premium van for large groups'
   }
 ];
 
@@ -127,7 +138,7 @@ const ChooseVehicle: React.FC = () => {
         </Card>
 
         {/* Vehicle Options */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {vehicles.map((vehicle) => (
             <Card
               key={vehicle.id}
