@@ -79,7 +79,7 @@ export function DateTimePicker({ date, setDate, minDate }: DateTimePickerProps) 
         </PopoverContent>
       </Popover>
 
-      <div className="w-32">
+      <div className="w-44">
         <div className="space-y-1">
           <div className="flex items-center space-x-1 text-sm font-medium text-gray-700">
             <Clock className="h-3 w-3" />
