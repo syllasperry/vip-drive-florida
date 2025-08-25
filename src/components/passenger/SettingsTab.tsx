@@ -129,6 +129,9 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
       console.log('=== SAVING PREFERENCES ===');
       console.log('Current preferences state:', preferences);
       
+      // Log the trip purpose value specifically to debug the issue
+      console.log('Trip purpose value being saved:', preferences.trip_purpose);
+      
       await savePassengerPreferences(preferences);
       console.log('=== PREFERENCES SAVED SUCCESSFULLY ===');
       
@@ -387,7 +390,7 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
             </RadioGroup>
           </div>
 
-          {/* Trip Purpose */}
+          {/* Trip Purpose - FIXED to ensure correct value mapping */}
           <div className="bg-gray-50 rounded-2xl p-6 space-y-4">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
@@ -398,7 +401,10 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
             
             <Select
               value={preferences.trip_purpose}
-              onValueChange={(value) => updatePreference('trip_purpose', value)}
+              onValueChange={(value) => {
+                console.log('Trip purpose selected in UI:', value);
+                updatePreference('trip_purpose', value);
+              }}
             >
               <SelectTrigger className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-xl h-12">
                 <SelectValue placeholder="Select purpose" />

@@ -49,16 +49,16 @@ export async function savePassengerPreferences(preferences: PassengerPreferences
       console.error('Supabase RPC error:', error);
       
       // Provide specific error messages based on constraint violations
-      if (error.message?.includes('preferred_temperature_check')) {
+      if (error.message?.includes('preferred_temperature_check') || error.message?.includes('temperature')) {
         throw new Error('Temperature must be between 60°F and 85°F');
       }
-      if (error.message?.includes('preferred_music_check')) {
+      if (error.message?.includes('preferred_music_check') || error.message?.includes('music')) {
         throw new Error('Invalid music preference selected');
       }
-      if (error.message?.includes('conversation_preference_check')) {
+      if (error.message?.includes('conversation_preference_check') || error.message?.includes('conversation')) {
         throw new Error('Invalid conversation preference selected');
       }
-      if (error.message?.includes('trip_purpose_check')) {
+      if (error.message?.includes('trip_purpose_check') || error.message?.includes('trip_purpose')) {
         throw new Error('Invalid trip purpose selected');
       }
       
@@ -107,20 +107,27 @@ function mapConversationPreference(value: string): string {
   return mapping[value] || 'depends';
 }
 
-// Map trip purpose values to database enum
+// Map trip purpose values to database enum - FIXED to match exact database values
 function mapTripPurpose(value: string): string {
+  console.log('Mapping trip purpose value:', value);
+  
+  // Normalize the input value to lowercase for consistent comparison
+  const normalizedValue = value.toLowerCase().trim();
+  
   const mapping: { [key: string]: string } = {
     'business': 'business',
-    'leisure': 'leisure',
+    'leisure': 'leisure', 
     'airport': 'airport',
     'event': 'events',
     'events': 'events',
     'medical': 'medical',
-    'other': 'other',
-    'work': 'business' // Map common alternative
+    'other': 'other'
   };
   
-  return mapping[value] || 'other';
+  const mappedValue = mapping[normalizedValue] || 'other';
+  console.log('Mapped trip purpose from', value, 'to', mappedValue);
+  
+  return mappedValue;
 }
 
 export async function getPassengerPreferences(): Promise<PassengerPreferences | null> {
