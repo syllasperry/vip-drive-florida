@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +23,7 @@ const vehicles: VehicleOption[] = [
     id: 'tesla-model-y',
     name: 'Tesla Model Y',
     category: 'Electric',
-    image: '/lovable-uploads/b69de5ff-ba48-4187-8d37-5673866975ba.png',
+    image: '/assets/tesla-model-y.jpg',
     capacity: 4,
     luggage: 3,
     features: ['Wi-Fi', 'Climate Control', 'Premium Audio', 'Auto Pilot'],
@@ -33,7 +34,7 @@ const vehicles: VehicleOption[] = [
     id: 'premium-sedan',
     name: 'BMW 5 Series',
     category: 'Sedan',
-    image: '/lovable-uploads/50fb0053-2860-4417-b88e-318de1c999b2.png',
+    image: '/assets/bmw-sedan.jpg',
     capacity: 4,
     luggage: 2,
     features: ['Wi-Fi', 'Climate Control', 'Premium Audio', 'Phone Charger'],
@@ -44,7 +45,7 @@ const vehicles: VehicleOption[] = [
     id: 'luxury-suv',
     name: 'Chevrolet Tahoe', 
     category: 'SUV',
-    image: '/lovable-uploads/977929a7-97d1-4af6-a844-625555972357.png',
+    image: '/assets/chevrolet-suv.jpg',
     capacity: 7,
     luggage: 5,
     features: ['Wi-Fi', 'Climate Control', 'Premium Audio', 'Extra Space'],
@@ -55,7 +56,7 @@ const vehicles: VehicleOption[] = [
     id: 'executive-van',
     name: 'Mercedes-Benz Sprinter',
     category: 'Van',
-    image: '/lovable-uploads/525c9a73-0f5d-4805-855b-5ffe7c660eec.png',
+    image: '/assets/mercedes-van.jpg',
     capacity: 8,
     luggage: 8,
     features: ['Wi-Fi', 'Climate Control', 'Premium Audio', 'Maximum Space'],
@@ -149,7 +150,7 @@ const ChooseVehicle: React.FC = () => {
               onClick={() => setSelectedVehicle(vehicle)}
             >
               <CardContent className="p-6">
-                <div className="aspect-[4/3] mb-4 rounded-lg overflow-hidden bg-gray-100">
+                <div className="aspect-[16/10] mb-4 rounded-lg overflow-hidden bg-gray-100">
                   <img
                     src={vehicle.image}
                     alt={vehicle.name}
