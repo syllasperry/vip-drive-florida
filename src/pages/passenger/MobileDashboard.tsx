@@ -8,6 +8,8 @@ import { EnhancedBookingCard } from '@/components/passenger/EnhancedBookingCard'
 import { MessagesTab } from '@/components/passenger/MessagesTab';
 import { PaymentsTab } from '@/components/passenger/PaymentsTab';
 import { SettingsTab } from '@/components/passenger/SettingsTab';
+import { ProfileHeader } from '@/components/profile/ProfileHeader';
+import { ProfileSettingsModal } from '@/components/passenger/ProfileSettingsModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useMyBookings } from '@/hooks/useMyBookings';
@@ -62,7 +64,9 @@ export default function MobileDashboard() {
   const [activeTab, setActiveTab] = useState('bookings');
   const [userProfile, setUserProfile] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [notificationCount, setNotificationCount] = useState(3); // Mock notification count
+  const [notificationCount, setNotificationCount] = useState(3);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [passengerProfile, setPassengerProfile] = useState<PassengerProfile | null>(null);
   const { bookings, isLoading } = useMyBookings();
 
   const fetchUserProfile = async () => {
@@ -101,6 +105,18 @@ export default function MobileDashboard() {
         ...user,
         passenger_profile: passenger
       });
+
+      // Set passenger profile for modal
+      if (passenger) {
+        const nameParts = passenger.full_name?.split(' ') || [''];
+        setPassengerProfile({
+          first_name: nameParts[0] || '',
+          last_name: nameParts.slice(1).join(' ') || '',
+          phone: passenger.phone || '',
+          email: passenger.email || user.email || '',
+          avatarUrl: passenger.profile_photo_url || null
+        });
+      }
       
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -113,6 +129,11 @@ export default function MobileDashboard() {
     fetchUserProfile();
   }, [navigate]);
 
+  const handleProfileUpdate = (updatedProfile: PassengerProfile) => {
+    setPassengerProfile(updatedProfile);
+    fetchUserProfile();
+  };
+
   const getUnreadCount = () => {
     return bookings.filter(booking => 
       booking.status === 'offer_sent' || 
@@ -121,7 +142,6 @@ export default function MobileDashboard() {
   };
 
   const handleNotificationClick = () => {
-    // TODO: Implement notification modal or navigation
     console.log('Notifications clicked');
   };
 
@@ -138,6 +158,9 @@ export default function MobileDashboard() {
 
   const currentUserId = userProfile?.id || '';
   const currentUserName = userProfile?.passenger_profile?.full_name || 'User';
+  
+  const passenger = userProfile?.passenger_profile;
+  const nameParts = passenger?.full_name?.split(' ') || [''];
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -146,15 +169,15 @@ export default function MobileDashboard() {
           <div className="space-y-6">
             <div className="flex items-center justify-between px-4">
               <div>
-                <h1 className="text-2xl font-semibold text-gray-900">Your trips</h1>
-                <p className="text-gray-500 text-sm">Manage your bookings</p>
+                <h1 className="text-2xl font-semibold text-gray-900">Suas viagens</h1>
+                <p className="text-gray-500 text-sm">Gerencie suas reservas</p>
               </div>
               <Button 
                 onClick={() => navigate('/passenger/price-estimate')} 
                 className="bg-[#FF385C] hover:bg-[#E31C5F] text-white rounded-full px-6"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Book
+                Reservar
               </Button>
             </div>
             
@@ -173,15 +196,15 @@ export default function MobileDashboard() {
                 <Card>
                   <CardContent className="p-8 text-center">
                     <Calendar className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No bookings yet</h3>
+                    <h3 className="text-lg font-semibold mb-2">Nenhuma reserva ainda</h3>
                     <p className="text-gray-500 mb-4">
-                      Start by creating your first booking
+                      Comece criando sua primeira reserva
                     </p>
                     <Button 
                       onClick={() => navigate('/passenger/price-estimate')}
                       className="bg-[#FF385C] hover:bg-[#E31C5F] text-white"
                     >
-                      Book Your First Ride
+                      Reserve Sua Primeira Viagem
                     </Button>
                   </CardContent>
                 </Card>
@@ -190,6 +213,7 @@ export default function MobileDashboard() {
                   <EnhancedBookingCard
                     key={booking.id}
                     booking={booking}
+                    passengerInfo={passenger}
                     onViewDetails={() => console.log('View details for:', booking.id)}
                   />
                 ))
@@ -232,18 +256,35 @@ export default function MobileDashboard() {
       {/* Status Bar Spacer */}
       <div className="pt-safe-top" />
       
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-100">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-[#FF385C] rounded-lg flex items-center justify-center">
-            <User className="h-5 w-5 text-white" />
+      {/* Header with Profile */}
+      <div className="bg-white border-b border-gray-100 p-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-[#FF385C] rounded-lg flex items-center justify-center">
+              <User className="h-5 w-5 text-white" />
+            </div>
+            <span className="text-lg font-semibold text-gray-900">Passageiro</span>
           </div>
-          <span className="text-lg font-semibold text-gray-900">Passenger</span>
+          <NotificationBell 
+            count={notificationCount}
+            onClick={handleNotificationClick}
+          />
         </div>
-        <NotificationBell 
-          count={notificationCount}
-          onClick={handleNotificationClick}
-        />
+        
+        {/* Profile Header */}
+        <div 
+          className="cursor-pointer"
+          onClick={() => setShowProfileModal(true)}
+        >
+          <ProfileHeader
+            photoUrl={passenger?.profile_photo_url}
+            firstName={nameParts[0] || ''}
+            lastName={nameParts.slice(1).join(' ') || ''}
+            email={passenger?.email || userProfile?.email}
+            showEmail={true}
+            size="md"
+          />
+        </div>
       </div>
 
       {/* Main Content */}
@@ -287,6 +328,16 @@ export default function MobileDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Profile Settings Modal */}
+      {showProfileModal && passengerProfile && (
+        <ProfileSettingsModal
+          isOpen={showProfileModal}
+          onClose={() => setShowProfileModal(false)}
+          profile={passengerProfile}
+          onProfileUpdate={handleProfileUpdate}
+        />
+      )}
     </div>
   );
 }

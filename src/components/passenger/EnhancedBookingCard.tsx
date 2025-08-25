@@ -1,159 +1,228 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, Car, Clock, Eye } from 'lucide-react';
-import { PassengerAvatar } from './PassengerAvatar';
-import { format } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
+import { Clock, MapPin, User, Eye, Phone } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
-interface BookingData {
+interface BookingInfo {
   id: string;
   booking_code?: string;
   pickup_location: string;
   dropoff_location: string;
   pickup_time: string;
-  vehicle_type?: string;
+  status: string;
   final_price?: number;
   estimated_price?: number;
-  status: string;
+  vehicle_type?: string;
+  driver_id?: string;
   payment_confirmation_status?: string;
   ride_status?: string;
-  passenger_first_name?: string;
-  passenger_last_name?: string;
-  passenger_photo_url?: string;
-  passengers?: {
-    full_name: string;
-    profile_photo_url?: string;
-  };
+}
+
+interface PassengerInfo {
+  id: string;
+  full_name?: string;
+  profile_photo_url?: string;
+  phone?: string;
+  email?: string;
 }
 
 interface EnhancedBookingCardProps {
-  booking: BookingData;
-  onViewDetails?: () => void;
+  booking: BookingInfo;
+  passengerInfo?: PassengerInfo;
+  onViewDetails: () => void;
 }
 
 export const EnhancedBookingCard: React.FC<EnhancedBookingCardProps> = ({
   booking,
+  passengerInfo,
   onViewDetails
 }) => {
-  const getStatusBadge = () => {
-    const status = booking.payment_confirmation_status || booking.ride_status || booking.status;
-    
-    switch (status) {
-      case 'waiting_for_offer':
-      case 'pending':
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Pending</Badge>;
-      case 'offer_sent':
-      case 'waiting_for_payment':
-        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Paid</Badge>;
-      case 'passenger_paid':
-      case 'payment_confirmed':
-        return <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">All Set</Badge>;
+  const getStatusVariant = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'confirmed':
       case 'all_set':
-        return <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">All Set</Badge>;
-      case 'completed':
-        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Completed</Badge>;
+        return 'default';
+      case 'pending':
+      case 'waiting_for_offer':
+        return 'secondary';
+      case 'offer_sent':
+      case 'price_awaiting_acceptance':
+        return 'outline';
+      case 'cancelled':
+        return 'destructive';
       default:
-        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Pending</Badge>;
+        return 'secondary';
     }
   };
 
   const getStatusMessage = () => {
-    const status = booking.payment_confirmation_status || booking.ride_status || booking.status;
+    if (!booking.driver_id) {
+      return 'Aguardando designação do motorista';
+    }
     
-    switch (status) {
+    switch (booking.payment_confirmation_status) {
       case 'waiting_for_offer':
-      case 'pending':
-        return 'Awaiting driver assignment';
+        return 'Aguardando oferta do motorista';
+      case 'price_awaiting_acceptance':
+        return 'Revisar oferta recebida';
       case 'passenger_paid':
-      case 'payment_confirmed':
-        return 'Payment confirmed';
+        return 'Pagamento confirmado, aguardando motorista';
       case 'all_set':
-        return 'All set for your ride';
+        return 'Tudo pronto para a viagem';
       default:
-        return null;
+        return 'Processando reserva';
     }
   };
 
-  const passengerName = booking.passengers?.full_name || 
-    (booking.passenger_first_name && booking.passenger_last_name 
-      ? `${booking.passenger_first_name} ${booking.passenger_last_name}` 
-      : 'Passenger');
+  const formatPrice = (price?: number) => {
+    if (!price) return null;
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(price);
+  };
 
-  const passengerPhoto = booking.passengers?.profile_photo_url || booking.passenger_photo_url;
+  const formatDateTime = (dateTime: string) => {
+    const date = new Date(dateTime);
+    return {
+      date: date.toLocaleDateString('pt-BR', { 
+        day: '2-digit', 
+        month: '2-digit',
+        year: 'numeric'
+      }),
+      time: date.toLocaleTimeString('pt-BR', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      })
+    };
+  };
 
-  const price = booking.final_price || booking.estimated_price;
+  const getPassengerInitials = () => {
+    if (!passengerInfo?.full_name) return 'P';
+    return passengerInfo.full_name
+      .split(' ')
+      .map(part => part.charAt(0))
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const { date, time } = formatDateTime(booking.pickup_time);
+  const displayPrice = formatPrice(booking.final_price || booking.estimated_price);
+  const statusMessage = getStatusMessage();
 
   return (
-    <Card className="w-full bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+    <Card className="border border-gray-200 hover:shadow-md transition-shadow duration-200">
       <CardContent className="p-4">
-        {/* Header with passenger info and status */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <PassengerAvatar 
-              src={passengerPhoto}
-              name={passengerName}
-              size="md"
-            />
-            <div>
-              <h3 className="font-semibold text-gray-900 text-lg">
-                {booking.booking_code || `VIP-${booking.id.slice(-6)}`}
-              </h3>
-              <p className="text-sm text-gray-500">
-                {booking.pickup_location.length > 20 
-                  ? `${booking.pickup_location.slice(0, 20)}...` 
-                  : booking.pickup_location}
-              </p>
+        <div className="space-y-4">
+          {/* Header with Passenger Info and Status */}
+          <div className="flex items-start justify-between">
+            <div className="flex items-center space-x-3">
+              <Avatar className="h-12 w-12 ring-2 ring-gray-100">
+                <AvatarImage 
+                  src={passengerInfo?.profile_photo_url || undefined} 
+                  alt={passengerInfo?.full_name || 'Passageiro'}
+                  className="object-cover"
+                />
+                <AvatarFallback className="bg-[#FF385C] text-white font-semibold">
+                  {getPassengerInitials()}
+                </AvatarFallback>
+              </Avatar>
+              
+              <div>
+                <h3 className="font-semibold text-gray-900">
+                  {passengerInfo?.full_name || 'Passageiro'}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {booking.booking_code ? `#${booking.booking_code}` : `Reserva ${booking.id.slice(-6).toUpperCase()}`}
+                </p>
+              </div>
+            </div>
+
+            <Badge variant={getStatusVariant(booking.status)}>
+              {booking.status}
+            </Badge>
+          </div>
+
+          {/* Status Message */}
+          <div className="bg-blue-50 p-3 rounded-lg">
+            <p className="text-sm text-blue-800 font-medium">
+              {statusMessage}
+            </p>
+          </div>
+
+          {/* Trip Details */}
+          <div className="space-y-3">
+            <div className="flex items-start space-x-3">
+              <MapPin className="h-4 w-4 text-green-600 mt-1 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {booking.pickup_location}
+                </p>
+                <p className="text-xs text-gray-500">Origem</p>
+              </div>
+            </div>
+
+            <div className="flex items-start space-x-3">
+              <MapPin className="h-4 w-4 text-red-600 mt-1 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {booking.dropoff_location}
+                </p>
+                <p className="text-xs text-gray-500">Destino</p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              <Clock className="h-4 w-4 text-blue-600 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-gray-900">
+                  {date} às {time}
+                </p>
+                <p className="text-xs text-gray-500">Data e horário</p>
+              </div>
             </div>
           </div>
-          {getStatusBadge()}
-        </div>
 
-        {/* Route information */}
-        <div className="space-y-2 mb-4">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <MapPin className="h-4 w-4 text-green-500" />
-            <span className="truncate">{booking.pickup_location}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <MapPin className="h-4 w-4 text-red-500" />
-            <span className="truncate">{booking.dropoff_location}</span>
-          </div>
-        </div>
-
-        {/* Vehicle and price info */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Car className="h-4 w-4" />
-            <span>{booking.vehicle_type || 'Standard Vehicle'}</span>
-          </div>
-          {price && (
-            <div className="text-lg font-semibold text-gray-900">
-              ${price}
+          {/* Additional Info */}
+          <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+            <div className="flex items-center space-x-4 text-sm text-gray-600">
+              {booking.vehicle_type && (
+                <span className="flex items-center space-x-1">
+                  <User className="h-4 w-4" />
+                  <span>{booking.vehicle_type}</span>
+                </span>
+              )}
+              {passengerInfo?.phone && (
+                <span className="flex items-center space-x-1">
+                  <Phone className="h-4 w-4" />
+                  <span>{passengerInfo.phone}</span>
+                </span>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* SmartPrice indicator */}
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-sm text-gray-500">SmartPrice ON</span>
+            {displayPrice && (
+              <div className="text-right">
+                <p className="text-lg font-bold text-[#FF385C]">
+                  {displayPrice}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Action Button */}
           <Button 
-            variant="link" 
-            className="text-[#00A699] hover:text-[#008A80] p-0 h-auto font-medium"
             onClick={onViewDetails}
+            variant="outline" 
+            className="w-full border-[#FF385C] text-[#FF385C] hover:bg-[#FF385C] hover:text-white"
           >
-            <Eye className="h-4 w-4 mr-1" />
-            View Details
+            <Eye className="h-4 w-4 mr-2" />
+            Ver Detalhes
           </Button>
         </div>
-
-        {/* Status message */}
-        {getStatusMessage() && (
-          <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-600 font-medium">{getStatusMessage()}</p>
-          </div>
-        )}
       </CardContent>
     </Card>
   );

@@ -1,12 +1,12 @@
 
 import { useState, useEffect } from "react";
-import { X, User, Upload, Camera, Save, Loader2 } from "lucide-react";
+import { X, User, Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { getMyPassengerProfile, upsertMyPassengerProfile, uploadAvatar } from "@/lib/api/profiles";
+import { PhotoUpload } from "@/components/profile/PhotoUpload";
 
 interface PassengerProfile {
   first_name: string;
@@ -31,9 +31,7 @@ export const ProfileSettingsModal = ({
 }: ProfileSettingsModalProps) => {
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
@@ -63,40 +61,23 @@ export const ProfileSettingsModal = ({
     } catch (error) {
       console.error('Error loading profile data:', error);
       toast({
-        title: "Error",
-        description: "Failed to load profile data",
+        title: "Erro",
+        description: "Falha ao carregar dados do perfil",
         variant: "destructive"
       });
     }
   };
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Validate file type
-      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-      if (!validTypes.includes(file.type)) {
-        toast({
-          title: "Invalid file type",
-          description: "Please select a valid image file (JPG, PNG, GIF, WebP)",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      // Validate file size (5MB limit)
-      const maxSize = 5 * 1024 * 1024;
-      if (file.size > maxSize) {
-        toast({
-          title: "File too large", 
-          description: "File size must be less than 5MB",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      setAvatarFile(file);
-      setAvatarPreview(URL.createObjectURL(file));
+  const handlePhotoUpload = async (file: File) => {
+    setIsUploadingPhoto(true);
+    try {
+      const newAvatarUrl = await uploadAvatar(file);
+      setAvatarUrl(newAvatarUrl);
+    } catch (error) {
+      console.error('Photo upload failed:', error);
+      throw error;
+    } finally {
+      setIsUploadingPhoto(false);
     }
   };
 
@@ -104,8 +85,8 @@ export const ProfileSettingsModal = ({
     // Validate required fields
     if (!formData.first_name.trim() || !formData.last_name.trim()) {
       toast({
-        title: "Validation Error",
-        description: "First name and last name are required",
+        title: "Erro de Validação",
+        description: "Nome e sobrenome são obrigatórios",
         variant: "destructive"
       });
       return;
@@ -114,27 +95,6 @@ export const ProfileSettingsModal = ({
     setIsSaving(true);
     
     try {
-      let newAvatarUrl = avatarUrl;
-
-      // Upload avatar if a new one was selected
-      if (avatarFile) {
-        setIsUploading(true);
-        try {
-          newAvatarUrl = await uploadAvatar(avatarFile);
-          setAvatarUrl(newAvatarUrl);
-        } catch (error) {
-          console.error('Avatar upload failed:', error);
-          toast({
-            title: "Photo upload failed",
-            description: "Failed to upload photo. Saving other changes.",
-            variant: "destructive"
-          });
-        } finally {
-          setIsUploading(false);
-        }
-      }
-
-      // Update profile data - make sure we have valid names
       const firstName = formData.first_name.trim() || 'User';
       const lastName = formData.last_name.trim() || '';
       
@@ -151,27 +111,23 @@ export const ProfileSettingsModal = ({
         last_name: lastName,
         phone: formData.phone.trim(),
         email: formData.email.trim(),
-        avatarUrl: newAvatarUrl
+        avatarUrl: avatarUrl
       };
 
-      // Clear file selection
-      setAvatarFile(null);
-      setAvatarPreview(null);
-      
       // Notify parent and close
       onProfileUpdate(updatedProfile);
       onClose();
 
       toast({
-        title: "Success",
-        description: "Profile updated successfully"
+        title: "Sucesso",
+        description: "Perfil atualizado com sucesso"
       });
 
     } catch (error) {
       console.error('Error updating profile:', error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update profile",
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Falha ao atualizar perfil",
         variant: "destructive"
       });
     } finally {
@@ -190,44 +146,22 @@ export const ProfileSettingsModal = ({
       });
       setAvatarUrl(initialProfile.avatarUrl);
     }
-
-    // Clear file selection
-    setAvatarFile(null);
-    setAvatarPreview(null);
     onClose();
-  };
-
-  const triggerFileInput = () => {
-    document.getElementById('profile-photo-input')?.click();
-  };
-
-  const triggerCameraInput = () => {
-    document.getElementById('profile-camera-input')?.click();
-  };
-
-  const getDisplayAvatar = () => {
-    if (avatarPreview) return avatarPreview;
-    if (avatarUrl) return avatarUrl;
-    return null;
-  };
-
-  const getInitials = () => {
-    const firstName = formData.first_name || '';
-    const lastName = formData.last_name || '';
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || 'P';
   };
 
   if (!isOpen) return null;
 
+  const displayName = `${formData.first_name} ${formData.last_name}`.trim() || 'Usuário';
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-card rounded-xl w-full max-w-md max-h-[90vh] shadow-xl flex flex-col">
+      <div className="bg-white rounded-xl w-full max-w-md max-h-[90vh] shadow-xl flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-border">
+        <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <div className="flex items-center space-x-2">
-            <User className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold text-card-foreground">
-              Edit Profile
+            <User className="h-5 w-5 text-[#FF385C]" />
+            <h2 className="text-lg font-semibold text-gray-900">
+              Editar Perfil
             </h2>
           </div>
           <Button variant="ghost" size="sm" onClick={handleCancel}>
@@ -236,99 +170,56 @@ export const ProfileSettingsModal = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto overscroll-behavior-contain p-6">
+        <div className="flex-1 overflow-y-auto p-6">
           <div className="space-y-6">
-            {/* Avatar Section */}
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <Avatar className="h-20 w-20">
-                  <AvatarImage src={getDisplayAvatar() || undefined} />
-                  <AvatarFallback className="bg-gray-200 text-gray-600 text-lg">
-                    {getInitials()}
-                  </AvatarFallback>
-                </Avatar>
-                {isUploading && (
-                  <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
-                    <Loader2 className="w-6 h-6 text-white animate-spin" />
-                  </div>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={triggerFileInput}
-                  disabled={isSaving}
-                  className="flex items-center gap-2"
-                >
-                  <Upload className="w-4 h-4" />
-                  Upload Photo
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={triggerCameraInput}
-                  disabled={isSaving}
-                  className="flex items-center gap-2"
-                >
-                  <Camera className="w-4 h-4" />
-                  Take Photo
-                </Button>
-              </div>
+            {/* Photo Upload Section */}
+            <div className="text-center">
+              <PhotoUpload
+                currentPhotoUrl={avatarUrl}
+                userName={displayName}
+                onPhotoUpload={handlePhotoUpload}
+                isUploading={isUploadingPhoto}
+                size="lg"
+              />
             </div>
-
-            {/* Hidden File Inputs */}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleFileSelect}
-              className="hidden"
-              id="profile-photo-input"
-            />
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleFileSelect}
-              className="hidden"
-              id="profile-camera-input"
-            />
 
             {/* Form Fields */}
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="firstName">First Name *</Label>
+                  <Label htmlFor="firstName">Nome *</Label>
                   <Input
                     id="firstName"
                     value={formData.first_name}
                     onChange={(e) => setFormData(prev => ({ ...prev, first_name: e.target.value }))}
                     disabled={isSaving}
-                    placeholder="Enter first name"
+                    placeholder="Seu nome"
+                    className="focus:ring-[#FF385C] focus:border-[#FF385C]"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="lastName">Last Name *</Label>
+                  <Label htmlFor="lastName">Sobrenome *</Label>
                   <Input
                     id="lastName"
                     value={formData.last_name}
                     onChange={(e) => setFormData(prev => ({ ...prev, last_name: e.target.value }))}
                     disabled={isSaving}
-                    placeholder="Enter last name"
+                    placeholder="Seu sobrenome"
+                    className="focus:ring-[#FF385C] focus:border-[#FF385C]"
                   />
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="phone">Phone</Label>
+                <Label htmlFor="phone">Telefone</Label>
                 <Input
                   id="phone"
                   type="tel"
                   value={formData.phone}
                   onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                   disabled={isSaving}
-                  placeholder="Enter phone number"
+                  placeholder="Seu telefone"
+                  className="focus:ring-[#FF385C] focus:border-[#FF385C]"
                 />
               </div>
 
@@ -340,7 +231,8 @@ export const ProfileSettingsModal = ({
                   value={formData.email}
                   onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                   disabled={isSaving}
-                  placeholder="Enter email address"
+                  placeholder="Seu email"
+                  className="focus:ring-[#FF385C] focus:border-[#FF385C]"
                 />
               </div>
             </div>
@@ -348,23 +240,22 @@ export const ProfileSettingsModal = ({
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-border">
-          <div className="flex gap-2">
+        <div className="p-6 border-t border-gray-100">
+          <div className="flex gap-3">
             <Button 
               onClick={handleSave}
-              disabled={isSaving || isUploading}
-              className="flex-1"
-              aria-disabled={isSaving || isUploading}
+              disabled={isSaving || isUploadingPhoto}
+              className="flex-1 bg-[#FF385C] hover:bg-[#E31C5F] text-white"
             >
               {isSaving ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving...
+                  Salvando...
                 </>
               ) : (
                 <>
                   <Save className="w-4 h-4 mr-2" />
-                  Save
+                  Salvar
                 </>
               )}
             </Button>
@@ -374,7 +265,7 @@ export const ProfileSettingsModal = ({
               disabled={isSaving}
               className="flex-1"
             >
-              Cancel
+              Cancelar
             </Button>
           </div>
         </div>
