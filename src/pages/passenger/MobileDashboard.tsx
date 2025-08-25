@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, Calendar, MessageCircle, CreditCard, Settings, User, Bell } from 'lucide-react';
-import PassengerBookingsList from '@/components/passenger/PassengerBookingsList';
+import { NotificationBell } from '@/components/ui/NotificationBell';
+import { EnhancedBookingCard } from '@/components/passenger/EnhancedBookingCard';
 import { MessagesTab } from '@/components/passenger/MessagesTab';
 import { PaymentsTab } from '@/components/passenger/PaymentsTab';
 import { SettingsTab } from '@/components/passenger/SettingsTab';
@@ -61,7 +62,8 @@ export default function MobileDashboard() {
   const [activeTab, setActiveTab] = useState('bookings');
   const [userProfile, setUserProfile] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const { bookings } = useMyBookings();
+  const [notificationCount, setNotificationCount] = useState(3); // Mock notification count
+  const { bookings, isLoading } = useMyBookings();
 
   const fetchUserProfile = async () => {
     try {
@@ -118,6 +120,11 @@ export default function MobileDashboard() {
     ).length;
   };
 
+  const handleNotificationClick = () => {
+    // TODO: Implement notification modal or navigation
+    console.log('Notifications clicked');
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -150,8 +157,43 @@ export default function MobileDashboard() {
                 Book
               </Button>
             </div>
-            <div className="px-4">
-              <PassengerBookingsList showHeader={false} />
+            
+            <div className="px-4 space-y-4">
+              {isLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <Card key={i} className="animate-pulse">
+                      <CardContent className="p-4">
+                        <div className="h-20 bg-gray-200 rounded"></div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : bookings.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <Calendar className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No bookings yet</h3>
+                    <p className="text-gray-500 mb-4">
+                      Start by creating your first booking
+                    </p>
+                    <Button 
+                      onClick={() => navigate('/passenger/price-estimate')}
+                      className="bg-[#FF385C] hover:bg-[#E31C5F] text-white"
+                    >
+                      Book Your First Ride
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                bookings.map((booking) => (
+                  <EnhancedBookingCard
+                    key={booking.id}
+                    booking={booking}
+                    onViewDetails={() => console.log('View details for:', booking.id)}
+                  />
+                ))
+              )}
             </div>
           </div>
         );
@@ -198,7 +240,10 @@ export default function MobileDashboard() {
           </div>
           <span className="text-lg font-semibold text-gray-900">Passenger</span>
         </div>
-        <Bell className="h-6 w-6 text-gray-500" />
+        <NotificationBell 
+          count={notificationCount}
+          onClick={handleNotificationClick}
+        />
       </div>
 
       {/* Main Content */}
@@ -234,7 +279,7 @@ export default function MobileDashboard() {
             />
             <TabButton
               id="profile"
-              label="Profile"
+              label="Settings"
               icon={Settings}
               isActive={activeTab === 'profile'}
               onClick={() => setActiveTab('profile')}
