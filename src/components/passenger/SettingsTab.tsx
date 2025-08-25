@@ -58,9 +58,13 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
 
   const loadPreferences = async () => {
     try {
+      console.log('Loading preferences for user...');
       const savedPreferences = await getPassengerPreferences();
       if (savedPreferences) {
+        console.log('Loaded preferences:', savedPreferences);
         setPreferences(savedPreferences);
+      } else {
+        console.log('No saved preferences found, using defaults');
       }
     } catch (error) {
       console.error('Error loading preferences:', error);
@@ -122,19 +126,43 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
   const handlePreferencesUpdate = async () => {
     try {
       setIsSavingPreferences(true);
-      console.log('Saving preferences:', preferences);
+      console.log('=== SAVING PREFERENCES ===');
+      console.log('Current preferences state:', preferences);
       
+      // Validate preferences before saving
+      if (typeof preferences.air_conditioning !== 'boolean') {
+        throw new Error('Invalid air_conditioning value');
+      }
+      if (typeof preferences.preferred_temperature !== 'number' || preferences.preferred_temperature < 60 || preferences.preferred_temperature > 85) {
+        throw new Error('Invalid preferred_temperature value');
+      }
+      if (!preferences.temperature_unit || !['F', 'C'].includes(preferences.temperature_unit)) {
+        throw new Error('Invalid temperature_unit value');
+      }
+      if (typeof preferences.radio_on !== 'boolean') {
+        throw new Error('Invalid radio_on value');
+      }
+      if (!preferences.conversation_preference) {
+        throw new Error('Invalid conversation_preference value');
+      }
+      if (!preferences.trip_purpose) {
+        throw new Error('Invalid trip_purpose value');
+      }
+      
+      console.log('Validation passed, calling savePassengerPreferences...');
       await savePassengerPreferences(preferences);
+      console.log('=== PREFERENCES SAVED SUCCESSFULLY ===');
       
       toast({
         title: "Preferences Updated",
         description: "Your ride preferences have been saved successfully.",
       });
     } catch (error) {
-      console.error('Error saving preferences:', error);
+      console.error('=== PREFERENCES SAVE FAILED ===');
+      console.error('Error details:', error);
       toast({
         title: "Error",
-        description: "Failed to save preferences. Please try again.",
+        description: `Failed to save preferences: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       });
     } finally {
@@ -147,10 +175,14 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
     value: PassengerPreferences[K]
   ) => {
     console.log(`Updating preference ${key}:`, value);
-    setPreferences(prev => ({
-      ...prev,
-      [key]: value
-    }));
+    setPreferences(prev => {
+      const updated = {
+        ...prev,
+        [key]: value
+      };
+      console.log('Updated preferences state:', updated);
+      return updated;
+    });
   };
 
   const handleLogout = async () => {
