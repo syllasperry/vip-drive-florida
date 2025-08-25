@@ -1,9 +1,8 @@
 
 import React, { useState, useRef } from 'react';
-import { Camera, Upload, User, X, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Camera, Upload, User, Loader2 } from 'lucide-react';
 
 interface PhotoUploadProps {
   currentPhotoUrl?: string | null;
@@ -11,6 +10,7 @@ interface PhotoUploadProps {
   onPhotoUpload: (file: File) => Promise<void>;
   isUploading?: boolean;
   size?: 'sm' | 'md' | 'lg';
+  className?: string;
 }
 
 export const PhotoUpload: React.FC<PhotoUploadProps> = ({
@@ -18,21 +18,20 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
   userName = 'User',
   onPhotoUpload,
   isUploading = false,
-  size = 'lg'
+  size = 'md',
+  className = ''
 }) => {
-  const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
 
   const sizeClasses = {
     sm: 'h-16 w-16',
-    md: 'h-24 w-24', 
+    md: 'h-24 w-24',
     lg: 'h-32 w-32'
   };
 
-  const getInitials = () => {
-    return userName
+  const getInitials = (name: string) => {
+    return name
       .split(' ')
       .map(part => part.charAt(0))
       .join('')
@@ -40,64 +39,9 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
       .slice(0, 2);
   };
 
-  const validateFile = (file: File): boolean => {
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
-      toast({
-        title: "Tipo de arquivo inválido",
-        description: "Por favor, selecione uma imagem (JPG, PNG, GIF, WebP)",
-        variant: "destructive"
-      });
-      return false;
-    }
-    
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      toast({
-        title: "Arquivo muito grande", 
-        description: "O tamanho do arquivo deve ser menor que 5MB",
-        variant: "destructive"
-      });
-      return false;
-    }
-
-    return true;
-  };
-
-  const handleFileSelect = async (file: File) => {
-    if (!validateFile(file)) return;
-
-    try {
-      // Create preview
-      const preview = URL.createObjectURL(file);
-      setPreviewUrl(preview);
-
-      // Upload file
-      await onPhotoUpload(file);
-      
-      toast({
-        title: "Foto atualizada!",
-        description: "Sua foto de perfil foi atualizada com sucesso.",
-      });
-
-      // Clear preview after successful upload
-      setTimeout(() => {
-        setPreviewUrl(null);
-        URL.revokeObjectURL(preview);
-      }, 1000);
-
-    } catch (error) {
-      console.error('Erro no upload da foto:', error);
-      toast({
-        title: "Erro no upload",
-        description: "Falha ao fazer upload da foto. Tente novamente.",
-        variant: "destructive"
-      });
-      
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-        setPreviewUrl(null);
-      }
+  const handleFileSelect = (file: File) => {
+    if (file && file.type.startsWith('image/')) {
+      onPhotoUpload(file);
     }
   };
 
@@ -106,100 +50,105 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
     if (file) {
       handleFileSelect(file);
     }
-    // Clear input
-    event.target.value = '';
   };
 
-  const triggerFileUpload = () => {
-    fileInputRef.current?.click();
-  };
-
-  const triggerCameraCapture = () => {
-    cameraInputRef.current?.click();
-  };
-
-  const clearPreview = () => {
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
+  const handleDrop = (event: React.DragEvent) => {
+    event.preventDefault();
+    setDragOver(false);
+    
+    const file = event.dataTransfer.files[0];
+    if (file) {
+      handleFileSelect(file);
     }
   };
 
-  const displayImageUrl = previewUrl || currentPhotoUrl;
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault();
+    setDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setDragOver(false);
+  };
+
+  const openFileDialog = () => {
+    fileInputRef.current?.click();
+  };
 
   return (
-    <div className="flex flex-col items-center space-y-4">
-      {/* Avatar Display */}
-      <div className="relative">
-        <Avatar className={`${sizeClasses[size]} ring-4 ring-white shadow-lg`}>
+    <div className={`flex flex-col items-center space-y-4 ${className}`}>
+      {/* Avatar with Upload Overlay */}
+      <div 
+        className={`relative ${sizeClasses[size]} cursor-pointer group`}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onClick={openFileDialog}
+      >
+        <Avatar className={`${sizeClasses[size]} ring-2 ring-gray-200 transition-all duration-200 ${dragOver ? 'ring-[#FF385C] ring-4' : ''}`}>
           <AvatarImage 
-            src={displayImageUrl || undefined} 
+            src={currentPhotoUrl || undefined} 
             alt={userName}
             className="object-cover"
           />
-          <AvatarFallback className="bg-[#FF385C] text-white text-lg font-semibold">
-            {getInitials()}
+          <AvatarFallback className="bg-[#FF385C] text-white font-semibold text-lg">
+            {currentPhotoUrl ? <User className="h-6 w-6" /> : getInitials(userName)}
           </AvatarFallback>
         </Avatar>
-        
-        {/* Loading Overlay */}
-        {isUploading && (
-          <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
-            <Loader2 className="w-8 h-8 text-white animate-spin" />
+
+        {/* Upload Overlay */}
+        <div className={`absolute inset-0 bg-black/50 rounded-full flex items-center justify-center transition-opacity duration-200 ${
+          isUploading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+        }`}>
+          {isUploading ? (
+            <Loader2 className="h-6 w-6 text-white animate-spin" />
+          ) : (
+            <Camera className="h-6 w-6 text-white" />
+          )}
+        </div>
+
+        {/* Drag & Drop Indicator */}
+        {dragOver && (
+          <div className="absolute inset-0 bg-[#FF385C]/20 rounded-full border-2 border-dashed border-[#FF385C] flex items-center justify-center">
+            <Upload className="h-6 w-6 text-[#FF385C]" />
           </div>
         )}
-
-        {/* Clear Preview Button */}
-        {previewUrl && !isUploading && (
-          <button
-            onClick={clearPreview}
-            className="absolute -top-2 -right-2 bg-gray-800 text-white rounded-full p-1 hover:bg-gray-700 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
       </div>
 
-      {/* Upload Buttons */}
-      <div className="flex gap-3">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={triggerFileUpload}
+      {/* Upload Instructions */}
+      <div className="text-center">
+        <p className="text-sm text-gray-600 mb-2">
+          Clique ou arraste uma foto aqui
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={openFileDialog}
           disabled={isUploading}
-          className="flex items-center gap-2 border-[#FF385C] text-[#FF385C] hover:bg-[#FF385C] hover:text-white"
+          className="text-[#FF385C] border-[#FF385C] hover:bg-[#FF385C] hover:text-white"
         >
-          <Upload className="w-4 h-4" />
-          Carregar Foto
-        </Button>
-        
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={triggerCameraCapture}
-          disabled={isUploading}
-          className="flex items-center gap-2 border-[#FF385C] text-[#FF385C] hover:bg-[#FF385C] hover:text-white"
-        >
-          <Camera className="w-4 h-4" />
-          Tirar Foto
+          {isUploading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Enviando...
+            </>
+          ) : (
+            <>
+              <Upload className="w-4 h-4 mr-2" />
+              Escolher Foto
+            </>
+          )}
         </Button>
       </div>
 
-      {/* Hidden File Inputs */}
+      {/* Hidden File Input */}
       <input
         ref={fileInputRef}
         type="file"
         accept="image/*"
         onChange={handleFileInputChange}
         className="hidden"
-      />
-      <input
-        ref={cameraInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        onChange={handleFileInputChange}
-        className="hidden"
+        disabled={isUploading}
       />
     </div>
   );
