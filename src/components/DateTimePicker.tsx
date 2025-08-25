@@ -50,13 +50,13 @@ export function DateTimePicker({ date, setDate, minDate }: DateTimePickerProps) 
   };
 
   return (
-    <div className="flex space-x-3">
+    <div className="space-y-3">
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
             className={cn(
-              "flex-1 justify-start text-left font-normal",
+              "w-full justify-start text-left font-normal",
               !date && "text-muted-foreground"
             )}
           >
@@ -79,7 +79,7 @@ export function DateTimePicker({ date, setDate, minDate }: DateTimePickerProps) 
         </PopoverContent>
       </Popover>
 
-      <div className="w-44">
+      <div className="w-full">
         <div className="space-y-1">
           <div className="flex items-center space-x-1 text-sm font-medium text-gray-700">
             <Clock className="h-3 w-3" />
