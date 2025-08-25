@@ -89,11 +89,15 @@ export const getBookingById = async (bookingId: string) => {
 
 export const getPassengerBookings = async (passengerId: string) => {
   try {
+    console.log('🔍 Fetching passenger bookings for:', passengerId);
+    
+    // First try with driver data
     const { data, error } = await supabase
       .from('bookings')
       .select(`
         *,
         drivers (
+          id,
           full_name,
           phone,
           profile_photo_url,
@@ -107,10 +111,26 @@ export const getPassengerBookings = async (passengerId: string) => {
       .order('pickup_time', { ascending: false });
 
     if (error) {
-      console.error("Error fetching passenger bookings:", error);
-      return [];
+      console.error("Error fetching passenger bookings with drivers:", error);
+      
+      // Fallback query without drivers to avoid RLS issues
+      console.log('🔄 Attempting fallback query without drivers...');
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('passenger_id', passengerId)
+        .order('pickup_time', { ascending: false });
+
+      if (fallbackError) {
+        console.error("Fallback query also failed:", fallbackError);
+        return [];
+      }
+
+      console.log('✅ Fallback query successful:', fallbackData?.length || 0, 'bookings');
+      return Array.isArray(fallbackData) ? fallbackData : [];
     }
 
+    console.log('✅ Passenger bookings fetched:', data?.length || 0, 'bookings');
     return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error("Unexpected error fetching passenger bookings:", error);
@@ -169,6 +189,7 @@ export const getDispatcherBookings = async () => {
           additional_notes
         ),
         drivers (
+          id,
           full_name,
           phone,
           profile_photo_url,
@@ -194,6 +215,8 @@ export const getDispatcherBookings = async () => {
 
 export const createBooking = async (bookingData: any) => {
   try {
+    console.log('📝 Creating new booking:', bookingData);
+    
     const { data, error } = await supabase
       .from('bookings')
       .insert([bookingData])
@@ -205,6 +228,7 @@ export const createBooking = async (bookingData: any) => {
       return null;
     }
 
+    console.log('✅ Booking created successfully:', data);
     return data;
   } catch (error) {
     console.error("Unexpected error creating booking:", error);

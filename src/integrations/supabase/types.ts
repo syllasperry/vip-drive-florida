@@ -5877,6 +5877,14 @@ export type Database = {
         Args: { pax_id: string }
         Returns: boolean
       }
+      can_view_assigned_driver: {
+        Args: { driver_uuid: string; user_uuid?: string }
+        Returns: boolean
+      }
+      can_view_driver_in_bookings: {
+        Args: { driver_uuid: string; user_uuid?: string }
+        Returns: boolean
+      }
       compute_suggested_for_booking: {
         Args: { p_booking_id: string }
         Returns: undefined
@@ -6856,6 +6864,10 @@ export type Database = {
         Args: { p_booking: string; u: string }
         Returns: boolean
       }
+      is_user_dispatcher: {
+        Args: { user_uuid?: string }
+        Returns: boolean
+      }
       link_checkout_session: {
         Args: {
           p_amount_cents_hint?: number
@@ -7150,6 +7162,10 @@ export type Database = {
       }
       user_owns_booking: {
         Args: { booking_id: string }
+        Returns: boolean
+      }
+      user_owns_driver_record: {
+        Args: { driver_uuid: string; user_uuid?: string }
         Returns: boolean
       }
       user_owns_passenger_in_booking: {
