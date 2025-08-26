@@ -1,31 +1,65 @@
 
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Booking } from '@/types/booking';
-import { toast } from '@/hooks/use-toast';
+import { useEffect, useState } from 'react';
+
+export interface RealtimeBooking {
+  id: string;
+  booking_code: string | null;
+  status: string;
+  pickup_location: string;
+  dropoff_location: string;
+  pickup_time: string;
+  created_at: string;
+  updated_at: string;
+  passenger_id: string;
+  driver_id: string | null;
+  vehicle_type: string | null;
+  final_price: number | null;
+  estimated_price: number | null;
+  payment_confirmation_status: string | null;
+  ride_status: string | null;
+  passenger_count: number;
+  luggage_count: number;
+  flight_info: string | null;
+  passengers?: {
+    id: string;
+    full_name: string;
+    phone: string;
+    profile_photo_url: string | null;
+    email: string;
+    preferred_temperature: number | null;
+    music_preference: string | null;
+    interaction_preference: string | null;
+    trip_purpose: string | null;
+    additional_notes: string | null;
+  } | null;
+  drivers?: {
+    full_name: string;
+    phone: string;
+    car_make: string | null;
+    car_model: string | null;
+    car_color: string | null;
+    license_plate: string | null;
+    profile_photo_url: string | null;
+  } | null;
+}
 
 export const useRealtimeBookings = () => {
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [isOfferJustReceived, setIsOfferJustReceived] = useState<string | null>(null);
 
-  const fetchBookings = async () => {
-    try {
-      setLoading(true);
-      console.log('🔄 Fetching bookings with enhanced offer/payment handling...');
+  const { data: bookings = [], isLoading: loading, error, refetch } = useQuery({
+    queryKey: ['realtime-bookings'],
+    queryFn: async (): Promise<RealtimeBooking[]> => {
+      console.log('🔄 Fetching passenger bookings with realtime...');
       
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError || !user) {
-        console.error('❌ No authenticated user found:', userError);
-        setError('User not authenticated');
-        setBookings([]);
-        setLoading(false);
-        return;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('❌ No authenticated user');
+        return [];
       }
 
-      console.log('✅ User authenticated:', user.email);
-
+      // First, get or create passenger profile
       let { data: passenger, error: passengerError } = await supabase
         .from('passengers')
         .select('id')
@@ -34,10 +68,7 @@ export const useRealtimeBookings = () => {
 
       if (passengerError && passengerError.code !== 'PGRST116') {
         console.error('❌ Error fetching passenger:', passengerError);
-        setError(`Failed to fetch passenger: ${passengerError.message}`);
-        setBookings([]);
-        setLoading(false);
-        return;
+        throw new Error(`Failed to fetch passenger: ${passengerError.message}`);
       }
 
       if (!passenger) {
@@ -54,178 +85,136 @@ export const useRealtimeBookings = () => {
 
         if (createError) {
           console.error('❌ Error creating passenger:', createError);
-          setError(`Failed to create passenger: ${createError.message}`);
-          setBookings([]);
-          setLoading(false);
-          return;
+          throw new Error(`Failed to create passenger: ${createError.message}`);
         }
         passenger = newPassenger;
       }
 
-      // Enhanced query to include driver information for offers
-      const { data, error } = await supabase
+      // Now fetch bookings for this passenger with explicit relationship specification
+      const { data: rawBookings, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
-          *,
+          id,
+          booking_code,
+          status,
+          pickup_location,
+          dropoff_location,
+          pickup_time,
+          created_at,
+          updated_at,
+          passenger_id,
+          driver_id,
+          vehicle_type,
+          final_price,
+          estimated_price,
+          payment_confirmation_status,
+          ride_status,
+          passenger_count,
+          luggage_count,
+          flight_info,
+          drivers!bookings_driver_id_fkey (
+            full_name,
+            phone,
+            car_make,
+            car_model,
+            car_color,
+            license_plate,
+            profile_photo_url
+          ),
           passengers!inner (
             id,
             full_name,
             phone,
+            email,
             profile_photo_url,
             preferred_temperature,
             music_preference,
             interaction_preference,
             trip_purpose,
             additional_notes
-          ),
-          drivers (
-            id,
-            full_name,
-            phone,
-            profile_photo_url,
-            car_make,
-            car_model,
-            car_color,
-            license_plate
           )
         `)
         .eq('passenger_id', passenger.id)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('❌ Error fetching bookings:', error);
-        setError(`Failed to fetch bookings: ${error.message}`);
-        setBookings([]);
-        setLoading(false);
-        return;
+      if (bookingsError) {
+        console.error('❌ Error fetching bookings:', bookingsError);
+        throw new Error(`Failed to fetch bookings: ${bookingsError.message}`);
       }
 
-      console.log('✅ Enhanced bookings fetched successfully:', data?.length || 0, 'bookings');
+      console.log('✅ Bookings fetched successfully:', rawBookings?.length || 0);
       
-      const transformedBookings: Booking[] = (data || []).map(booking => ({
+      // Map the raw data to ensure type safety
+      const bookings: RealtimeBooking[] = (rawBookings || []).map(booking => ({
         ...booking,
-        passengers: booking.passengers && typeof booking.passengers === 'object' && !Array.isArray(booking.passengers) 
-          ? booking.passengers 
-          : undefined,
-        drivers: booking.drivers && typeof booking.drivers === 'object' && !Array.isArray(booking.drivers)
-          ? booking.drivers
+        drivers: booking.drivers && typeof booking.drivers === 'object' && !Array.isArray(booking.drivers) 
+          ? booking.drivers 
+          : null,
+        passengers: booking.passengers && typeof booking.passengers === 'object' && !Array.isArray(booking.passengers)
+          ? booking.passengers
           : null
       }));
 
-      setBookings(transformedBookings);
-      setError(null);
-      setLoading(false);
-    } catch (err) {
-      console.error('❌ Unexpected error in fetchBookings:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch bookings');
-      setBookings([]);
-      setLoading(false);
-    }
-  };
+      return bookings;
+    },
+    retry: 2,
+    refetchOnWindowFocus: false
+  });
 
+  // Set up real-time subscription
   useEffect(() => {
-    let mounted = true;
-
-    fetchBookings();
-
-    const setupRealtimeSubscription = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user && mounted) {
-        const channel = supabase
-          .channel('passenger_bookings_enhanced_realtime')
-          .on(
-            'postgres_changes',
-            {
-              event: '*',
-              schema: 'public',
-              table: 'bookings'
-            },
-            (payload) => {
-              console.log('📡 Enhanced real-time booking update:', payload);
-              
-              if (payload.eventType === 'UPDATE' && payload.new) {
-                const newBooking = payload.new;
-                const oldBooking = payload.old;
-                
-                // Handle offer sent by dispatcher
-                if (
-                  (newBooking.status === 'offer_sent' && oldBooking?.status !== 'offer_sent') ||
-                  (newBooking.ride_status === 'offer_sent' && oldBooking?.ride_status !== 'offer_sent') ||
-                  (newBooking.payment_confirmation_status === 'price_awaiting_acceptance' && 
-                   oldBooking?.payment_confirmation_status !== 'price_awaiting_acceptance')
-                ) {
-                  console.log('🎯 Offer received for booking:', newBooking.id);
-                  
-                  const finalPrice = newBooking.final_price_cents 
-                    ? (newBooking.final_price_cents / 100).toFixed(2)
-                    : newBooking.final_price?.toFixed(2) 
-                    || newBooking.estimated_price?.toFixed(2) 
-                    || '0.00';
-                  
-                  toast({
-                    title: "Offer Received!",
-                    description: `You have received a price offer of $${finalPrice} for your ride. Please proceed with payment.`,
-                  });
-                }
-
-                // Handle successful payment
-                if (
-                  (newBooking.payment_status === 'paid' && oldBooking?.payment_status !== 'paid') ||
-                  (newBooking.payment_confirmation_status === 'passenger_paid' && 
-                   oldBooking?.payment_confirmation_status !== 'passenger_paid')
-                ) {
-                  console.log('💳 Payment successful for booking:', newBooking.id);
-                  
-                  toast({
-                    title: "Payment Successful!",
-                    description: "Your payment has been processed. You'll receive a confirmation email shortly.",
-                  });
-                }
-
-                // Handle booking fully confirmed
-                if (
-                  newBooking.payment_confirmation_status === 'all_set' && 
-                  oldBooking?.payment_confirmation_status !== 'all_set'
-                ) {
-                  console.log('✅ Booking fully confirmed:', newBooking.id);
-                  
-                  toast({
-                    title: "Ride Confirmed!",
-                    description: "Your ride is confirmed. Your driver will contact you soon.",
-                  });
-                }
-              }
-              
-              // Refresh bookings for any change
-              if (mounted) {
-                fetchBookings();
-              }
-            }
-          )
-          .subscribe((status) => {
-            console.log('📡 Enhanced passenger bookings subscription status:', status);
-          });
-
-        return () => {
-          console.log('🧹 Cleaning up enhanced passenger bookings subscription');
-          supabase.removeChannel(channel);
-        };
-      }
-    };
-
-    const cleanup = setupRealtimeSubscription();
+    console.log('📡 Setting up real-time subscription for passenger bookings...');
+    
+    const channel = supabase
+      .channel('passenger-bookings-realtime')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'bookings' 
+      }, (payload) => {
+        console.log('📡 Real-time booking update received:', payload);
+        
+        // Check if this is an offer being sent
+        if (payload.eventType === 'UPDATE' && payload.new) {
+          const newData = payload.new as any;
+          const oldData = payload.old as any;
+          
+          // Detect offer reception
+          if (
+            (newData.status === 'offer_sent' && oldData?.status !== 'offer_sent') ||
+            (newData.ride_status === 'offer_sent' && oldData?.ride_status !== 'offer_sent') ||
+            (newData.payment_confirmation_status === 'price_awaiting_acceptance' && 
+             oldData?.payment_confirmation_status !== 'price_awaiting_acceptance')
+          ) {
+            console.log('🎯 Offer received for booking:', newData.id);
+            setIsOfferJustReceived(newData.id);
+            
+            // Clear the flag after 3 seconds
+            setTimeout(() => {
+              setIsOfferJustReceived(null);
+            }, 3000);
+          }
+        }
+        
+        refetch();
+      })
+      .subscribe((status) => {
+        console.log('📡 Real-time subscription status:', status);
+      });
 
     return () => {
-      mounted = false;
-      cleanup?.then(cleanupFn => cleanupFn?.());
+      console.log('🧹 Cleaning up real-time subscription');
+      supabase.removeChannel(channel);
     };
-  }, []);
+  }, [refetch]);
 
-  const refetch = async () => {
-    console.log('🔄 Manual refresh triggered for enhanced passenger bookings');
-    await fetchBookings();
+  const errorMessage = error ? error.message : null;
+
+  return {
+    bookings,
+    loading,
+    error: errorMessage,
+    refetch,
+    isOfferJustReceived
   };
-
-  return { bookings, loading, error, refetch };
 };
