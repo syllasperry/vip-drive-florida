@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Booking } from '@/types/booking';
+import { toast } from '@/hooks/use-toast';
 
 export const useRealtimeBookings = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -134,6 +135,29 @@ export const useRealtimeBookings = () => {
             },
             (payload) => {
               console.log('📡 Real-time booking update:', payload);
+              
+              // Check if this is an offer being sent
+              if (payload.eventType === 'UPDATE' && payload.new) {
+                const newBooking = payload.new;
+                const oldBooking = payload.old;
+                
+                // Check if status changed to offer_sent
+                if (
+                  (newBooking.status === 'offer_sent' && oldBooking?.status !== 'offer_sent') ||
+                  (newBooking.ride_status === 'offer_sent' && oldBooking?.ride_status !== 'offer_sent') ||
+                  (newBooking.payment_confirmation_status === 'price_awaiting_acceptance' && 
+                   oldBooking?.payment_confirmation_status !== 'price_awaiting_acceptance')
+                ) {
+                  console.log('🎯 Offer received for booking:', newBooking.id);
+                  
+                  // Show notification that offer was received
+                  toast({
+                    title: "Offer Received!",
+                    description: `You have received a price offer of $${(newBooking.final_price || newBooking.estimated_price || 0)} for your ride.`,
+                  });
+                }
+              }
+              
               // Refresh bookings when any change occurs
               if (mounted) {
                 fetchBookings();
