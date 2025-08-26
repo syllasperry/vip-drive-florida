@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,8 +28,8 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const getStatusBadge = () => {
-    // Priority check: if payment_status is paid OR paid_at exists OR status is 'paid', show PAID
-    const isPaid = booking.payment_status === 'paid' || booking.paid_at || booking.status === 'paid';
+    // Priority check: if status is 'paid' OR payment_status is 'paid' OR paid_at exists, show PAID
+    const isPaid = booking.status === 'paid' || booking.payment_status === 'paid' || booking.paid_at;
     
     if (isPaid) {
       return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">PAID</Badge>;
@@ -42,7 +43,10 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
       case 'offer_sent':
         return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">OFFER RECEIVED</Badge>;
       case 'waiting_for_payment':
+      case 'awaiting_payment':
         return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 animate-pulse">Payment Required</Badge>;
+      case 'processing':
+        return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">Processing Payment</Badge>;
       case 'passenger_paid':
         return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">Payment Confirmed</Badge>;
       case 'all_set':
@@ -57,14 +61,14 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
   };
 
   const needsAction = () => {
-    // CRITICAL: If payment_status is 'paid' OR paid_at exists OR status is 'paid', no action needed
-    const isPaid = booking.payment_status === 'paid' || booking.paid_at || booking.status === 'paid';
+    // CRITICAL: If status is 'paid' OR payment_status is 'paid' OR paid_at exists, no action needed
+    const isPaid = booking.status === 'paid' || booking.payment_status === 'paid' || booking.paid_at;
     if (isPaid) {
       return false;
     }
     
     const status = booking.payment_confirmation_status || booking.status;
-    return status === 'offer_sent' || status === 'waiting_for_payment';
+    return status === 'offer_sent' || status === 'waiting_for_payment' || status === 'awaiting_payment';
   };
 
   const canLeaveReview = () => {
@@ -72,7 +76,7 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
   };
 
   const isPaid = () => {
-    return booking.payment_status === 'paid' || booking.paid_at || booking.status === 'paid';
+    return booking.status === 'paid' || booking.payment_status === 'paid' || booking.paid_at;
   };
 
   const formatPrice = (cents?: number) => {
@@ -109,6 +113,8 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
         throw new Error('No price available for this booking');
       }
 
+      console.log('💳 Creating checkout session for:', { bookingCode, amountCents });
+
       // Call our checkout session creation
       const { data: sessionData, error } = await supabase.functions.invoke('stripe-checkout', {
         body: {
@@ -120,10 +126,12 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
       });
 
       if (error) {
+        console.error('❌ Checkout session error:', error);
         throw error;
       }
 
       if (sessionData?.url) {
+        console.log('✅ Redirecting to Stripe Checkout:', sessionData.url);
         // Redirect to Stripe Checkout
         window.location.href = sessionData.url;
       } else {

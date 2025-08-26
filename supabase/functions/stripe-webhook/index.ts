@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@14.21.0'
@@ -70,14 +71,14 @@ serve(async (req) => {
       })
     }
 
-    // Initialize Supabase client with service role key for database updates
+    // Initialize Supabase client with service role key
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       { auth: { persistSession: false } }
     )
 
-    // Idempotency check - prevent duplicate processing
+    // Idempotency check
     const { data: existingEvent } = await supabaseClient
       .from('payment_webhook_events')
       .select('id')
@@ -100,7 +101,7 @@ serve(async (req) => {
         provider_event_id: event.id,
         event_type: event.type,
         payload: event,
-        processed_ok: true
+        processed_ok: false
       })
 
     // Handle the event
@@ -112,21 +113,21 @@ serve(async (req) => {
         const bookingCode = session.metadata?.booking_code
         const bookingId = session.metadata?.booking_id
         
-        if (!bookingCode && !bookingId) {
-          console.error('❌ Missing booking_code and booking_id in session metadata')
+        console.log('🏷️ Booking metadata:', { bookingCode, bookingId })
+        
+        if (!bookingCode) {
+          console.error('❌ Missing booking_code in session metadata')
           break
         }
 
-        console.log('📋 Processing payment for booking_code:', bookingCode)
-
         try {
-          // Call the record_stripe_payment function
+          // Call the corrected record_stripe_payment function
           const { data: paymentResult, error: paymentError } = await supabaseClient
             .rpc('record_stripe_payment', {
               _booking_code: bookingCode,
               _amount_cents: session.amount_total || 0,
               _provider_reference: session.payment_intent as string || session.id,
-              _currency: 'usd'
+              _currency: (session.currency || 'usd').toLowerCase()
             })
 
           if (paymentError) {
@@ -135,6 +136,12 @@ serve(async (req) => {
           }
 
           console.log('✅ Payment recorded successfully:', paymentResult)
+
+          // Mark webhook event as processed
+          await supabaseClient
+            .from('payment_webhook_events')
+            .update({ processed_ok: true })
+            .eq('provider_event_id', event.id)
 
           // Trigger email notifications if booking_id is available
           if (bookingId) {
@@ -167,6 +174,8 @@ serve(async (req) => {
           const relatedSession = sessions.data[0]
           const bookingCode = relatedSession.metadata?.booking_code
           
+          console.log('🔍 Found related session with booking_code:', bookingCode)
+          
           if (bookingCode) {
             try {
               const { data: paymentResult, error: paymentError } = await supabaseClient
@@ -174,13 +183,19 @@ serve(async (req) => {
                   _booking_code: bookingCode,
                   _amount_cents: paymentIntent.amount,
                   _provider_reference: paymentIntent.id,
-                  _currency: 'usd'
+                  _currency: (paymentIntent.currency || 'usd').toLowerCase()
                 })
 
               if (paymentError) {
                 console.error('❌ Error calling record_stripe_payment via payment_intent:', paymentError)
               } else {
                 console.log('✅ Payment confirmed via payment_intent:', paymentResult)
+                
+                // Mark webhook event as processed
+                await supabaseClient
+                  .from('payment_webhook_events')
+                  .update({ processed_ok: true })
+                  .eq('provider_event_id', event.id)
               }
             } catch (error) {
               console.error('❌ Error processing payment_intent:', error)
@@ -202,23 +217,22 @@ serve(async (req) => {
 
         if (sessions.data.length > 0) {
           const relatedSession = sessions.data[0]
-          const bookingId = relatedSession.metadata?.booking_id
+          const bookingCode = relatedSession.metadata?.booking_code
           
-          if (bookingId) {
+          if (bookingCode) {
             const { error: updateError } = await supabaseClient
               .from('bookings')
               .update({
                 payment_status: 'failed',
                 status: 'cancelled',
-                payment_confirmation_status: 'failed',
                 updated_at: new Date().toISOString()
               })
-              .eq('id', bookingId)
+              .eq('booking_code', bookingCode)
 
             if (updateError) {
               console.error('❌ Error updating booking after payment failure:', updateError)
             } else {
-              console.log('✅ Booking marked as payment failed:', bookingId)
+              console.log('✅ Booking marked as payment failed:', bookingCode)
             }
           }
         }

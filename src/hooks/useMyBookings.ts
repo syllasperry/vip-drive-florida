@@ -1,3 +1,4 @@
+
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect } from 'react';
@@ -27,6 +28,7 @@ export interface Booking {
   paid_at: string | null;
   payment_provider: string | null;
   payment_reference: string | null;
+  paid_currency: string | null;
   drivers?: {
     full_name: string;
     phone: string;
@@ -34,6 +36,7 @@ export interface Booking {
     car_model: string | null;
     car_color: string | null;
     license_plate: string | null;
+    profile_photo_url: string | null;
     avatar_url: string | null;
     email: string | null;
   } | null;
@@ -82,7 +85,7 @@ export const useMyBookings = () => {
         passenger = newPassenger;
       }
 
-      // Now fetch bookings for this passenger with payment fields
+      // Now fetch bookings for this passenger with all payment fields
       const { data: rawBookings, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
@@ -110,6 +113,7 @@ export const useMyBookings = () => {
           paid_at,
           payment_provider,
           payment_reference,
+          paid_currency,
           stripe_payment_intent_id,
           drivers:driver_id (
             full_name,
@@ -118,8 +122,8 @@ export const useMyBookings = () => {
             car_model,
             car_color,
             license_plate,
-            avatar_url,
             profile_photo_url,
+            avatar_url,
             email
           )
         `)
@@ -141,18 +145,27 @@ export const useMyBookings = () => {
           : null
       }));
 
+      console.log('📊 Bookings with payment status:', bookings.map(b => ({
+        id: b.id.slice(-8),
+        booking_code: b.booking_code,
+        status: b.status,
+        payment_status: b.payment_status,
+        paid_at: b.paid_at,
+        paid_amount_cents: b.paid_amount_cents
+      })));
+
       return bookings;
     },
     retry: 2,
     refetchOnWindowFocus: true,
-    // Refetch every 10 seconds to catch webhook updates
-    refetchInterval: 10000
+    // Refetch every 5 seconds to catch webhook updates faster
+    refetchInterval: 5000
   });
 
   // Set up realtime subscription for booking updates
   useEffect(() => {
     const channel = supabase
-      .channel('booking-changes')
+      .channel('booking-payment-changes')
       .on(
         'postgres_changes',
         {

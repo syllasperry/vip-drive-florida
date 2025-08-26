@@ -1277,6 +1277,7 @@ export type Database = {
           meta: Json | null
           method: string | null
           passenger_id: string | null
+          provider_reference: string | null
           provider_txn_id: string | null
           status: string
         }
@@ -1290,6 +1291,7 @@ export type Database = {
           meta?: Json | null
           method?: string | null
           passenger_id?: string | null
+          provider_reference?: string | null
           provider_txn_id?: string | null
           status?: string
         }
@@ -1303,6 +1305,7 @@ export type Database = {
           meta?: Json | null
           method?: string | null
           passenger_id?: string | null
+          provider_reference?: string | null
           provider_txn_id?: string | null
           status?: string
         }
@@ -3300,6 +3303,79 @@ export type Database = {
         }
         Returns: undefined
       }
+      mark_booking_paid: {
+        Args: {
+          p_amount_cents: number
+          p_booking_id: string
+          p_currency: string
+          p_stripe_session_id: string
+        }
+        Returns: {
+          assigned_driver_id: string | null
+          booking_code: string | null
+          code: string | null
+          created_at: string
+          dispatcher_id: string | null
+          distance_miles: number | null
+          driver_id: string | null
+          driver_location_lat: number | null
+          driver_location_lng: number | null
+          driver_payment_confirmed_at: string | null
+          driver_payment_instructions: string | null
+          driver_status: string | null
+          dropoff_location: string
+          estimated_fare: number | null
+          estimated_price: number | null
+          estimated_price_cents: number | null
+          extra_stops: Json | null
+          final_price: number | null
+          final_price_cents: number | null
+          flight_info: string | null
+          id: string
+          luggage_count: number
+          luggage_size: string | null
+          offer_amount: number | null
+          offer_amount_cents: number | null
+          offer_currency: string | null
+          offer_price_cents: number | null
+          offer_sent_at: string | null
+          offered_by_dispatcher_id: string | null
+          paid_amount_cents: number | null
+          paid_at: string | null
+          paid_currency: string | null
+          passenger_count: number
+          passenger_first_name: string | null
+          passenger_id: string
+          passenger_last_name: string | null
+          passenger_payment_confirmed_at: string | null
+          passenger_phone: string | null
+          passenger_photo_url: string | null
+          passenger_preferences: Json | null
+          passenger_status: string | null
+          payment_confirmation_status: string | null
+          payment_expires_at: string | null
+          payment_method: string | null
+          payment_provider: string | null
+          payment_reference: string | null
+          payment_status: string
+          pickup_location: string
+          pickup_time: string
+          price_confirmed_at: string | null
+          ride_completed_at: string | null
+          ride_stage: string | null
+          ride_started_at: string | null
+          ride_status: string | null
+          status: string
+          status_driver: string | null
+          status_passenger: string | null
+          status_updated_at: string | null
+          stripe_payment_intent_id: string | null
+          updated_at: string | null
+          vehicle_category: string | null
+          vehicle_id: string | null
+          vehicle_type: string | null
+        }
+      }
       mark_paid_manual: {
         Args: {
           p_amount_cents: number
@@ -3444,6 +3520,21 @@ export type Database = {
       recompute_suggested_price: {
         Args: { p_booking_id: string }
         Returns: undefined
+      }
+      record_stripe_payment: {
+        Args: {
+          _amount_cents: number
+          _booking_code: string
+          _currency?: string
+          _provider_reference: string
+        }
+        Returns: {
+          amount_cents: number
+          booking_code: string
+          booking_id: string
+          new_status: string
+          provider_reference: string
+        }[]
       }
       resolve_booking_by_session: {
         Args: { p_provider: string; p_provider_session_id: string }
