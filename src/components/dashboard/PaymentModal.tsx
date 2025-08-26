@@ -3,10 +3,12 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { CreditCard, Clock, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { SmartPricingEngine } from '@/lib/pricing/smartPricing';
 import { format } from 'date-fns';
 
 export interface PaymentModalProps {
@@ -25,39 +27,16 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
-  // Check multiple price sources in order of preference for the dispatcher-set price
-  const getBookingPrice = () => {
-    // Primary: offer_price_cents (dispatcher offer)
-    if (booking.offer_price_cents && booking.offer_price_cents > 0) {
-      return booking.offer_price_cents;
-    }
-    
-    // Secondary: final_price_cents (confirmed price)
-    if (booking.final_price_cents && booking.final_price_cents > 0) {
-      return booking.final_price_cents;
-    }
-    
-    // Tertiary: estimated_price_cents
-    if (booking.estimated_price_cents && booking.estimated_price_cents > 0) {
-      return booking.estimated_price_cents;
-    }
-    
-    // Legacy: final_price in dollars
-    if (booking.final_price && booking.final_price > 0) {
-      return Math.round(booking.final_price * 100);
-    }
-    
-    // Legacy: estimated_price in dollars
-    if (booking.estimated_price && booking.estimated_price > 0) {
-      return Math.round(booking.estimated_price * 100);
-    }
-    
-    return null;
-  };
+  const isSmartPriceEnabled = true;
 
-  const priceCents = getBookingPrice();
-  const totalAmount = priceCents ? (priceCents / 100).toFixed(2) : '0.00';
-  const hasValidPrice = priceCents && priceCents > 0;
+  const uberEstimateCents = booking.estimated_price_cents || 
+                           (booking.estimated_price ? booking.estimated_price * 100 : null) ||
+                           (booking.final_price_cents) ||
+                           (booking.final_price ? booking.final_price * 100 : null) ||
+                           10000;
+
+  const pricingBreakdown = SmartPricingEngine.calculatePrice(uberEstimateCents);
+  const formattedBreakdown = SmartPricingEngine.formatBreakdown(pricingBreakdown);
 
   const handlePayment = async () => {
     if (!booking?.id) {
@@ -69,19 +48,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       return;
     }
 
-    if (!hasValidPrice) {
-      toast({
-        title: "Error",
-        description: "Price unavailable. Please refresh and try again.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
       setIsProcessing(true);
       
-      console.log('🔄 Starting payment process for booking:', booking.id);
+      console.log('🔄 Starting enhanced payment process for booking:', booking.id);
       
       // Call the Stripe checkout edge function
       const { data, error } = await supabase.functions.invoke('stripe-start-checkout', {
@@ -156,6 +126,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 <Badge variant="outline" className="text-xs">
                   #{(booking.booking_code || booking.id.slice(-8)).toUpperCase()}
                 </Badge>
+                {isSmartPriceEnabled && (
+                  <Badge className="text-xs bg-purple-100 text-purple-800">
+                    SmartPrice ON
+                  </Badge>
+                )}
               </div>
 
               <div className="flex items-start gap-2">
@@ -181,16 +156,12 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             </CardContent>
           </Card>
 
-          {/* Pricing */}
+          {/* Pricing - Passenger only sees total */}
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-4">
                 <span className="text-lg font-medium text-gray-900">Total Amount</span>
-                {hasValidPrice ? (
-                  <span className="text-2xl font-bold text-gray-900">${totalAmount}</span>
-                ) : (
-                  <span className="text-sm text-gray-500">Price pending</span>
-                )}
+                <span className="text-2xl font-bold text-gray-900">{formattedBreakdown.total}</span>
               </div>
 
               <div className="text-sm text-gray-600 space-y-1">
@@ -222,20 +193,18 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             <Button 
               onClick={handlePayment} 
               className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-              disabled={isProcessing || !hasValidPrice}
+              disabled={isProcessing}
             >
               {isProcessing ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
                   Processing...
                 </>
-              ) : hasValidPrice ? (
+              ) : (
                 <>
                   <CreditCard className="w-4 h-4 mr-2" />
-                  Pay ${totalAmount}
+                  Pay {formattedBreakdown.total}
                 </>
-              ) : (
-                'Awaiting price offer'
               )}
             </Button>
           </div>
