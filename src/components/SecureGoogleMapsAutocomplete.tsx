@@ -1,252 +1,188 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { MapPin, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { sanitizeLocation, checkRateLimit, sanitizeString } from '@/lib/security/inputSanitizer';
-
-interface SecureGoogleMapsAutocompleteProps {
-  onPlaceSelected: (place: { description: string; place_id?: string }) => void;
-  placeholder?: string;
-  value?: string;
-  className?: string;
-}
+import { sanitizeInput } from '@/lib/security/enhancedInputSanitizer';
 
 interface Prediction {
-  description: string;
   place_id: string;
-  structured_formatting?: {
+  description: string;
+  structured_formatting: {
     main_text: string;
     secondary_text: string;
   };
 }
 
-export const SecureGoogleMapsAutocomplete: React.FC<SecureGoogleMapsAutocompleteProps> = ({
-  onPlaceSelected,
+interface SecureGoogleMapsAutocompleteProps {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+}
+
+export function SecureGoogleMapsAutocomplete({
+  value,
+  onChange,
   placeholder = "Enter location...",
-  value = "",
-  className
-}) => {
-  const [inputValue, setInputValue] = useState(value);
+  disabled = false
+}: SecureGoogleMapsAutocompleteProps) {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const debounceRef = useRef<NodeJS.Timeout>();
-  const requestCounterRef = useRef(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Generate session token for request grouping
+  const sessionToken = useRef(Math.random().toString(36).substring(2, 15));
 
   useEffect(() => {
-    setInputValue(value);
-  }, [value]);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node) &&
+        !inputRef.current?.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const fetchPredictions = async (query: string) => {
     if (query.length < 3) {
       setPredictions([]);
+      setIsOpen(false);
       return;
     }
 
-    // Enhanced rate limiting with user fingerprinting
-    const userAgent = navigator.userAgent;
-    const clientFingerprint = btoa(userAgent.substring(0, 20));
-    
-    if (!checkRateLimit(`maps-${clientFingerprint}`, 15, 60000)) {
-      setError('Too many requests. Please wait before searching again.');
-      return;
-    }
-
-    // Increment request counter for additional protection
-    requestCounterRef.current++;
-    const currentRequest = requestCounterRef.current;
+    setIsLoading(true);
+    setError(null);
 
     try {
-      setLoading(true);
-      setError(null);
+      // Sanitize input before sending
+      const sanitizedQuery = sanitizeInput(query);
       
-      // Enhanced input sanitization
-      let sanitizedQuery: string;
-      try {
-        sanitizedQuery = sanitizeLocation(query);
-      } catch (sanitizationError) {
-        setError('Invalid location format');
-        setPredictions([]);
-        return;
-      }
-
-      // Additional validation for suspicious patterns
-      if (sanitizedQuery.length < 3 || sanitizedQuery.length > 200) {
-        setError('Location must be between 3 and 200 characters');
-        setPredictions([]);
-        return;
-      }
-      
-      // Use the secure proxy with enhanced error handling
-      const { data, error: supabaseError } = await supabase.functions.invoke('secure-maps-proxy', {
-        body: JSON.stringify({ 
+      // Use secure edge function instead of direct API call
+      const { data, error: supabaseError } = await supabase.functions.invoke('secure-geocoding', {
+        body: {
           query: sanitizedQuery,
-          sessionToken: `session_${Date.now()}_${Math.random()}` // Add session token for caching
-        })
+          sessionToken: sessionToken.current
+        }
       });
 
-      // Check if this is still the current request (prevent race conditions)
-      if (currentRequest !== requestCounterRef.current) {
-        return;
-      }
-
       if (supabaseError) {
-        console.error('Maps proxy error:', supabaseError);
-        setError('Unable to fetch location suggestions. Please try again.');
-        setPredictions([]);
+        console.error('Geocoding error:', supabaseError);
+        setError('Unable to fetch location suggestions');
         return;
       }
 
-      if (data?.predictions && Array.isArray(data.predictions)) {
-        // Sanitize and validate each prediction
-        const sanitizedPredictions = data.predictions
-          .slice(0, 5) // Limit to 5 suggestions
-          .map((prediction: any) => ({
-            description: sanitizeString(prediction.description || ''),
-            place_id: sanitizeString(prediction.place_id || ''),
-            structured_formatting: prediction.structured_formatting ? {
-              main_text: sanitizeString(prediction.structured_formatting.main_text || ''),
-              secondary_text: sanitizeString(prediction.structured_formatting.secondary_text || '')
-            } : undefined
-          }))
-          .filter((prediction: Prediction) => 
-            prediction.description.length > 0 && prediction.place_id.length > 0
-          );
-
-        setPredictions(sanitizedPredictions);
+      if (data?.predictions) {
+        setPredictions(data.predictions.slice(0, 5)); // Limit to 5 results
+        setIsOpen(true);
       } else {
         setPredictions([]);
+        setIsOpen(false);
       }
-    } catch (error) {
-      console.error('Error fetching predictions:', error);
-      
-      // Check if this is still the current request
-      if (currentRequest === requestCounterRef.current) {
-        setError('Network error occurred. Please check your connection.');
-        setPredictions([]);
-      }
+    } catch (err) {
+      console.error('Geocoding request failed:', err);
+      setError('Location service temporarily unavailable');
+      setPredictions([]);
+      setIsOpen(false);
     } finally {
-      if (currentRequest === requestCounterRef.current) {
-        setLoading(false);
-      }
+      setIsLoading(false);
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    
-    // Basic input sanitization on the client side
-    const sanitizedValue = sanitizeString(newValue);
-    setInputValue(sanitizedValue);
-    setShowSuggestions(true);
-    setError(null);
-
-    // Clear existing timeout
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-
-    // Debounce API calls with enhanced timing
-    debounceRef.current = setTimeout(() => {
-      if (sanitizedValue.trim().length >= 3) {
-        fetchPredictions(sanitizedValue);
-      } else {
-        setPredictions([]);
-      }
-    }, 500); // Increased debounce time for better UX
-  };
-
-  const handleSuggestionClick = (prediction: Prediction) => {
-    // Additional validation before selection
-    if (!prediction.description || !prediction.place_id) {
-      setError('Invalid location selected');
+  // Debounce the API calls
+  useEffect(() => {
+    if (!value || value.length < 3) {
+      setPredictions([]);
+      setIsOpen(false);
       return;
     }
 
-    setInputValue(prediction.description);
-    setShowSuggestions(false);
-    setPredictions([]);
+    const timeoutId = setTimeout(() => {
+      fetchPredictions(value);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [value]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value;
+    onChange(inputValue);
     setError(null);
     
-    onPlaceSelected({
-      description: prediction.description,
-      place_id: prediction.place_id
-    });
-  };
-
-  const handleBlur = () => {
-    // Delay hiding suggestions to allow clicking with enhanced UX
-    setTimeout(() => {
-      setShowSuggestions(false);
-      setError(null);
-    }, 200);
-  };
-
-  const handleFocus = () => {
-    if (predictions.length > 0) {
-      setShowSuggestions(true);
+    if (!inputValue) {
+      setPredictions([]);
+      setIsOpen(false);
     }
-    setError(null);
+  };
+
+  const handlePredictionSelect = (prediction: Prediction) => {
+    onChange(prediction.description);
+    setPredictions([]);
+    setIsOpen(false);
+    sessionToken.current = Math.random().toString(36).substring(2, 15);
   };
 
   return (
     <div className="relative w-full">
-      <Input
-        type="text"
-        value={inputValue}
-        onChange={handleInputChange}
-        onBlur={handleBlur}
-        onFocus={handleFocus}
-        placeholder={placeholder}
-        className={`${className} ${error ? 'border-red-500' : ''}`}
-        autoComplete="off"
-        maxLength={200} // Enforce max length
-      />
-      
-      {/* Error display */}
+      <div className="relative">
+        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+        <Input
+          ref={inputRef}
+          type="text"
+          value={value}
+          onChange={handleInputChange}
+          placeholder={placeholder}
+          disabled={disabled}
+          className="pl-10 pr-10"
+          autoComplete="off"
+        />
+        {isLoading && (
+          <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin" />
+        )}
+      </div>
+
       {error && (
-        <div className="absolute z-50 w-full mt-1 bg-red-50 border border-red-200 rounded-md shadow-lg px-3 py-2">
-          <div className="text-red-600 text-sm">{error}</div>
+        <div className="mt-1 text-sm text-destructive flex items-center gap-1">
+          <span>{error}</span>
         </div>
       )}
-      
-      {/* Suggestions dropdown */}
-      {showSuggestions && !error && (predictions.length > 0 || loading) && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
-          {loading && (
-            <div className="px-4 py-2 text-gray-500 text-sm">
-              Searching for locations...
-            </div>
-          )}
-          
-          {!loading && predictions.map((prediction) => (
-            <button
+
+      {isOpen && predictions.length > 0 && (
+        <div
+          ref={dropdownRef}
+          className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-auto"
+        >
+          {predictions.map((prediction) => (
+            <Button
               key={prediction.place_id}
-              className="w-full px-4 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none text-sm border-b border-gray-100 last:border-b-0"
-              onClick={() => handleSuggestionClick(prediction)}
-              type="button"
+              variant="ghost"
+              className="w-full justify-start p-3 h-auto text-left hover:bg-muted"
+              onClick={() => handlePredictionSelect(prediction)}
             >
-              <div className="flex flex-col">
-                <span className="font-medium text-gray-900">
-                  {prediction.structured_formatting?.main_text || prediction.description}
-                </span>
-                {prediction.structured_formatting?.secondary_text && (
-                  <span className="text-gray-500 text-xs">
+              <div className="flex items-start gap-2">
+                <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm truncate">
+                    {prediction.structured_formatting.main_text}
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate">
                     {prediction.structured_formatting.secondary_text}
-                  </span>
-                )}
+                  </div>
+                </div>
               </div>
-            </button>
+            </Button>
           ))}
-          
-          {!loading && predictions.length === 0 && inputValue.length >= 3 && (
-            <div className="px-4 py-2 text-gray-500 text-sm">
-              No locations found. Try a different search term.
-            </div>
-          )}
         </div>
       )}
     </div>
   );
-};
+}
