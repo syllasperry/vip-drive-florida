@@ -126,11 +126,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 <Badge variant="outline" className="text-xs">
                   #{(booking.booking_code || booking.id.slice(-8)).toUpperCase()}
                 </Badge>
-                {isSmartPriceEnabled && (
-                  <Badge className="text-xs bg-purple-100 text-purple-800">
-                    SmartPrice ON
-                  </Badge>
-                )}
               </div>
 
               <div className="flex items-start gap-2">
