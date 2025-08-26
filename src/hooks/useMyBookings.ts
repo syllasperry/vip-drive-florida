@@ -25,6 +25,8 @@ export interface Booking {
   offer_price_cents: number | null;
   paid_amount_cents: number | null;
   paid_at: string | null;
+  payment_provider: string | null;
+  payment_reference: string | null;
   drivers?: {
     full_name: string;
     phone: string;
@@ -33,6 +35,7 @@ export interface Booking {
     car_color: string | null;
     license_plate: string | null;
     avatar_url: string | null;
+    email: string | null;
   } | null;
 }
 
@@ -105,6 +108,8 @@ export const useMyBookings = () => {
           offer_price_cents,
           paid_amount_cents,
           paid_at,
+          payment_provider,
+          payment_reference,
           drivers:driver_id (
             full_name,
             phone,
@@ -112,7 +117,8 @@ export const useMyBookings = () => {
             car_model,
             car_color,
             license_plate,
-            avatar_url
+            avatar_url,
+            email
           )
         `)
         .eq('passenger_id', passenger.id)

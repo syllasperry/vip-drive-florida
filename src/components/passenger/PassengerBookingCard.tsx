@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Clock, MapPin, User, CreditCard, MessageCircle } from 'lucide-react';
+import { Clock, MapPin, User, CreditCard, MessageCircle, Phone, Mail } from 'lucide-react';
 import { AirbnbStyleReviewModal } from '@/components/review/AirbnbStyleReviewModal';
 import { MessagingInterface } from '@/components/dashboard/MessagingInterface';
 import { format } from 'date-fns';
@@ -26,6 +26,11 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
   const [showMessaging, setShowMessaging] = useState(false);
 
   const getStatusBadge = () => {
+    // Check payment status first
+    if (booking.payment_status === 'paid' || booking.paid_at) {
+      return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">All Set</Badge>;
+    }
+    
     const status = booking.payment_confirmation_status || booking.status;
     
     switch (status) {
@@ -49,6 +54,11 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
   };
 
   const needsAction = () => {
+    // Don't show payment action if already paid
+    if (booking.payment_status === 'paid' || booking.paid_at) {
+      return false;
+    }
+    
     const status = booking.payment_confirmation_status || booking.status;
     return status === 'offer_sent' || status === 'waiting_for_payment';
   };
@@ -57,9 +67,29 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
     return booking.payment_confirmation_status === 'completed' || booking.status === 'completed';
   };
 
+  const isPaid = () => {
+    return booking.payment_status === 'paid' || booking.paid_at;
+  };
+
   const formatPrice = (cents?: number) => {
     if (!cents) return 'TBD';
     return `$${(cents / 100).toFixed(2)}`;
+  };
+
+  const handleContactDriver = (type: 'phone' | 'sms' | 'email') => {
+    if (!booking.drivers) return;
+    
+    switch (type) {
+      case 'phone':
+        window.open(`tel:${booking.drivers.phone}`);
+        break;
+      case 'sms':
+        window.open(`sms:${booking.drivers.phone}`);
+        break;
+      case 'email':
+        window.open(`mailto:${booking.drivers.email}`);
+        break;
+    }
   };
 
   return (
@@ -114,7 +144,7 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
               <div>
                 <p className="text-xs text-gray-500">Driver</p>
                 <p className="text-sm font-medium">
-                  {booking.driver_name || 'TBD'}
+                  {booking.drivers?.full_name || 'TBD'}
                 </p>
               </div>
             </div>
@@ -123,11 +153,54 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
               <div>
                 <p className="text-xs text-gray-500">Price</p>
                 <p className="text-sm font-medium">
-                  {formatPrice(booking.final_price_cents || booking.estimated_price_cents)}
+                  {formatPrice(booking.paid_amount_cents || booking.offer_price_cents || booking.final_price_cents || booking.estimated_price_cents)}
                 </p>
               </div>
             </div>
           </div>
+
+          {/* Driver Contact Info (only show when paid) */}
+          {isPaid() && booking.drivers && (
+            <div className="border-t border-gray-100 pt-4">
+              <p className="text-sm font-medium text-gray-900 mb-2">Driver Contact</p>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => handleContactDriver('phone')}
+                  className="flex items-center gap-1 text-xs"
+                >
+                  <Phone className="h-3 w-3" />
+                  Call
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => handleContactDriver('sms')}
+                  className="flex items-center gap-1 text-xs"
+                >
+                  <MessageCircle className="h-3 w-3" />
+                  Text
+                </Button>
+                {booking.drivers.email && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleContactDriver('email')}
+                    className="flex items-center gap-1 text-xs"
+                  >
+                    <Mail className="h-3 w-3" />
+                    Email
+                  </Button>
+                )}
+              </div>
+              {booking.drivers.car_make && (
+                <p className="text-xs text-gray-500 mt-2">
+                  {booking.drivers.car_color} {booking.drivers.car_make} {booking.drivers.car_model} • {booking.drivers.license_plate}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex gap-2 pt-2">
@@ -139,10 +212,7 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
                   window.location.href = `/passenger/dashboard?tab=bookings&booking=${booking.id}`;
                 }}
               >
-                {booking.payment_confirmation_status === 'offer_sent' || booking.status === 'offer_sent' 
-                  ? 'Complete Payment' 
-                  : 'View Details'
-                }
+                Complete Payment
               </Button>
             )}
             

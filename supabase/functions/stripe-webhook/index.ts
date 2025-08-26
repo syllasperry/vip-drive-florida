@@ -58,11 +58,11 @@ serve(async (req) => {
       apiVersion: '2023-10-16',
     })
 
-    // Verify webhook signature using constructEventAsync for Deno
+    // Verify webhook signature
     let event
     try {
       event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret)
-      console.log('✅ Webhook signature verified:', event.type)
+      console.log('✅ Webhook signature verified:', event.type, 'Event ID:', event.id)
     } catch (err) {
       console.error('❌ Webhook signature verification failed:', err.message)
       return new Response(`Webhook signature verification failed: ${err.message}`, {
@@ -78,15 +78,41 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     )
 
+    // Idempotency check - prevent duplicate processing
+    const { data: existingEvent } = await supabaseClient
+      .from('payment_webhook_events')
+      .select('id')
+      .eq('provider_event_id', event.id)
+      .single()
+
+    if (existingEvent) {
+      console.log('ℹ️ Event already processed:', event.id)
+      return new Response(JSON.stringify({ received: true, duplicate: true }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Log the webhook event
+    await supabaseClient
+      .from('payment_webhook_events')
+      .insert({
+        provider: 'stripe',
+        provider_event_id: event.id,
+        event_type: event.type,
+        payload: event,
+        processed_ok: true
+      })
+
     // Handle the event
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session
         console.log('💳 Processing checkout.session.completed:', session.id)
         
-        const bookingId = session.metadata?.booking_id
+        const bookingId = session.metadata?.booking_id || session.client_reference_id
         if (!bookingId) {
-          console.error('❌ Missing booking_id in session metadata')
+          console.error('❌ Missing booking_id in session metadata or client_reference_id')
           break
         }
 
@@ -99,8 +125,9 @@ serve(async (req) => {
             payment_status: 'paid',
             status: 'paid',
             payment_confirmation_status: 'all_set',
-            total_paid_cents: session.amount_total,
-            stripe_payment_intent_id: session.payment_intent as string || session.id,
+            paid_amount_cents: session.amount_total,
+            payment_provider: 'stripe',
+            payment_reference: session.payment_intent as string || session.id,
             paid_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
@@ -108,31 +135,41 @@ serve(async (req) => {
 
         if (updateError) {
           console.error('❌ Error updating booking after payment:', updateError)
+          break
+        }
+
+        console.log('✅ Booking updated to paid:', bookingId)
+
+        // Create payment record
+        const { error: paymentError } = await supabaseClient
+          .from('payments')
+          .insert({
+            booking_id: bookingId,
+            amount_cents: session.amount_total || 0,
+            currency: 'USD',
+            method: 'stripe',
+            provider_txn_id: session.payment_intent as string || session.id,
+            status: 'PAID',
+            meta: {
+              stripe_session_id: session.id,
+              stripe_payment_intent_id: session.payment_intent
+            }
+          })
+
+        if (paymentError) {
+          console.error('⚠️ Error creating payment record:', paymentError)
         } else {
-          console.log('✅ Booking updated to paid:', bookingId)
-          
-          // Verify the update worked
-          const { data: verifyBooking, error: verifyError } = await supabaseClient
-            .from('bookings')
-            .select('id, payment_status, status, paid_at')
-            .eq('id', bookingId)
-            .single()
-          
-          if (verifyError) {
-            console.error('❌ Error verifying booking update:', verifyError)
-          } else {
-            console.log('✅ Booking verification:', verifyBooking)
-          }
-          
-          // Trigger email notifications
-          try {
-            await supabaseClient.functions.invoke('send-booking-confirmation-emails', {
-              body: { booking_id: bookingId }
-            })
-            console.log('✅ Email notifications triggered')
-          } catch (emailError) {
-            console.error('⚠️ Error triggering emails:', emailError)
-          }
+          console.log('✅ Payment record created')
+        }
+
+        // Trigger email notifications
+        try {
+          await supabaseClient.functions.invoke('send-booking-confirmation-emails', {
+            body: { booking_id: bookingId }
+          })
+          console.log('✅ Email notifications triggered')
+        } catch (emailError) {
+          console.error('⚠️ Error triggering emails:', emailError)
         }
         break
       }
@@ -141,11 +178,11 @@ serve(async (req) => {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
         console.log('💰 Processing payment_intent.succeeded:', paymentIntent.id)
         
-        // Find booking by stripe_payment_intent_id
+        // Find booking by stripe_payment_intent_id or payment_reference
         const { data: booking, error: fetchError } = await supabaseClient
           .from('bookings')
           .select('id, payment_status')
-          .eq('stripe_payment_intent_id', paymentIntent.id)
+          .or(`payment_reference.eq.${paymentIntent.id},stripe_payment_intent_id.eq.${paymentIntent.id}`)
           .single()
 
         if (fetchError || !booking) {
@@ -163,7 +200,9 @@ serve(async (req) => {
               payment_status: 'paid',
               status: 'paid',
               payment_confirmation_status: 'all_set',
-              total_paid_cents: paymentIntent.amount,
+              paid_amount_cents: paymentIntent.amount,
+              payment_provider: 'stripe',
+              payment_reference: paymentIntent.id,
               paid_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })
@@ -184,11 +223,11 @@ serve(async (req) => {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
         console.log('❌ Processing payment_intent.payment_failed:', paymentIntent.id)
         
-        // Find booking by stripe_payment_intent_id
+        // Find booking by payment reference
         const { data: booking, error: fetchError } = await supabaseClient
           .from('bookings')
           .select('id')
-          .eq('stripe_payment_intent_id', paymentIntent.id)
+          .or(`payment_reference.eq.${paymentIntent.id},stripe_payment_intent_id.eq.${paymentIntent.id}`)
           .single()
 
         if (fetchError || !booking) {
