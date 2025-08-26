@@ -96,6 +96,15 @@ export const EnhancedOfferBookingCard: React.FC<EnhancedOfferBookingCardProps> =
     });
   };
 
+  // Get button text - if price is $0.00, show "Pay to Confirm Ride", otherwise show price
+  const getPaymentButtonText = () => {
+    const price = parseFloat(finalPrice);
+    if (price === 0 || isNaN(price)) {
+      return "Pay to Confirm Ride";
+    }
+    return `Pay $${finalPrice} to Confirm Ride`;
+  };
+
   return (
     <>
       <Card className="border border-gray-200 hover:shadow-md transition-all duration-200">
@@ -159,7 +168,7 @@ export const EnhancedOfferBookingCard: React.FC<EnhancedOfferBookingCardProps> =
                 className="w-full bg-[#FF385C] hover:bg-[#E31C5F] text-white flex items-center gap-2"
               >
                 <CreditCard className="w-4 h-4" />
-                Pay ${finalPrice} to Confirm Ride
+                {getPaymentButtonText()}
               </Button>
             </div>
           )}
