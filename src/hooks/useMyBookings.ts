@@ -29,6 +29,8 @@ export interface Booking {
   payment_provider: string | null;
   payment_reference: string | null;
   paid_currency: string | null;
+  final_price_cents: number | null;
+  estimated_price_cents: number | null;
   drivers?: {
     full_name: string;
     phone: string;
@@ -85,7 +87,7 @@ export const useMyBookings = () => {
         passenger = newPassenger;
       }
 
-      // Now fetch bookings for this passenger with all payment fields
+      // Now fetch bookings for this passenger with ALL payment-related fields
       const { data: rawBookings, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
@@ -114,6 +116,8 @@ export const useMyBookings = () => {
           payment_provider,
           payment_reference,
           paid_currency,
+          final_price_cents,
+          estimated_price_cents,
           stripe_payment_intent_id,
           drivers:driver_id (
             full_name,
@@ -151,15 +155,16 @@ export const useMyBookings = () => {
         status: b.status,
         payment_status: b.payment_status,
         paid_at: b.paid_at,
-        paid_amount_cents: b.paid_amount_cents
+        paid_amount_cents: b.paid_amount_cents,
+        offer_price_cents: b.offer_price_cents
       })));
 
       return bookings;
     },
     retry: 2,
     refetchOnWindowFocus: true,
-    // Refetch every 5 seconds to catch webhook updates faster
-    refetchInterval: 5000
+    // More frequent refetch for quicker payment status updates
+    refetchInterval: 3000 // Every 3 seconds
   });
 
   // Set up realtime subscription for booking updates

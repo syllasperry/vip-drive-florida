@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@14.21.0'
@@ -109,6 +110,7 @@ serve(async (req) => {
 
     console.log('📋 Booking found:', {
       id: booking.id,
+      booking_code: booking.booking_code,
       offer_price_cents: booking.offer_price_cents,
       passenger_id: booking.passenger_id
     })
@@ -160,6 +162,7 @@ serve(async (req) => {
       currency: 'usd',
       customer_email: customerEmail,
       booking_id: booking_id,
+      booking_code: booking.booking_code,
       passenger_id: booking.passenger_id
     })
 
@@ -180,9 +183,10 @@ serve(async (req) => {
       ],
       mode: 'payment',
       customer_email: customerEmail,
-      client_reference_id: booking_id, // For booking identification
+      client_reference_id: booking.booking_code, // Critical: booking_code for webhook identification
       metadata: {
         booking_id: booking_id,
+        booking_code: booking.booking_code,
         passenger_id: booking.passenger_id,
         offer_price_cents: amountCents.toString(),
       },
@@ -208,7 +212,7 @@ serve(async (req) => {
       console.log('✅ Booking status updated to processing')
     }
 
-    console.log(`✅ Stripe checkout session created for booking ${booking_id}, amount: $${amountCents/100}`)
+    console.log(`✅ Stripe checkout session created for booking ${booking_id}, booking_code: ${booking.booking_code}, amount: $${amountCents/100}`)
 
     return new Response(
       JSON.stringify({ 

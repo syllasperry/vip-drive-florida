@@ -110,18 +110,38 @@ serve(async (req) => {
         const session = event.data.object as Stripe.Checkout.Session
         console.log('💳 Processing checkout.session.completed:', session.id)
         
-        const bookingCode = session.metadata?.booking_code
-        const bookingId = session.metadata?.booking_id
+        // Get booking_code from client_reference_id or metadata
+        let bookingCode = session.client_reference_id || session.metadata?.booking_code
         
-        console.log('🏷️ Booking metadata:', { bookingCode, bookingId })
+        console.log('🏷️ Session metadata:', session.metadata)
+        console.log('🔍 Client reference ID:', session.client_reference_id)
+        console.log('📄 Booking code found:', bookingCode)
         
         if (!bookingCode) {
-          console.error('❌ Missing booking_code in session metadata')
+          // Try to get from related booking_id in metadata
+          const bookingId = session.metadata?.booking_id
+          if (bookingId) {
+            console.log('🔄 Trying to get booking_code from booking_id:', bookingId)
+            const { data: booking } = await supabaseClient
+              .from('bookings')
+              .select('booking_code')
+              .eq('id', bookingId)
+              .single()
+            
+            if (booking?.booking_code) {
+              bookingCode = booking.booking_code
+              console.log('✅ Found booking_code from DB:', bookingCode)
+            }
+          }
+        }
+
+        if (!bookingCode) {
+          console.error('❌ No booking_code found in session')
           break
         }
 
         try {
-          // Call the corrected record_stripe_payment function
+          // Call the record_stripe_payment function
           const { data: paymentResult, error: paymentError } = await supabaseClient
             .rpc('record_stripe_payment', {
               _booking_code: bookingCode,
@@ -143,7 +163,8 @@ serve(async (req) => {
             .update({ processed_ok: true })
             .eq('provider_event_id', event.id)
 
-          // Trigger email notifications if booking_id is available
+          // Try to trigger email notifications if booking_id is available
+          const bookingId = session.metadata?.booking_id
           if (bookingId) {
             try {
               await supabaseClient.functions.invoke('send-booking-confirmation-emails', {
@@ -154,6 +175,7 @@ serve(async (req) => {
               console.error('⚠️ Error triggering emails:', emailError)
             }
           }
+
         } catch (error) {
           console.error('❌ Error processing payment:', error)
         }
@@ -172,7 +194,19 @@ serve(async (req) => {
 
         if (sessions.data.length > 0) {
           const relatedSession = sessions.data[0]
-          const bookingCode = relatedSession.metadata?.booking_code
+          let bookingCode = relatedSession.client_reference_id || relatedSession.metadata?.booking_code
+          
+          if (!bookingCode && relatedSession.metadata?.booking_id) {
+            const { data: booking } = await supabaseClient
+              .from('bookings')
+              .select('booking_code')
+              .eq('id', relatedSession.metadata.booking_id)
+              .single()
+            
+            if (booking?.booking_code) {
+              bookingCode = booking.booking_code
+            }
+          }
           
           console.log('🔍 Found related session with booking_code:', bookingCode)
           
@@ -217,7 +251,19 @@ serve(async (req) => {
 
         if (sessions.data.length > 0) {
           const relatedSession = sessions.data[0]
-          const bookingCode = relatedSession.metadata?.booking_code
+          let bookingCode = relatedSession.client_reference_id || relatedSession.metadata?.booking_code
+          
+          if (!bookingCode && relatedSession.metadata?.booking_id) {
+            const { data: booking } = await supabaseClient
+              .from('bookings')
+              .select('booking_code')
+              .eq('id', relatedSession.metadata.booking_id)
+              .single()
+            
+            if (booking?.booking_code) {
+              bookingCode = booking.booking_code
+            }
+          }
           
           if (bookingCode) {
             const { error: updateError } = await supabaseClient

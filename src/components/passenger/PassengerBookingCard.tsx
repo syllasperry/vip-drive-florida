@@ -28,8 +28,11 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const getStatusBadge = () => {
-    // Priority check: if status is 'paid' OR payment_status is 'paid' OR paid_at exists, show PAID
-    const isPaid = booking.status === 'paid' || booking.payment_status === 'paid' || booking.paid_at;
+    // CRITICAL: Check all possible paid indicators
+    const isPaid = booking.status === 'paid' || 
+                  booking.payment_status === 'paid' || 
+                  booking.paid_at || 
+                  booking.paid_amount_cents > 0;
     
     if (isPaid) {
       return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">PAID</Badge>;
@@ -61,8 +64,11 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
   };
 
   const needsAction = () => {
-    // CRITICAL: If status is 'paid' OR payment_status is 'paid' OR paid_at exists, no action needed
-    const isPaid = booking.status === 'paid' || booking.payment_status === 'paid' || booking.paid_at;
+    // CRITICAL: If any paid indicator exists, no action needed
+    const isPaid = booking.status === 'paid' || 
+                  booking.payment_status === 'paid' || 
+                  booking.paid_at || 
+                  booking.paid_amount_cents > 0;
     if (isPaid) {
       return false;
     }
@@ -76,7 +82,10 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
   };
 
   const isPaid = () => {
-    return booking.status === 'paid' || booking.payment_status === 'paid' || booking.paid_at;
+    return booking.status === 'paid' || 
+           booking.payment_status === 'paid' || 
+           booking.paid_at || 
+           booking.paid_amount_cents > 0;
   };
 
   const formatPrice = (cents?: number) => {
@@ -106,22 +115,12 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
     setIsProcessingPayment(true);
     
     try {
-      const bookingCode = booking.booking_code || `VIP-${new Date(booking.created_at).getFullYear()}-${booking.id.slice(0, 3).toUpperCase()}`;
-      const amountCents = booking.offer_price_cents || booking.final_price_cents || booking.estimated_price_cents;
-      
-      if (!amountCents) {
-        throw new Error('No price available for this booking');
-      }
+      console.log('💳 Initiating payment for booking:', booking.id);
 
-      console.log('💳 Creating checkout session for:', { bookingCode, amountCents });
-
-      // Call our checkout session creation
-      const { data: sessionData, error } = await supabase.functions.invoke('stripe-checkout', {
+      // Call our stripe-start-checkout function
+      const { data: sessionData, error } = await supabase.functions.invoke('stripe-start-checkout', {
         body: {
-          booking_code: bookingCode,
-          booking_id: booking.id,
-          amount_cents: amountCents,
-          currency: 'usd'
+          booking_id: booking.id
         }
       });
 
