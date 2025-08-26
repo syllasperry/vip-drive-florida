@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
-import { MapPin, Plane, Home, Building, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 
 interface GoogleMapsAutocompleteProps {
   value: string;
@@ -20,24 +20,6 @@ declare global {
     initGoogleMaps: () => void;
   }
 }
-
-// Secure API key retrieval
-const getGoogleMapsApiKey = (): string | null => {
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-  
-  if (!apiKey) {
-    console.error('❌ Google Maps API key not found in environment variables. Please set VITE_GOOGLE_MAPS_API_KEY.');
-    return null;
-  }
-  
-  // Basic validation for API key format
-  if (apiKey.length < 20 || !apiKey.startsWith('AIza')) {
-    console.error('❌ Invalid Google Maps API key format');
-    return null;
-  }
-  
-  return apiKey;
-};
 
 const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
   value,
@@ -83,7 +65,7 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
     }
   }, []);
 
-  // Load Google Maps API - secure version
+  // Load Google Maps API with the new API key
   useEffect(() => {
     const loadGoogleMapsAPI = () => {
       // Check if already loaded and available
@@ -93,19 +75,14 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
         return;
       }
 
-      // Get API key securely
-      const apiKey = getGoogleMapsApiKey();
-      if (!apiKey) {
-        setApiError('Google Maps API key not configured');
-        setFallbackMode(true);
-        return;
-      }
+      // Use the new API key directly
+      const apiKey = 'AIzaSyB0qZTrzszIOoKUtiU3DQN53Q9A92n1Lwk';
 
       // Remove any existing scripts to avoid conflicts
       const existingScripts = document.querySelectorAll('script[src*="maps.googleapis.com"]');
       existingScripts.forEach(script => script.remove());
 
-      console.log('🚀 Loading Google Maps API securely...');
+      console.log('🚀 Loading Google Maps API with new key...');
       const script = document.createElement('script');
       script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&loading=async`;
       script.async = true;
@@ -142,7 +119,7 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
     loadGoogleMapsAPI();
   }, []);
 
-  // Initialize autocomplete with enhanced security
+  // Initialize autocomplete
   const initializeAutocomplete = useCallback(() => {
     if (!isGoogleMapsLoaded || !inputRef.current || !userLocation || !id) {
       return;
@@ -164,13 +141,13 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
         return;
       }
 
-      // Create bounds for South Florida region with security validation
+      // Create bounds for South Florida region
       const southFloridaBounds = new window.google.maps.LatLngBounds(
         new window.google.maps.LatLng(25.7617, -80.1918), // SW corner (Miami)
         new window.google.maps.LatLng(26.3056, -80.0844)  // NE corner (Boca Raton)
       );
 
-      // Secure autocomplete options
+      // Autocomplete options
       const options = {
         types: ['geocode', 'establishment'],
         componentRestrictions: { country: 'us' },
@@ -179,19 +156,18 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
         strictBounds: false
       };
 
-      // Create autocomplete instance with security validation
+      // Create autocomplete instance
       autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, options);
 
-      // Add place selection listener with enhanced security
+      // Add place selection listener
       autocompleteRef.current.addListener('place_changed', () => {
         try {
           const place = autocompleteRef.current?.getPlace();
           
-          // Validate place object to prevent XSS
           if (place && (place.formatted_address || place.name)) {
             const displayAddress = place.formatted_address || place.name;
             
-            // Basic sanitization to prevent XSS
+            // Basic sanitization
             const sanitizedAddress = displayAddress.replace(/<[^>]*>/g, '').trim();
             
             if (sanitizedAddress) {
@@ -246,7 +222,7 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
     };
   }, [id]);
 
-  // Enhanced input change handler with security
+  // Input change handler
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
       const newValue = e.target.value;

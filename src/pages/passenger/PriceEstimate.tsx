@@ -4,14 +4,12 @@ import { useNavigate } from "react-router-dom";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 import { MapPin, ArrowRight, Info, User, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import GoogleMapsAutocomplete from "@/components/GoogleMapsAutocomplete";
+import { SecureGoogleMapsAutocomplete } from "@/components/SecureGoogleMapsAutocomplete";
 
 const PriceEstimate = () => {
   const [pickup, setPickup] = useState("");
   const [dropoff, setDropoff] = useState("");
   const [estimatedPrice, setEstimatedPrice] = useState<string | null>(null);
-  const [isPickupValid, setIsPickupValid] = useState(true);
-  const [isDropoffValid, setIsDropoffValid] = useState(true);
   const navigate = useNavigate();
   
   // Auto-scroll to top when this page loads
@@ -137,14 +135,10 @@ const PriceEstimate = () => {
                 <MapPin className="inline h-4 w-4 mr-2" />
                 Pickup Location
               </label>
-              <GoogleMapsAutocomplete
-                id="pickup-location"
-                placeholder="Enter pickup location (e.g., MIA, Fort Lauderdale Airport)"
+              <SecureGoogleMapsAutocomplete
                 value={pickup}
                 onChange={(value) => setPickup(value)}
-                onValidationChange={setIsPickupValid}
-                className="h-12"
-                required={false}
+                placeholder="Enter pickup location (e.g., MIA, Fort Lauderdale Airport)"
               />
             </div>
 
@@ -153,14 +147,10 @@ const PriceEstimate = () => {
                 <MapPin className="inline h-4 w-4 mr-2" />
                 Drop-off Location
               </label>
-              <GoogleMapsAutocomplete
-                id="dropoff-location"
-                placeholder="Enter destination (e.g., Miami, 2911 NE 10th Ter)"
+              <SecureGoogleMapsAutocomplete
                 value={dropoff}
                 onChange={(value) => setDropoff(value)}
-                onValidationChange={setIsDropoffValid}
-                className="h-12"
-                required={false}
+                placeholder="Enter destination (e.g., Miami, 2911 NE 10th Ter)"
               />
             </div>
 
