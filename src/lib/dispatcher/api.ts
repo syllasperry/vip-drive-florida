@@ -76,7 +76,15 @@ export async function fetchDispatcherBookings(): Promise<Booking[]> {
   try {
     console.log('📊 Fetching dispatcher bookings');
     
-    const { data, error } = await supabase.rpc('get_dispatcher_bookings_by_auth');
+    // Use the existing API function instead of direct RPC call
+    const { data, error } = await supabase
+      .from('bookings')
+      .select(`
+        *,
+        passenger:passengers(name, phone, email, image_url),
+        driver:drivers(name, phone, image_url)
+      `)
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('❌ Error fetching dispatcher bookings:', error);
@@ -85,9 +93,9 @@ export async function fetchDispatcherBookings(): Promise<Booking[]> {
 
     console.log('✅ Successfully fetched dispatcher bookings:', data?.length || 0);
 
-    // Map RPC result to Booking interface
+    // Map result to Booking interface with proper type handling
     const bookings: Booking[] = (data || []).map((row: any) => ({
-      id: row.booking_id || row.id,
+      id: row.id,
       booking_code: row.booking_code || '',
       pickup_time: row.pickup_time,
       pickup_location: row.pickup_location,
@@ -96,20 +104,20 @@ export async function fetchDispatcherBookings(): Promise<Booking[]> {
       payment_status: row.payment_status || 'pending',
       price_cents: row.price_cents,
       currency: row.currency || 'USD',
-      passenger_name: row.passenger_name,
-      passenger_phone: row.passenger_phone,
-      passenger_email: row.passenger_email,
-      passenger_photo_url: row.passenger_image,
+      passenger_name: row.passenger?.name || '',
+      passenger_phone: row.passenger?.phone || '',
+      passenger_email: row.passenger?.email || '',
+      passenger_photo_url: row.passenger?.image_url || null,
       passenger_id: row.passenger_id,
       driver_id: row.driver_id,
-      driver_name: row.driver_name,
-      driver_phone: row.driver_phone,
-      driver_photo_url: row.driver_image,
+      driver_name: row.driver?.name || '',
+      driver_phone: row.driver?.phone || '',
+      driver_photo_url: row.driver?.image_url || null,
       created_at: row.created_at,
       updated_at: row.updated_at || row.created_at
     }));
     
-    return bookings.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return bookings;
   } catch (error) {
     console.error('❌ Error in fetchDispatcherBookings:', error);
     return [];
