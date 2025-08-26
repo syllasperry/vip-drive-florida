@@ -79,7 +79,7 @@ export const useMyBookings = () => {
         passenger = newPassenger;
       }
 
-      // Fetch bookings with all necessary payment fields
+      // Now fetch bookings for this passenger with correct column names
       const { data: rawBookings, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
@@ -125,11 +125,6 @@ export const useMyBookings = () => {
 
       console.log('✅ Bookings fetched successfully:', rawBookings?.length || 0);
       
-      // Log payment status for debugging
-      rawBookings?.forEach(booking => {
-        console.log(`Booking ${booking.id}: status=${booking.status}, payment_status=${booking.payment_status}, paid_at=${booking.paid_at}`);
-      });
-      
       // Map the raw data to ensure type safety and proper payment status detection
       const bookings: Booking[] = (rawBookings || []).map(booking => ({
         ...booking,
@@ -142,8 +137,8 @@ export const useMyBookings = () => {
     },
     retry: 2,
     refetchOnWindowFocus: false,
-    // Refetch more frequently to catch webhook updates quickly
-    refetchInterval: 10000 // 10 seconds for better payment recognition
+    // Refetch every 30 seconds to catch webhook updates
+    refetchInterval: 30000
   });
 
   return {

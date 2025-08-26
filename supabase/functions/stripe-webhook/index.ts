@@ -8,9 +8,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Track processed events to ensure idempotency
-const processedEvents = new Set<string>();
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -61,25 +58,16 @@ serve(async (req) => {
       apiVersion: '2023-10-16',
     })
 
-    // Verify webhook signature
+    // Verify webhook signature using constructEventAsync for Deno
     let event
     try {
       event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret)
-      console.log(`✅ Webhook signature verified. Event: ${event.type}, ID: ${event.id}`)
+      console.log('✅ Webhook signature verified:', event.type)
     } catch (err) {
       console.error('❌ Webhook signature verification failed:', err.message)
       return new Response(`Webhook signature verification failed: ${err.message}`, {
         status: 400,
         headers: corsHeaders
-      })
-    }
-
-    // Idempotency check - avoid processing the same event twice
-    if (processedEvents.has(event.id)) {
-      console.log(`⚠️ Event ${event.id} already processed - ignoring duplicate`)
-      return new Response(JSON.stringify({ received: true, duplicate: true }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
@@ -94,59 +82,46 @@ serve(async (req) => {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session
-        console.log(`💳 Processing checkout.session.completed: ${session.id}`)
+        console.log('💳 Processing checkout.session.completed:', session.id)
         
-        const bookingId = session.metadata?.booking_id || session.client_reference_id
+        const bookingId = session.metadata?.booking_id
         if (!bookingId) {
-          console.error('❌ Missing booking_id in session metadata or client_reference_id')
+          console.error('❌ Missing booking_id in session metadata')
           break
         }
 
-        console.log(`📋 Updating booking: ${bookingId} to paid status`)
+        console.log('📋 Updating booking:', bookingId, 'to paid status')
 
-        // Update booking status to paid with correct column names
-        const { error: updateError, data: updatedBooking } = await supabaseClient
+        // Update booking status to paid with comprehensive fields
+        const { error: updateError } = await supabaseClient
           .from('bookings')
           .update({
-            status: 'paid',
             payment_status: 'paid',
-            paid_at: new Date().toISOString(),
-            paid_amount_cents: session.amount_total,
+            status: 'paid',
+            payment_confirmation_status: 'all_set',
+            total_paid_cents: session.amount_total,
             stripe_payment_intent_id: session.payment_intent as string || session.id,
+            paid_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
           .eq('id', bookingId)
-          .select()
-          .single()
 
         if (updateError) {
           console.error('❌ Error updating booking after payment:', updateError)
         } else {
           console.log('✅ Booking updated to paid:', bookingId)
           
-          // Mark event as processed
-          processedEvents.add(event.id)
+          // Verify the update worked
+          const { data: verifyBooking, error: verifyError } = await supabaseClient
+            .from('bookings')
+            .select('id, payment_status, status, paid_at')
+            .eq('id', bookingId)
+            .single()
           
-          // Create payment record if payments table exists
-          try {
-            const { error: paymentError } = await supabaseClient
-              .from('payments')
-              .insert({
-                booking_id: bookingId,
-                amount_cents: session.amount_total,
-                currency: 'USD',
-                provider_txn_id: session.payment_intent as string || session.id,
-                status: 'PAID',
-                method: 'stripe_checkout'
-              })
-            
-            if (paymentError) {
-              console.warn('⚠️ Could not create payment record (table may not exist):', paymentError.message)
-            } else {
-              console.log('✅ Payment record created')
-            }
-          } catch (paymentRecordError) {
-            console.warn('⚠️ Payment record creation failed:', paymentRecordError)
+          if (verifyError) {
+            console.error('❌ Error verifying booking update:', verifyError)
+          } else {
+            console.log('✅ Booking verification:', verifyBooking)
           }
           
           // Trigger email notifications
@@ -164,31 +139,32 @@ serve(async (req) => {
 
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
-        console.log(`💰 Processing payment_intent.succeeded: ${paymentIntent.id}`)
+        console.log('💰 Processing payment_intent.succeeded:', paymentIntent.id)
         
         // Find booking by stripe_payment_intent_id
         const { data: booking, error: fetchError } = await supabaseClient
           .from('bookings')
-          .select('id, payment_status, status')
+          .select('id, payment_status')
           .eq('stripe_payment_intent_id', paymentIntent.id)
           .single()
 
         if (fetchError || !booking) {
-          console.error(`❌ Could not find booking for payment_intent: ${paymentIntent.id}`)
+          console.error('❌ Could not find booking for payment_intent:', paymentIntent.id)
           break
         }
 
         // Only update if not already paid (avoid duplicate updates)
-        if (booking.payment_status !== 'paid' && booking.status !== 'paid') {
-          console.log(`📋 Updating booking via payment_intent: ${booking.id}`)
+        if (booking.payment_status !== 'paid') {
+          console.log('📋 Updating booking via payment_intent:', booking.id)
           
           const { error: updateError } = await supabaseClient
             .from('bookings')
             .update({
-              status: 'paid',
               payment_status: 'paid',
+              status: 'paid',
+              payment_confirmation_status: 'all_set',
+              total_paid_cents: paymentIntent.amount,
               paid_at: new Date().toISOString(),
-              paid_amount_cents: paymentIntent.amount,
               updated_at: new Date().toISOString()
             })
             .eq('id', booking.id)
@@ -197,20 +173,16 @@ serve(async (req) => {
             console.error('❌ Error updating booking after payment_intent:', updateError)
           } else {
             console.log('✅ Booking confirmed paid via payment_intent:', booking.id)
-            // Mark event as processed
-            processedEvents.add(event.id)
           }
         } else {
-          console.log(`ℹ️ Booking already marked as paid: ${booking.id}`)
-          // Still mark as processed to avoid reprocessing
-          processedEvents.add(event.id)
+          console.log('ℹ️ Booking already marked as paid:', booking.id)
         }
         break
       }
 
       case 'payment_intent.payment_failed': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
-        console.log(`❌ Processing payment_intent.payment_failed: ${paymentIntent.id}`)
+        console.log('❌ Processing payment_intent.payment_failed:', paymentIntent.id)
         
         // Find booking by stripe_payment_intent_id
         const { data: booking, error: fetchError } = await supabaseClient
@@ -220,7 +192,7 @@ serve(async (req) => {
           .single()
 
         if (fetchError || !booking) {
-          console.error(`❌ Could not find booking for failed payment: ${paymentIntent.id}`)
+          console.error('❌ Could not find booking for failed payment:', paymentIntent.id)
           break
         }
 
@@ -238,13 +210,12 @@ serve(async (req) => {
           console.error('❌ Error updating booking after payment failure:', updateError)
         } else {
           console.log('✅ Booking marked as payment failed:', booking.id)
-          processedEvents.add(event.id)
         }
         break
       }
 
       default:
-        console.log(`ℹ️ Unhandled event type: ${event.type}`)
+        console.log('ℹ️ Unhandled event type:', event.type)
     }
 
     return new Response(JSON.stringify({ received: true }), {
