@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -72,9 +73,21 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
       if (error) {
         console.error('❌ Stripe checkout error:', error);
+        
+        // Handle specific error cases
+        let errorMessage = error.message || "Failed to start payment process. Please try again.";
+        
+        if (error.message === 'missing_offer_price_cents') {
+          errorMessage = "Price unavailable - please contact support";
+        } else if (error.message?.includes('Stripe configuration')) {
+          errorMessage = "Payment system temporarily unavailable - please try again later";
+        } else if (error.message?.includes('Network error')) {
+          errorMessage = "Connection issue - please check your internet and try again";
+        }
+        
         toast({
           title: "Payment Error",
-          description: error.message || "Failed to start payment process. Please try again.",
+          description: errorMessage,
           variant: "destructive",
         });
         return;

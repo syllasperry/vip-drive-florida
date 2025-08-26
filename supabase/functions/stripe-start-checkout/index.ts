@@ -14,9 +14,13 @@ serve(async (req) => {
   }
 
   try {
+    console.log('🚀 Starting stripe-start-checkout function')
+    
     const { booking_id } = await req.json()
+    console.log('📝 Request data:', { booking_id })
 
     if (!booking_id) {
+      console.error('❌ Missing booking_id in request')
       return new Response(
         JSON.stringify({ error: 'booking_id is required' }),
         { 
@@ -35,6 +39,7 @@ serve(async (req) => {
     // Get user from auth header
     const authHeader = req.headers.get('Authorization')?.replace('Bearer ', '')
     if (!authHeader) {
+      console.error('❌ Missing Authorization header')
       return new Response(
         JSON.stringify({ error: 'Authorization required' }),
         { 
@@ -46,6 +51,7 @@ serve(async (req) => {
 
     const { data: { user } } = await supabaseClient.auth.getUser(authHeader)
     if (!user) {
+      console.error('❌ Invalid user token')
       return new Response(
         JSON.stringify({ error: 'Invalid authorization' }),
         { 
@@ -54,6 +60,8 @@ serve(async (req) => {
         }
       )
     }
+
+    console.log('✅ User authenticated:', user.id)
 
     // Get booking details with passenger info
     const { data: booking, error: bookingError } = await supabaseClient
@@ -71,6 +79,7 @@ serve(async (req) => {
       .single()
 
     if (bookingError || !booking) {
+      console.error('❌ Booking not found or access denied:', bookingError)
       return new Response(
         JSON.stringify({ error: 'Booking not found or access denied' }),
         { 
@@ -80,11 +89,18 @@ serve(async (req) => {
       )
     }
 
-    // Use offer_price_cents as the amount (required by user specification)
+    console.log('📋 Booking found:', {
+      id: booking.id,
+      offer_price_cents: booking.offer_price_cents,
+      passenger_id: booking.passenger_id
+    })
+
+    // Critical: Use offer_price_cents as the definitive price source
     const amountCents = booking.offer_price_cents
     if (!amountCents || amountCents <= 0) {
+      console.error('❌ Missing or invalid offer_price_cents:', amountCents)
       return new Response(
-        JSON.stringify({ error: 'No valid offer price available for this booking' }),
+        JSON.stringify({ error: 'missing_offer_price_cents' }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -92,18 +108,42 @@ serve(async (req) => {
       )
     }
 
-    // Initialize Stripe with test mode
-    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
+    console.log('💰 Using offer_price_cents:', amountCents)
+
+    // Initialize Stripe with secret key
+    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY')
+    if (!stripeSecretKey) {
+      console.error('❌ STRIPE_SECRET_KEY not configured')
+      return new Response(
+        JSON.stringify({ error: 'Stripe configuration error' }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    const stripe = new Stripe(stripeSecretKey, {
       apiVersion: '2023-10-16',
     })
 
+    console.log('✅ Stripe initialized')
+
     // Get the origin for return URLs
-    const origin = req.headers.get('origin') || 'http://localhost:8080'
+    const origin = req.headers.get('origin') || 'https://preview--vip-passenger.lovable.app'
+    console.log('🌐 Origin for URLs:', origin)
     
     // Get customer email (passenger email or fallback to user email)
     const customerEmail = booking.passengers?.email || user.email
 
     // Create Stripe Checkout Session
+    console.log('🛒 Creating Checkout Session with:', {
+      amount: amountCents,
+      currency: 'usd',
+      customer_email: customerEmail,
+      booking_id: booking_id
+    })
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
@@ -131,6 +171,8 @@ serve(async (req) => {
       },
     })
 
+    console.log('✅ Checkout Session created:', session.id)
+
     // Update booking status to indicate payment is in progress
     const { error: updateError } = await supabaseClient
       .from('bookings')
@@ -142,7 +184,9 @@ serve(async (req) => {
       .eq('id', booking_id)
 
     if (updateError) {
-      console.error('Error updating booking status:', updateError)
+      console.error('⚠️ Error updating booking status:', updateError)
+    } else {
+      console.log('✅ Booking status updated to processing')
     }
 
     console.log(`✅ Stripe checkout session created for booking ${booking_id}, amount: $${amountCents/100}`)
@@ -160,11 +204,31 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Error creating checkout session:', error)
+    console.error('❌ Error creating checkout session:', error)
+    
+    // Log the full error details for debugging
+    if (error instanceof Error) {
+      console.error('Error name:', error.name)
+      console.error('Error message:', error.message)
+      console.error('Error stack:', error.stack)
+    }
+
+    // Return a descriptive error for the frontend
+    let errorMessage = 'Failed to create checkout session'
+    let statusCode = 500
+
+    if (error?.type === 'StripeInvalidRequestError') {
+      errorMessage = `Stripe error: ${error.message}`
+      statusCode = 400
+    } else if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
+      errorMessage = 'Network error - please check your connection'
+      statusCode = 503
+    }
+
     return new Response(
-      JSON.stringify({ error: 'Failed to create checkout session' }),
+      JSON.stringify({ error: errorMessage }),
       { 
-        status: 500, 
+        status: statusCode, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     )
