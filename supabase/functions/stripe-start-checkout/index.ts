@@ -142,23 +142,20 @@ serve(async (req) => {
       )
     }
 
-    console.log('🔑 Stripe key found, length:', stripeSecretKey.length)
-    console.log('🔑 Stripe key prefix:', stripeSecretKey.substring(0, 7))
-
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: '2023-10-16',
     })
 
     console.log('✅ Stripe initialized')
 
-    // Get the origin for return URLs - Fixed to use correct URLs
+    // Get the origin for return URLs
     const origin = req.headers.get('origin') || 'https://preview--vip-passenger.lovable.app'
     console.log('🌐 Origin for URLs:', origin)
     
     // Get customer email (passenger email or fallback to user email)
     const customerEmail = booking.passengers?.email || user.email
 
-    // Create Stripe Checkout Session with FIXED URLs
+    // Create Stripe Checkout Session with proper metadata and client_reference_id
     console.log('🛒 Creating Checkout Session with:', {
       amount: amountCents,
       currency: 'usd',
@@ -183,14 +180,16 @@ serve(async (req) => {
       ],
       mode: 'payment',
       customer_email: customerEmail,
-      // FIXED: Proper success and cancel URLs
-      success_url: `${origin}/passenger/dashboard?paid=true&booking_id=${booking_id}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/passenger/dashboard?canceled=true&booking_id=${booking_id}`,
+      // Ensure webhook can identify the booking
+      client_reference_id: booking_id,
       metadata: {
         booking_id: booking_id,
         passenger_id: booking.passenger_id,
         offer_price_cents: amountCents.toString(),
       },
+      // Updated success and cancel URLs
+      success_url: `${origin}/passenger/dashboard?paid=true&booking_id=${booking_id}&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/passenger/dashboard?canceled=true&booking_id=${booking_id}`,
     })
 
     console.log('✅ Checkout Session created:', session.id)

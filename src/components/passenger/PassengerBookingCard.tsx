@@ -1,203 +1,199 @@
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { format } from 'date-fns';
+import { MapPin, Clock, User, Car } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Clock, MapPin, User, CreditCard, MessageCircle } from 'lucide-react';
-import { AirbnbStyleReviewModal } from '@/components/review/AirbnbStyleReviewModal';
-import { MessagingInterface } from '@/components/dashboard/MessagingInterface';
-import { format } from 'date-fns';
-import type { Booking } from '@/lib/types/booking';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import type { Booking } from '@/hooks/useMyBookings';
 
 interface PassengerBookingCardProps {
   booking: Booking;
-  currentUserId: string;
-  currentUserName: string;
-  onStatusUpdate?: () => void;
 }
 
-export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
-  booking,
-  currentUserId,
-  currentUserName,
-  onStatusUpdate
-}) => {
-  const [showReviewModal, setShowReviewModal] = useState(false);
-  const [showMessaging, setShowMessaging] = useState(false);
+const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({ booking }) => {
+  const [isPaymentLoading, setIsPaymentLoading] = useState(false);
+  const { toast } = useToast();
 
-  const getStatusBadge = () => {
-    const status = booking.payment_confirmation_status || booking.status;
-    
-    switch (status) {
-      case 'waiting_for_offer':
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Awaiting Offer</Badge>;
-      case 'offer_sent':
-        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 animate-pulse">Payment Required</Badge>;
-      case 'waiting_for_payment':
-        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 animate-pulse">Payment Required</Badge>;
-      case 'passenger_paid':
-        return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">Payment Confirmed</Badge>;
-      case 'all_set':
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">All Set</Badge>;
-      case 'completed':
-        return <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">Completed</Badge>;
-      case 'cancelled':
-        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Cancelled</Badge>;
-      default:
-        return <Badge variant="outline">Pending</Badge>;
+  // Determine if booking is paid based on database values
+  const isPaid = booking.status === 'paid' || booking.payment_status === 'paid' || !!booking.paid_at;
+  
+  // Determine if payment is needed (offer sent but not paid)
+  const needsPayment = !isPaid && (
+    booking.status === 'offer_sent' || 
+    booking.ride_status === 'offer_sent' ||
+    booking.payment_confirmation_status === 'offer_sent'
+  ) && booking.offer_price_cents;
+
+  console.log(`Booking ${booking.id} payment check:`, {
+    status: booking.status,
+    payment_status: booking.payment_status,
+    paid_at: booking.paid_at,
+    isPaid,
+    needsPayment,
+    offer_price_cents: booking.offer_price_cents
+  });
+
+  const handlePayment = async () => {
+    if (!booking.offer_price_cents) {
+      toast({
+        title: "Payment Error",
+        description: "No price available for this booking",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsPaymentLoading(true);
+      
+      console.log('🔄 Starting payment process for booking:', booking.id);
+      
+      const { data, error } = await supabase.functions.invoke('stripe-start-checkout', {
+        body: { booking_id: booking.id }
+      });
+
+      if (error) {
+        console.error('❌ Stripe checkout error:', error);
+        toast({
+          title: "Payment Error",
+          description: error.message || "Failed to start payment process. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!data?.url) {
+        console.error('❌ No checkout URL received');
+        toast({
+          title: "Payment Error",
+          description: "Failed to create payment session. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('✅ Redirecting to Stripe Checkout:', data.url);
+      
+      // Redirect to Stripe Checkout
+      window.location.href = data.url;
+      
+    } catch (error) {
+      console.error('❌ Payment error:', error);
+      toast({
+        title: "Payment Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPaymentLoading(false);
     }
   };
 
-  const needsAction = () => {
-    const status = booking.payment_confirmation_status || booking.status;
-    return status === 'offer_sent' || status === 'waiting_for_payment';
+  const getStatusBadge = () => {
+    if (isPaid) {
+      return <Badge className="bg-green-100 text-green-800">Paid</Badge>;
+    }
+    if (needsPayment) {
+      return <Badge className="bg-yellow-100 text-yellow-800">Awaiting Payment</Badge>;
+    }
+    return <Badge variant="outline">{booking.status || 'Pending'}</Badge>;
   };
 
-  const canLeaveReview = () => {
-    return booking.payment_confirmation_status === 'completed' || booking.status === 'completed';
-  };
-
-  const formatPrice = (cents?: number) => {
-    if (!cents) return 'TBD';
-    return `$${(cents / 100).toFixed(2)}`;
+  const formatPrice = (cents: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(cents / 100);
   };
 
   return (
-    <>
-      <Card className={`hover:shadow-md transition-all duration-200 ${needsAction() ? 'ring-2 ring-primary/20 shadow-lg' : ''}`}>
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
-            <div>
-              <CardTitle className="text-lg font-semibold">
-                {booking.booking_code || `Booking #${booking.id.slice(0, 8)}`}
-              </CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                {format(new Date(booking.pickup_time), 'MMM d, yyyy • h:mm a')}
-              </p>
-            </div>
-            <div className="flex flex-col items-end gap-2">
+    <Card className="w-full">
+      <CardContent className="p-4">
+        <div className="flex justify-between items-start mb-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-lg">
+                #{booking.booking_code || booking.id.slice(-8).toUpperCase()}
+              </h3>
               {getStatusBadge()}
-              {needsAction() && (
-                <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Clock className="w-4 h-4" />
+              {format(new Date(booking.pickup_time), 'MMM d, yyyy \'at\' h:mm a')}
+            </div>
+          </div>
+          
+          {booking.offer_price_cents && (
+            <div className="text-right">
+              <div className="text-2xl font-bold text-green-600">
+                {formatPrice(booking.offer_price_cents)}
+              </div>
+              {isPaid && booking.paid_at && (
+                <div className="text-xs text-green-600">
+                  Paid {format(new Date(booking.paid_at), 'MMM d, yyyy')}
+                </div>
               )}
             </div>
-          </div>
-        </CardHeader>
+          )}
+        </div>
 
-        <CardContent className="space-y-4">
-          {/* Route */}
-          <div className="space-y-2">
-            <div className="flex items-start gap-3">
-              <MapPin className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {booking.pickup_location}
-                </p>
-                <p className="text-xs text-gray-500">Pickup</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <MapPin className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {booking.dropoff_location}
-                </p>
-                <p className="text-xs text-gray-500">Destination</p>
-              </div>
-            </div>
+        {/* Location Details */}
+        <div className="space-y-2 mb-4">
+          <div className="flex items-start gap-2">
+            <MapPin className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+            <span className="text-sm text-gray-600 break-words">
+              {booking.pickup_location}
+            </span>
           </div>
-
-          {/* Driver & Price Info */}
-          <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100">
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-xs text-gray-500">Driver</p>
-                <p className="text-sm font-medium">
-                  {booking.driver_name || 'TBD'}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-xs text-gray-500">Price</p>
-                <p className="text-sm font-medium">
-                  {formatPrice(booking.final_price_cents || booking.estimated_price_cents)}
-                </p>
-              </div>
-            </div>
+          <div className="flex items-start gap-2">
+            <MapPin className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+            <span className="text-sm text-gray-600 break-words">
+              {booking.dropoff_location}
+            </span>
           </div>
+        </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-2 pt-2">
-            {needsAction() && (
-              <Button 
-                className="flex-1" 
-                onClick={() => {
-                  // Navigate to payment or booking details
-                  window.location.href = `/passenger/dashboard?tab=bookings&booking=${booking.id}`;
-                }}
-              >
-                {booking.payment_confirmation_status === 'offer_sent' || booking.status === 'offer_sent' 
-                  ? 'Complete Payment' 
-                  : 'View Details'
-                }
-              </Button>
+        {/* Driver Info */}
+        {booking.drivers && (
+          <div className="flex items-center gap-2 mb-4 p-2 bg-gray-50 rounded">
+            <User className="w-4 h-4 text-gray-600" />
+            <span className="text-sm font-medium">{booking.drivers.full_name}</span>
+            {booking.drivers.car_make && booking.drivers.car_model && (
+              <>
+                <Car className="w-4 h-4 text-gray-600 ml-2" />
+                <span className="text-sm text-gray-600">
+                  {booking.drivers.car_make} {booking.drivers.car_model}
+                  {booking.drivers.car_color && ` (${booking.drivers.car_color})`}
+                </span>
+              </>
             )}
-            
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex gap-2 pt-2">
+          {needsPayment && (
             <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setShowMessaging(true)}
-              className="flex items-center gap-1"
+              onClick={handlePayment}
+              disabled={isPaymentLoading}
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white"
             >
-              <MessageCircle className="h-4 w-4" />
-              Chat
+              {isPaymentLoading ? 'Processing...' : `Pay ${formatPrice(booking.offer_price_cents)} to Confirm Ride`}
             </Button>
-
-            {canLeaveReview() && (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setShowReviewModal(true)}
-              >
-                Review
-              </Button>
-            )}
-          </div>
-
-          {/* Urgency Message */}
-          {needsAction() && (
-            <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 mt-3">
-              <p className="text-sm text-primary font-medium">
-                ⏰ Action needed: Complete payment to confirm your ride
-              </p>
+          )}
+          
+          {isPaid && (
+            <div className="flex-1 text-center py-2 text-green-600 font-medium">
+              ✅ Ride Confirmed & Paid
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Review Modal */}
-      <AirbnbStyleReviewModal
-        isOpen={showReviewModal}
-        onClose={() => setShowReviewModal(false)}
-        booking={booking}
-        onReviewSubmitted={() => {
-          setShowReviewModal(false);
-          onStatusUpdate?.();
-        }}
-      />
-
-      {/* Messaging Interface */}
-      <MessagingInterface
-        bookingId={booking.id}
-        userType="passenger"
-        isOpen={showMessaging}
-        onClose={() => setShowMessaging(false)}
-        currentUserId={currentUserId}
-        currentUserName={currentUserName}
-      />
-    </>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
+
+export default PassengerBookingCard;
