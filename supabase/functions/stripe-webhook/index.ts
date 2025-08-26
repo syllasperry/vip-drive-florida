@@ -58,10 +58,10 @@ serve(async (req) => {
       apiVersion: '2023-10-16',
     })
 
-    // Verify webhook signature
+    // Verify webhook signature using constructEventAsync for Deno
     let event
     try {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
+      event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret)
       console.log('✅ Webhook signature verified:', event.type)
     } catch (err) {
       console.error('❌ Webhook signature verification failed:', err.message)
@@ -90,13 +90,17 @@ serve(async (req) => {
           break
         }
 
-        // Update booking status to paid
+        console.log('📋 Updating booking:', bookingId, 'to paid status')
+
+        // Update booking status to paid with comprehensive fields
         const { error: updateError } = await supabaseClient
           .from('bookings')
           .update({
             payment_status: 'paid',
+            status: 'paid',
+            payment_confirmation_status: 'all_set',
             total_paid_cents: session.amount_total,
-            stripe_payment_intent_id: session.payment_intent as string,
+            stripe_payment_intent_id: session.payment_intent as string || session.id,
             paid_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
@@ -106,6 +110,19 @@ serve(async (req) => {
           console.error('❌ Error updating booking after payment:', updateError)
         } else {
           console.log('✅ Booking updated to paid:', bookingId)
+          
+          // Verify the update worked
+          const { data: verifyBooking, error: verifyError } = await supabaseClient
+            .from('bookings')
+            .select('id, payment_status, status, paid_at')
+            .eq('id', bookingId)
+            .single()
+          
+          if (verifyError) {
+            console.error('❌ Error verifying booking update:', verifyError)
+          } else {
+            console.log('✅ Booking verification:', verifyBooking)
+          }
           
           // Trigger email notifications
           try {
@@ -127,7 +144,7 @@ serve(async (req) => {
         // Find booking by stripe_payment_intent_id
         const { data: booking, error: fetchError } = await supabaseClient
           .from('bookings')
-          .select('id')
+          .select('id, payment_status')
           .eq('stripe_payment_intent_id', paymentIntent.id)
           .single()
 
@@ -136,21 +153,29 @@ serve(async (req) => {
           break
         }
 
-        // Ensure booking is marked as paid
-        const { error: updateError } = await supabaseClient
-          .from('bookings')
-          .update({
-            payment_status: 'paid',
-            total_paid_cents: paymentIntent.amount,
-            paid_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', booking.id)
+        // Only update if not already paid (avoid duplicate updates)
+        if (booking.payment_status !== 'paid') {
+          console.log('📋 Updating booking via payment_intent:', booking.id)
+          
+          const { error: updateError } = await supabaseClient
+            .from('bookings')
+            .update({
+              payment_status: 'paid',
+              status: 'paid',
+              payment_confirmation_status: 'all_set',
+              total_paid_cents: paymentIntent.amount,
+              paid_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', booking.id)
 
-        if (updateError) {
-          console.error('❌ Error updating booking after payment_intent:', updateError)
+          if (updateError) {
+            console.error('❌ Error updating booking after payment_intent:', updateError)
+          } else {
+            console.log('✅ Booking confirmed paid via payment_intent:', booking.id)
+          }
         } else {
-          console.log('✅ Booking confirmed paid:', booking.id)
+          console.log('ℹ️ Booking already marked as paid:', booking.id)
         }
         break
       }
@@ -176,6 +201,7 @@ serve(async (req) => {
           .from('bookings')
           .update({
             payment_status: 'failed',
+            status: 'cancelled',
             updated_at: new Date().toISOString()
           })
           .eq('id', booking.id)

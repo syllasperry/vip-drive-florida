@@ -17,10 +17,14 @@ export interface Booking {
   final_price: number | null;
   estimated_price: number | null;
   payment_confirmation_status: string | null;
+  payment_status: string | null; // Added for better payment tracking
   ride_status: string | null;
   passenger_count: number;
   luggage_count: number;
   flight_info: string | null;
+  offer_price_cents: number | null;
+  total_paid_cents: number | null;
+  paid_at: string | null;
   drivers?: {
     full_name: string;
     phone: string;
@@ -75,7 +79,7 @@ export const useMyBookings = () => {
         passenger = newPassenger;
       }
 
-      // Now fetch bookings for this passenger
+      // Now fetch bookings for this passenger with enhanced payment fields
       const { data: rawBookings, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
@@ -93,10 +97,14 @@ export const useMyBookings = () => {
           final_price,
           estimated_price,
           payment_confirmation_status,
+          payment_status,
           ride_status,
           passenger_count,
           luggage_count,
           flight_info,
+          offer_price_cents,
+          total_paid_cents,
+          paid_at,
           drivers:driver_id (
             full_name,
             phone,
@@ -117,7 +125,7 @@ export const useMyBookings = () => {
 
       console.log('✅ Bookings fetched successfully:', rawBookings?.length || 0);
       
-      // Map the raw data to ensure type safety
+      // Map the raw data to ensure type safety and proper payment status detection
       const bookings: Booking[] = (rawBookings || []).map(booking => ({
         ...booking,
         drivers: booking.drivers && typeof booking.drivers === 'object' && !Array.isArray(booking.drivers) 
@@ -128,7 +136,9 @@ export const useMyBookings = () => {
       return bookings;
     },
     retry: 2,
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    // Refetch every 30 seconds to catch webhook updates
+    refetchInterval: 30000
   });
 
   return {

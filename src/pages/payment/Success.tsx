@@ -16,8 +16,18 @@ const Success: React.FC = () => {
   const sessionId = searchParams.get('session_id');
 
   useEffect(() => {
+    // Auto-redirect to dashboard after brief success display
+    const redirectTimer = setTimeout(() => {
+      if (bookingId) {
+        navigate(`/passenger/dashboard?paid=true&booking_id=${bookingId}`);
+      } else {
+        navigate('/passenger/dashboard');
+      }
+    }, 3000); // Show success for 3 seconds then redirect
+
     const fetchBookingDetails = async () => {
       if (!bookingId) {
+        // No booking ID, redirect immediately
         navigate('/passenger/dashboard');
         return;
       }
@@ -37,6 +47,7 @@ const Success: React.FC = () => {
 
         if (error || !booking) {
           console.error('Error fetching booking:', error);
+          // Still redirect to dashboard even if booking fetch fails
           navigate('/passenger/dashboard');
           return;
         }
@@ -51,10 +62,17 @@ const Success: React.FC = () => {
     };
 
     fetchBookingDetails();
+
+    // Cleanup timer on unmount
+    return () => clearTimeout(redirectTimer);
   }, [bookingId, navigate]);
 
   const handleContinue = () => {
-    navigate('/passenger/dashboard');
+    if (bookingId) {
+      navigate(`/passenger/dashboard?paid=true&booking_id=${bookingId}`);
+    } else {
+      navigate('/passenger/dashboard');
+    }
   };
 
   if (loading) {
@@ -73,8 +91,12 @@ const Success: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Card className="max-w-md w-full mx-4">
           <CardContent className="p-6 text-center">
-            <p className="text-gray-600 mb-4">Unable to load booking details.</p>
-            <Button onClick={() => navigate('/passenger/dashboard')}>
+            <div className="mx-auto mb-4 w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+              <CheckCircle className="w-8 h-8 text-green-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Payment Successful!</h2>
+            <p className="text-gray-600 mb-4">Redirecting you to your dashboard...</p>
+            <Button onClick={handleContinue}>
               Return to Dashboard
             </Button>
           </CardContent>
@@ -100,6 +122,9 @@ const Success: React.FC = () => {
             </CardTitle>
             <p className="text-gray-600 mt-2">
               Your ride has been confirmed
+            </p>
+            <p className="text-sm text-gray-500 mt-1">
+              Redirecting to dashboard in a moment...
             </p>
           </CardHeader>
 
