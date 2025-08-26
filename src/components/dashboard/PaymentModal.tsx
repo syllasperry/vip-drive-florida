@@ -52,8 +52,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const handlePayment = async () => {
     if (!booking?.id) {
       toast({
-        title: "Error",
-        description: "Invalid booking information",
+        title: "Erro",
+        description: "Informações da reserva inválidas",
         variant: "destructive",
       });
       return;
@@ -62,7 +62,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     try {
       setIsProcessing(true);
       
-      console.log('🔄 Starting Stripe checkout for booking:', booking.id);
+      console.log('🔄 Iniciando checkout Stripe para reserva:', booking.id);
       
       // Call the Stripe checkout edge function
       const { data, error } = await supabase.functions.invoke('stripe-start-checkout', {
@@ -72,25 +72,27 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       });
 
       if (error) {
-        console.error('❌ Stripe checkout error:', error);
+        console.error('❌ Erro no checkout Stripe:', error);
         
         // Handle specific error cases
-        let errorMessage = error.message || "Failed to start payment process. Please try again.";
+        let errorMessage = error.message || "Falha ao iniciar processo de pagamento. Tente novamente.";
         
         if (error.message === 'missing_offer_price_cents') {
-          errorMessage = "Price unavailable - please contact support";
+          errorMessage = "Preço indisponível - entre em contato com o suporte";
         } else if (error.message?.includes('Stripe configuration')) {
-          errorMessage = "Payment system temporarily unavailable - please try again later";
+          errorMessage = "Sistema de pagamento temporariamente indisponível - tente novamente mais tarde";
         } else if (error.message?.includes('Network error')) {
-          errorMessage = "Connection issue - please check your internet and try again";
+          errorMessage = "Problema de conexão - verifique sua internet e tente novamente";
         } else if (error.message?.includes('Access denied')) {
-          errorMessage = "Access denied - please try logging in again";
+          errorMessage = "Acesso negado - tente fazer login novamente";
         } else if (error.message?.includes('Booking not found')) {
-          errorMessage = "Booking not found - please refresh and try again";
+          errorMessage = "Reserva não encontrada - atualize a página e tente novamente";
+        } else if (error.message?.includes('Invalid Stripe key')) {
+          errorMessage = "Erro de configuração do sistema de pagamento";
         }
         
         toast({
-          title: "Payment Error",
+          title: "Erro no Pagamento",
           description: errorMessage,
           variant: "destructive",
         });
@@ -98,25 +100,25 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       }
 
       if (!data?.url) {
-        console.error('❌ No checkout URL received');
+        console.error('❌ URL de checkout não recebida');
         toast({
-          title: "Payment Error",
-          description: "Failed to create payment session. Please try again.",
+          title: "Erro no Pagamento",
+          description: "Falha ao criar sessão de pagamento. Tente novamente.",
           variant: "destructive",
         });
         return;
       }
 
-      console.log('✅ Redirecting to Stripe Checkout:', data.url);
+      console.log('✅ Redirecionando para Stripe Checkout:', data.url);
       
       // Redirect to Stripe hosted checkout
       window.location.href = data.url;
       
     } catch (error) {
-      console.error('❌ Payment error:', error);
+      console.error('❌ Erro no pagamento:', error);
       toast({
-        title: "Payment Error",
-        description: "An unexpected error occurred. Please try again.",
+        title: "Erro no Pagamento",
+        description: "Ocorreu um erro inesperado. Tente novamente.",
         variant: "destructive",
       });
     } finally {

@@ -142,6 +142,18 @@ serve(async (req) => {
       )
     }
 
+    // Validate the Stripe key format
+    if (!stripeSecretKey.startsWith('sk_test_') && !stripeSecretKey.startsWith('sk_live_')) {
+      console.error('❌ Invalid STRIPE_SECRET_KEY format')
+      return new Response(
+        JSON.stringify({ error: 'Invalid Stripe key format' }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: '2023-10-16',
     })
@@ -240,6 +252,9 @@ serve(async (req) => {
     } else if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
       errorMessage = 'Network error - please check your connection'
       statusCode = 503
+    } else if (error?.message?.includes('Invalid API Key')) {
+      errorMessage = 'Stripe configuration error - invalid API key'
+      statusCode = 500
     }
 
     return new Response(
