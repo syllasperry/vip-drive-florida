@@ -194,15 +194,15 @@ export default function MobileDashboard() {
           <div className="space-y-6">
             <div className="flex items-center justify-between px-4">
               <div>
-                <h1 className="text-2xl font-semibold text-gray-900">Suas viagens</h1>
-                <p className="text-gray-500 text-sm">Gerencie suas reservas</p>
+                <h1 className="text-2xl font-semibold text-gray-900">Your trips</h1>
+                <p className="text-gray-500 text-sm">Manage your bookings</p>
               </div>
               <Button 
                 onClick={() => navigate('/passenger/price-estimate')} 
                 className="bg-[#FF385C] hover:bg-[#E31C5F] text-white rounded-full px-6"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Reservar
+                Book
               </Button>
             </div>
             
@@ -221,15 +221,15 @@ export default function MobileDashboard() {
                 <Card>
                   <CardContent className="p-8 text-center">
                     <Calendar className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">Nenhuma reserva ainda</h3>
+                    <h3 className="text-lg font-semibold mb-2">No bookings yet</h3>
                     <p className="text-gray-500 mb-4">
-                      Comece criando sua primeira reserva
+                      Start by creating your first booking
                     </p>
                     <Button 
                       onClick={() => navigate('/passenger/price-estimate')}
                       className="bg-[#FF385C] hover:bg-[#E31C5F] text-white"
                     >
-                      Reserve Sua Primeira Viagem
+                      Book Your First Trip
                     </Button>
                   </CardContent>
                 </Card>
@@ -288,7 +288,7 @@ export default function MobileDashboard() {
             <div className="w-8 h-8 bg-[#FF385C] rounded-lg flex items-center justify-center">
               <User className="h-5 w-5 text-white" />
             </div>
-            <span className="text-lg font-semibold text-gray-900">Passageiro</span>
+            <span className="text-lg font-semibold text-gray-900">Passenger</span>
           </div>
           <NotificationBell 
             count={notificationCount}

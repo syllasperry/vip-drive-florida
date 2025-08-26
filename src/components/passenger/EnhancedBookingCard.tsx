@@ -60,40 +60,40 @@ export const EnhancedBookingCard: React.FC<EnhancedBookingCardProps> = ({
 
   const getStatusMessage = () => {
     if (!booking.driver_id) {
-      return 'Aguardando designação do motorista';
+      return 'Awaiting driver assignment';
     }
     
     switch (booking.payment_confirmation_status) {
       case 'waiting_for_offer':
-        return 'Aguardando oferta do motorista';
+        return 'Waiting for driver offer';
       case 'price_awaiting_acceptance':
-        return 'Revisar oferta recebida';
+        return 'Review received offer';
       case 'passenger_paid':
-        return 'Pagamento confirmado, aguardando motorista';
+        return 'Payment confirmed, awaiting driver';
       case 'all_set':
-        return 'Tudo pronto para a viagem';
+        return 'All set for your trip';
       default:
-        return 'Processando reserva';
+        return 'Processing booking';
     }
   };
 
   const formatPrice = (price?: number) => {
     if (!price) return null;
-    return new Intl.NumberFormat('pt-BR', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'BRL'
+      currency: 'USD'
     }).format(price);
   };
 
   const formatDateTime = (dateTime: string) => {
     const date = new Date(dateTime);
     return {
-      date: date.toLocaleDateString('pt-BR', { 
+      date: date.toLocaleDateString('en-US', { 
         day: '2-digit', 
         month: '2-digit',
         year: 'numeric'
       }),
-      time: date.toLocaleTimeString('pt-BR', { 
+      time: date.toLocaleTimeString('en-US', { 
         hour: '2-digit', 
         minute: '2-digit' 
       })
@@ -124,7 +124,7 @@ export const EnhancedBookingCard: React.FC<EnhancedBookingCardProps> = ({
               <Avatar className="h-12 w-12 ring-2 ring-gray-100">
                 <AvatarImage 
                   src={passengerInfo?.profile_photo_url || undefined} 
-                  alt={passengerInfo?.full_name || 'Passageiro'}
+                  alt={passengerInfo?.full_name || 'Passenger'}
                   className="object-cover"
                 />
                 <AvatarFallback className="bg-[#FF385C] text-white font-semibold">
@@ -134,10 +134,10 @@ export const EnhancedBookingCard: React.FC<EnhancedBookingCardProps> = ({
               
               <div>
                 <h3 className="font-semibold text-gray-900">
-                  {passengerInfo?.full_name || 'Passageiro'}
+                  {passengerInfo?.full_name || 'Passenger'}
                 </h3>
                 <p className="text-sm text-gray-500">
-                  {booking.booking_code ? `#${booking.booking_code}` : `Reserva ${booking.id.slice(-6).toUpperCase()}`}
+                  {booking.booking_code ? `#${booking.booking_code}` : `Booking ${booking.id.slice(-6).toUpperCase()}`}
                 </p>
               </div>
             </div>
@@ -162,7 +162,7 @@ export const EnhancedBookingCard: React.FC<EnhancedBookingCardProps> = ({
                 <p className="text-sm font-medium text-gray-900 truncate">
                   {booking.pickup_location}
                 </p>
-                <p className="text-xs text-gray-500">Origem</p>
+                <p className="text-xs text-gray-500">Pickup</p>
               </div>
             </div>
 
@@ -172,7 +172,7 @@ export const EnhancedBookingCard: React.FC<EnhancedBookingCardProps> = ({
                 <p className="text-sm font-medium text-gray-900 truncate">
                   {booking.dropoff_location}
                 </p>
-                <p className="text-xs text-gray-500">Destino</p>
+                <p className="text-xs text-gray-500">Drop-off</p>
               </div>
             </div>
 
@@ -180,9 +180,9 @@ export const EnhancedBookingCard: React.FC<EnhancedBookingCardProps> = ({
               <Clock className="h-4 w-4 text-blue-600 flex-shrink-0" />
               <div>
                 <p className="text-sm font-medium text-gray-900">
-                  {date} às {time}
+                  {date} at {time}
                 </p>
-                <p className="text-xs text-gray-500">Data e horário</p>
+                <p className="text-xs text-gray-500">Date & Time</p>
               </div>
             </div>
           </div>
@@ -220,7 +220,7 @@ export const EnhancedBookingCard: React.FC<EnhancedBookingCardProps> = ({
             className="w-full border-[#FF385C] text-[#FF385C] hover:bg-[#FF385C] hover:text-white"
           >
             <Eye className="h-4 w-4 mr-2" />
-            Ver Detalhes
+            View Details
           </Button>
         </div>
       </CardContent>
