@@ -8,6 +8,12 @@ interface PasswordValidation {
   errors: string[];
 }
 
+interface PasswordValidationResponse {
+  is_valid: boolean;
+  score: number;
+  errors: string[];
+}
+
 export const usePasswordValidation = (password: string) => {
   const [validation, setValidation] = useState<PasswordValidation>({
     isValid: false,
@@ -25,17 +31,23 @@ export const usePasswordValidation = (password: string) => {
     const validatePassword = async () => {
       setIsLoading(true);
       try {
-        const { data, error } = await supabase.rpc('validate_password_strength', {
+        // Try to call the database function, with fallback to client-side validation
+        const { data, error } = await supabase.rpc('validate_password_strength' as any, {
           password: password
         });
 
-        if (error) throw error;
-
-        setValidation({
-          isValid: data.is_valid,
-          score: data.score,
-          errors: data.errors || []
-        });
+        if (error) {
+          console.warn('Server-side password validation unavailable, using client-side validation:', error);
+          const clientValidation = validatePasswordClient(password);
+          setValidation(clientValidation);
+        } else {
+          const result = data as PasswordValidationResponse;
+          setValidation({
+            isValid: result.is_valid,
+            score: result.score,
+            errors: result.errors || []
+          });
+        }
       } catch (error) {
         console.error('Password validation error:', error);
         // Fallback to client-side validation
