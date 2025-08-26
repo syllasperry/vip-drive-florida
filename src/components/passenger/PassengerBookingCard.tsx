@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Clock, MapPin, User, CreditCard, MessageCircle, Phone, Mail } from 'lucide-react';
+import { Clock, MapPin, User, CreditCard, MessageCircle, Phone, Mail, Info } from 'lucide-react';
 import { AirbnbStyleReviewModal } from '@/components/review/AirbnbStyleReviewModal';
 import { MessagingInterface } from '@/components/dashboard/MessagingInterface';
 import { format } from 'date-fns';
@@ -28,14 +28,14 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const getStatusBadge = () => {
-    // CRITICAL: Check all possible paid indicators
+    // CRITICAL: Check all possible paid indicators - mais robusto
     const isPaid = booking.status === 'paid' || 
                   booking.payment_status === 'paid' || 
                   booking.paid_at || 
                   booking.paid_amount_cents > 0;
     
     if (isPaid) {
-      return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">PAID</Badge>;
+      return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 font-semibold">✅ PAID</Badge>;
     }
     
     const status = booking.payment_confirmation_status || booking.status;
@@ -44,10 +44,10 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
       case 'waiting_for_offer':
         return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Awaiting Offer</Badge>;
       case 'offer_sent':
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">OFFER RECEIVED</Badge>;
+        return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 animate-pulse">⚡ OFFER RECEIVED - PAYMENT REQUIRED</Badge>;
       case 'waiting_for_payment':
       case 'awaiting_payment':
-        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 animate-pulse">Payment Required</Badge>;
+        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 animate-pulse">💳 Payment Required</Badge>;
       case 'processing':
         return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">Processing Payment</Badge>;
       case 'passenger_paid':
@@ -146,9 +146,15 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
     }
   };
 
+  const handleRideDetails = () => {
+    // Mostrar detalhes do ride - pode expandir para modal ou nova página
+    console.log('Showing ride details for:', booking.id);
+    alert('Ride details feature coming soon!');
+  };
+
   return (
     <>
-      <Card className={`hover:shadow-md transition-all duration-200 ${needsAction() ? 'ring-2 ring-primary/20 shadow-lg' : ''}`}>
+      <Card className={`hover:shadow-md transition-all duration-200 ${needsAction() ? 'ring-2 ring-primary/20 shadow-lg' : ''} ${isPaid() ? 'ring-2 ring-green-500/30 bg-green-50/30' : ''}`}>
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div>
@@ -174,8 +180,8 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
         <CardContent className="space-y-4">
           {/* Driver Info - Show full details when paid */}
           {isPaid() && booking.drivers ? (
-            <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-              <div className="w-12 h-12 rounded-full overflow-hidden bg-blue-500 flex items-center justify-center">
+            <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg border border-green-200">
+              <div className="w-12 h-12 rounded-full overflow-hidden bg-green-500 flex items-center justify-center">
                 {booking.drivers.profile_photo_url ? (
                   <img 
                     src={booking.drivers.profile_photo_url} 
@@ -189,26 +195,26 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
                 )}
               </div>
               <div className="flex-1">
-                <p className="text-sm font-medium text-gray-600">Driver</p>
+                <p className="text-sm font-medium text-green-700">✅ Your Driver</p>
                 <p className="font-semibold text-gray-900">{booking.drivers.full_name}</p>
                 <div className="flex gap-3 mt-1">
                   <button 
                     onClick={() => handleContactDriver('phone')}
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
+                    className="text-green-600 hover:text-green-800 text-sm font-medium flex items-center gap-1"
                   >
                     <Phone className="h-3 w-3" />
                     {booking.drivers.phone}
                   </button>
                   <button 
                     onClick={() => handleContactDriver('sms')}
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    className="text-green-600 hover:text-green-800 text-sm font-medium"
                   >
                     Text
                   </button>
                   {booking.drivers.email && (
                     <button 
                       onClick={() => handleContactDriver('email')}
-                      className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
+                      className="text-green-600 hover:text-green-800 text-sm font-medium flex items-center gap-1"
                     >
                       <Mail className="h-3 w-3" />
                       Email
@@ -224,7 +230,9 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-600">Driver</p>
-                <p className="text-gray-500">Your assigned driver</p>
+                <p className="text-gray-500">
+                  {isPaid() ? 'Driver details will be shared soon' : 'Awaiting assignment'}
+                </p>
               </div>
             </div>
           )}
@@ -272,9 +280,19 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
             </div>
           )}
 
-          {/* Action Buttons - Only show payment button if NOT paid and NOT processing */}
+          {/* Action Buttons */}
           <div className="flex gap-2 pt-2">
-            {needsAction() && !isProcessingPayment && (
+            {/* Se pago, mostrar botão de detalhes do ride */}
+            {isPaid() ? (
+              <Button 
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-3" 
+                onClick={handleRideDetails}
+              >
+                <Info className="h-4 w-4 mr-2" />
+                Ride Details
+              </Button>
+            ) : needsAction() && !isProcessingPayment ? (
+              /* Se precisa pagar, mostrar botão de pagamento */
               <Button 
                 className="flex-1 bg-pink-600 hover:bg-pink-700 text-white font-medium py-3" 
                 onClick={handlePayment}
@@ -282,14 +300,21 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
               >
                 💳 Pay to Confirm Ride
               </Button>
-            )}
-            
-            {isProcessingPayment && (
+            ) : isProcessingPayment ? (
+              /* Se processando pagamento */
               <Button 
                 className="flex-1 bg-gray-400 text-white font-medium py-3" 
                 disabled
               >
                 Processing...
+              </Button>
+            ) : (
+              /* Estado padrão para outros casos */
+              <Button 
+                className="flex-1 bg-gray-300 text-gray-600 font-medium py-3" 
+                disabled
+              >
+                Waiting for Offer
               </Button>
             )}
             
@@ -319,6 +344,15 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
             <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 mt-3">
               <p className="text-sm text-primary font-medium">
                 ⏰ Action needed: Complete payment to confirm your ride
+              </p>
+            </div>
+          )}
+
+          {/* Payment Success Message */}
+          {isPaid() && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-3">
+              <p className="text-sm text-green-800 font-medium">
+                ✅ Payment confirmed! Your ride is all set. Driver details above.
               </p>
             </div>
           )}

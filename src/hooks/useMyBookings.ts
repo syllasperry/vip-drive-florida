@@ -149,22 +149,26 @@ export const useMyBookings = () => {
           : null
       }));
 
-      console.log('📊 Bookings with payment status:', bookings.map(b => ({
+      // Enhanced logging for payment status debugging
+      console.log('📊 Detailed booking payment status:', bookings.map(b => ({
         id: b.id.slice(-8),
         booking_code: b.booking_code,
         status: b.status,
         payment_status: b.payment_status,
         paid_at: b.paid_at,
         paid_amount_cents: b.paid_amount_cents,
-        offer_price_cents: b.offer_price_cents
+        offer_price_cents: b.offer_price_cents,
+        payment_provider: b.payment_provider,
+        payment_reference: b.payment_reference,
+        isPaidCalculated: !!(b.status === 'paid' || b.payment_status === 'paid' || b.paid_at || b.paid_amount_cents > 0)
       })));
 
       return bookings;
     },
     retry: 2,
     refetchOnWindowFocus: true,
-    // More frequent refetch for quicker payment status updates
-    refetchInterval: 3000 // Every 3 seconds
+    // Faster refetch for immediate payment status updates
+    refetchInterval: 2000 // Every 2 seconds for faster response
   });
 
   // Set up realtime subscription for booking updates
@@ -179,14 +183,17 @@ export const useMyBookings = () => {
           table: 'bookings'
         },
         (payload) => {
-          console.log('📡 Realtime booking update:', payload);
-          // Refetch bookings when any booking is updated
+          console.log('📡 Realtime booking update received:', payload);
+          // Force immediate refetch when booking is updated
           refetch();
         }
       )
       .subscribe();
 
+    console.log('📡 Realtime subscription established for booking updates');
+
     return () => {
+      console.log('📡 Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
   }, [refetch]);

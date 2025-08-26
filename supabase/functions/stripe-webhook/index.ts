@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@14.21.0'
@@ -141,21 +140,51 @@ serve(async (req) => {
         }
 
         try {
-          // Call the record_stripe_payment function
-          const { data: paymentResult, error: paymentError } = await supabaseClient
-            .rpc('record_stripe_payment', {
-              _booking_code: bookingCode,
-              _amount_cents: session.amount_total || 0,
-              _provider_reference: session.payment_intent as string || session.id,
-              _currency: (session.currency || 'usd').toLowerCase()
+          // Directly update the booking instead of using RPC
+          const { data: updatedBooking, error: updateError } = await supabaseClient
+            .from('bookings')
+            .update({
+              status: 'paid',
+              payment_status: 'paid',
+              paid_at: new Date().toISOString(),
+              paid_amount_cents: session.amount_total || 0,
+              paid_currency: (session.currency || 'usd').toLowerCase(),
+              payment_provider: 'stripe',
+              payment_reference: session.payment_intent as string || session.id,
+              payment_confirmation_status: 'all_set',
+              updated_at: new Date().toISOString()
             })
+            .eq('booking_code', bookingCode)
+            .select()
+            .single()
 
-          if (paymentError) {
-            console.error('❌ Error calling record_stripe_payment:', paymentError)
+          if (updateError) {
+            console.error('❌ Error updating booking:', updateError)
             break
           }
 
-          console.log('✅ Payment recorded successfully:', paymentResult)
+          console.log('✅ Payment recorded successfully for booking:', bookingCode)
+
+          // Also insert into payments table for record keeping
+          const { error: paymentInsertError } = await supabaseClient
+            .from('payments')
+            .insert({
+              booking_id: updatedBooking.id,
+              amount_cents: session.amount_total || 0,
+              currency: (session.currency || 'usd').toUpperCase(),
+              method: 'stripe',
+              provider_txn_id: session.payment_intent as string || session.id,
+              status: 'PAID',
+              meta: {
+                stripe_session_id: session.id,
+                booking_code: bookingCode,
+                processed_at: new Date().toISOString()
+              }
+            })
+
+          if (paymentInsertError) {
+            console.error('⚠️ Error inserting payment record:', paymentInsertError)
+          }
 
           // Mark webhook event as processed
           await supabaseClient
@@ -164,7 +193,7 @@ serve(async (req) => {
             .eq('provider_event_id', event.id)
 
           // Try to trigger email notifications if booking_id is available
-          const bookingId = session.metadata?.booking_id
+          const bookingId = updatedBooking.id
           if (bookingId) {
             try {
               await supabaseClient.functions.invoke('send-booking-confirmation-emails', {
@@ -186,7 +215,10 @@ serve(async (req) => {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
         console.log('💰 Processing payment_intent.succeeded:', paymentIntent.id)
         
-        // Find booking by metadata or related checkout session
+        // This is a backup handler in case checkout.session.completed fails
+        // We'll only process if no successful checkout.session.completed was already processed
+        
+        // Find related checkout session
         const sessions = await stripe.checkout.sessions.list({
           payment_intent: paymentIntent.id,
           limit: 1
@@ -211,19 +243,36 @@ serve(async (req) => {
           console.log('🔍 Found related session with booking_code:', bookingCode)
           
           if (bookingCode) {
-            try {
-              const { data: paymentResult, error: paymentError } = await supabaseClient
-                .rpc('record_stripe_payment', {
-                  _booking_code: bookingCode,
-                  _amount_cents: paymentIntent.amount,
-                  _provider_reference: paymentIntent.id,
-                  _currency: (paymentIntent.currency || 'usd').toLowerCase()
-                })
+            // Check if booking is already marked as paid
+            const { data: existingBooking } = await supabaseClient
+              .from('bookings')
+              .select('payment_status, paid_at')
+              .eq('booking_code', bookingCode)
+              .single()
 
-              if (paymentError) {
-                console.error('❌ Error calling record_stripe_payment via payment_intent:', paymentError)
+            if (existingBooking?.payment_status === 'paid' && existingBooking?.paid_at) {
+              console.log('ℹ️ Booking already marked as paid, skipping payment_intent processing')
+            } else {
+              // Process payment as backup
+              const { error: updateError } = await supabaseClient
+                .from('bookings')
+                .update({
+                  status: 'paid',
+                  payment_status: 'paid',
+                  paid_at: new Date().toISOString(),
+                  paid_amount_cents: paymentIntent.amount,
+                  paid_currency: (paymentIntent.currency || 'usd').toLowerCase(),
+                  payment_provider: 'stripe',
+                  payment_reference: paymentIntent.id,
+                  payment_confirmation_status: 'all_set',
+                  updated_at: new Date().toISOString()
+                })
+                .eq('booking_code', bookingCode)
+
+              if (updateError) {
+                console.error('❌ Error updating booking via payment_intent:', updateError)
               } else {
-                console.log('✅ Payment confirmed via payment_intent:', paymentResult)
+                console.log('✅ Payment confirmed via payment_intent:', bookingCode)
                 
                 // Mark webhook event as processed
                 await supabaseClient
@@ -231,8 +280,6 @@ serve(async (req) => {
                   .update({ processed_ok: true })
                   .eq('provider_event_id', event.id)
               }
-            } catch (error) {
-              console.error('❌ Error processing payment_intent:', error)
             }
           }
         }
