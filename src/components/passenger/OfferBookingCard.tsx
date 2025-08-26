@@ -77,13 +77,39 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
 
   const statusDisplay = getStatusDisplay();
   
-  // Use offer_price_cents as the source of truth for the payment amount
-  const offerPriceCents = booking.offer_price_cents || booking.final_price_cents;
-  const finalPrice = offerPriceCents 
-    ? (offerPriceCents / 100).toFixed(2)
-    : booking.final_price?.toFixed(2) 
-    || booking.estimated_price?.toFixed(2) 
-    || '0.00';
+  // Check multiple price sources in order of preference for the dispatcher-set price
+  const getBookingPrice = () => {
+    // Primary: offer_price_cents (dispatcher offer)
+    if (booking.offer_price_cents && booking.offer_price_cents > 0) {
+      return booking.offer_price_cents;
+    }
+    
+    // Secondary: final_price_cents (confirmed price)
+    if (booking.final_price_cents && booking.final_price_cents > 0) {
+      return booking.final_price_cents;
+    }
+    
+    // Tertiary: estimated_price_cents
+    if (booking.estimated_price_cents && booking.estimated_price_cents > 0) {
+      return booking.estimated_price_cents;
+    }
+    
+    // Legacy: final_price in dollars
+    if (booking.final_price && booking.final_price > 0) {
+      return Math.round(booking.final_price * 100);
+    }
+    
+    // Legacy: estimated_price in dollars
+    if (booking.estimated_price && booking.estimated_price > 0) {
+      return Math.round(booking.estimated_price * 100);
+    }
+    
+    return null;
+  };
+
+  const priceCents = getBookingPrice();
+  const finalPrice = priceCents ? (priceCents / 100).toFixed(2) : '0.00';
+  const hasValidPrice = priceCents && priceCents > 0;
 
   const shouldShowPaymentButton = 
     (booking.status === 'offer_sent' || 
@@ -106,9 +132,6 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
   const driverPhone = driverInfo.phone;
   const driverPhoto = driverInfo.profile_photo_url;
 
-  // Check if we have a valid price to show
-  const hasValidPrice = offerPriceCents && offerPriceCents > 0;
-
   return (
     <>
       <Card className="border border-gray-200 hover:shadow-md transition-all duration-200">
@@ -130,8 +153,8 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
                 </>
               ) : (
                 <>
-                  <p className="text-sm text-gray-500">Price unavailable</p>
-                  <p className="text-xs text-gray-500">Pull to refresh</p>
+                  <p className="text-sm text-gray-500">Price pending</p>
+                  <p className="text-xs text-gray-500">Awaiting offer</p>
                 </>
               )}
             </div>
@@ -207,7 +230,7 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
                 disabled={!hasValidPrice}
               >
                 <CreditCard className="w-4 h-4" />
-                {hasValidPrice ? `Pay $${finalPrice} to Confirm Ride` : 'Price unavailable—pull to refresh'}
+                {hasValidPrice ? `Pay $${finalPrice} to Confirm Ride` : 'Awaiting price offer'}
               </Button>
             </div>
           )}

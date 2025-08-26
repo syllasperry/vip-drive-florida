@@ -25,10 +25,39 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
-  // Use offer_price_cents as the source of truth for the payment amount
-  const offerPriceCents = booking.offer_price_cents || booking.final_price_cents || booking.estimated_price_cents;
-  const totalAmount = offerPriceCents ? (offerPriceCents / 100).toFixed(2) : '0.00';
-  const hasValidPrice = offerPriceCents && offerPriceCents > 0;
+  // Check multiple price sources in order of preference for the dispatcher-set price
+  const getBookingPrice = () => {
+    // Primary: offer_price_cents (dispatcher offer)
+    if (booking.offer_price_cents && booking.offer_price_cents > 0) {
+      return booking.offer_price_cents;
+    }
+    
+    // Secondary: final_price_cents (confirmed price)
+    if (booking.final_price_cents && booking.final_price_cents > 0) {
+      return booking.final_price_cents;
+    }
+    
+    // Tertiary: estimated_price_cents
+    if (booking.estimated_price_cents && booking.estimated_price_cents > 0) {
+      return booking.estimated_price_cents;
+    }
+    
+    // Legacy: final_price in dollars
+    if (booking.final_price && booking.final_price > 0) {
+      return Math.round(booking.final_price * 100);
+    }
+    
+    // Legacy: estimated_price in dollars
+    if (booking.estimated_price && booking.estimated_price > 0) {
+      return Math.round(booking.estimated_price * 100);
+    }
+    
+    return null;
+  };
+
+  const priceCents = getBookingPrice();
+  const totalAmount = priceCents ? (priceCents / 100).toFixed(2) : '0.00';
+  const hasValidPrice = priceCents && priceCents > 0;
 
   const handlePayment = async () => {
     if (!booking?.id) {
@@ -160,7 +189,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 {hasValidPrice ? (
                   <span className="text-2xl font-bold text-gray-900">${totalAmount}</span>
                 ) : (
-                  <span className="text-sm text-gray-500">Price unavailable</span>
+                  <span className="text-sm text-gray-500">Price pending</span>
                 )}
               </div>
 
@@ -206,7 +235,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   Pay ${totalAmount}
                 </>
               ) : (
-                'Price unavailable'
+                'Awaiting price offer'
               )}
             </Button>
           </div>
