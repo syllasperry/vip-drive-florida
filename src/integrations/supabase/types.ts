@@ -294,6 +294,8 @@ export type Database = {
           payment_confirmation_status: string | null
           payment_expires_at: string | null
           payment_method: string | null
+          payment_provider: string | null
+          payment_reference: string | null
           payment_status: string
           pickup_location: string
           pickup_time: string
@@ -357,6 +359,8 @@ export type Database = {
           payment_confirmation_status?: string | null
           payment_expires_at?: string | null
           payment_method?: string | null
+          payment_provider?: string | null
+          payment_reference?: string | null
           payment_status?: string
           pickup_location: string
           pickup_time: string
@@ -420,6 +424,8 @@ export type Database = {
           payment_confirmation_status?: string | null
           payment_expires_at?: string | null
           payment_method?: string | null
+          payment_provider?: string | null
+          payment_reference?: string | null
           payment_status?: string
           pickup_location?: string
           pickup_time?: string
@@ -1439,6 +1445,36 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limit_log: {
+        Row: {
+          action_type: string
+          attempts: number | null
+          blocked_until: string | null
+          created_at: string
+          id: string
+          identifier: string
+          last_attempt_at: string
+        }
+        Insert: {
+          action_type: string
+          attempts?: number | null
+          blocked_until?: string | null
+          created_at?: string
+          id?: string
+          identifier: string
+          last_attempt_at?: string
+        }
+        Update: {
+          action_type?: string
+          attempts?: number | null
+          blocked_until?: string | null
+          created_at?: string
+          id?: string
+          identifier?: string
+          last_attempt_at?: string
+        }
+        Relationships: []
+      }
       realtime_outbox: {
         Row: {
           booking_id: string
@@ -1797,6 +1833,97 @@ export type Database = {
           sent?: boolean
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      secure_payment_links: {
+        Row: {
+          booking_id: string
+          created_at: string
+          created_by: string | null
+          encrypted_url: string
+          expires_at: string
+          id: string
+          used_at: string | null
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          created_by?: string | null
+          encrypted_url: string
+          expires_at: string
+          id?: string
+          used_at?: string | null
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          created_by?: string | null
+          encrypted_url?: string
+          expires_at?: string
+          id?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "secure_payment_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "booking_notification_prefs_v1_secure"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "secure_payment_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "secure_payment_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_booking_cards_secure"
+            referencedColumns: ["booking_id"]
+          },
+        ]
+      }
+      security_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          id: string
+          ip_address: unknown | null
+          resource_id: string | null
+          resource_type: string
+          severity: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: unknown | null
+          resource_id?: string | null
+          resource_type: string
+          severity?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: unknown | null
+          resource_id?: string | null
+          resource_type?: string
+          severity?: string | null
+          user_agent?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -3477,6 +3604,10 @@ export type Database = {
       }
       validate_dispatcher_access_simple: {
         Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      validate_password_strength: {
+        Args: { password: string }
         Returns: boolean
       }
       version_pricing_rule: {

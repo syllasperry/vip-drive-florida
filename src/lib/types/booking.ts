@@ -50,6 +50,13 @@ export interface Booking {
   simple_status?: 'booking_requested' | 'payment_pending' | 'all_set' | 'completed' | 'cancelled';
   final_negotiated_price?: number;
   
+  // Payment tracking fields
+  offer_price_cents?: number;
+  paid_amount_cents?: number;
+  paid_at?: string;
+  payment_provider?: string;
+  payment_reference?: string;
+  
   // Related data (for joins)
   passengers?: {
     id: string;
@@ -81,5 +88,32 @@ export interface Booking {
     car_model: string;
     car_color: string;
     license_plate: string;
+  };
+}
+
+export interface PaymentTransaction {
+  id: string;
+  booking_id: string;
+  passenger_id: string;
+  driver_id: string;
+  currency: string;
+  amount_cents: number;
+  payment_method: 'stripe_card' | 'apple_pay' | 'google_pay' | 'zelle' | 'venmo' | 'cash_app' | 'other';
+  payment_status: 'pending' | 'succeeded' | 'failed' | 'refunded' | 'disputed';
+  stripe_payment_intent_id?: string;
+  stripe_charge_id?: string;
+  stripe_fee_cents?: number;
+  dispatcher_commission_cents: number;
+  net_driver_amount_cents: number;
+  transaction_date: string;
+  created_at: string;
+  updated_at: string;
+  metadata?: any;
+  passenger?: {
+    full_name: string;
+    profile_photo_url?: string;
+  };
+  driver?: {
+    full_name: string;
   };
 }
