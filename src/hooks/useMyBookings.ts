@@ -1,6 +1,6 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useEffect } from 'react';
 
 export interface Booking {
   id: string;
@@ -145,9 +145,33 @@ export const useMyBookings = () => {
     },
     retry: 2,
     refetchOnWindowFocus: true,
-    // Refetch every 5 seconds to catch webhook updates faster
-    refetchInterval: 5000
+    // Refetch every 10 seconds to catch webhook updates
+    refetchInterval: 10000
   });
+
+  // Set up realtime subscription for booking updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('booking-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'bookings'
+        },
+        (payload) => {
+          console.log('📡 Realtime booking update:', payload);
+          // Refetch bookings when any booking is updated
+          refetch();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refetch]);
 
   return {
     bookings,

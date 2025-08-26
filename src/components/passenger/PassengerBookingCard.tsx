@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +7,7 @@ import { AirbnbStyleReviewModal } from '@/components/review/AirbnbStyleReviewMod
 import { MessagingInterface } from '@/components/dashboard/MessagingInterface';
 import { format } from 'date-fns';
 import type { Booking } from '@/lib/types/booking';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PassengerBookingCardProps {
   booking: Booking;
@@ -24,10 +24,11 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
 }) => {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showMessaging, setShowMessaging] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const getStatusBadge = () => {
-    // Priority check: if payment_status is paid OR paid_at exists, show PAID
-    const isPaid = booking.payment_status === 'paid' || booking.paid_at;
+    // Priority check: if payment_status is paid OR paid_at exists OR status is 'paid', show PAID
+    const isPaid = booking.payment_status === 'paid' || booking.paid_at || booking.status === 'paid';
     
     if (isPaid) {
       return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">PAID</Badge>;
@@ -56,8 +57,8 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
   };
 
   const needsAction = () => {
-    // CRITICAL: If payment_status is 'paid' OR paid_at exists, no action needed
-    const isPaid = booking.payment_status === 'paid' || booking.paid_at;
+    // CRITICAL: If payment_status is 'paid' OR paid_at exists OR status is 'paid', no action needed
+    const isPaid = booking.payment_status === 'paid' || booking.paid_at || booking.status === 'paid';
     if (isPaid) {
       return false;
     }
@@ -71,7 +72,7 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
   };
 
   const isPaid = () => {
-    return booking.payment_status === 'paid' || booking.paid_at;
+    return booking.payment_status === 'paid' || booking.paid_at || booking.status === 'paid';
   };
 
   const formatPrice = (cents?: number) => {
@@ -92,6 +93,49 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
       case 'email':
         window.open(`mailto:${booking.drivers.email}`);
         break;
+    }
+  };
+
+  const handlePayment = async () => {
+    if (isProcessingPayment) return;
+    
+    setIsProcessingPayment(true);
+    
+    try {
+      const bookingCode = booking.booking_code || `VIP-${new Date(booking.created_at).getFullYear()}-${booking.id.slice(0, 3).toUpperCase()}`;
+      const amountCents = booking.offer_price_cents || booking.final_price_cents || booking.estimated_price_cents;
+      
+      if (!amountCents) {
+        throw new Error('No price available for this booking');
+      }
+
+      // Call our checkout session creation
+      const { data: sessionData, error } = await supabase.functions.invoke('stripe-checkout', {
+        body: {
+          booking_code: bookingCode,
+          booking_id: booking.id,
+          amount_cents: amountCents,
+          currency: 'usd'
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (sessionData?.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = sessionData.url;
+      } else {
+        throw new Error('No checkout URL received');
+      }
+    } catch (error) {
+      console.error('Payment initiation failed:', error);
+      // Simple toast notification without changing layout
+      const message = error instanceof Error ? error.message : 'Unable to start checkout. Please try again.';
+      alert(message); // Simple alert for now, can be replaced with toast component if available
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
 
@@ -221,16 +265,24 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
             </div>
           )}
 
-          {/* Action Buttons - Only show payment button if NOT paid */}
+          {/* Action Buttons - Only show payment button if NOT paid and NOT processing */}
           <div className="flex gap-2 pt-2">
-            {needsAction() && (
+            {needsAction() && !isProcessingPayment && (
               <Button 
                 className="flex-1 bg-pink-600 hover:bg-pink-700 text-white font-medium py-3" 
-                onClick={() => {
-                  window.location.href = `/passenger/dashboard?tab=bookings&booking=${booking.id}`;
-                }}
+                onClick={handlePayment}
+                disabled={isProcessingPayment}
               >
                 💳 Pay to Confirm Ride
+              </Button>
+            )}
+            
+            {isProcessingPayment && (
+              <Button 
+                className="flex-1 bg-gray-400 text-white font-medium py-3" 
+                disabled
+              >
+                Processing...
               </Button>
             )}
             
@@ -256,7 +308,7 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
           </div>
 
           {/* Urgency Message - only show if payment is actually needed */}
-          {needsAction() && (
+          {needsAction() && !isProcessingPayment && (
             <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 mt-3">
               <p className="text-sm text-primary font-medium">
                 ⏰ Action needed: Complete payment to confirm your ride

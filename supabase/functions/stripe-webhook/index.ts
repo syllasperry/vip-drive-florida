@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@14.21.0'
@@ -110,67 +109,46 @@ serve(async (req) => {
         const session = event.data.object as Stripe.Checkout.Session
         console.log('💳 Processing checkout.session.completed:', session.id)
         
-        const bookingId = session.metadata?.booking_id || session.client_reference_id
-        if (!bookingId) {
-          console.error('❌ Missing booking_id in session metadata or client_reference_id')
+        const bookingCode = session.metadata?.booking_code
+        const bookingId = session.metadata?.booking_id
+        
+        if (!bookingCode && !bookingId) {
+          console.error('❌ Missing booking_code and booking_id in session metadata')
           break
         }
 
-        console.log('📋 Updating booking:', bookingId, 'to paid status')
+        console.log('📋 Processing payment for booking_code:', bookingCode)
 
-        // Update booking status to paid with valid status values
-        const { error: updateError } = await supabaseClient
-          .from('bookings')
-          .update({
-            payment_status: 'paid',
-            status: 'offer_accepted', // Valid status from enum
-            payment_confirmation_status: 'all_set',
-            paid_amount_cents: session.amount_total,
-            payment_provider: 'stripe',
-            payment_reference: session.payment_intent as string || session.id,
-            stripe_payment_intent_id: session.payment_intent as string || session.id,
-            paid_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', bookingId)
-
-        if (updateError) {
-          console.error('❌ Error updating booking after payment:', updateError)
-          break
-        }
-
-        console.log('✅ Booking updated to paid:', bookingId)
-
-        // Create payment record
-        const { error: paymentError } = await supabaseClient
-          .from('payments')
-          .insert({
-            booking_id: bookingId,
-            amount_cents: session.amount_total || 0,
-            currency: 'USD',
-            method: 'stripe',
-            provider_txn_id: session.payment_intent as string || session.id,
-            status: 'PAID',
-            meta: {
-              stripe_session_id: session.id,
-              stripe_payment_intent_id: session.payment_intent
-            }
-          })
-
-        if (paymentError) {
-          console.error('⚠️ Error creating payment record:', paymentError)
-        } else {
-          console.log('✅ Payment record created')
-        }
-
-        // Trigger email notifications
         try {
-          await supabaseClient.functions.invoke('send-booking-confirmation-emails', {
-            body: { booking_id: bookingId }
-          })
-          console.log('✅ Email notifications triggered')
-        } catch (emailError) {
-          console.error('⚠️ Error triggering emails:', emailError)
+          // Call the record_stripe_payment function
+          const { data: paymentResult, error: paymentError } = await supabaseClient
+            .rpc('record_stripe_payment', {
+              _booking_code: bookingCode,
+              _amount_cents: session.amount_total || 0,
+              _provider_reference: session.payment_intent as string || session.id,
+              _currency: 'usd'
+            })
+
+          if (paymentError) {
+            console.error('❌ Error calling record_stripe_payment:', paymentError)
+            break
+          }
+
+          console.log('✅ Payment recorded successfully:', paymentResult)
+
+          // Trigger email notifications if booking_id is available
+          if (bookingId) {
+            try {
+              await supabaseClient.functions.invoke('send-booking-confirmation-emails', {
+                body: { booking_id: bookingId }
+              })
+              console.log('✅ Email notifications triggered')
+            } catch (emailError) {
+              console.error('⚠️ Error triggering emails:', emailError)
+            }
+          }
+        } catch (error) {
+          console.error('❌ Error processing payment:', error)
         }
         break
       }
@@ -179,44 +157,35 @@ serve(async (req) => {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
         console.log('💰 Processing payment_intent.succeeded:', paymentIntent.id)
         
-        // Find booking by stripe_payment_intent_id or payment_reference
-        const { data: booking, error: fetchError } = await supabaseClient
-          .from('bookings')
-          .select('id, payment_status, stripe_payment_intent_id')
-          .or(`payment_reference.eq.${paymentIntent.id},stripe_payment_intent_id.eq.${paymentIntent.id}`)
-          .single()
+        // Find booking by metadata or related checkout session
+        const sessions = await stripe.checkout.sessions.list({
+          payment_intent: paymentIntent.id,
+          limit: 1
+        })
 
-        if (fetchError || !booking) {
-          console.error('❌ Could not find booking for payment_intent:', paymentIntent.id)
-          break
-        }
-
-        // Only update if not already paid (avoid duplicate updates)
-        if (booking.payment_status !== 'paid') {
-          console.log('📋 Updating booking via payment_intent:', booking.id)
+        if (sessions.data.length > 0) {
+          const relatedSession = sessions.data[0]
+          const bookingCode = relatedSession.metadata?.booking_code
           
-          const { error: updateError } = await supabaseClient
-            .from('bookings')
-            .update({
-              payment_status: 'paid',
-              status: 'offer_accepted', // Valid status from enum
-              payment_confirmation_status: 'all_set',
-              paid_amount_cents: paymentIntent.amount,
-              payment_provider: 'stripe',
-              payment_reference: paymentIntent.id,
-              stripe_payment_intent_id: paymentIntent.id,
-              paid_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', booking.id)
+          if (bookingCode) {
+            try {
+              const { data: paymentResult, error: paymentError } = await supabaseClient
+                .rpc('record_stripe_payment', {
+                  _booking_code: bookingCode,
+                  _amount_cents: paymentIntent.amount,
+                  _provider_reference: paymentIntent.id,
+                  _currency: 'usd'
+                })
 
-          if (updateError) {
-            console.error('❌ Error updating booking after payment_intent:', updateError)
-          } else {
-            console.log('✅ Booking confirmed paid via payment_intent:', booking.id)
+              if (paymentError) {
+                console.error('❌ Error calling record_stripe_payment via payment_intent:', paymentError)
+              } else {
+                console.log('✅ Payment confirmed via payment_intent:', paymentResult)
+              }
+            } catch (error) {
+              console.error('❌ Error processing payment_intent:', error)
+            }
           }
-        } else {
-          console.log('ℹ️ Booking already marked as paid:', booking.id)
         }
         break
       }
@@ -225,33 +194,33 @@ serve(async (req) => {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
         console.log('❌ Processing payment_intent.payment_failed:', paymentIntent.id)
         
-        // Find booking by payment reference
-        const { data: booking, error: fetchError } = await supabaseClient
-          .from('bookings')
-          .select('id')
-          .or(`payment_reference.eq.${paymentIntent.id},stripe_payment_intent_id.eq.${paymentIntent.id}`)
-          .single()
+        // Find related booking and mark as failed
+        const sessions = await stripe.checkout.sessions.list({
+          payment_intent: paymentIntent.id,
+          limit: 1
+        })
 
-        if (fetchError || !booking) {
-          console.error('❌ Could not find booking for failed payment:', paymentIntent.id)
-          break
-        }
+        if (sessions.data.length > 0) {
+          const relatedSession = sessions.data[0]
+          const bookingId = relatedSession.metadata?.booking_id
+          
+          if (bookingId) {
+            const { error: updateError } = await supabaseClient
+              .from('bookings')
+              .update({
+                payment_status: 'failed',
+                status: 'cancelled',
+                payment_confirmation_status: 'failed',
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', bookingId)
 
-        // Update booking status to failed
-        const { error: updateError } = await supabaseClient
-          .from('bookings')
-          .update({
-            payment_status: 'failed',
-            status: 'cancelled',
-            payment_confirmation_status: 'failed',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', booking.id)
-
-        if (updateError) {
-          console.error('❌ Error updating booking after payment failure:', updateError)
-        } else {
-          console.log('✅ Booking marked as payment failed:', booking.id)
+            if (updateError) {
+              console.error('❌ Error updating booking after payment failure:', updateError)
+            } else {
+              console.log('✅ Booking marked as payment failed:', bookingId)
+            }
+          }
         }
         break
       }

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@14.21.0'
@@ -15,11 +14,11 @@ serve(async (req) => {
   }
 
   try {
-    const { booking_id, amount_cents, breakdown } = await req.json()
+    const { booking_id, booking_code, amount_cents, currency = 'usd', breakdown } = await req.json()
 
-    if (!booking_id || !amount_cents) {
+    if ((!booking_id && !booking_code) || !amount_cents) {
       return new Response(
-        JSON.stringify({ error: 'booking_id and amount_cents are required' }),
+        JSON.stringify({ error: 'booking_id/booking_code and amount_cents are required' }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -33,62 +32,66 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     )
 
-    // Get user from auth header
+    // Get user from auth header if available
     const authHeader = req.headers.get('Authorization')?.replace('Bearer ', '')
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Authorization required' }),
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
+    let user = null
+    if (authHeader) {
+      const { data: { user: authUser } } = await supabaseClient.auth.getUser(authHeader)
+      user = authUser
     }
 
-    const { data: { user } } = await supabaseClient.auth.getUser(authHeader)
-    if (!user) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid authorization' }),
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
-    }
+    let booking = null
 
-    // Get booking details
-    const { data: booking, error: bookingError } = await supabaseClient
-      .from('bookings')
-      .select(`
-        *,
-        passengers (
-          id,
-          full_name,
-          email
+    // Get booking details by booking_code or booking_id
+    if (booking_code) {
+      const { data: bookingData, error: bookingError } = await supabaseClient
+        .from('bookings')
+        .select(`
+          *,
+          passengers (
+            id,
+            full_name,
+            email
+          )
+        `)
+        .eq('booking_code', booking_code)
+        .single()
+
+      if (bookingError || !bookingData) {
+        return new Response(
+          JSON.stringify({ error: 'Booking not found' }),
+          { 
+            status: 404, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
         )
-      `)
-      .eq('id', booking_id)
-      .single()
+      }
+      booking = bookingData
+    } else {
+      // Existing booking_id logic
+      const { data: bookingData, error: bookingError } = await supabaseClient
+        .from('bookings')
+        .select(`
+          *,
+          passengers (
+            id,
+            full_name,
+            email
+          )
+        `)
+        .eq('id', booking_id)
+        .single()
 
-    if (bookingError || !booking) {
-      return new Response(
-        JSON.stringify({ error: 'Booking not found or access denied' }),
-        { 
-          status: 404, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
-    }
-
-    // Verify user owns this booking
-    if (booking.passengers?.id !== user.id && booking.passenger_id !== user.id) {
-      return new Response(
-        JSON.stringify({ error: 'Access denied to this booking' }),
-        { 
-          status: 403, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
+      if (bookingError || !bookingData) {
+        return new Response(
+          JSON.stringify({ error: 'Booking not found or access denied' }),
+          { 
+            status: 404, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+      booking = bookingData
     }
 
     // Initialize Stripe
@@ -105,10 +108,10 @@ serve(async (req) => {
       line_items: [
         {
           price_data: {
-            currency: 'usd',
+            currency: currency,
             product_data: {
-              name: `VIP Ride - ${booking.pickup_location} to ${booking.dropoff_location}`,
-              description: `Booking ${booking.booking_code || booking.id.slice(-8).toUpperCase()}`,
+              name: `Booking ${booking.booking_code || booking.id.slice(-8).toUpperCase()}`,
+              description: `${booking.pickup_location} to ${booking.dropoff_location}`,
             },
             unit_amount: amount_cents,
           },
@@ -116,16 +119,13 @@ serve(async (req) => {
         },
       ],
       mode: 'payment',
-      success_url: `${origin}/payment/success?bookingId=${booking_id}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/payment/cancel?bookingId=${booking_id}`,
+      success_url: `${origin}/passenger/dashboard?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/passenger/dashboard`,
       metadata: {
-        booking_id: booking_id,
+        booking_id: booking.id,
+        booking_code: booking.booking_code || '',
         passenger_id: booking.passenger_id,
-        uber_estimate_cents: breakdown?.uberEstimateCents?.toString() || '0',
-        dispatcher_fee_cents: breakdown?.dispatcherFeeCents?.toString() || '0',
-        app_fee_cents: breakdown?.appFeeCents?.toString() || '0',
-        stripe_fee_cents: breakdown?.stripeFeeCents?.toString() || '0',
-        total_cents: amount_cents.toString(),
+        amount_cents: amount_cents.toString(),
       },
     })
 
@@ -140,7 +140,7 @@ serve(async (req) => {
         final_price: amount_cents / 100,
         updated_at: new Date().toISOString()
       })
-      .eq('id', booking_id)
+      .eq('id', booking.id)
 
     if (updateError) {
       console.error('Error updating booking:', updateError)
@@ -149,8 +149,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         url: session.url,
-        session_id: session.id,
-        breakdown: breakdown 
+        session_id: session.id
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
