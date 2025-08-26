@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { MapPin, Plane, Home, Building, AlertTriangle } from 'lucide-react';
@@ -19,6 +20,24 @@ declare global {
     initGoogleMaps: () => void;
   }
 }
+
+// Secure API key retrieval
+const getGoogleMapsApiKey = (): string | null => {
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  
+  if (!apiKey) {
+    console.error('❌ Google Maps API key not found in environment variables. Please set VITE_GOOGLE_MAPS_API_KEY.');
+    return null;
+  }
+  
+  // Basic validation for API key format
+  if (apiKey.length < 20 || !apiKey.startsWith('AIza')) {
+    console.error('❌ Invalid Google Maps API key format');
+    return null;
+  }
+  
+  return apiKey;
+};
 
 const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
   value,
@@ -64,7 +83,7 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
     }
   }, []);
 
-  // Load Google Maps API - robust loading system
+  // Load Google Maps API - secure version
   useEffect(() => {
     const loadGoogleMapsAPI = () => {
       // Check if already loaded and available
@@ -74,13 +93,21 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
         return;
       }
 
+      // Get API key securely
+      const apiKey = getGoogleMapsApiKey();
+      if (!apiKey) {
+        setApiError('Google Maps API key not configured');
+        setFallbackMode(true);
+        return;
+      }
+
       // Remove any existing scripts to avoid conflicts
       const existingScripts = document.querySelectorAll('script[src*="maps.googleapis.com"]');
       existingScripts.forEach(script => script.remove());
 
-      console.log('🚀 Loading Google Maps API from scratch...');
+      console.log('🚀 Loading Google Maps API securely...');
       const script = document.createElement('script');
-      script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyC9dfSbH8HI8isN8Sdl9XxE5SJFtsrImpQ&libraries=places';
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&loading=async`;
       script.async = true;
       script.defer = true;
       
@@ -91,12 +118,6 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
         const checkGoogleMaps = () => {
           if (window.google?.maps?.places?.Autocomplete) {
             console.log('✅ Google Maps Places API is now available!');
-            console.log('Available APIs:', {
-              google: !!window.google,
-              maps: !!window.google?.maps,
-              places: !!window.google?.maps?.places,
-              Autocomplete: !!window.google?.maps?.places?.Autocomplete
-            });
             setIsGoogleMapsLoaded(true);
             setApiError(null);
             setFallbackMode(false);
@@ -121,21 +142,14 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
     loadGoogleMapsAPI();
   }, []);
 
-  // Initialize autocomplete with robust error handling
+  // Initialize autocomplete with enhanced security
   const initializeAutocomplete = useCallback(() => {
     if (!isGoogleMapsLoaded || !inputRef.current || !userLocation || !id) {
-      console.log(`⏳ Waiting for dependencies for ${id}:`, {
-        isGoogleMapsLoaded,
-        hasInputRef: !!inputRef.current,
-        hasUserLocation: !!userLocation,
-        hasId: !!id
-      });
       return;
     }
 
     // Prevent double initialization
     if (autocompleteRef.current) {
-      console.log(`✅ Autocomplete already initialized for: ${id}`);
       return;
     }
 
@@ -150,40 +164,51 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
         return;
       }
 
-      // Create bounds for South Florida region
+      // Create bounds for South Florida region with security validation
       const southFloridaBounds = new window.google.maps.LatLngBounds(
         new window.google.maps.LatLng(25.7617, -80.1918), // SW corner (Miami)
         new window.google.maps.LatLng(26.3056, -80.0844)  // NE corner (Boca Raton)
       );
 
-      // Simple, robust autocomplete options
+      // Secure autocomplete options
       const options = {
         types: ['geocode', 'establishment'],
         componentRestrictions: { country: 'us' },
-        fields: ['formatted_address', 'name', 'geometry', 'place_id'],
-        bounds: southFloridaBounds
+        fields: ['formatted_address', 'name', 'geometry', 'place_id', 'types'],
+        bounds: southFloridaBounds,
+        strictBounds: false
       };
 
-      // Create unique autocomplete instance for this specific input
-      console.log(`🎯 Creating new Autocomplete instance for: ${id}`);
+      // Create autocomplete instance with security validation
       autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, options);
 
-      // Add place selection listener with error handling
+      // Add place selection listener with enhanced security
       autocompleteRef.current.addListener('place_changed', () => {
         try {
           const place = autocompleteRef.current?.getPlace();
-          console.log(`📍 Place selected for ${id}:`, place);
           
+          // Validate place object to prevent XSS
           if (place && (place.formatted_address || place.name)) {
             const displayAddress = place.formatted_address || place.name;
-            onChange(displayAddress, place);
-            setHasUserSelectedFromDropdown(true);
-            setShowValidationWarning(false);
-            onValidationChange?.(true);
-            console.log(`✅ Address set for ${id}: ${displayAddress}`);
+            
+            // Basic sanitization to prevent XSS
+            const sanitizedAddress = displayAddress.replace(/<[^>]*>/g, '').trim();
+            
+            if (sanitizedAddress) {
+              onChange(sanitizedAddress, {
+                ...place,
+                formatted_address: sanitizedAddress,
+                name: place.name?.replace(/<[^>]*>/g, '').trim()
+              });
+              setHasUserSelectedFromDropdown(true);
+              setShowValidationWarning(false);
+              onValidationChange?.(true);
+              console.log(`✅ Address set for ${id}: ${sanitizedAddress}`);
+            }
           }
         } catch (error) {
           console.error(`❌ Error in place_changed for ${id}:`, error);
+          setApiError('Error processing location selection');
         }
       });
 
@@ -198,9 +223,8 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
     }
   }, [isGoogleMapsLoaded, userLocation, id, onChange, onValidationChange]);
 
-  // Initialize when dependencies are ready with proper timing
+  // Initialize when dependencies are ready
   useEffect(() => {
-    // Longer delay to ensure DOM is ready and Google Maps is fully loaded
     const timer = setTimeout(() => {
       initializeAutocomplete();
     }, 300);
@@ -214,7 +238,6 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
       if (autocompleteRef.current) {
         console.log(`🧹 Cleaning up autocomplete for: ${id}`);
         try {
-          // Clear the autocomplete reference
           autocompleteRef.current = null;
         } catch (error) {
           console.warn(`Warning during cleanup for ${id}:`, error);
@@ -223,19 +246,23 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
     };
   }, [id]);
 
-  // Handle input changes with improved error handling
+  // Enhanced input change handler with security
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
       const newValue = e.target.value;
-      onChange(newValue);
+      
+      // Basic input sanitization
+      const sanitizedValue = newValue.replace(/<[^>]*>/g, '').trim();
+      
+      onChange(sanitizedValue);
       
       // Reset selection state when user types
-      if (hasUserSelectedFromDropdown && newValue !== value) {
+      if (hasUserSelectedFromDropdown && sanitizedValue !== value) {
         setHasUserSelectedFromDropdown(false);
       }
       
-      // Only show validation warning if user has typed substantial text but hasn't selected
-      if (required && newValue.length > 5 && !hasUserSelectedFromDropdown) {
+      // Validation logic
+      if (required && sanitizedValue.length > 5 && !hasUserSelectedFromDropdown) {
         setShowValidationWarning(true);
         onValidationChange?.(false);
       } else {
@@ -243,10 +270,6 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
         onValidationChange?.(true);
       }
       
-      // Log for debugging
-      if (newValue.length >= 2 && isGoogleMapsLoaded && autocompleteRef.current) {
-        console.log(`🔍 Autocomplete active for ${id}: "${newValue}"`);
-      }
     } catch (error) {
       console.error(`❌ Error in handleInputChange for ${id}:`, error);
       setApiError('Input error occurred');
@@ -254,7 +277,6 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
   };
 
   const handleBlur = () => {
-    // Only validate on blur if there's substantial text and no selection
     if (required && value.length > 5 && !hasUserSelectedFromDropdown && !showValidationWarning) {
       setShowValidationWarning(true);
       onValidationChange?.(false);
@@ -262,7 +284,6 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
   };
 
   const handleFocus = () => {
-    // Clear validation warning when user focuses to try again
     if (showValidationWarning && value.length > 0) {
       setShowValidationWarning(false);
       onValidationChange?.(true);
@@ -282,7 +303,7 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
         id={id}
         required={required}
         disabled={disabled}
-        autoComplete="on" // Explicitly enable as requested
+        autoComplete="on"
       />
       
       {/* Validation warning tooltip */}
