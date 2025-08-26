@@ -155,6 +155,13 @@ export type Database = {
             foreignKeyName: "app_payments_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
+            referencedRelation: "passenger_my_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "app_payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
             referencedRelation: "v_booking_pricing_preview"
             referencedColumns: ["booking_id"]
           },
@@ -335,6 +342,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "passenger_dashboard_feed"
             referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "app_suggested_pricing_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "passenger_my_bookings"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "app_suggested_pricing_booking_id_fkey"
@@ -553,6 +567,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "passenger_dashboard_feed"
             referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "booking_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_my_bookings"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "booking_status_history_booking_id_fkey"
@@ -1146,6 +1167,13 @@ export type Database = {
             foreignKeyName: "driver_offers_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
+            referencedRelation: "passenger_my_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_offers_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
             referencedRelation: "v_booking_pricing_preview"
             referencedColumns: ["booking_id"]
           },
@@ -1586,6 +1614,13 @@ export type Database = {
             foreignKeyName: "email_outbox_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
+            referencedRelation: "passenger_my_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
             referencedRelation: "v_booking_pricing_preview"
             referencedColumns: ["booking_id"]
           },
@@ -1817,6 +1852,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "passenger_dashboard_feed"
             referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_my_bookings"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "notification_outbox_booking_id_fkey"
@@ -2148,6 +2190,13 @@ export type Database = {
             foreignKeyName: "payment_session_links_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
+            referencedRelation: "passenger_my_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_session_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
             referencedRelation: "v_booking_pricing_preview"
             referencedColumns: ["booking_id"]
           },
@@ -2385,6 +2434,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "passenger_dashboard_feed"
             referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_my_bookings"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "payments_booking_id_fkey"
@@ -2724,6 +2780,13 @@ export type Database = {
             foreignKeyName: "review_notifications_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
+            referencedRelation: "passenger_my_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
             referencedRelation: "v_booking_pricing_preview"
             referencedColumns: ["booking_id"]
           },
@@ -2883,6 +2946,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "passenger_dashboard_feed"
             referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_my_bookings"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "reviews_booking_id_fkey"
@@ -3174,6 +3244,13 @@ export type Database = {
             foreignKeyName: "ride_reviews_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
+            referencedRelation: "passenger_my_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ride_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
             referencedRelation: "v_booking_pricing_preview"
             referencedColumns: ["booking_id"]
           },
@@ -3344,6 +3421,13 @@ export type Database = {
             foreignKeyName: "ride_status_ride_id_fkey"
             columns: ["ride_id"]
             isOneToOne: false
+            referencedRelation: "passenger_my_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ride_status_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
             referencedRelation: "v_booking_pricing_preview"
             referencedColumns: ["booking_id"]
           },
@@ -3500,6 +3584,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "passenger_dashboard_feed"
             referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "ride_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_my_bookings"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "ride_status_history_booking_id_fkey"
@@ -3721,6 +3812,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "passenger_dashboard_feed"
             referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "timeline_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_my_bookings"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "timeline_events_booking_id_fkey"
@@ -5006,6 +5104,13 @@ export type Database = {
             foreignKeyName: "payments_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
+            referencedRelation: "passenger_my_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
             referencedRelation: "v_booking_pricing_preview"
             referencedColumns: ["booking_id"]
           },
@@ -5060,6 +5165,16 @@ export type Database = {
           pickup_time: string | null
           status: string | null
           updated_at: string | null
+        }
+        Relationships: []
+      }
+      dispatcher_stats_safe: {
+        Row: {
+          assigned_count: number | null
+          booking_date: string | null
+          offer_sent_count: number | null
+          pending_count: number | null
+          total_bookings: number | null
         }
         Relationships: []
       }
@@ -5404,7 +5519,71 @@ export type Database = {
           status: string | null
           vehicle_type: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_drivers_min"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_full_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_payments_view"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "dispatcher_recent_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_dashboard_feed"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_dispatcher_bookings"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "vw_passenger_bookings"
+            referencedColumns: ["driver_id"]
+          },
+        ]
       }
       security_definer_functions_audit: {
         Row: {
@@ -5884,6 +6063,14 @@ export type Database = {
       can_view_driver_in_bookings: {
         Args: { driver_uuid: string; user_uuid?: string }
         Returns: boolean
+      }
+      check_booking_access: {
+        Args: { p_booking_id: string }
+        Returns: {
+          access_type: string
+          has_access: boolean
+          user_role: string
+        }[]
       }
       compute_suggested_for_booking: {
         Args: { p_booking_id: string }
@@ -6806,6 +6993,23 @@ export type Database = {
           vehicle_type: string
         }[]
       }
+      get_passenger_preferences_for_dispatcher: {
+        Args: { p_booking_id: string }
+        Returns: {
+          air_conditioning: boolean
+          conversation_preference: string
+          passenger_email: string
+          passenger_name: string
+          passenger_phone: string
+          preferred_music: string
+          preferred_temperature: number
+          radio_on: boolean
+          temperature_unit: string
+          trip_notes: string
+          trip_purpose: string
+          user_id: string
+        }[]
+      }
       get_published_reviews: {
         Args: { limit_count?: number }
         Returns: {
@@ -7178,6 +7382,10 @@ export type Database = {
       }
       user_wants_push: {
         Args: { u: string }
+        Returns: boolean
+      }
+      validate_dispatcher_access_simple: {
+        Args: Record<PropertyKey, never>
         Returns: boolean
       }
       version_pricing_rule: {
