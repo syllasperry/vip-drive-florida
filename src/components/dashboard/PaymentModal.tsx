@@ -25,7 +25,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
-  // Use offer_price_cents as the single source of truth for pricing (per user requirements)
+  // Use offer_price_cents as the single source of truth for pricing
   const getFormattedPrice = () => {
     if (booking.offer_price_cents && booking.offer_price_cents > 0) {
       return (booking.offer_price_cents / 100).toFixed(2);
@@ -64,7 +64,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       
       console.log('🔄 Starting Stripe checkout for booking:', booking.id);
       
-      // Call the updated Stripe checkout edge function
+      // Call the Stripe checkout edge function
       const { data, error } = await supabase.functions.invoke('stripe-start-checkout', {
         body: { 
           booking_id: booking.id
@@ -83,6 +83,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           errorMessage = "Payment system temporarily unavailable - please try again later";
         } else if (error.message?.includes('Network error')) {
           errorMessage = "Connection issue - please check your internet and try again";
+        } else if (error.message?.includes('Access denied')) {
+          errorMessage = "Access denied - please try logging in again";
+        } else if (error.message?.includes('Booking not found')) {
+          errorMessage = "Booking not found - please refresh and try again";
         }
         
         toast({
@@ -105,7 +109,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
       console.log('✅ Redirecting to Stripe Checkout:', data.url);
       
-      // Redirect to Stripe checkout (keeping existing UX)
+      // Redirect to Stripe hosted checkout
       window.location.href = data.url;
       
     } catch (error) {

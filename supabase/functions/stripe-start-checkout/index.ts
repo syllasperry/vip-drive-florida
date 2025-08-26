@@ -30,13 +30,14 @@ serve(async (req) => {
       )
     }
 
-    // Initialize Supabase client
+    // Initialize Supabase client with service role key for broader access
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      { auth: { persistSession: false } }
     )
 
-    // Get user from auth header
+    // Get user from auth header for security
     const authHeader = req.headers.get('Authorization')?.replace('Bearer ', '')
     if (!authHeader) {
       console.error('❌ Missing Authorization header')
@@ -49,7 +50,13 @@ serve(async (req) => {
       )
     }
 
-    const { data: { user } } = await supabaseClient.auth.getUser(authHeader)
+    // Verify user with anon key client first
+    const anonClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    )
+    
+    const { data: { user } } = await anonClient.auth.getUser(authHeader)
     if (!user) {
       console.error('❌ Invalid user token')
       return new Response(
@@ -63,7 +70,7 @@ serve(async (req) => {
 
     console.log('✅ User authenticated:', user.id)
 
-    // Get booking details with passenger info
+    // Get booking details with passenger info using service role for full access
     const { data: booking, error: bookingError } = await supabaseClient
       .from('bookings')
       .select(`
@@ -71,19 +78,31 @@ serve(async (req) => {
         passengers (
           id,
           full_name,
-          email
+          email,
+          user_id
         )
       `)
       .eq('id', booking_id)
-      .eq('passenger_id', user.id)
       .single()
 
     if (bookingError || !booking) {
-      console.error('❌ Booking not found or access denied:', bookingError)
+      console.error('❌ Booking not found:', bookingError)
       return new Response(
-        JSON.stringify({ error: 'Booking not found or access denied' }),
+        JSON.stringify({ error: 'Booking not found' }),
         { 
           status: 404, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    // Verify user owns this booking through passenger
+    if (booking.passengers?.user_id !== user.id) {
+      console.error('❌ User does not own this booking')
+      return new Response(
+        JSON.stringify({ error: 'Access denied' }),
+        { 
+          status: 403, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       )
@@ -162,11 +181,10 @@ serve(async (req) => {
       mode: 'payment',
       customer_email: customerEmail,
       success_url: `${origin}/payment/success?booking_id=${booking_id}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/payment/cancel?booking_id=${booking_id}`,
+      cancel_url: `${origin}/passenger/dashboard?canceled=true`,
       metadata: {
         booking_id: booking_id,
-        public_id: booking.booking_code || booking.id.slice(-8).toUpperCase(),
-        passenger_id: user.id,
+        passenger_id: booking.passenger_id,
         offer_price_cents: amountCents.toString(),
       },
     })
@@ -193,7 +211,6 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ 
-        ok: true,
         url: session.url,
         session_id: session.id,
         amount_cents: amountCents

@@ -97,6 +97,7 @@ serve(async (req) => {
             payment_status: 'paid',
             total_paid_cents: session.amount_total,
             stripe_payment_intent_id: session.payment_intent as string,
+            paid_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
           .eq('id', bookingId)
@@ -105,6 +106,16 @@ serve(async (req) => {
           console.error('❌ Error updating booking after payment:', updateError)
         } else {
           console.log('✅ Booking updated to paid:', bookingId)
+          
+          // Trigger email notifications
+          try {
+            await supabaseClient.functions.invoke('send-booking-confirmation-emails', {
+              body: { booking_id: bookingId }
+            })
+            console.log('✅ Email notifications triggered')
+          } catch (emailError) {
+            console.error('⚠️ Error triggering emails:', emailError)
+          }
         }
         break
       }
@@ -131,6 +142,7 @@ serve(async (req) => {
           .update({
             payment_status: 'paid',
             total_paid_cents: paymentIntent.amount,
+            paid_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
           .eq('id', booking.id)
