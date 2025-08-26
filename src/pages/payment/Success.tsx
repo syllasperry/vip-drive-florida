@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +12,7 @@ export default function PaymentSuccess() {
   const [booking, setBooking] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  const bookingId = searchParams.get('bookingId');
+  const bookingId = searchParams.get('booking_id');
   const sessionId = searchParams.get('session_id');
 
   useEffect(() => {
@@ -27,27 +26,9 @@ export default function PaymentSuccess() {
       try {
         setLoading(true);
 
-        // Update booking status to paid
-        const { error: updateError } = await supabase
-          .from('bookings')
-          .update({
-            payment_status: 'paid',
-            payment_confirmation_status: 'passenger_paid',
-            stripe_payment_intent_id: sessionId,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', bookingId);
+        console.log(`✅ Payment success page loaded for booking ${bookingId}, session ${sessionId}`);
 
-        if (updateError) {
-          console.error('Error updating booking:', updateError);
-          toast({
-            title: "Warning",
-            description: "Payment successful but booking status update failed. Please contact support.",
-            variant: "destructive",
-          });
-        }
-
-        // Fetch updated booking details
+        // Fetch updated booking details (webhook should have already updated the status)
         const { data: bookingData, error: fetchError } = await supabase
           .from('bookings')
           .select(`
@@ -68,33 +49,27 @@ export default function PaymentSuccess() {
 
         if (fetchError) {
           console.error('Error fetching booking:', fetchError);
+          toast({
+            title: "Warning",
+            description: "Could not fetch booking details. Please check your dashboard.",
+            variant: "destructive",
+          });
         } else {
           setBooking(bookingData);
-
-          // Trigger email notifications
-          try {
-            const { error: emailError } = await supabase.functions.invoke('send-booking-confirmation-emails', {
-              body: { booking_id: bookingId }
+          
+          // If booking is not yet marked as paid, it means webhook hasn't processed yet
+          if (bookingData.payment_status !== 'paid') {
+            toast({
+              title: "Payment Processing",
+              description: "Your payment is being processed. Status will update shortly.",
             });
-
-            if (emailError) {
-              console.error('Error sending confirmation emails:', emailError);
-              toast({
-                title: "Email Notification",
-                description: "Payment successful but confirmation emails may be delayed.",
-              });
-            } else {
-              console.log('✅ Confirmation emails triggered successfully');
-            }
-          } catch (emailError) {
-            console.error('Error triggering emails:', emailError);
+          } else {
+            toast({
+              title: "Payment Successful!",
+              description: "Your ride has been confirmed. Check your email for booking details.",
+            });
           }
         }
-
-        toast({
-          title: "Payment Successful!",
-          description: "Your ride has been confirmed. Check your email for booking details.",
-        });
 
       } catch (error) {
         console.error('Error handling payment success:', error);
@@ -122,8 +97,11 @@ export default function PaymentSuccess() {
     );
   }
 
-  const finalPrice = booking?.final_price_cents 
-    ? (booking.final_price_cents / 100).toFixed(2)
+  // Use total_paid_cents (set by webhook) or fallback to offer_price_cents
+  const finalPrice = booking?.total_paid_cents 
+    ? (booking.total_paid_cents / 100).toFixed(2)
+    : booking?.offer_price_cents 
+    ? (booking.offer_price_cents / 100).toFixed(2)
     : booking?.final_price?.toFixed(2) || '0.00';
 
   return (

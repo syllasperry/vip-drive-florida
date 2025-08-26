@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,7 +21,6 @@ export const EnhancedOfferBookingCard: React.FC<EnhancedOfferBookingCardProps> =
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [hasShownOfferNotification, setHasShownOfferNotification] = useState(false);
 
-  // Auto-show payment modal when offer is received
   useEffect(() => {
     const isOfferReceived = 
       booking.status === 'offer_sent' || 
@@ -33,13 +31,11 @@ export const EnhancedOfferBookingCard: React.FC<EnhancedOfferBookingCardProps> =
       booking.payment_confirmation_status === 'waiting_for_payment' ||
       booking.payment_confirmation_status === 'price_awaiting_acceptance';
 
-    // Show payment modal automatically for new offers
     if (isOfferReceived && isPaymentPending && !hasShownOfferNotification) {
       console.log('🎯 Auto-showing payment modal for offer:', booking.id);
       setShowPaymentModal(true);
       setHasShownOfferNotification(true);
       
-      // Show friendly notification
       toast({
         title: "Payment Ready",
         description: "Complete your payment to confirm your ride booking.",
@@ -48,7 +44,7 @@ export const EnhancedOfferBookingCard: React.FC<EnhancedOfferBookingCardProps> =
   }, [booking.status, booking.ride_status, booking.payment_confirmation_status, hasShownOfferNotification]);
 
   const getStatusDisplay = () => {
-    if (booking.payment_confirmation_status === 'all_set') {
+    if (booking.payment_status === 'paid' || booking.payment_confirmation_status === 'all_set') {
       return { text: 'Confirmed', color: 'bg-green-100 text-green-800 border-green-200' };
     }
     
@@ -74,12 +70,13 @@ export const EnhancedOfferBookingCard: React.FC<EnhancedOfferBookingCardProps> =
     return { text: 'Pending', color: 'bg-gray-100 text-gray-800 border-gray-200' };
   };
 
-  // Use offer_price_cents as the single source of truth
   const getFormattedPrice = () => {
+    if (booking.total_paid_cents && booking.total_paid_cents > 0) {
+      return (booking.total_paid_cents / 100).toFixed(2);
+    }
     if (booking.offer_price_cents && booking.offer_price_cents > 0) {
       return (booking.offer_price_cents / 100).toFixed(2);
     }
-    // Fallback to other price fields if offer_price_cents is not available
     if (booking.final_price_cents && booking.final_price_cents > 0) {
       return (booking.final_price_cents / 100).toFixed(2);
     }
@@ -102,6 +99,7 @@ export const EnhancedOfferBookingCard: React.FC<EnhancedOfferBookingCardProps> =
     (booking.status === 'offer_sent' || 
      booking.ride_status === 'offer_sent' ||
      booking.payment_confirmation_status === 'price_awaiting_acceptance') &&
+    booking.payment_status !== 'paid' &&
     booking.payment_confirmation_status !== 'all_set' &&
     booking.payment_confirmation_status !== 'passenger_paid';
 
@@ -143,7 +141,6 @@ export const EnhancedOfferBookingCard: React.FC<EnhancedOfferBookingCardProps> =
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* Route Information */}
           <div className="space-y-2">
             <div className="flex items-start gap-2">
               <MapPin className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
@@ -161,7 +158,6 @@ export const EnhancedOfferBookingCard: React.FC<EnhancedOfferBookingCardProps> =
             </div>
           </div>
 
-          {/* Pickup Time */}
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-blue-600" />
             <span className="text-sm text-gray-600">
@@ -169,7 +165,6 @@ export const EnhancedOfferBookingCard: React.FC<EnhancedOfferBookingCardProps> =
             </span>
           </div>
 
-          {/* Driver Info (if assigned) */}
           {booking.driver_id && (
             <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
               <User className="w-4 h-4 text-gray-600" />
@@ -177,7 +172,6 @@ export const EnhancedOfferBookingCard: React.FC<EnhancedOfferBookingCardProps> =
             </div>
           )}
 
-          {/* Payment Button for Offers */}
           {shouldShowPaymentButton && (
             <div className="pt-2 border-t border-gray-100">
               <Button 
@@ -190,8 +184,7 @@ export const EnhancedOfferBookingCard: React.FC<EnhancedOfferBookingCardProps> =
             </div>
           )}
 
-          {/* Confirmed Status */}
-          {booking.payment_confirmation_status === 'all_set' && (
+          {(booking.payment_status === 'paid' || booking.payment_confirmation_status === 'all_set') && (
             <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg border border-green-200">
               <CheckCircle className="w-5 h-5 text-green-600" />
               <div>
@@ -203,7 +196,6 @@ export const EnhancedOfferBookingCard: React.FC<EnhancedOfferBookingCardProps> =
         </CardContent>
       </Card>
 
-      {/* Payment Modal */}
       {showPaymentModal && (
         <PaymentModal
           isOpen={showPaymentModal}

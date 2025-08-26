@@ -1,9 +1,7 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { CreditCard, Clock, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -26,7 +24,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
-  // Use offer_price_cents as the single source of truth for pricing
+  // Use offer_price_cents as the single source of truth for pricing (per user requirements)
   const getFormattedPrice = () => {
     if (booking.offer_price_cents && booking.offer_price_cents > 0) {
       return (booking.offer_price_cents / 100).toFixed(2);
@@ -63,9 +61,9 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     try {
       setIsProcessing(true);
       
-      console.log('🔄 Starting enhanced payment process for booking:', booking.id);
+      console.log('🔄 Starting Stripe checkout for booking:', booking.id);
       
-      // Call the Stripe checkout edge function
+      // Call the updated Stripe checkout edge function
       const { data, error } = await supabase.functions.invoke('stripe-start-checkout', {
         body: { 
           booking_id: booking.id
@@ -94,17 +92,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
       console.log('✅ Redirecting to Stripe Checkout:', data.url);
       
-      // Open Stripe checkout in new tab
-      window.open(data.url, '_blank');
-      
-      toast({
-        title: "Payment Started",
-        description: "Complete your payment in the new tab to confirm your booking.",
-      });
-
-      // Close modal and trigger confirmation
-      onClose();
-      onPaymentConfirmed();
+      // Redirect to Stripe checkout (keeping existing UX)
+      window.location.href = data.url;
       
     } catch (error) {
       console.error('❌ Payment error:', error);
@@ -210,7 +199,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               ) : (
                 <>
                   <CreditCard className="w-4 h-4 mr-2" />
-                  Pay {formattedTotal}
+                  Pay to Confirm Ride
                 </>
               )}
             </Button>
