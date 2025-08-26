@@ -118,16 +118,17 @@ serve(async (req) => {
 
         console.log('📋 Updating booking:', bookingId, 'to paid status')
 
-        // Update booking status to paid with comprehensive fields
+        // Update booking status to paid with valid status values
         const { error: updateError } = await supabaseClient
           .from('bookings')
           .update({
             payment_status: 'paid',
-            status: 'paid',
+            status: 'offer_accepted', // Valid status from enum
             payment_confirmation_status: 'all_set',
             paid_amount_cents: session.amount_total,
             payment_provider: 'stripe',
             payment_reference: session.payment_intent as string || session.id,
+            stripe_payment_intent_id: session.payment_intent as string || session.id,
             paid_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
@@ -181,7 +182,7 @@ serve(async (req) => {
         // Find booking by stripe_payment_intent_id or payment_reference
         const { data: booking, error: fetchError } = await supabaseClient
           .from('bookings')
-          .select('id, payment_status')
+          .select('id, payment_status, stripe_payment_intent_id')
           .or(`payment_reference.eq.${paymentIntent.id},stripe_payment_intent_id.eq.${paymentIntent.id}`)
           .single()
 
@@ -198,11 +199,12 @@ serve(async (req) => {
             .from('bookings')
             .update({
               payment_status: 'paid',
-              status: 'paid',
+              status: 'offer_accepted', // Valid status from enum
               payment_confirmation_status: 'all_set',
               paid_amount_cents: paymentIntent.amount,
               payment_provider: 'stripe',
               payment_reference: paymentIntent.id,
+              stripe_payment_intent_id: paymentIntent.id,
               paid_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })
@@ -241,6 +243,7 @@ serve(async (req) => {
           .update({
             payment_status: 'failed',
             status: 'cancelled',
+            payment_confirmation_status: 'failed',
             updated_at: new Date().toISOString()
           })
           .eq('id', booking.id)

@@ -82,7 +82,7 @@ export const useMyBookings = () => {
         passenger = newPassenger;
       }
 
-      // Now fetch bookings for this passenger with correct column names
+      // Now fetch bookings for this passenger with payment fields
       const { data: rawBookings, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
@@ -110,6 +110,7 @@ export const useMyBookings = () => {
           paid_at,
           payment_provider,
           payment_reference,
+          stripe_payment_intent_id,
           drivers:driver_id (
             full_name,
             phone,
@@ -118,6 +119,7 @@ export const useMyBookings = () => {
             car_color,
             license_plate,
             avatar_url,
+            profile_photo_url,
             email
           )
         `)
@@ -142,9 +144,9 @@ export const useMyBookings = () => {
       return bookings;
     },
     retry: 2,
-    refetchOnWindowFocus: false,
-    // Refetch every 15 seconds to catch webhook updates faster
-    refetchInterval: 15000
+    refetchOnWindowFocus: true,
+    // Refetch every 5 seconds to catch webhook updates faster
+    refetchInterval: 5000
   });
 
   return {

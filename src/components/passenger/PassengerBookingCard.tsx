@@ -26,7 +26,7 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
   const [showMessaging, setShowMessaging] = useState(false);
 
   const getStatusBadge = () => {
-    // Check if payment has been made via Stripe or other means
+    // Priority check: if payment_status is paid OR paid_at exists, show PAID
     const isPaid = booking.payment_status === 'paid' || booking.paid_at;
     
     if (isPaid) {
@@ -56,7 +56,7 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
   };
 
   const needsAction = () => {
-    // Don't show payment action if already paid via Stripe or other means
+    // CRITICAL: If payment_status is 'paid' OR paid_at exists, no action needed
     const isPaid = booking.payment_status === 'paid' || booking.paid_at;
     if (isPaid) {
       return false;
@@ -121,13 +121,13 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* Driver Info - Updated when paid */}
+          {/* Driver Info - Show full details when paid */}
           {isPaid() && booking.drivers ? (
             <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
               <div className="w-12 h-12 rounded-full overflow-hidden bg-blue-500 flex items-center justify-center">
-                {booking.drivers.profile_photo_url ? (
+                {booking.drivers.profile_photo_url || booking.drivers.avatar_url ? (
                   <img 
-                    src={booking.drivers.profile_photo_url} 
+                    src={booking.drivers.profile_photo_url || booking.drivers.avatar_url} 
                     alt={booking.drivers.full_name}
                     className="w-full h-full object-cover"
                   />
@@ -221,7 +221,7 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
             </div>
           )}
 
-          {/* Action Buttons - Only show payment button if not paid */}
+          {/* Action Buttons - Only show payment button if NOT paid */}
           <div className="flex gap-2 pt-2">
             {needsAction() && (
               <Button 
