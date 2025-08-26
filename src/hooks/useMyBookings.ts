@@ -87,7 +87,7 @@ export const useMyBookings = () => {
         passenger = newPassenger;
       }
 
-      // Now fetch bookings for this passenger with ALL payment-related fields
+      // Fetch bookings with comprehensive payment and driver data
       const { data: rawBookings, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
@@ -141,7 +141,7 @@ export const useMyBookings = () => {
 
       console.log('✅ Bookings fetched successfully:', rawBookings?.length || 0);
       
-      // Map the raw data to ensure type safety and proper payment status detection
+      // Map and validate the data
       const bookings: Booking[] = (rawBookings || []).map(booking => ({
         ...booking,
         drivers: booking.drivers && typeof booking.drivers === 'object' && !Array.isArray(booking.drivers) 
@@ -150,7 +150,7 @@ export const useMyBookings = () => {
       }));
 
       // Enhanced logging for payment status debugging
-      console.log('📊 Detailed booking payment status:', bookings.map(b => ({
+      console.log('📊 Payment status summary:', bookings.map(b => ({
         id: b.id.slice(-8),
         booking_code: b.booking_code,
         status: b.status,
@@ -165,16 +165,17 @@ export const useMyBookings = () => {
 
       return bookings;
     },
-    retry: 2,
+    retry: 3,
     refetchOnWindowFocus: true,
-    // Faster refetch for immediate payment status updates
-    refetchInterval: 2000 // Every 2 seconds for faster response
+    // Fast refetch for payment status updates
+    refetchInterval: 1500, // Every 1.5 seconds for rapid response
+    staleTime: 0 // Always consider data stale for immediate updates
   });
 
   // Set up realtime subscription for booking updates
   useEffect(() => {
     const channel = supabase
-      .channel('booking-payment-changes')
+      .channel('booking-payment-updates')
       .on(
         'postgres_changes',
         {
