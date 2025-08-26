@@ -17,13 +17,13 @@ export interface Booking {
   final_price: number | null;
   estimated_price: number | null;
   payment_confirmation_status: string | null;
-  payment_status: string | null; // Added for better payment tracking
+  payment_status: string | null;
   ride_status: string | null;
   passenger_count: number;
   luggage_count: number;
   flight_info: string | null;
   offer_price_cents: number | null;
-  total_paid_cents: number | null;
+  paid_amount_cents: number | null;
   paid_at: string | null;
   drivers?: {
     full_name: string;
@@ -79,7 +79,7 @@ export const useMyBookings = () => {
         passenger = newPassenger;
       }
 
-      // Now fetch bookings for this passenger with enhanced payment fields
+      // Now fetch bookings for this passenger with correct column names
       const { data: rawBookings, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
@@ -103,7 +103,7 @@ export const useMyBookings = () => {
           luggage_count,
           flight_info,
           offer_price_cents,
-          total_paid_cents,
+          paid_amount_cents,
           paid_at,
           drivers:driver_id (
             full_name,
