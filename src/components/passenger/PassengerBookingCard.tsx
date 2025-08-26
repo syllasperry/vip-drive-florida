@@ -26,8 +26,10 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
   const [showMessaging, setShowMessaging] = useState(false);
 
   const getStatusBadge = () => {
-    // Check payment status first
-    if (booking.payment_status === 'paid' || booking.paid_at) {
+    // Check if payment has been made via Stripe or other means
+    const isPaid = booking.payment_status === 'paid' || booking.paid_at;
+    
+    if (isPaid) {
       return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">All Set</Badge>;
     }
     
@@ -54,8 +56,9 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
   };
 
   const needsAction = () => {
-    // Don't show payment action if already paid
-    if (booking.payment_status === 'paid' || booking.paid_at) {
+    // Don't show payment action if already paid via Stripe or other means
+    const isPaid = booking.payment_status === 'paid' || booking.paid_at;
+    if (isPaid) {
       return false;
     }
     
@@ -237,7 +240,7 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
             )}
           </div>
 
-          {/* Urgency Message */}
+          {/* Urgency Message - only show if payment is actually needed */}
           {needsAction() && (
             <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 mt-3">
               <p className="text-sm text-primary font-medium">

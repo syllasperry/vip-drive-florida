@@ -143,8 +143,8 @@ export const useMyBookings = () => {
     },
     retry: 2,
     refetchOnWindowFocus: false,
-    // Refetch every 30 seconds to catch webhook updates
-    refetchInterval: 30000
+    // Refetch every 15 seconds to catch webhook updates faster
+    refetchInterval: 15000
   });
 
   return {
