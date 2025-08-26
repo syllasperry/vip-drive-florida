@@ -12,9 +12,8 @@ export const useRealtimeBookings = () => {
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      console.log('🔄 Fetching bookings with improved error handling...');
+      console.log('🔄 Fetching bookings with enhanced offer/payment handling...');
       
-      // Get current user first
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
       if (userError || !user) {
@@ -27,7 +26,6 @@ export const useRealtimeBookings = () => {
 
       console.log('✅ User authenticated:', user.email);
 
-      // Get passenger profile first
       let { data: passenger, error: passengerError } = await supabase
         .from('passengers')
         .select('id')
@@ -64,7 +62,7 @@ export const useRealtimeBookings = () => {
         passenger = newPassenger;
       }
 
-      // Fetch bookings with safe query structure
+      // Enhanced query to include driver information for offers
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -79,6 +77,16 @@ export const useRealtimeBookings = () => {
             interaction_preference,
             trip_purpose,
             additional_notes
+          ),
+          drivers (
+            id,
+            full_name,
+            phone,
+            profile_photo_url,
+            car_make,
+            car_model,
+            car_color,
+            license_plate
           )
         `)
         .eq('passenger_id', passenger.id)
@@ -92,15 +100,16 @@ export const useRealtimeBookings = () => {
         return;
       }
 
-      console.log('✅ Bookings fetched successfully:', data?.length || 0, 'bookings');
+      console.log('✅ Enhanced bookings fetched successfully:', data?.length || 0, 'bookings');
       
-      // Transform data to match expected Booking type
       const transformedBookings: Booking[] = (data || []).map(booking => ({
         ...booking,
         passengers: booking.passengers && typeof booking.passengers === 'object' && !Array.isArray(booking.passengers) 
           ? booking.passengers 
           : undefined,
-        drivers: null // Will be populated separately if needed
+        drivers: booking.drivers && typeof booking.drivers === 'object' && !Array.isArray(booking.drivers)
+          ? booking.drivers
+          : null
       }));
 
       setBookings(transformedBookings);
@@ -119,13 +128,12 @@ export const useRealtimeBookings = () => {
 
     fetchBookings();
 
-    // Set up real-time subscription for passenger's bookings only
     const setupRealtimeSubscription = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user && mounted) {
         const channel = supabase
-          .channel('passenger_bookings_realtime')
+          .channel('passenger_bookings_enhanced_realtime')
           .on(
             'postgres_changes',
             {
@@ -134,14 +142,13 @@ export const useRealtimeBookings = () => {
               table: 'bookings'
             },
             (payload) => {
-              console.log('📡 Real-time booking update:', payload);
+              console.log('📡 Enhanced real-time booking update:', payload);
               
-              // Check if this is an offer being sent
               if (payload.eventType === 'UPDATE' && payload.new) {
                 const newBooking = payload.new;
                 const oldBooking = payload.old;
                 
-                // Check if status changed to offer_sent
+                // Handle offer sent by dispatcher
                 if (
                   (newBooking.status === 'offer_sent' && oldBooking?.status !== 'offer_sent') ||
                   (newBooking.ride_status === 'offer_sent' && oldBooking?.ride_status !== 'offer_sent') ||
@@ -150,26 +157,58 @@ export const useRealtimeBookings = () => {
                 ) {
                   console.log('🎯 Offer received for booking:', newBooking.id);
                   
-                  // Show notification that offer was received
+                  const finalPrice = newBooking.final_price_cents 
+                    ? (newBooking.final_price_cents / 100).toFixed(2)
+                    : newBooking.final_price?.toFixed(2) 
+                    || newBooking.estimated_price?.toFixed(2) 
+                    || '0.00';
+                  
                   toast({
                     title: "Offer Received!",
-                    description: `You have received a price offer of $${(newBooking.final_price || newBooking.estimated_price || 0)} for your ride.`,
+                    description: `You have received a price offer of $${finalPrice} for your ride. Please proceed with payment.`,
+                  });
+                }
+
+                // Handle successful payment
+                if (
+                  (newBooking.payment_status === 'paid' && oldBooking?.payment_status !== 'paid') ||
+                  (newBooking.payment_confirmation_status === 'passenger_paid' && 
+                   oldBooking?.payment_confirmation_status !== 'passenger_paid')
+                ) {
+                  console.log('💳 Payment successful for booking:', newBooking.id);
+                  
+                  toast({
+                    title: "Payment Successful!",
+                    description: "Your payment has been processed. You'll receive a confirmation email shortly.",
+                  });
+                }
+
+                // Handle booking fully confirmed
+                if (
+                  newBooking.payment_confirmation_status === 'all_set' && 
+                  oldBooking?.payment_confirmation_status !== 'all_set'
+                ) {
+                  console.log('✅ Booking fully confirmed:', newBooking.id);
+                  
+                  toast({
+                    title: "Ride Confirmed!",
+                    description: "Your ride is confirmed. Your driver will contact you soon.",
                   });
                 }
               }
               
-              // Refresh bookings when any change occurs
+              // Refresh bookings for any change
               if (mounted) {
                 fetchBookings();
               }
             }
           )
           .subscribe((status) => {
-            console.log('📡 Passenger bookings subscription status:', status);
+            console.log('📡 Enhanced passenger bookings subscription status:', status);
           });
 
         return () => {
-          console.log('🧹 Cleaning up passenger bookings subscription');
+          console.log('🧹 Cleaning up enhanced passenger bookings subscription');
           supabase.removeChannel(channel);
         };
       }
@@ -183,9 +222,8 @@ export const useRealtimeBookings = () => {
     };
   }, []);
 
-  // Manual refresh function
   const refetch = async () => {
-    console.log('🔄 Manual refresh triggered for passenger bookings');
+    console.log('🔄 Manual refresh triggered for enhanced passenger bookings');
     await fetchBookings();
   };
 

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, Calendar, RefreshCw } from 'lucide-react';
 import { useRealtimeBookings } from '@/hooks/useRealtimeBookings';
-import { EnhancedOfferBookingCard } from './EnhancedOfferBookingCard';
+import { OfferBookingCard } from './OfferBookingCard';
 import { EnhancedBookingCard } from './EnhancedBookingCard';
 import { useNavigate } from 'react-router-dom';
 
@@ -62,11 +62,14 @@ export default function PassengerBookingsList({ showHeader = true }: PassengerBo
     );
   }
 
-  // Check if booking has received an offer
-  const hasReceivedOffer = (booking: any) => {
+  // Check if booking has received an offer or is in payment/confirmation flow
+  const isOfferOrPaymentBooking = (booking: any) => {
     return booking.status === 'offer_sent' || 
            booking.ride_status === 'offer_sent' ||
-           booking.payment_confirmation_status === 'price_awaiting_acceptance';
+           booking.payment_confirmation_status === 'price_awaiting_acceptance' ||
+           booking.payment_status === 'paid' ||
+           booking.payment_confirmation_status === 'passenger_paid' ||
+           booking.payment_confirmation_status === 'all_set';
   };
 
   return (
@@ -108,10 +111,10 @@ export default function PassengerBookingsList({ showHeader = true }: PassengerBo
           </Card>
         ) : (
           bookings.map((booking) => {
-            // Use enhanced card for bookings with offers, regular card for others
-            if (hasReceivedOffer(booking) && passengerInfo) {
+            // Use enhanced offer card for bookings with offers/payments
+            if (isOfferOrPaymentBooking(booking) && passengerInfo) {
               return (
-                <EnhancedOfferBookingCard
+                <OfferBookingCard
                   key={booking.id}
                   booking={booking}
                   passengerInfo={passengerInfo}
@@ -120,6 +123,7 @@ export default function PassengerBookingsList({ showHeader = true }: PassengerBo
               );
             }
             
+            // Use regular card for other bookings
             return passengerInfo ? (
               <EnhancedBookingCard
                 key={booking.id}

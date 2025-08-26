@@ -27,15 +27,13 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
-  // Check if SmartPrice is enabled (you can get this from system settings)
-  const isSmartPriceEnabled = true; // This should come from your app settings
+  const isSmartPriceEnabled = true;
 
-  // Calculate pricing breakdown
   const uberEstimateCents = booking.estimated_price_cents || 
                            (booking.estimated_price ? booking.estimated_price * 100 : null) ||
                            (booking.final_price_cents) ||
                            (booking.final_price ? booking.final_price * 100 : null) ||
-                           10000; // Default $100
+                           10000;
 
   const pricingBreakdown = SmartPricingEngine.calculatePrice(uberEstimateCents);
   const formattedBreakdown = SmartPricingEngine.formatBreakdown(pricingBreakdown);
@@ -53,14 +51,12 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     try {
       setIsProcessing(true);
       
-      console.log('🔄 Starting payment process for booking:', booking.id);
+      console.log('🔄 Starting enhanced payment process for booking:', booking.id);
       
       // Call the Stripe checkout edge function
-      const { data, error } = await supabase.functions.invoke('stripe-checkout', {
+      const { data, error } = await supabase.functions.invoke('stripe-start-checkout', {
         body: { 
-          booking_id: booking.id,
-          amount_cents: pricingBreakdown.totalCents,
-          breakdown: pricingBreakdown
+          booking_id: booking.id
         }
       });
 
@@ -94,7 +90,9 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         description: "Complete your payment in the new tab to confirm your booking.",
       });
 
+      // Close modal and trigger confirmation
       onClose();
+      onPaymentConfirmed();
       
     } catch (error) {
       console.error('❌ Payment error:', error);
@@ -171,6 +169,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 <p>• All fees included upfront</p>
                 <p>• No hidden charges</p>
                 <p>• Secure payment processing</p>
+                <p>• Email confirmation included</p>
               </div>
 
               <div className="mt-3 p-3 bg-green-50 rounded-lg">
