@@ -125,9 +125,9 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
           {isPaid() && booking.drivers ? (
             <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
               <div className="w-12 h-12 rounded-full overflow-hidden bg-blue-500 flex items-center justify-center">
-                {booking.drivers.profile_photo_url || booking.drivers.avatar_url ? (
+                {booking.drivers.profile_photo_url ? (
                   <img 
-                    src={booking.drivers.profile_photo_url || booking.drivers.avatar_url} 
+                    src={booking.drivers.profile_photo_url} 
                     alt={booking.drivers.full_name}
                     className="w-full h-full object-cover"
                   />
