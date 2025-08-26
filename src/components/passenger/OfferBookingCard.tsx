@@ -75,12 +75,29 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
     return { text: 'Pending', color: 'bg-gray-100 text-gray-800 border-gray-200' };
   };
 
+  // Use offer_price_cents as the single source of truth
+  const getFormattedPrice = () => {
+    if (booking.offer_price_cents && booking.offer_price_cents > 0) {
+      return (booking.offer_price_cents / 100).toFixed(2);
+    }
+    // Fallback to other price fields if offer_price_cents is not available
+    if (booking.final_price_cents && booking.final_price_cents > 0) {
+      return (booking.final_price_cents / 100).toFixed(2);
+    }
+    if (booking.estimated_price_cents && booking.estimated_price_cents > 0) {
+      return (booking.estimated_price_cents / 100).toFixed(2);
+    }
+    if (booking.final_price && booking.final_price > 0) {
+      return booking.final_price.toFixed(2);
+    }
+    if (booking.estimated_price && booking.estimated_price > 0) {
+      return booking.estimated_price.toFixed(2);
+    }
+    return null;
+  };
+
+  const formattedPrice = getFormattedPrice();
   const statusDisplay = getStatusDisplay();
-  const finalPrice = booking.final_price_cents 
-    ? (booking.final_price_cents / 100).toFixed(2)
-    : booking.final_price?.toFixed(2) 
-    || booking.estimated_price?.toFixed(2) 
-    || '0.00';
 
   const shouldShowPaymentButton = 
     (booking.status === 'offer_sent' || 
@@ -95,15 +112,6 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
       title: "Payment Processing",
       description: "Your payment is being processed. You'll receive confirmation shortly.",
     });
-  };
-
-  // Get button text - if price is $0.00, show "Pay to Confirm Ride", otherwise show price
-  const getPaymentButtonText = () => {
-    const price = parseFloat(finalPrice);
-    if (price === 0 || isNaN(price)) {
-      return "Pay to Confirm Ride";
-    }
-    return `Pay $${finalPrice} to Confirm Ride`;
   };
 
   // Get driver information
@@ -126,8 +134,17 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
               )}
             </div>
             <div className="text-right">
-              <p className="text-lg font-semibold text-gray-900">${finalPrice}</p>
-              <p className="text-xs text-gray-500">Total Price</p>
+              {formattedPrice ? (
+                <>
+                  <p className="text-lg font-semibold text-gray-900">${formattedPrice}</p>
+                  <p className="text-xs text-gray-500">Total Price</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-lg font-semibold text-gray-900"> </p>
+                  <p className="text-xs text-gray-500">Total Price</p>
+                </>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -200,7 +217,7 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
                 className="w-full bg-[#FF385C] hover:bg-[#E31C5F] text-white flex items-center gap-2"
               >
                 <CreditCard className="w-4 h-4" />
-                {getPaymentButtonText()}
+                Pay to Confirm Ride
               </Button>
             </div>
           )}

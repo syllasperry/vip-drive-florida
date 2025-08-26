@@ -16,7 +16,10 @@ export interface RealtimeBooking {
   driver_id: string | null;
   vehicle_type: string | null;
   final_price: number | null;
+  final_price_cents: number | null;
   estimated_price: number | null;
+  estimated_price_cents: number | null;
+  offer_price_cents: number | null;
   payment_confirmation_status: string | null;
   ride_status: string | null;
   passenger_count: number;
@@ -106,7 +109,10 @@ export const useRealtimeBookings = () => {
           driver_id,
           vehicle_type,
           final_price,
+          final_price_cents,
           estimated_price,
+          estimated_price_cents,
+          offer_price_cents,
           payment_confirmation_status,
           ride_status,
           passenger_count,

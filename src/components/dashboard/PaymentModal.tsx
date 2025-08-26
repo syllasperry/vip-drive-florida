@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { CreditCard, Clock, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { SmartPricingEngine } from '@/lib/pricing/smartPricing';
 import { format } from 'date-fns';
 
 export interface PaymentModalProps {
@@ -27,16 +26,29 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
-  const isSmartPriceEnabled = true;
+  // Use offer_price_cents as the single source of truth for pricing
+  const getFormattedPrice = () => {
+    if (booking.offer_price_cents && booking.offer_price_cents > 0) {
+      return (booking.offer_price_cents / 100).toFixed(2);
+    }
+    // Fallback to other price fields if offer_price_cents is not available
+    if (booking.final_price_cents && booking.final_price_cents > 0) {
+      return (booking.final_price_cents / 100).toFixed(2);
+    }
+    if (booking.estimated_price_cents && booking.estimated_price_cents > 0) {
+      return (booking.estimated_price_cents / 100).toFixed(2);
+    }
+    if (booking.final_price && booking.final_price > 0) {
+      return booking.final_price.toFixed(2);
+    }
+    if (booking.estimated_price && booking.estimated_price > 0) {
+      return booking.estimated_price.toFixed(2);
+    }
+    return null;
+  };
 
-  const uberEstimateCents = booking.estimated_price_cents || 
-                           (booking.estimated_price ? booking.estimated_price * 100 : null) ||
-                           (booking.final_price_cents) ||
-                           (booking.final_price ? booking.final_price * 100 : null) ||
-                           10000;
-
-  const pricingBreakdown = SmartPricingEngine.calculatePrice(uberEstimateCents);
-  const formattedBreakdown = SmartPricingEngine.formatBreakdown(pricingBreakdown);
+  const formattedPrice = getFormattedPrice();
+  const formattedTotal = formattedPrice ? `$${formattedPrice}` : '';
 
   const handlePayment = async () => {
     if (!booking?.id) {
@@ -156,7 +168,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-4">
                 <span className="text-lg font-medium text-gray-900">Total Amount</span>
-                <span className="text-2xl font-bold text-gray-900">{formattedBreakdown.total}</span>
+                <span className="text-2xl font-bold text-gray-900">{formattedTotal}</span>
               </div>
 
               <div className="text-sm text-gray-600 space-y-1">
@@ -188,7 +200,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             <Button 
               onClick={handlePayment} 
               className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-              disabled={isProcessing}
+              disabled={isProcessing || !formattedPrice}
             >
               {isProcessing ? (
                 <>
@@ -198,7 +210,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               ) : (
                 <>
                   <CreditCard className="w-4 h-4 mr-2" />
-                  Pay {formattedBreakdown.total}
+                  Pay {formattedTotal}
                 </>
               )}
             </Button>
