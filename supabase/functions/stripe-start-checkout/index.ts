@@ -142,17 +142,8 @@ serve(async (req) => {
       )
     }
 
-    // Validate the Stripe key format
-    if (!stripeSecretKey.startsWith('sk_test_') && !stripeSecretKey.startsWith('sk_live_')) {
-      console.error('❌ Invalid STRIPE_SECRET_KEY format')
-      return new Response(
-        JSON.stringify({ error: 'Invalid Stripe key format' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
-    }
+    console.log('🔑 Stripe key found, length:', stripeSecretKey.length)
+    console.log('🔑 Stripe key prefix:', stripeSecretKey.substring(0, 7))
 
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: '2023-10-16',

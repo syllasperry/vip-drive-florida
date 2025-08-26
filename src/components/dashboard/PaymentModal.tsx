@@ -63,6 +63,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       setIsProcessing(true);
       
       console.log('🔄 Iniciando checkout Stripe para reserva:', booking.id);
+      console.log('💰 Preço da oferta:', booking.offer_price_cents);
       
       // Call the Stripe checkout edge function
       const { data, error } = await supabase.functions.invoke('stripe-start-checkout', {
@@ -70,6 +71,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           booking_id: booking.id
         }
       });
+
+      console.log('📤 Resposta do edge function:', { data, error });
 
       if (error) {
         console.error('❌ Erro no checkout Stripe:', error);
@@ -87,8 +90,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           errorMessage = "Acesso negado - tente fazer login novamente";
         } else if (error.message?.includes('Booking not found')) {
           errorMessage = "Reserva não encontrada - atualize a página e tente novamente";
-        } else if (error.message?.includes('Invalid Stripe key')) {
-          errorMessage = "Erro de configuração do sistema de pagamento";
+        } else if (error.message?.includes('Invalid API Key') || error.message?.includes('Stripe configuration error')) {
+          errorMessage = "Erro de configuração do sistema de pagamento - entre em contato com o suporte";
         }
         
         toast({
@@ -100,7 +103,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       }
 
       if (!data?.url) {
-        console.error('❌ URL de checkout não recebida');
+        console.error('❌ URL de checkout não recebida:', data);
         toast({
           title: "Erro no Pagamento",
           description: "Falha ao criar sessão de pagamento. Tente novamente.",
