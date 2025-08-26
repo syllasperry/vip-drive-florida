@@ -76,11 +76,12 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
   };
 
   const statusDisplay = getStatusDisplay();
-  const finalPrice = booking.final_price_cents 
-    ? (booking.final_price_cents / 100).toFixed(2)
-    : booking.final_price?.toFixed(2) 
-    || booking.estimated_price?.toFixed(2) 
-    || '0.00';
+  
+  // Use final_price_cents as the single source of truth
+  const finalPriceCents = booking.final_price_cents;
+  const finalPrice = finalPriceCents && finalPriceCents > 0 
+    ? (finalPriceCents / 100).toFixed(2)
+    : null;
 
   const shouldShowPaymentButton = 
     (booking.status === 'offer_sent' || 
@@ -117,7 +118,11 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
               )}
             </div>
             <div className="text-right">
-              <p className="text-lg font-semibold text-gray-900">${finalPrice}</p>
+              {finalPrice ? (
+                <p className="text-lg font-semibold text-gray-900">${finalPrice}</p>
+              ) : (
+                <p className="text-sm text-gray-500">Price pending</p>
+              )}
               <p className="text-xs text-gray-500">Total Price</p>
             </div>
           </div>
@@ -184,7 +189,7 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
           )}
 
           {/* Payment Button for Offers */}
-          {shouldShowPaymentButton && (
+          {shouldShowPaymentButton && finalPrice && (
             <div className="pt-2 border-t border-gray-100">
               <Button 
                 onClick={() => setShowPaymentModal(true)}
@@ -193,6 +198,15 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
                 <CreditCard className="w-4 h-4" />
                 Pay ${finalPrice} to Confirm Ride
               </Button>
+            </div>
+          )}
+
+          {/* Show error if price is unavailable */}
+          {shouldShowPaymentButton && !finalPrice && (
+            <div className="pt-2 border-t border-gray-100">
+              <p className="text-sm text-red-600 text-center">
+                Price unavailable—pull to refresh
+              </p>
             </div>
           )}
 

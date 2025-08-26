@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { CreditCard, Clock, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { SmartPricingEngine } from '@/lib/pricing/smartPricing';
 import { format } from 'date-fns';
 
 export interface PaymentModalProps {
@@ -27,22 +26,17 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
-  const isSmartPriceEnabled = true;
-
-  const uberEstimateCents = booking.estimated_price_cents || 
-                           (booking.estimated_price ? booking.estimated_price * 100 : null) ||
-                           (booking.final_price_cents) ||
-                           (booking.final_price ? booking.final_price * 100 : null) ||
-                           10000;
-
-  const pricingBreakdown = SmartPricingEngine.calculatePrice(uberEstimateCents);
-  const formattedBreakdown = SmartPricingEngine.formatBreakdown(pricingBreakdown);
+  // Use final_price_cents as the single source of truth
+  const finalPriceCents = booking.final_price_cents;
+  const finalPrice = finalPriceCents && finalPriceCents > 0 
+    ? (finalPriceCents / 100).toFixed(2)
+    : null;
 
   const handlePayment = async () => {
-    if (!booking?.id) {
+    if (!booking?.id || !finalPrice) {
       toast({
         title: "Error",
-        description: "Invalid booking information",
+        description: "Invalid booking information or price unavailable",
         variant: "destructive",
       });
       return;
@@ -51,7 +45,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     try {
       setIsProcessing(true);
       
-      console.log('🔄 Starting enhanced payment process for booking:', booking.id);
+      console.log('🔄 Starting payment process for booking:', booking.id);
       
       // Call the Stripe checkout edge function
       const { data, error } = await supabase.functions.invoke('stripe-start-checkout', {
@@ -126,11 +120,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 <Badge variant="outline" className="text-xs">
                   #{(booking.booking_code || booking.id.slice(-8)).toUpperCase()}
                 </Badge>
-                {isSmartPriceEnabled && (
-                  <Badge className="text-xs bg-purple-100 text-purple-800">
-                    SmartPrice ON
-                  </Badge>
-                )}
               </div>
 
               <div className="flex items-start gap-2">
@@ -156,12 +145,16 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             </CardContent>
           </Card>
 
-          {/* Pricing - Passenger only sees total */}
+          {/* Pricing */}
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-4">
                 <span className="text-lg font-medium text-gray-900">Total Amount</span>
-                <span className="text-2xl font-bold text-gray-900">{formattedBreakdown.total}</span>
+                {finalPrice ? (
+                  <span className="text-2xl font-bold text-gray-900">${finalPrice}</span>
+                ) : (
+                  <span className="text-sm text-gray-500">Price unavailable</span>
+                )}
               </div>
 
               <div className="text-sm text-gray-600 space-y-1">
@@ -193,18 +186,20 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             <Button 
               onClick={handlePayment} 
               className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-              disabled={isProcessing}
+              disabled={isProcessing || !finalPrice}
             >
               {isProcessing ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
                   Processing...
                 </>
-              ) : (
+              ) : finalPrice ? (
                 <>
                   <CreditCard className="w-4 h-4 mr-2" />
-                  Pay {formattedBreakdown.total}
+                  Pay ${finalPrice}
                 </>
+              ) : (
+                'Price unavailable'
               )}
             </Button>
           </div>
