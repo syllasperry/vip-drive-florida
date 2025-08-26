@@ -30,7 +30,7 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
     const isPaid = booking.payment_status === 'paid' || booking.paid_at;
     
     if (isPaid) {
-      return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">All Set</Badge>;
+      return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">PAID</Badge>;
     }
     
     const status = booking.payment_confirmation_status || booking.status;
@@ -39,7 +39,7 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
       case 'waiting_for_offer':
         return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Awaiting Offer</Badge>;
       case 'offer_sent':
-        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 animate-pulse">Payment Required</Badge>;
+        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">OFFER RECEIVED</Badge>;
       case 'waiting_for_payment':
         return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 animate-pulse">Payment Required</Badge>;
       case 'passenger_paid':
@@ -102,7 +102,7 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
           <div className="flex items-start justify-between">
             <div>
               <CardTitle className="text-lg font-semibold">
-                {booking.booking_code || `Booking #${booking.id.slice(0, 8)}`}
+                {booking.booking_code || `#VIP-${new Date(booking.created_at).getFullYear()}-${booking.id.slice(0, 3).toUpperCase()}`}
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 {format(new Date(booking.pickup_time), 'MMM d, yyyy • h:mm a')}
@@ -110,112 +110,127 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
             </div>
             <div className="flex flex-col items-end gap-2">
               {getStatusBadge()}
-              {needsAction() && (
-                <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-              )}
+              <div className="text-right">
+                <p className="text-lg font-semibold">
+                  {formatPrice(booking.paid_amount_cents || booking.offer_price_cents || booking.final_price_cents || booking.estimated_price_cents)}
+                </p>
+                <p className="text-xs text-gray-500">Total Price</p>
+              </div>
             </div>
           </div>
         </CardHeader>
 
         <CardContent className="space-y-4">
+          {/* Driver Info - Updated when paid */}
+          {isPaid() && booking.drivers ? (
+            <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+              <div className="w-12 h-12 rounded-full overflow-hidden bg-blue-500 flex items-center justify-center">
+                {booking.drivers.profile_photo_url ? (
+                  <img 
+                    src={booking.drivers.profile_photo_url} 
+                    alt={booking.drivers.full_name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-white font-semibold text-lg">
+                    {booking.drivers.full_name?.charAt(0) || 'D'}
+                  </span>
+                )}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-600">Driver</p>
+                <p className="font-semibold text-gray-900">{booking.drivers.full_name}</p>
+                <div className="flex gap-3 mt-1">
+                  <button 
+                    onClick={() => handleContactDriver('phone')}
+                    className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
+                  >
+                    <Phone className="h-3 w-3" />
+                    {booking.drivers.phone}
+                  </button>
+                  <button 
+                    onClick={() => handleContactDriver('sms')}
+                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                  >
+                    Text
+                  </button>
+                  {booking.drivers.email && (
+                    <button 
+                      onClick={() => handleContactDriver('email')}
+                      className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
+                    >
+                      <Mail className="h-3 w-3" />
+                      Email
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                <span className="text-white font-semibold text-lg">D</span>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">Driver</p>
+                <p className="text-gray-500">Your assigned driver</p>
+              </div>
+            </div>
+          )}
+
           {/* Route */}
           <div className="space-y-2">
             <div className="flex items-start gap-3">
               <MapPin className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
               <div className="min-w-0 flex-1">
+                <p className="text-xs text-gray-500">Pickup</p>
                 <p className="text-sm font-medium text-gray-900 truncate">
                   {booking.pickup_location}
                 </p>
-                <p className="text-xs text-gray-500">Pickup</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <MapPin className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
               <div className="min-w-0 flex-1">
+                <p className="text-xs text-gray-500">Drop-off</p>
                 <p className="text-sm font-medium text-gray-900 truncate">
                   {booking.dropoff_location}
                 </p>
-                <p className="text-xs text-gray-500">Destination</p>
               </div>
             </div>
           </div>
 
-          {/* Driver & Price Info */}
-          <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100">
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-xs text-gray-500">Driver</p>
-                <p className="text-sm font-medium">
-                  {booking.drivers?.full_name || 'TBD'}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-xs text-gray-500">Price</p>
-                <p className="text-sm font-medium">
-                  {formatPrice(booking.paid_amount_cents || booking.offer_price_cents || booking.final_price_cents || booking.estimated_price_cents)}
-                </p>
-              </div>
+          {/* Date & Time */}
+          <div className="flex items-center gap-3">
+            <Clock className="h-4 w-4 text-blue-600" />
+            <div>
+              <p className="text-xs text-gray-500">Date & Time</p>
+              <p className="text-sm font-medium text-gray-900">
+                {format(new Date(booking.pickup_time), 'MMM d, yyyy \'at\' h:mm a')}
+              </p>
             </div>
           </div>
 
-          {/* Driver Contact Info (only show when paid) */}
-          {isPaid() && booking.drivers && (
-            <div className="border-t border-gray-100 pt-4">
-              <p className="text-sm font-medium text-gray-900 mb-2">Driver Contact</p>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => handleContactDriver('phone')}
-                  className="flex items-center gap-1 text-xs"
-                >
-                  <Phone className="h-3 w-3" />
-                  Call
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => handleContactDriver('sms')}
-                  className="flex items-center gap-1 text-xs"
-                >
-                  <MessageCircle className="h-3 w-3" />
-                  Text
-                </Button>
-                {booking.drivers.email && (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleContactDriver('email')}
-                    className="flex items-center gap-1 text-xs"
-                  >
-                    <Mail className="h-3 w-3" />
-                    Email
-                  </Button>
-                )}
+          {/* Vehicle Type */}
+          {booking.vehicle_type && (
+            <div className="flex items-center gap-3">
+              <div className="h-4 w-4 text-purple-600">🚗</div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">{booking.vehicle_type}</p>
               </div>
-              {booking.drivers.car_make && (
-                <p className="text-xs text-gray-500 mt-2">
-                  {booking.drivers.car_color} {booking.drivers.car_make} {booking.drivers.car_model} • {booking.drivers.license_plate}
-                </p>
-              )}
             </div>
           )}
 
-          {/* Action Buttons */}
+          {/* Action Buttons - Only show payment button if not paid */}
           <div className="flex gap-2 pt-2">
             {needsAction() && (
               <Button 
-                className="flex-1" 
+                className="flex-1 bg-pink-600 hover:bg-pink-700 text-white font-medium py-3" 
                 onClick={() => {
-                  // Navigate to payment or booking details
                   window.location.href = `/passenger/dashboard?tab=bookings&booking=${booking.id}`;
                 }}
               >
-                Complete Payment
+                💳 Pay to Confirm Ride
               </Button>
             )}
             
