@@ -27,6 +27,10 @@ export default function PassengerBookingsList({ showHeader = true }: PassengerBo
       }
     : null;
 
+  const handleRefresh = () => {
+    refetch();
+  };
+
   if (error) {
     return (
       <Card>
@@ -35,7 +39,7 @@ export default function PassengerBookingsList({ showHeader = true }: PassengerBo
             <p className="font-semibold">Error Loading Bookings</p>
             <p className="text-sm">{error}</p>
           </div>
-          <Button onClick={refetch} variant="outline" className="gap-2">
+          <Button onClick={handleRefresh} variant="outline" className="gap-2">
             <RefreshCw className="h-4 w-4" />
             Try Again
           </Button>
