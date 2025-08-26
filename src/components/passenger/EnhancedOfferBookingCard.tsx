@@ -75,8 +75,11 @@ export const EnhancedOfferBookingCard: React.FC<EnhancedOfferBookingCardProps> =
   };
 
   const statusDisplay = getStatusDisplay();
-  const finalPrice = booking.final_price_cents 
-    ? (booking.final_price_cents / 100).toFixed(2)
+  
+  // Use offer_price_cents as the source of truth for the payment amount
+  const offerPriceCents = booking.offer_price_cents || booking.final_price_cents;
+  const finalPrice = offerPriceCents 
+    ? (offerPriceCents / 100).toFixed(2)
     : booking.final_price?.toFixed(2) 
     || booking.estimated_price?.toFixed(2) 
     || '0.00';
@@ -96,6 +99,9 @@ export const EnhancedOfferBookingCard: React.FC<EnhancedOfferBookingCardProps> =
     });
   };
 
+  // Check if we have a valid price to show
+  const hasValidPrice = offerPriceCents && offerPriceCents > 0;
+
   return (
     <>
       <Card className="border border-gray-200 hover:shadow-md transition-all duration-200">
@@ -110,8 +116,17 @@ export const EnhancedOfferBookingCard: React.FC<EnhancedOfferBookingCardProps> =
               )}
             </div>
             <div className="text-right">
-              <p className="text-lg font-semibold text-gray-900">${finalPrice}</p>
-              <p className="text-xs text-gray-500">Total Price</p>
+              {hasValidPrice ? (
+                <>
+                  <p className="text-lg font-semibold text-gray-900">${finalPrice}</p>
+                  <p className="text-xs text-gray-500">Total Price</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-gray-500">Price unavailable</p>
+                  <p className="text-xs text-gray-500">Pull to refresh</p>
+                </>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -157,9 +172,10 @@ export const EnhancedOfferBookingCard: React.FC<EnhancedOfferBookingCardProps> =
               <Button 
                 onClick={() => setShowPaymentModal(true)}
                 className="w-full bg-[#FF385C] hover:bg-[#E31C5F] text-white flex items-center gap-2"
+                disabled={!hasValidPrice}
               >
                 <CreditCard className="w-4 h-4" />
-                Pay ${finalPrice} to Confirm Ride
+                {hasValidPrice ? `Pay $${finalPrice} to Confirm Ride` : 'Price unavailable—pull to refresh'}
               </Button>
             </div>
           )}
