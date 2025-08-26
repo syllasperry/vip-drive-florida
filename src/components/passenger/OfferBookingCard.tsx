@@ -76,18 +76,35 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
   };
 
   const statusDisplay = getStatusDisplay();
-  const finalPrice = booking.final_price_cents 
-    ? (booking.final_price_cents / 100).toFixed(2)
-    : booking.final_price?.toFixed(2) 
-    || booking.estimated_price?.toFixed(2) 
-    || '0.00';
+
+  // Calculate final price from cents - this is the source of truth for passenger pricing
+  const getFinalPrice = () => {
+    if (booking.final_price_cents && booking.final_price_cents > 0) {
+      return (booking.final_price_cents / 100).toFixed(2);
+    }
+    
+    // Fallback to other price fields if final_price_cents is not available
+    if (booking.final_price && booking.final_price > 0) {
+      return booking.final_price.toFixed(2);
+    }
+    
+    if (booking.estimated_price && booking.estimated_price > 0) {
+      return booking.estimated_price.toFixed(2);
+    }
+    
+    // If no valid price is available, show placeholder
+    return null;
+  };
+
+  const finalPrice = getFinalPrice();
 
   const shouldShowPaymentButton = 
     (booking.status === 'offer_sent' || 
      booking.ride_status === 'offer_sent' ||
      booking.payment_confirmation_status === 'price_awaiting_acceptance') &&
     booking.payment_confirmation_status !== 'all_set' &&
-    booking.payment_confirmation_status !== 'passenger_paid';
+    booking.payment_confirmation_status !== 'passenger_paid' &&
+    finalPrice !== null;
 
   const handlePaymentConfirmed = () => {
     setShowPaymentModal(false);
@@ -117,8 +134,17 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
               )}
             </div>
             <div className="text-right">
-              <p className="text-lg font-semibold text-gray-900">${finalPrice}</p>
-              <p className="text-xs text-gray-500">Total Price</p>
+              {finalPrice !== null ? (
+                <>
+                  <p className="text-lg font-semibold text-gray-900">${finalPrice}</p>
+                  <p className="text-xs text-gray-500">Total Price</p>
+                </>
+              ) : (
+                <>
+                  <div className="w-16 h-5 bg-gray-200 rounded animate-pulse"></div>
+                  <p className="text-xs text-gray-500">Loading...</p>
+                </>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -196,6 +222,15 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
             </div>
           )}
 
+          {/* Price Unavailable Error */}
+          {finalPrice === null && shouldShowPaymentButton && (
+            <div className="pt-2 border-t border-gray-100">
+              <p className="text-sm text-red-600 text-center">
+                Price unavailable—pull to refresh
+              </p>
+            </div>
+          )}
+
           {/* Confirmed Status */}
           {booking.payment_confirmation_status === 'all_set' && (
             <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg border border-green-200">
@@ -210,7 +245,7 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
       </Card>
 
       {/* Payment Modal */}
-      {showPaymentModal && (
+      {showPaymentModal && finalPrice !== null && (
         <PaymentModal
           isOpen={showPaymentModal}
           onClose={() => setShowPaymentModal(false)}
