@@ -11,10 +11,53 @@ const CheckoutTest: React.FC = () => {
 
   const createTestBooking = async () => {
     try {
-      // Create a test booking first
+      // Get or create passenger profile first
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in to create a test booking",
+          variant: "destructive",
+        });
+        return null;
+      }
+
+      // Get passenger profile
+      const { data: passenger, error: passengerError } = await supabase
+        .from('passengers')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (passengerError || !passenger) {
+        // Create passenger profile if it doesn't exist
+        const { data: newPassenger, error: createError } = await supabase
+          .from('passengers')
+          .insert({
+            user_id: user.id,
+            full_name: user.user_metadata?.full_name || user.email || 'Test User',
+            email: user.email || 'test@example.com'
+          })
+          .select()
+          .single();
+
+        if (createError || !newPassenger) {
+          toast({
+            title: "Error",
+            description: "Failed to create passenger profile",
+            variant: "destructive",
+          });
+          return null;
+        }
+      }
+
+      const passengerId = passenger?.id || newPassenger?.id;
+
+      // Create a test booking
       const { data: booking, error } = await supabase
         .from('bookings')
         .insert({
+          passenger_id: passengerId,
           pickup_location: 'Test Pickup Location',
           dropoff_location: 'Test Dropoff Location',
           pickup_time: new Date(Date.now() + 3600000).toISOString(), // 1 hour from now
@@ -184,7 +227,7 @@ const CheckoutTest: React.FC = () => {
         <div className="text-xs text-gray-500 space-y-1">
           <p>This will test the complete flow:</p>
           <ul className="list-disc list-inside space-y-1">
-            <li>Create test booking</li>
+            <li>Create test booking with passenger</li>
             <li>Generate Stripe checkout session</li>
             <li>Process webhook events</li>
             <li>Update booking status</li>
