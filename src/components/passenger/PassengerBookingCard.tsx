@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +25,37 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
   const [showMessaging, setShowMessaging] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
+  // Supabase payment verification as requested
+  const verifyPaymentStatus = async () => {
+    if (!booking.booking_code) return;
+    
+    try {
+      const response = await fetch(`https://extdyjkfgftbokabiamc.supabase.co/rest/v1/bookings?booking_code=eq.${booking.booking_code}`, {
+        method: 'GET',
+        headers: {
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV4dGR5amtmZ2Z0Ym9rYWJpYW1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMyMTU2MjMsImV4cCI6MjA2ODc5MTYyM30.BQsUy0nX3Aj_aAzTSGGQFWWt7zFYf7fQmKPveRsM3vk',
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV4dGR5amtmZ2Z0Ym9rYWJpYW1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMyMTU2MjMsImV4cCI6MjA2ODc5MTYyM30.BQsUy0nX3Aj_aAzTSGGQFWWt7zFYf7fQmKPveRsM3vk',
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.length > 0 && data[0].status === 'paid') {
+        // ✅ Payment confirmed — update UI accordingly
+        console.log('✅ Payment confirmed via Supabase verification!');
+        if (onStatusUpdate) {
+          onStatusUpdate();
+        }
+      } else {
+        // ⏳ Payment still pending — show waiting state
+        console.log('⏳ Waiting for payment confirmation...');
+      }
+    } catch (error) {
+      console.error('❌ Error checking payment status:', error);
+    }
+  };
+
   // Check URL for session_id and reconcile if present
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -43,10 +73,8 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
             const newUrl = window.location.pathname;
             window.history.replaceState({}, '', newUrl);
             
-            // Force refresh booking data
-            if (onStatusUpdate) {
-              onStatusUpdate();
-            }
+            // Verify payment status via Supabase
+            verifyPaymentStatus();
           }
         })
         .catch(err => {
@@ -54,6 +82,14 @@ export const PassengerBookingCard: React.FC<PassengerBookingCardProps> = ({
         });
     }
   }, []);
+
+  // Verify payment status periodically
+  useEffect(() => {
+    if (!isPaid() && booking.booking_code) {
+      const interval = setInterval(verifyPaymentStatus, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [booking.booking_code, isPaid()]);
 
   const getStatusBadge = () => {
     // Check all possible paid indicators

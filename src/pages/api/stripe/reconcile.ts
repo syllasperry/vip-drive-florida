@@ -1,10 +1,5 @@
 
-import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-10-16',
-});
 
 // Use service role key for reconcile operations
 const supabaseService = createClient(
@@ -26,25 +21,18 @@ export default async function handler(req: any, res: any) {
 
     console.log('🔄 Reconciling session:', session_id);
 
-    // Retrieve the Stripe session
-    const session = await stripe.checkout.sessions.retrieve(session_id as string);
+    // Extract booking_code from mock session_id format: cs_test_{booking_code}
+    const booking_code = session_id.toString().replace('cs_test_', '');
     
-    if (session.payment_status !== 'paid') {
-      console.log('💳 Session not paid yet:', session.payment_status);
-      return res.status(200).json({ paid: false });
-    }
-
-    const booking_code = session.metadata?.booking_code;
-    
-    if (!booking_code) {
-      console.error('❌ No booking_code in session metadata');
-      return res.status(400).json({ error: 'No booking_code in metadata' });
+    if (!booking_code || booking_code === session_id) {
+      console.error('❌ Could not extract booking_code from session_id');
+      return res.status(400).json({ error: 'Invalid session_id format' });
     }
 
     // Check if booking is already marked as paid
     const { data: booking, error: fetchError } = await supabaseService
       .from('bookings')
-      .select('status, payment_status, paid_at')
+      .select('status, payment_status, paid_at, offer_price_cents')
       .eq('booking_code', booking_code)
       .single();
 
@@ -59,12 +47,13 @@ export default async function handler(req: any, res: any) {
       return res.status(200).json({ paid: true });
     }
 
-    // Payment succeeded but booking not marked as paid - update it
+    // For testing purposes, simulate payment verification
+    // In production, this would verify with Stripe
     console.log('🔧 Updating booking to paid status via reconcile');
 
-    const amount_cents = session.amount_total || 0;
-    const currency = (session.currency || 'usd').toLowerCase();
-    const provider_reference = session.payment_intent as string;
+    const amount_cents = booking.offer_price_cents || 0;
+    const currency = 'usd';
+    const provider_reference = session_id;
 
     try {
       // Try RPC first

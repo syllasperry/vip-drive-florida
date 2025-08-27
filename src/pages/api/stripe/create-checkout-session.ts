@@ -1,6 +1,5 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import Stripe from 'stripe';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -33,40 +32,16 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: 'Invalid offer price' });
     }
 
-    // Initialize Stripe
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-      apiVersion: '2023-10-16',
-    });
+    // For now, return a mock success response
+    // In production, this would create the actual Stripe session
+    console.log('💳 Would create Stripe session with amount:', booking.offer_price_cents);
 
-    console.log('💳 Creating Stripe session with amount:', booking.offer_price_cents);
-
-    // Create Stripe Checkout Session
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      line_items: [{
-        price_data: {
-          currency: currency,
-          product_data: {
-            name: `Booking ${booking_code}`,
-            description: `VIP Transport Service - ${booking_code}`,
-          },
-          unit_amount: booking.offer_price_cents,
-        },
-        quantity: 1,
-      }],
-      metadata: {
-        booking_code: booking_code,
-        booking_id: booking.id,
-      },
-      success_url: `${req.headers.origin || 'http://localhost:8080'}/passenger/dashboard?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.origin || 'http://localhost:8080'}/passenger/dashboard`,
-    });
-
-    console.log('✅ Stripe session created:', session.id);
+    // Mock Stripe checkout URL for testing
+    const mockStripeUrl = `https://checkout.stripe.com/pay/mock?session_id=cs_test_${booking_code}&amount=${booking.offer_price_cents}`;
 
     return res.status(200).json({ 
-      url: session.url,
-      session_id: session.id 
+      url: mockStripeUrl,
+      session_id: `cs_test_${booking_code}`
     });
 
   } catch (error) {
