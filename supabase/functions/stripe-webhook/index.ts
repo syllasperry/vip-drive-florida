@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@14.21.0'
@@ -109,11 +110,12 @@ serve(async (req) => {
         const session = event.data.object as Stripe.Checkout.Session
         console.log('💳 Processing checkout.session.completed:', session.id)
         
-        // Get booking_code from client_reference_id or metadata
-        let bookingCode = session.client_reference_id || session.metadata?.booking_code
-        
+        // Enhanced logging for debugging
         console.log('🏷️ Session metadata:', session.metadata)
         console.log('🔍 Client reference ID:', session.client_reference_id)
+        
+        // Get booking_code from client_reference_id or metadata
+        let bookingCode = session.client_reference_id || session.metadata?.booking_code
         console.log('📄 Booking code found:', bookingCode)
         
         if (!bookingCode) {
@@ -135,12 +137,55 @@ serve(async (req) => {
         }
 
         if (!bookingCode) {
-          console.error('❌ No booking_code found in session')
+          console.error('❌ No booking_code found in session - checking for booking_id in metadata')
+          const bookingId = session.metadata?.booking_id
+          
+          if (bookingId) {
+            console.log('🔄 Using booking_id directly for update:', bookingId)
+            
+            try {
+              // Update by booking ID instead of booking_code
+              const { data: updatedBooking, error: updateError } = await supabaseClient
+                .from('bookings')
+                .update({
+                  status: 'paid',
+                  payment_status: 'paid',
+                  paid_at: new Date().toISOString(),
+                  paid_amount_cents: session.amount_total || 0,
+                  paid_currency: (session.currency || 'usd').toLowerCase(),
+                  payment_provider: 'stripe',
+                  payment_reference: session.payment_intent as string || session.id,
+                  payment_confirmation_status: 'all_set',
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', bookingId)
+                .select()
+                .single()
+
+              if (updateError) {
+                console.error('❌ Error updating booking by ID:', updateError)
+                throw updateError
+              }
+
+              console.log('✅ Payment recorded successfully for booking ID:', bookingId)
+
+              // Mark webhook event as processed
+              await supabaseClient
+                .from('payment_webhook_events')
+                .update({ processed_ok: true })
+                .eq('provider_event_id', event.id)
+
+            } catch (error) {
+              console.error('❌ Error processing payment by booking ID:', error)
+            }
+          } else {
+            console.error('❌ No booking_code or booking_id found - cannot process payment')
+          }
           break
         }
 
         try {
-          // Directly update the booking instead of using RPC
+          // Update booking by booking_code
           const { data: updatedBooking, error: updateError } = await supabaseClient
             .from('bookings')
             .update({
@@ -184,6 +229,8 @@ serve(async (req) => {
 
           if (paymentInsertError) {
             console.error('⚠️ Error inserting payment record:', paymentInsertError)
+          } else {
+            console.log('✅ Payment record inserted successfully')
           }
 
           // Mark webhook event as processed
@@ -281,6 +328,37 @@ serve(async (req) => {
                   .eq('provider_event_id', event.id)
               }
             }
+          } else if (relatedSession.metadata?.booking_id) {
+            // Try updating by booking ID as fallback
+            const bookingId = relatedSession.metadata.booking_id
+            console.log('🔄 Backup: updating booking by ID:', bookingId)
+            
+            const { error: updateError } = await supabaseClient
+              .from('bookings')
+              .update({
+                status: 'paid',
+                payment_status: 'paid',
+                paid_at: new Date().toISOString(),
+                paid_amount_cents: paymentIntent.amount,
+                paid_currency: (paymentIntent.currency || 'usd').toLowerCase(),
+                payment_provider: 'stripe',
+                payment_reference: paymentIntent.id,
+                payment_confirmation_status: 'all_set',
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', bookingId)
+
+            if (updateError) {
+              console.error('❌ Error updating booking by ID via payment_intent:', updateError)
+            } else {
+              console.log('✅ Payment confirmed via payment_intent (by ID):', bookingId)
+              
+              // Mark webhook event as processed
+              await supabaseClient
+                .from('payment_webhook_events')
+                .update({ processed_ok: true })
+                .eq('provider_event_id', event.id)
+            }
           }
         }
         break
@@ -326,6 +404,24 @@ serve(async (req) => {
               console.error('❌ Error updating booking after payment failure:', updateError)
             } else {
               console.log('✅ Booking marked as payment failed:', bookingCode)
+            }
+          } else if (relatedSession.metadata?.booking_id) {
+            // Try updating by booking ID as fallback
+            const bookingId = relatedSession.metadata.booking_id
+            
+            const { error: updateError } = await supabaseClient
+              .from('bookings')
+              .update({
+                payment_status: 'failed',
+                status: 'cancelled',
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', bookingId)
+
+            if (updateError) {
+              console.error('❌ Error updating booking by ID after payment failure:', updateError)
+            } else {
+              console.log('✅ Booking marked as payment failed (by ID):', bookingId)
             }
           }
         }
