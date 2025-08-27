@@ -2,20 +2,20 @@ import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { SiteHeader } from "@/components/site/SiteHeader"
 import { SiteFooter } from "@/components/site/SiteFooter"
-import { HomePage } from "@/pages/Home"
+import HomeScreen from "@/pages/HomeScreen"
 import { PricingPage } from "@/pages/Pricing"
 import { ContactPage } from "@/pages/Contact"
 import { AboutPage } from "@/pages/About"
 import { TermsPage } from "@/pages/Terms"
 import { PrivacyPage } from "@/pages/Privacy"
-import { PassengerLogin } from "@/pages/passenger/Login"
+import PassengerLogin from "@/pages/passenger/Login"
 import { PassengerSignup } from "@/pages/passenger/Signup"
 import PassengerDashboard from "@/pages/passenger/Dashboard";
 import DispatcherDashboard from "@/pages/dispatcher/Dashboard";
 import DriverDashboard from "@/pages/driver/Dashboard";
-import { PriceEstimate } from "@/pages/passenger/PriceEstimate";
+import PriceEstimate from "@/pages/passenger/PriceEstimate";
 import { SupportPage } from "@/pages/Support";
-import { DriverLogin } from "@/pages/driver/Login";
+import DriverLogin from "@/pages/driver/Login";
 import { DriverSignup } from "@/pages/driver/Signup";
 import { DispatcherLogin } from "@/pages/dispatcher/Login";
 import { DispatcherSignup } from "@/pages/dispatcher/Signup";
@@ -31,7 +31,7 @@ function App() {
       <div className="min-h-screen bg-background">
         <Routes>
           {/* Public Routes */}
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={<HomeScreen />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/about" element={<AboutPage />} />
