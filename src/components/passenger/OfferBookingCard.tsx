@@ -85,11 +85,11 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
   const getStatusDisplay = () => {
     // CRITICAL FIX: Enhanced status detection with multiple payment indicators
     if (isPaymentCompleted()) {
-      return { text: 'Confirmed', color: 'bg-green-100 text-green-800 border-green-200' };
+      return { text: 'PAID', color: 'bg-green-100 text-green-800 border-green-200' };
     }
     
     if (isOfferPending()) {
-      return { text: 'Offer Received', color: 'bg-blue-100 text-blue-800 border-blue-200' };
+      return { text: 'OFFER RECEIVED', color: 'bg-blue-100 text-blue-800 border-blue-200' };
     }
     
     if (
@@ -152,6 +152,7 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
   const driverName = driverInfo.full_name || 'Driver';
   const driverPhone = driverInfo.phone;
   const driverPhoto = driverInfo.profile_photo_url;
+  const driverEmail = driverInfo.email;
 
   return (
     <>
@@ -185,7 +186,7 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
         <CardContent className="space-y-4">
           {/* CRITICAL FIX: Show driver info only when payment is completed */}
           {booking.driver_id && isPaymentCompleted() && (
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
               <Avatar className="h-10 w-10">
                 <AvatarImage src={driverPhoto} alt={driverName} />
                 <AvatarFallback className="bg-blue-600 text-white">
@@ -193,15 +194,25 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
-                <p className="font-medium text-gray-900">{driverName}</p>
-                <p className="text-sm text-gray-600">Your assigned driver</p>
+                <p className="text-sm text-gray-500 mb-1">DRIVER</p>
+                <p className="font-medium text-gray-900 mb-1">{driverName}</p>
+                {driverPhone && (
+                  <a 
+                    href={`tel:${driverPhone}`}
+                    className="text-sm text-blue-600 hover:underline block mb-1"
+                  >
+                    {driverPhone}
+                  </a>
+                )}
+                {driverEmail && (
+                  <a 
+                    href={`mailto:${driverEmail}`}
+                    className="text-sm text-blue-600 hover:underline block"
+                  >
+                    {driverEmail}
+                  </a>
+                )}
               </div>
-              {driverPhone && (
-                <div className="flex items-center gap-1 text-sm text-gray-600">
-                  <Phone className="w-4 h-4" />
-                  <span>{driverPhone}</span>
-                </div>
-              )}
             </div>
           )}
 
