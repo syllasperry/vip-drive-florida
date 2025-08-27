@@ -1,6 +1,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useEffect } from 'react';
 
 export interface Booking {
   id: string;
@@ -39,14 +40,14 @@ export interface Booking {
   } | null;
 }
 
-export const useMyBookings = () => {
+export const useMyBookings = (userId?: string) => {
   const { data: bookings = [], isLoading, error, refetch } = useQuery({
     queryKey: ['my-bookings'],
+    enabled: !!userId,
     queryFn: async (): Promise<Booking[]> => {
       console.log('🔄 Fetching passenger bookings...');
       
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      if (!userId) {
         console.error('❌ No authenticated user');
         return [];
       }
@@ -55,7 +56,7 @@ export const useMyBookings = () => {
       let { data: passenger, error: passengerError } = await supabase
         .from('passengers')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .maybeSingle();
 
       if (passengerError && passengerError.code !== 'PGRST116') {
@@ -68,9 +69,9 @@ export const useMyBookings = () => {
         const { data: newPassenger, error: createError } = await supabase
           .from('passengers')
           .insert([{
-            user_id: user.id,
-            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-            email: user.email || ''
+            user_id: userId,
+            full_name: 'User',
+            email: ''
           }])
           .select('id')
           .single();
@@ -168,6 +169,8 @@ export const useMyBookings = () => {
 
   // Set up real-time subscription for immediate payment updates
   useEffect(() => {
+    if (!userId) return;
+    
     console.log('📡 Setting up payment status real-time subscription...');
     
     const channel = supabase
@@ -195,6 +198,13 @@ export const useMyBookings = () => {
       .subscribe((status) => {
         console.log('📡 Payment subscription status:', status);
       });
+
+    return () => {
+      console.log('🧹 Cleaning up payment subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [refetch, userId]);
+
   return {
     bookings,
     isLoading,
@@ -202,9 +212,3 @@ export const useMyBookings = () => {
     refetch
   };
 };
-
-    return () => {
-      console.log('🧹 Cleaning up payment subscription');
-      supabase.removeChannel(channel);
-    };
-  }, [refetch]);

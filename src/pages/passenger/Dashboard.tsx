@@ -33,7 +33,8 @@ export default function PassengerDashboard() {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [passengerProfile, setPassengerProfile] = useState<PassengerProfile | null>(null);
-  const { bookings } = useMyBookings();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const { bookings } = useMyBookings(currentUserId || undefined);
   const MAX_RETRIES = 3;
 
   // CRITICAL FIX: Enhanced URL parameter handling for payment completion
@@ -142,6 +143,8 @@ export default function PassengerDashboard() {
         ...user,
         passenger_profile: passenger
       });
+      
+      setCurrentUserId(user.id);
 
       // Set passenger profile for modal
       if (passenger) {
@@ -234,7 +237,6 @@ export default function PassengerDashboard() {
     );
   }
 
-  const currentUserId = userProfile?.id || '';
   const currentUserName = userProfile?.passenger_profile?.full_name || userProfile?.email?.split('@')[0] || 'User';
 
   const renderTabContent = () => {
