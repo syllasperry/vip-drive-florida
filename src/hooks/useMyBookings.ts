@@ -145,24 +145,56 @@ export const useMyBookings = () => {
     },
     retry: 2,
     refetchOnWindowFocus: true,
-    // CRITICAL FIX: Faster polling for payment status updates
-    refetchInterval: (data) => {
-      // Ensure data is an array before calling .some()
-      if (!Array.isArray(data)) {
+    // Enhanced payment status polling with proper data validation
+    refetchInterval: (data, query) => {
+      // Only poll if query is successful and data exists
+      if (query.state.status !== 'success' || !data || !Array.isArray(data)) {
         return 5000; // Default polling interval
       }
       
-      // Faster polling if there are pending payments
-      const hasPendingPayments = data?.some(booking => 
+      // Check for pending payments that need faster polling
+      const hasPendingPayments = data.some(booking => 
         booking.payment_status === 'processing' ||
         booking.payment_confirmation_status === 'price_awaiting_acceptance' ||
-        booking.status === 'offer_sent'
+        booking.status === 'offer_sent' ||
+        (booking.offer_price_cents && !booking.paid_at)
       );
-      return hasPendingPayments ? 1000 : 5000; // 1s for pending, 5s for stable
+      
+      // Faster polling for pending payments, slower for stable states
+      return hasPendingPayments ? 2000 : 10000; // 2s for pending, 10s for stable
     },
     refetchIntervalInBackground: true
   });
 
+  // Set up real-time subscription for immediate payment updates
+  useEffect(() => {
+    console.log('📡 Setting up payment status real-time subscription...');
+    
+    const channel = supabase
+      .channel('payment-status-updates')
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'bookings',
+        filter: 'payment_status=eq.paid'
+      }, (payload) => {
+        console.log('💳 Payment completion detected via real-time:', payload);
+        // Force immediate refetch when payment is completed
+        refetch();
+      })
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'bookings',
+        filter: 'payment_confirmation_status=eq.all_set'
+      }, (payload) => {
+        console.log('✅ Payment confirmation detected via real-time:', payload);
+        // Force immediate refetch when payment is confirmed
+        refetch();
+      })
+      .subscribe((status) => {
+        console.log('📡 Payment subscription status:', status);
+      });
   return {
     bookings,
     isLoading,
@@ -170,3 +202,9 @@ export const useMyBookings = () => {
     refetch
   };
 };
+
+    return () => {
+      console.log('🧹 Cleaning up payment subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [refetch]);

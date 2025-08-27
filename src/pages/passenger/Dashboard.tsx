@@ -53,13 +53,17 @@ export default function PassengerDashboard() {
       if (paid === 'true' && bookingId) {
         console.log('💳 Payment completion detected from URL:', { bookingId, sessionId });
         
-        // Delay success message to ensure toast is available
+        // Force immediate data refresh after payment completion
         setTimeout(() => {
-          toast({
-            title: "Payment Successful!",
-            description: "Your ride has been confirmed. You'll receive driver details shortly.",
-          });
-        }, 500);
+          // Trigger a manual refetch of bookings data
+          window.location.reload();
+        }, 1000);
+        
+        // Show immediate success message
+        toast({
+          title: "Payment Successful!",
+          description: "Your ride has been confirmed. Refreshing your bookings...",
+        });
       }
       
       const canceled = urlParams.get('canceled');

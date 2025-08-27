@@ -58,10 +58,10 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
     );
   };
 
-  // Auto-show payment modal when offer is received
+  // Auto-show payment modal when offer is received (only if not already paid)
   useEffect(() => {
-    // CRITICAL FIX: Only show payment modal if payment is actually needed
-    const shouldShowPaymentModal = isOfferPending() && !hasShownOfferNotification;
+    // Only show payment modal if payment is needed and not already completed
+    const shouldShowPaymentModal = isOfferPending() && !hasShownOfferNotification && !isPaymentCompleted();
 
     if (shouldShowPaymentModal) {
       console.log('🎯 Auto-showing payment modal for offer:', booking.id);
@@ -79,8 +79,14 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
     if (isPaymentCompleted() && hasShownOfferNotification) {
       setHasShownOfferNotification(false);
       setShowPaymentModal(false);
+      
+      // Show payment success notification
+      toast({
+        title: "Payment Successful!",
+        description: "Your ride has been confirmed. Driver details are now available.",
+      });
     }
-  }, [booking.status, booking.ride_status, booking.payment_confirmation_status, booking.payment_status, booking.paid_at, hasShownOfferNotification]);
+  }, [booking.status, booking.ride_status, booking.payment_confirmation_status, booking.payment_status, booking.paid_at, hasShownOfferNotification, toast]);
 
   const getStatusDisplay = () => {
     // CRITICAL FIX: Enhanced status detection with multiple payment indicators
@@ -188,7 +194,11 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
           {booking.driver_id && isPaymentCompleted() && (
             <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
               <Avatar className="h-10 w-10">
-                <AvatarImage src={driverPhoto} alt={driverName} />
+                <AvatarImage 
+                  src={driverPhoto || driverInfo.avatar_url} 
+                  alt={driverName}
+                  className="object-cover"
+                />
                 <AvatarFallback className="bg-blue-600 text-white">
                   {driverName.charAt(0)}
                 </AvatarFallback>
@@ -199,7 +209,14 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
                 {driverPhone && (
                   <a 
                     href={`tel:${driverPhone}`}
-                    className="text-sm text-blue-600 hover:underline block mb-1"
+                    className="text-sm text-blue-600 hover:underline block mb-1 cursor-pointer"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      // Show native options for call/text
+                      if (window.confirm(`Call ${driverName} at ${driverPhone}?`)) {
+                        window.open(`tel:${driverPhone}`);
+                      }
+                    }}
                   >
                     {driverPhone}
                   </a>
@@ -207,7 +224,11 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
                 {driverEmail && (
                   <a 
                     href={`mailto:${driverEmail}`}
-                    className="text-sm text-blue-600 hover:underline block"
+                    className="text-sm text-blue-600 hover:underline block cursor-pointer"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      window.open(`mailto:${driverEmail}?subject=VIP Ride - Booking ${booking.booking_code || booking.id.slice(-8).toUpperCase()}`);
+                    }}
                   >
                     {driverEmail}
                   </a>
@@ -254,7 +275,7 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
           )}
 
           {/* Payment Button for Offers */}
-          {shouldShowPaymentButton && (
+          {shouldShowPaymentButton && !isPaymentCompleted() && (
             <div className="pt-2 border-t border-gray-100">
               <Button 
                 onClick={() => setShowPaymentModal(true)}
@@ -267,7 +288,6 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
           )}
 
           {/* Confirmed Status */}
-          {/* CRITICAL FIX: Enhanced confirmation status display */}
           {isPaymentCompleted() && (
             <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg border border-green-200">
               <CheckCircle className="w-5 h-5 text-green-600" />
@@ -282,7 +302,6 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
         </CardContent>
       </Card>
 
-      {/* CRITICAL FIX: Only show payment modal if payment is needed */}
       {showPaymentModal && !isPaymentCompleted() && (
         <PaymentModal
           isOpen={showPaymentModal}

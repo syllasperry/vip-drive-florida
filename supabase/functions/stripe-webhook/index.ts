@@ -127,47 +127,39 @@ serve(async (req) => {
         if (!bookingId) {
           console.error('❌ Missing booking_id in session metadata or client_reference_id')
           throw new Error('Missing booking_id in session')
-          break
         }
 
         console.log('📋 Updating booking:', bookingId, 'to paid status')
 
-        // CRITICAL FIX: Use atomic transaction for payment completion
-        const { data: updateResult, error: updateError } = await supabaseClient.rpc('complete_payment_transaction', {
-          p_booking_id: bookingId,
-          p_stripe_session_id: session.id,
-          p_payment_intent_id: session.payment_intent as string || session.id,
-          p_amount_cents: session.amount_total || 0
-        })
+        // CRITICAL FIX: Comprehensive payment completion update
+        const paymentUpdateData = {
+          payment_status: 'paid',
+          status: 'payment_confirmed',
+          payment_confirmation_status: 'all_set',
+          ride_status: 'all_set',
+          paid_amount_cents: session.amount_total,
+          paid_at: new Date().toISOString(),
+          payment_provider: 'stripe',
+          payment_reference: session.payment_intent as string || session.id,
+          stripe_payment_intent_id: session.payment_intent as string || session.id,
+          updated_at: new Date().toISOString()
+        };
+
+        console.log('📝 Updating booking with payment data:', paymentUpdateData);
+        
+        const { error: updateError } = await supabaseClient
+          .from('bookings')
+          .update(paymentUpdateData)
+          .eq('id', bookingId);
 
         if (updateError) {
-          console.error('❌ Error in payment completion RPC:', updateError)
-          // Fallback to direct update if RPC fails
-          const { error: fallbackError } = await supabaseClient
-            .from('bookings')
-            .update({
-              payment_status: 'paid',
-              status: 'payment_confirmed',
-              payment_confirmation_status: 'all_set',
-              ride_status: 'all_set',
-              paid_amount_cents: session.amount_total,
-              paid_at: new Date().toISOString(),
-              payment_provider: 'stripe',
-              payment_reference: session.payment_intent as string || session.id,
-              stripe_payment_intent_id: session.payment_intent as string || session.id,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', bookingId)
-
-          if (fallbackError) {
-            console.error('❌ Fallback payment update also failed:', fallbackError)
-            throw fallbackError
-          }
+          console.error('❌ Error updating booking payment status:', updateError);
+          throw updateError;
         }
 
         console.log('✅ Payment completion processed successfully for booking:', bookingId)
 
-        // CRITICAL FIX: Multiple real-time notification channels
+        // Send multiple real-time notifications for immediate UI updates
         const notificationPayload = {
           booking_id: bookingId,
           status: 'payment_confirmed',
@@ -179,9 +171,8 @@ serve(async (req) => {
           webhook_event_id: event.id
         }
 
-        // Send to multiple channels for redundancy
+        // Send notifications to multiple channels for immediate frontend updates
         await Promise.allSettled([
-          // Primary notification channel
           supabaseClient
             .from('realtime_outbox')
             .insert({
@@ -190,7 +181,6 @@ serve(async (req) => {
               payload: notificationPayload
             }),
           
-          // Secondary notification channel
           supabaseClient
             .from('realtime_outbox')
             .insert({
@@ -199,7 +189,7 @@ serve(async (req) => {
               payload: notificationPayload
             }),
 
-          // Create payment record
+          // Create payment transaction record
           supabaseClient
             .from('payments')
             .insert({
@@ -217,6 +207,7 @@ serve(async (req) => {
             })
         ])
 
+        console.log('📡 Real-time notifications sent for payment completion');
         // Trigger email notifications
         try {
           await supabaseClient.functions.invoke('send-booking-confirmation-emails', {
