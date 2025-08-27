@@ -13,6 +13,7 @@ import { BottomNavigation } from '@/components/dashboard/BottomNavigation';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useMyBookings } from '@/hooks/useMyBookings';
+import { useToast } from '@/hooks/use-toast';
 
 interface PassengerProfile {
   first_name: string;

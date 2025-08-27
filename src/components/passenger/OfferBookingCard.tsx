@@ -7,7 +7,7 @@ import { Clock, MapPin, User, CreditCard, CheckCircle, Car, Phone } from 'lucide
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { PaymentModal } from '@/components/dashboard/PaymentModal';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 interface OfferBookingCardProps {
   booking: any;
@@ -22,6 +22,7 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
 }) => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [hasShownOfferNotification, setHasShownOfferNotification] = useState(false);
+  const { toast } = useToast();
 
   // CRITICAL FIX: Enhanced payment status detection
   const isPaymentCompleted = () => {
