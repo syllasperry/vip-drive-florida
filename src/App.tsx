@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { SiteHeader } from "@/components/site/SiteHeader"
 import { SiteFooter } from "@/components/site/SiteFooter"
 import HomeScreen from "@/pages/HomeScreen"
-import { PricingPage } from "@/pages/Pricing"
+import { PricingPage } from "@/pages/Pricing.tsx"
 import { ContactPage } from "@/pages/Contact"
 import { AboutPage } from "@/pages/About"
 import { TermsPage } from "@/pages/Terms"
