@@ -87,7 +87,7 @@ export const useMyBookings = () => {
         passenger = newPassenger;
       }
 
-      // Fetch bookings with comprehensive payment and driver data
+      // Now fetch bookings for this passenger with ALL payment-related fields
       const { data: rawBookings, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
@@ -141,7 +141,7 @@ export const useMyBookings = () => {
 
       console.log('✅ Bookings fetched successfully:', rawBookings?.length || 0);
       
-      // Map and validate the data
+      // Map the raw data to ensure type safety and proper payment status detection
       const bookings: Booking[] = (rawBookings || []).map(booking => ({
         ...booking,
         drivers: booking.drivers && typeof booking.drivers === 'object' && !Array.isArray(booking.drivers) 
@@ -149,57 +149,28 @@ export const useMyBookings = () => {
           : null
       }));
 
-      // CRITICAL: Enhanced payment status debugging and correction
-      const processedBookings = bookings.map(booking => {
-        // Multiple ways to determine if booking is paid
-        const isPaidByStatus = booking.status === 'paid'
-        const isPaidByPaymentStatus = booking.payment_status === 'paid'
-        const isPaidByPaidAt = !!booking.paid_at
-        const isPaidByAmount = booking.paid_amount_cents && booking.paid_amount_cents > 0
-        const isPaidByProvider = !!booking.payment_provider
-        
-        const isPaid = isPaidByStatus || isPaidByPaymentStatus || isPaidByPaidAt || isPaidByAmount || isPaidByProvider
-        
-        // Debug logging for each booking
-        console.log(`📊 Booking ${booking.id.slice(-8)} payment analysis:`, {
-          booking_code: booking.booking_code,
-          status: booking.status,
-          payment_status: booking.payment_status,
-          paid_at: booking.paid_at,
-          paid_amount_cents: booking.paid_amount_cents,
-          payment_provider: booking.payment_provider,
-          payment_reference: booking.payment_reference,
-          offer_price_cents: booking.offer_price_cents,
-          isPaidCalculated: isPaid,
-          conditions: {
-            isPaidByStatus,
-            isPaidByPaymentStatus,
-            isPaidByPaidAt,
-            isPaidByAmount,
-            isPaidByProvider
-          }
-        })
-        
-        return {
-          ...booking,
-          // Add a computed field for easier access
-          isPaymentConfirmed: isPaid
-        }
-      })
+      console.log('📊 Bookings with payment status:', bookings.map(b => ({
+        id: b.id.slice(-8),
+        booking_code: b.booking_code,
+        status: b.status,
+        payment_status: b.payment_status,
+        paid_at: b.paid_at,
+        paid_amount_cents: b.paid_amount_cents,
+        offer_price_cents: b.offer_price_cents
+      })));
 
-      return processedBookings;
+      return bookings;
     },
-    retry: 3,
+    retry: 2,
     refetchOnWindowFocus: true,
-    // Faster refetch for payment status updates
-    refetchInterval: 2000, // Every 2 seconds for rapid response
-    staleTime: 0 // Always consider data stale for immediate updates
+    // More frequent refetch for quicker payment status updates
+    refetchInterval: 3000 // Every 3 seconds
   });
 
   // Set up realtime subscription for booking updates
   useEffect(() => {
     const channel = supabase
-      .channel('booking-payment-updates')
+      .channel('booking-payment-changes')
       .on(
         'postgres_changes',
         {
@@ -208,17 +179,14 @@ export const useMyBookings = () => {
           table: 'bookings'
         },
         (payload) => {
-          console.log('📡 Realtime booking update received:', payload);
-          // Force immediate refetch when booking is updated
+          console.log('📡 Realtime booking update:', payload);
+          // Refetch bookings when any booking is updated
           refetch();
         }
       )
       .subscribe();
 
-    console.log('📡 Realtime subscription established for booking updates');
-
     return () => {
-      console.log('📡 Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
   }, [refetch]);

@@ -1,68 +1,60 @@
-import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import { SiteHeader } from "@/components/site/SiteHeader"
-import { SiteFooter } from "@/components/site/SiteFooter"
-import HomeScreen from "@/pages/HomeScreen"
-import { PricingPage } from "@/pages/Pricing"
-import { ContactPage } from "@/pages/Contact"
-import { AboutPage } from "@/pages/About"
-import { TermsPage } from "@/pages/Terms"
-import { PrivacyPage } from "@/pages/Privacy"
-import PassengerLogin from "@/pages/passenger/Login"
-import PassengerSignup from "@/pages/passenger/Signup.tsx";
-import PassengerDashboard from "@/pages/passenger/Dashboard";
-import DispatcherDashboard from "@/pages/dispatcher/Dashboard";
-import DriverDashboard from "@/pages/driver/Dashboard";
-import PriceEstimate from "@/pages/passenger/PriceEstimate";
-import { SupportPage } from "@/pages/Support";
-import DriverLogin from "@/pages/driver/Login";
-import { DriverSignup } from "@/pages/driver/Signup";
-import { DispatcherLogin } from "@/pages/dispatcher/Login";
-import { DispatcherSignup } from "@/pages/dispatcher/Signup";
-import { ScrollToTop } from "@/components/ScrollToTop";
-import { AuthProvider } from '@/components/AuthProvider';
-import { Toaster } from "@/components/ui/toaster"
-import CheckoutTestPage from "@/pages/test/Checkout";
-import DiagnosticsPage from "@/pages/test/Diagnostics";
 
-function App() {
-  return (
-    <Router>
-      <div className="min-h-screen bg-background">
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Index from "./pages/Index";
+import SplashScreen from "./pages/SplashScreen";
+import OnboardingScreen from "./pages/OnboardingScreen";
+import HomeScreen from "./pages/HomeScreen";
+import PassengerDashboard from "./pages/passenger/Dashboard";
+import PriceEstimate from "./pages/passenger/PriceEstimate";
+import ChooseVehicle from "./pages/passenger/ChooseVehicle";
+import BookingForm from "./pages/passenger/BookingForm";
+import Confirmation from "./pages/passenger/Confirmation";
+import Login from "./pages/passenger/Login";
+import DriverDashboard from "./pages/driver/Dashboard";
+import DispatcherDashboard from "./pages/dispatcher/Dashboard";
+import DriverLogin from "./pages/driver/Login";
+import NotFound from "./pages/NotFound";
+
+const queryClient = new QueryClient();
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
         <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<HomeScreen />} />
-          <Route path="/pricing" element={<PricingPage />} />
-          <Route path="/contact" element={<ContactPage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/terms" element={<TermsPage />} />
-          <Route path="/privacy" element={<PrivacyPage />} />
-          <Route path="/support" element={<SupportPage />} />
-
-          {/* Passenger Auth Routes */}
-          <Route path="/passenger/login" element={<PassengerLogin />} />
-          <Route path="/passenger/signup" element={<PassengerSignup />} />
-          <Route path="/passenger/dashboard" element={<PassengerDashboard />} />
+          <Route path="/" element={<Index />} />
+          <Route path="/splash" element={<SplashScreen />} />
+          <Route path="/onboarding" element={<OnboardingScreen />} />
+          <Route path="/home" element={<HomeScreen />} />
+          
+          {/* Passenger Journey Routes */}
+          <Route path="/estimate" element={<PriceEstimate />} />
           <Route path="/passenger/price-estimate" element={<PriceEstimate />} />
-
-          {/* Driver Auth Routes */}
-          <Route path="/driver/login" element={<DriverLogin />} />
-          <Route path="/driver/signup" element={<DriverSignup />} />
+          <Route path="/passenger/login" element={<Login />} />
+          <Route path="/cars" element={<ChooseVehicle />} />
+          <Route path="/passenger/choose-vehicle" element={<ChooseVehicle />} />
+          <Route path="/passenger/booking-form" element={<BookingForm />} />
+          <Route path="/passenger/confirmation" element={<Confirmation />} />
+          <Route path="/passenger/dashboard" element={<PassengerDashboard />} />
+          
+          {/* Driver Routes */}
           <Route path="/driver/dashboard" element={<DriverDashboard />} />
-
-          {/* Dispatcher Auth Routes */}
-          <Route path="/dispatcher/login" element={<DispatcherLogin />} />
-          <Route path="/dispatcher/signup" element={<DispatcherSignup />} />
+          <Route path="/driver/login" element={<DriverLogin />} />
+          
+          {/* Dispatcher Routes */}
           <Route path="/dispatcher/dashboard" element={<DispatcherDashboard />} />
           
-          {/* Test Routes */}
-          <Route path="/test/checkout" element={<CheckoutTestPage />} />
-          <Route path="/test/diagnostics" element={<DiagnosticsPage />} />
-          
+          <Route path="*" element={<NotFound />} />
         </Routes>
-      </div>
-    </Router>
-  );
-}
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
 
 export default App;
