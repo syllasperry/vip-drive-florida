@@ -113,6 +113,18 @@ serve(async (req) => {
       passenger_id: booking.passenger_id
     })
 
+    // CRITICAL FIX: Prevent duplicate payment sessions for already paid bookings
+    if (booking.payment_status === 'paid' || booking.payment_confirmation_status === 'all_set') {
+      console.log('⚠️ Booking already paid, preventing duplicate payment session')
+      return new Response(
+        JSON.stringify({ error: 'Booking already paid' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
     // Critical: Use offer_price_cents as the definitive price source
     const amountCents = booking.offer_price_cents
     if (!amountCents || amountCents <= 0) {
@@ -154,6 +166,33 @@ serve(async (req) => {
     // Get customer email
     const customerEmail = booking.passengers?.email || user.email
 
+    // CRITICAL FIX: Check for existing active session to prevent duplicates
+    const existingSessions = await stripe.checkout.sessions.list({
+      limit: 10,
+      expand: ['data.payment_intent']
+    });
+    
+    const activeSession = existingSessions.data.find(session => 
+      session.metadata?.booking_id === booking_id && 
+      session.status === 'open' &&
+      session.expires_at > Math.floor(Date.now() / 1000)
+    );
+    
+    if (activeSession) {
+      console.log('♻️ Reusing existing active session:', activeSession.id);
+      return new Response(
+        JSON.stringify({ 
+          url: activeSession.url,
+          session_id: activeSession.id,
+          amount_cents: amountCents,
+          reused: true
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
     // Create Stripe Checkout Session with proper metadata and client_reference_id
     console.log('🛒 Creating Checkout Session with:', {
       amount: amountCents,
@@ -185,9 +224,11 @@ serve(async (req) => {
         booking_id: booking_id,
         passenger_id: booking.passenger_id,
         offer_price_cents: amountCents.toString(),
+        created_at: new Date().toISOString()
       },
       success_url: `${origin}/passenger/dashboard?paid=true&booking_id=${booking_id}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/passenger/dashboard?canceled=true&booking_id=${booking_id}`,
+      expires_at: Math.floor(Date.now() / 1000) + (30 * 60) // 30 minute expiration
     })
 
     console.log('✅ Checkout Session created:', session.id)
@@ -198,6 +239,7 @@ serve(async (req) => {
       .update({
         payment_status: 'processing',
         payment_reference: session.id,
+        stripe_payment_intent_id: session.id,
         updated_at: new Date().toISOString()
       })
       .eq('id', booking_id)

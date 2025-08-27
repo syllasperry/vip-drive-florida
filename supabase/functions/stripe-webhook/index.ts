@@ -123,13 +123,14 @@ serve(async (req) => {
           .from('bookings')
           .update({
             payment_status: 'paid',
-            status: 'offer_accepted', // Valid status from enum
+            status: 'payment_confirmed',
             payment_confirmation_status: 'all_set',
+            ride_status: 'all_set',
             paid_amount_cents: session.amount_total,
+            paid_at: new Date().toISOString(),
             payment_provider: 'stripe',
             payment_reference: session.payment_intent as string || session.id,
             stripe_payment_intent_id: session.payment_intent as string || session.id,
-            paid_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
           .eq('id', bookingId)
@@ -138,6 +139,23 @@ serve(async (req) => {
           console.error('❌ Error updating booking after payment:', updateError)
           break
         }
+          
+          // CRITICAL FIX: Force real-time notification
+          await supabaseClient
+            .from('realtime_outbox')
+            .insert({
+              topic: 'booking_payment_confirmed',
+              booking_id: booking.id,
+              payload: {
+                booking_id: booking.id,
+                status: 'payment_confirmed',
+                payment_status: 'paid',
+                payment_confirmation_status: 'all_set',
+                payment_intent_id: paymentIntent.id,
+                amount_cents: paymentIntent.amount,
+                timestamp: new Date().toISOString()
+              }
+            })
 
         console.log('✅ Booking updated to paid:', bookingId)
 
@@ -178,34 +196,81 @@ serve(async (req) => {
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
         console.log('💰 Processing payment_intent.succeeded:', paymentIntent.id)
-        
+      // CRITICAL FIX: Comprehensive booking status update with atomic transaction
+      const { data: currentBooking, error: fetchError } = await supabaseClient
+        .from('bookings')
+        .select('id, payment_status, offer_price_cents')
+        .eq('id', bookingId)
+        .single()
+
+      if (fetchError || !currentBooking) {
+        console.error('❌ Could not fetch current booking for update:', fetchError)
+        break
+      }
+
+      // Prevent duplicate processing
+      if (currentBooking.payment_status === 'paid') {
+        console.log('ℹ️ Booking already marked as paid, skipping update:', bookingId)
+        break
+      }
+
+      // Atomic status update with comprehensive fields
         // Find booking by stripe_payment_intent_id or payment_reference
         const { data: booking, error: fetchError } = await supabaseClient
           .from('bookings')
           .select('id, payment_status, stripe_payment_intent_id')
-          .or(`payment_reference.eq.${paymentIntent.id},stripe_payment_intent_id.eq.${paymentIntent.id}`)
+          status: 'payment_confirmed',
           .single()
+          ride_status: 'all_set',
 
+          paid_at: new Date().toISOString(),
         if (fetchError || !booking) {
           console.error('❌ Could not find booking for payment_intent:', paymentIntent.id)
           break
-        }
 
         // Only update if not already paid (avoid duplicate updates)
         if (booking.payment_status !== 'paid') {
           console.log('📋 Updating booking via payment_intent:', booking.id)
           
           const { error: updateError } = await supabaseClient
+        
+        // CRITICAL: Log failed payment update for manual intervention
+        await supabaseClient
+          .from('payment_webhook_events')
+          .update({ 
+            processed_ok: false,
+            payload: { ...event, error: updateError.message }
+          })
+          .eq('provider_event_id', event.id)
+          
             .from('bookings')
             .update({
               payment_status: 'paid',
               status: 'offer_accepted', // Valid status from enum
+      
+      // CRITICAL FIX: Force real-time notification to all connected clients
+      await supabaseClient
+        .from('realtime_outbox')
+        .insert({
+          topic: 'booking_payment_confirmed',
+          booking_id: bookingId,
+          payload: {
+            booking_id: bookingId,
+            status: 'payment_confirmed',
+            payment_status: 'paid',
+            payment_confirmation_status: 'all_set',
+            stripe_session_id: session.id,
+            amount_cents: session.amount_total,
+            timestamp: new Date().toISOString()
+          }
+        })
               payment_confirmation_status: 'all_set',
               paid_amount_cents: paymentIntent.amount,
               payment_provider: 'stripe',
               payment_reference: paymentIntent.id,
               stripe_payment_intent_id: paymentIntent.id,
               paid_at: new Date().toISOString(),
+          passenger_id: currentBooking.passenger_id,
               updated_at: new Date().toISOString()
             })
             .eq('id', booking.id)
@@ -213,7 +278,8 @@ serve(async (req) => {
           if (updateError) {
             console.error('❌ Error updating booking after payment_intent:', updateError)
           } else {
-            console.log('✅ Booking confirmed paid via payment_intent:', booking.id)
+            stripe_payment_intent_id: session.payment_intent,
+            webhook_processed_at: new Date().toISOString()
           }
         } else {
           console.log('ℹ️ Booking already marked as paid:', booking.id)
@@ -267,7 +333,7 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('❌ Webhook processing error:', error)
-    return new Response(
+        .select('id, payment_status, stripe_payment_intent_id, passenger_id')
       JSON.stringify({ error: 'Webhook processing failed' }), 
       {
         status: 500,

@@ -25,8 +25,30 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
+  // CRITICAL FIX: Check if payment is already completed before showing modal
+  const isPaymentCompleted = () => {
+    return booking.payment_status === 'paid' ||
+           booking.payment_confirmation_status === 'all_set' ||
+           booking.status === 'payment_confirmed' ||
+           booking.ride_status === 'all_set' ||
+           (booking.paid_at && booking.paid_amount_cents > 0);
+  };
+
+  // CRITICAL FIX: Auto-close modal if payment is completed
+  useEffect(() => {
+    if (isPaymentCompleted()) {
+      console.log('💳 Payment already completed, closing modal');
+      onClose();
+    }
+  }, [booking.payment_status, booking.payment_confirmation_status, booking.status, booking.paid_at, onClose]);
+
   // Use offer_price_cents as the single source of truth for pricing
   const getFormattedPrice = () => {
+    // CRITICAL FIX: Use paid amount if payment is completed
+    if (isPaymentCompleted() && booking.paid_amount_cents > 0) {
+      return (booking.paid_amount_cents / 100).toFixed(2);
+    }
+    
     if (booking.offer_price_cents && booking.offer_price_cents > 0) {
       return (booking.offer_price_cents / 100).toFixed(2);
     }
@@ -50,6 +72,16 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const formattedTotal = formattedPrice ? `$${formattedPrice}` : '';
 
   const handlePayment = async () => {
+    // CRITICAL FIX: Prevent payment if already completed
+    if (isPaymentCompleted()) {
+      toast({
+        title: "Payment Already Completed",
+        description: "This booking has already been paid for.",
+      });
+      onClose();
+      return;
+    }
+    
     if (!booking?.id) {
       toast({
         title: "Erro",
@@ -114,6 +146,15 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
       console.log('✅ Redirecionando para Stripe Checkout:', data.url);
       
+      // CRITICAL FIX: Mark payment as processing before redirect
+      await supabase
+        .from('bookings')
+        .update({
+          payment_status: 'processing',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', booking.id);
+      
       // Redirect to Stripe hosted checkout
       window.location.href = data.url;
       
@@ -128,6 +169,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       setIsProcessing(false);
     }
   };
+
+  // CRITICAL FIX: Don't render modal if payment is completed
+  if (isPaymentCompleted()) {
+    return null;
+  }
 
   if (!booking) return null;
 

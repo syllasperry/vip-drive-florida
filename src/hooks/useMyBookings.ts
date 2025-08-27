@@ -145,8 +145,9 @@ export const useMyBookings = () => {
     },
     retry: 2,
     refetchOnWindowFocus: true,
-    // Refetch every 5 seconds to catch webhook updates faster
-    refetchInterval: 5000
+    // CRITICAL FIX: Faster polling for payment status updates
+    refetchInterval: 2000, // Check every 2 seconds for payment updates
+    refetchIntervalInBackground: true // Continue polling in background
   });
 
   return {

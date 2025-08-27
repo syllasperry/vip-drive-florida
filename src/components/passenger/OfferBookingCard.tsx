@@ -23,19 +23,29 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [hasShownOfferNotification, setHasShownOfferNotification] = useState(false);
 
+  // CRITICAL FIX: Enhanced payment status detection
+  const isPaymentCompleted = () => {
+    return booking.payment_status === 'paid' ||
+           booking.payment_confirmation_status === 'all_set' ||
+           booking.status === 'payment_confirmed' ||
+           booking.ride_status === 'all_set' ||
+           (booking.paid_at && booking.paid_amount_cents > 0);
+  };
+
+  const isOfferPending = () => {
+    return !isPaymentCompleted() && (
+      booking.status === 'offer_sent' || 
+      booking.ride_status === 'offer_sent' ||
+      booking.payment_confirmation_status === 'price_awaiting_acceptance'
+    );
+  };
+
   // Auto-show payment modal when offer is received
   useEffect(() => {
-    const isOfferReceived = 
-      booking.status === 'offer_sent' || 
-      booking.ride_status === 'offer_sent' || 
-      booking.payment_confirmation_status === 'price_awaiting_acceptance';
-    
-    const isPaymentPending = 
-      booking.payment_confirmation_status === 'waiting_for_payment' ||
-      booking.payment_confirmation_status === 'price_awaiting_acceptance';
+    // CRITICAL FIX: Only show payment modal if payment is actually needed
+    const shouldShowPaymentModal = isOfferPending() && !hasShownOfferNotification;
 
-    // Show payment modal automatically for new offers
-    if (isOfferReceived && isPaymentPending && !hasShownOfferNotification) {
+    if (shouldShowPaymentModal) {
       console.log('🎯 Auto-showing payment modal for offer:', booking.id);
       setShowPaymentModal(true);
       setHasShownOfferNotification(true);
@@ -46,24 +56,28 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
         description: "Complete your payment to confirm your ride booking.",
       });
     }
-  }, [booking.status, booking.ride_status, booking.payment_confirmation_status, hasShownOfferNotification]);
+    
+    // CRITICAL FIX: Reset notification flag when payment is completed
+    if (isPaymentCompleted() && hasShownOfferNotification) {
+      setHasShownOfferNotification(false);
+      setShowPaymentModal(false);
+    }
+  }, [booking.status, booking.ride_status, booking.payment_confirmation_status, booking.payment_status, booking.paid_at, hasShownOfferNotification]);
 
   const getStatusDisplay = () => {
-    if (booking.payment_confirmation_status === 'all_set') {
+    // CRITICAL FIX: Enhanced status detection with multiple payment indicators
+    if (isPaymentCompleted()) {
       return { text: 'Confirmed', color: 'bg-green-100 text-green-800 border-green-200' };
     }
     
-    if (
-      booking.status === 'offer_sent' || 
-      booking.ride_status === 'offer_sent' ||
-      booking.payment_confirmation_status === 'price_awaiting_acceptance'
-    ) {
+    if (isOfferPending()) {
       return { text: 'Offer Received', color: 'bg-blue-100 text-blue-800 border-blue-200' };
     }
     
     if (
       booking.payment_confirmation_status === 'waiting_for_payment' ||
-      booking.payment_confirmation_status === 'passenger_paid'
+      booking.payment_confirmation_status === 'passenger_paid' ||
+      booking.payment_status === 'processing'
     ) {
       return { text: 'Payment Processing', color: 'bg-orange-100 text-orange-800 border-orange-200' };
     }
@@ -77,6 +91,11 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
 
   // Use offer_price_cents as the single source of truth
   const getFormattedPrice = () => {
+    // CRITICAL FIX: Use paid_amount_cents if payment is completed
+    if (isPaymentCompleted() && booking.paid_amount_cents > 0) {
+      return (booking.paid_amount_cents / 100).toFixed(2);
+    }
+    
     if (booking.offer_price_cents && booking.offer_price_cents > 0) {
       return (booking.offer_price_cents / 100).toFixed(2);
     }
@@ -99,12 +118,8 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
   const formattedPrice = getFormattedPrice();
   const statusDisplay = getStatusDisplay();
 
-  const shouldShowPaymentButton = 
-    (booking.status === 'offer_sent' || 
-     booking.ride_status === 'offer_sent' ||
-     booking.payment_confirmation_status === 'price_awaiting_acceptance') &&
-    booking.payment_confirmation_status !== 'all_set' &&
-    booking.payment_confirmation_status !== 'passenger_paid';
+  // CRITICAL FIX: Only show payment button if payment is actually needed
+  const shouldShowPaymentButton = isOfferPending() && !isPaymentCompleted();
 
   const handlePaymentConfirmed = () => {
     setShowPaymentModal(false);
@@ -150,8 +165,8 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* Driver Information (if assigned) */}
-          {booking.driver_id && (
+          {/* CRITICAL FIX: Show driver info only when payment is completed */}
+          {booking.driver_id && isPaymentCompleted() && (
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
               <Avatar className="h-10 w-10">
                 <AvatarImage src={driverPhoto} alt={driverName} />
@@ -223,20 +238,23 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
           )}
 
           {/* Confirmed Status */}
-          {booking.payment_confirmation_status === 'all_set' && (
+          {/* CRITICAL FIX: Enhanced confirmation status display */}
+          {isPaymentCompleted() && (
             <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg border border-green-200">
               <CheckCircle className="w-5 h-5 text-green-600" />
               <div>
                 <p className="text-sm font-medium text-green-800">Ride Confirmed!</p>
-                <p className="text-xs text-green-600">Your driver will contact you soon.</p>
+                <p className="text-xs text-green-600">
+                  {booking.driver_id ? 'Your driver will contact you soon.' : 'Driver assignment in progress.'}
+                </p>
               </div>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Payment Modal */}
-      {showPaymentModal && (
+      {/* CRITICAL FIX: Only show payment modal if payment is needed */}
+      {showPaymentModal && !isPaymentCompleted() && (
         <PaymentModal
           isOpen={showPaymentModal}
           onClose={() => setShowPaymentModal(false)}

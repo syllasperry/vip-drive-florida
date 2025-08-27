@@ -185,6 +185,22 @@ export const useRealtimeBookings = () => {
           const newData = payload.new as any;
           const oldData = payload.old as any;
           
+          // CRITICAL FIX: Enhanced payment completion detection
+          const wasPaymentCompleted = 
+            (newData.payment_status === 'paid' && oldData?.payment_status !== 'paid') ||
+            (newData.payment_confirmation_status === 'all_set' && oldData?.payment_confirmation_status !== 'all_set') ||
+            (newData.status === 'payment_confirmed' && oldData?.status !== 'payment_confirmed') ||
+            (newData.paid_at && !oldData?.paid_at);
+          
+          if (wasPaymentCompleted) {
+            console.log('💳 Payment completed for booking:', newData.id);
+            setIsOfferJustReceived(null); // Clear any pending offer notifications
+            
+            // Force immediate refetch to update UI
+            setTimeout(() => refetch(), 100);
+            return;
+          }
+          
           // Detect offer reception
           if (
             (newData.status === 'offer_sent' && oldData?.status !== 'offer_sent') ||
@@ -203,6 +219,21 @@ export const useRealtimeBookings = () => {
         }
         
         refetch();
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'realtime_outbox'
+      }, (payload) => {
+        console.log('📡 Real-time outbox update received:', payload);
+        
+        if (payload.eventType === 'INSERT' && payload.new) {
+          const message = payload.new as any;
+          if (message.topic === 'booking_payment_confirmed') {
+            console.log('💳 Payment confirmation received via realtime:', message.booking_id);
+            refetch();
+          }
+        }
       })
       .subscribe((status) => {
         console.log('📡 Real-time subscription status:', status);
