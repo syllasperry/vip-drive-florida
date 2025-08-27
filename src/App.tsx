@@ -9,7 +9,7 @@ import { AboutPage } from "@/pages/About"
 import { TermsPage } from "@/pages/Terms"
 import { PrivacyPage } from "@/pages/Privacy"
 import PassengerLogin from "@/pages/passenger/Login"
-import { PassengerSignup } from "@/pages/passenger/Signup"
+import PassengerSignup from "@/pages/passenger/Signup";
 import PassengerDashboard from "@/pages/passenger/Dashboard";
 import DispatcherDashboard from "@/pages/dispatcher/Dashboard";
 import DriverDashboard from "@/pages/driver/Dashboard";
