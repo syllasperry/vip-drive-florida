@@ -1,6 +1,6 @@
 
 import React from 'react';
-import CheckoutTest from '@/components/test/CheckoutTest';
+import { CheckoutTest } from '@/components/test/CheckoutTest';
 
 const CheckoutTestPage: React.FC = () => {
   return (

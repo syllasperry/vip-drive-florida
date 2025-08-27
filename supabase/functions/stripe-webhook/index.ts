@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@14.21.0'
@@ -93,7 +92,7 @@ serve(async (req) => {
       })
     }
 
-    // Log the webhook event
+    // Log the webhook event FIRST
     await supabaseClient
       .from('payment_webhook_events')
       .insert({
@@ -114,81 +113,31 @@ serve(async (req) => {
         console.log('🏷️ Session metadata:', session.metadata)
         console.log('🔍 Client reference ID:', session.client_reference_id)
         
-        // Get booking_code from client_reference_id or metadata
+        // CRITICAL FIX: Try multiple ways to get booking identifier
         let bookingCode = session.client_reference_id || session.metadata?.booking_code
-        console.log('📄 Booking code found:', bookingCode)
+        let bookingId = session.metadata?.booking_id
         
-        if (!bookingCode) {
-          // Try to get from related booking_id in metadata
-          const bookingId = session.metadata?.booking_id
-          if (bookingId) {
-            console.log('🔄 Trying to get booking_code from booking_id:', bookingId)
-            const { data: booking } = await supabaseClient
-              .from('bookings')
-              .select('booking_code')
-              .eq('id', bookingId)
-              .single()
-            
-            if (booking?.booking_code) {
-              bookingCode = booking.booking_code
-              console.log('✅ Found booking_code from DB:', bookingCode)
-            }
-          }
-        }
-
-        if (!bookingCode) {
-          console.error('❌ No booking_code found in session - checking for booking_id in metadata')
-          const bookingId = session.metadata?.booking_id
-          
-          if (bookingId) {
-            console.log('🔄 Using booking_id directly for update:', bookingId)
-            
-            try {
-              // Update by booking ID instead of booking_code
-              const { data: updatedBooking, error: updateError } = await supabaseClient
-                .from('bookings')
-                .update({
-                  status: 'paid',
-                  payment_status: 'paid',
-                  paid_at: new Date().toISOString(),
-                  paid_amount_cents: session.amount_total || 0,
-                  paid_currency: (session.currency || 'usd').toLowerCase(),
-                  payment_provider: 'stripe',
-                  payment_reference: session.payment_intent as string || session.id,
-                  payment_confirmation_status: 'all_set',
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', bookingId)
-                .select()
-                .single()
-
-              if (updateError) {
-                console.error('❌ Error updating booking by ID:', updateError)
-                throw updateError
-              }
-
-              console.log('✅ Payment recorded successfully for booking ID:', bookingId)
-
-              // Mark webhook event as processed
-              await supabaseClient
-                .from('payment_webhook_events')
-                .update({ processed_ok: true })
-                .eq('provider_event_id', event.id)
-
-            } catch (error) {
-              console.error('❌ Error processing payment by booking ID:', error)
-            }
-          } else {
-            console.error('❌ No booking_code or booking_id found - cannot process payment')
-          }
-          break
-        }
-
-        try {
-          // Update booking by booking_code
-          const { data: updatedBooking, error: updateError } = await supabaseClient
+        console.log('📄 Initial booking identifiers:', { bookingCode, bookingId })
+        
+        // If no booking_code, try to get from booking_id
+        if (!bookingCode && bookingId) {
+          console.log('🔄 Trying to get booking_code from booking_id:', bookingId)
+          const { data: booking } = await supabaseClient
             .from('bookings')
-            .update({
+            .select('booking_code')
+            .eq('id', bookingId)
+            .single()
+          
+          if (booking?.booking_code) {
+            bookingCode = booking.booking_code
+            console.log('✅ Found booking_code from DB:', bookingCode)
+          }
+        }
+
+        // CRITICAL: Process payment regardless of whether we have booking_code or booking_id
+        if (bookingCode || bookingId) {
+          try {
+            const updateData = {
               status: 'paid',
               payment_status: 'paid',
               paid_at: new Date().toISOString(),
@@ -198,62 +147,96 @@ serve(async (req) => {
               payment_reference: session.payment_intent as string || session.id,
               payment_confirmation_status: 'all_set',
               updated_at: new Date().toISOString()
-            })
-            .eq('booking_code', bookingCode)
-            .select()
-            .single()
-
-          if (updateError) {
-            console.error('❌ Error updating booking:', updateError)
-            break
-          }
-
-          console.log('✅ Payment recorded successfully for booking:', bookingCode)
-
-          // Also insert into payments table for record keeping
-          const { error: paymentInsertError } = await supabaseClient
-            .from('payments')
-            .insert({
-              booking_id: updatedBooking.id,
-              amount_cents: session.amount_total || 0,
-              currency: (session.currency || 'usd').toUpperCase(),
-              method: 'stripe',
-              provider_txn_id: session.payment_intent as string || session.id,
-              status: 'PAID',
-              meta: {
-                stripe_session_id: session.id,
-                booking_code: bookingCode,
-                processed_at: new Date().toISOString()
-              }
-            })
-
-          if (paymentInsertError) {
-            console.error('⚠️ Error inserting payment record:', paymentInsertError)
-          } else {
-            console.log('✅ Payment record inserted successfully')
-          }
-
-          // Mark webhook event as processed
-          await supabaseClient
-            .from('payment_webhook_events')
-            .update({ processed_ok: true })
-            .eq('provider_event_id', event.id)
-
-          // Try to trigger email notifications if booking_id is available
-          const bookingId = updatedBooking.id
-          if (bookingId) {
-            try {
-              await supabaseClient.functions.invoke('send-booking-confirmation-emails', {
-                body: { booking_id: bookingId }
-              })
-              console.log('✅ Email notifications triggered')
-            } catch (emailError) {
-              console.error('⚠️ Error triggering emails:', emailError)
             }
-          }
 
-        } catch (error) {
-          console.error('❌ Error processing payment:', error)
+            let updatedBooking = null
+            
+            // Try updating by booking_code first
+            if (bookingCode) {
+              console.log('🔄 Updating booking by code:', bookingCode)
+              const { data, error } = await supabaseClient
+                .from('bookings')
+                .update(updateData)
+                .eq('booking_code', bookingCode)
+                .select()
+                .single()
+
+              if (error) {
+                console.error('❌ Error updating booking by code:', error)
+              } else {
+                updatedBooking = data
+                console.log('✅ Payment recorded successfully for booking code:', bookingCode)
+              }
+            }
+            
+            // If booking_code update failed, try booking_id
+            if (!updatedBooking && bookingId) {
+              console.log('🔄 Fallback: updating booking by ID:', bookingId)
+              const { data, error } = await supabaseClient
+                .from('bookings')
+                .update(updateData)
+                .eq('id', bookingId)
+                .select()
+                .single()
+
+              if (error) {
+                console.error('❌ Error updating booking by ID:', error)
+              } else {
+                updatedBooking = data
+                console.log('✅ Payment recorded successfully for booking ID:', bookingId)
+              }
+            }
+
+            if (updatedBooking) {
+              // Also insert into payments table for record keeping
+              const { error: paymentInsertError } = await supabaseClient
+                .from('payments')
+                .insert({
+                  booking_id: updatedBooking.id,
+                  amount_cents: session.amount_total || 0,
+                  currency: (session.currency || 'usd').toUpperCase(),
+                  method: 'stripe',
+                  provider_txn_id: session.payment_intent as string || session.id,
+                  status: 'PAID',
+                  meta: {
+                    stripe_session_id: session.id,
+                    booking_code: bookingCode || 'unknown',
+                    booking_id: bookingId || updatedBooking.id,
+                    processed_at: new Date().toISOString()
+                  }
+                })
+
+              if (paymentInsertError) {
+                console.error('⚠️ Error inserting payment record:', paymentInsertError)
+              } else {
+                console.log('✅ Payment record inserted successfully')
+              }
+
+              // Mark webhook event as processed
+              await supabaseClient
+                .from('payment_webhook_events')
+                .update({ processed_ok: true })
+                .eq('provider_event_id', event.id)
+
+              // Try to trigger email notifications
+              try {
+                await supabaseClient.functions.invoke('send-booking-confirmation-emails', {
+                  body: { booking_id: updatedBooking.id }
+                })
+                console.log('✅ Email notifications triggered')
+              } catch (emailError) {
+                console.error('⚠️ Error triggering emails:', emailError)
+              }
+            } else {
+              console.error('❌ Failed to update booking with either method')
+            }
+
+          } catch (error) {
+            console.error('❌ Error processing payment:', error)
+          }
+        } else {
+          console.error('❌ No booking identifier found in session metadata')
+          console.log('🔍 Full session object:', JSON.stringify(session, null, 2))
         }
         break
       }

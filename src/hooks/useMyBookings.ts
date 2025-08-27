@@ -149,26 +149,50 @@ export const useMyBookings = () => {
           : null
       }));
 
-      // Enhanced logging for payment status debugging
-      console.log('📊 Payment status summary:', bookings.map(b => ({
-        id: b.id.slice(-8),
-        booking_code: b.booking_code,
-        status: b.status,
-        payment_status: b.payment_status,
-        paid_at: b.paid_at,
-        paid_amount_cents: b.paid_amount_cents,
-        offer_price_cents: b.offer_price_cents,
-        payment_provider: b.payment_provider,
-        payment_reference: b.payment_reference,
-        isPaidCalculated: !!(b.status === 'paid' || b.payment_status === 'paid' || b.paid_at || b.paid_amount_cents > 0)
-      })));
+      // CRITICAL: Enhanced payment status debugging and correction
+      const processedBookings = bookings.map(booking => {
+        // Multiple ways to determine if booking is paid
+        const isPaidByStatus = booking.status === 'paid'
+        const isPaidByPaymentStatus = booking.payment_status === 'paid'
+        const isPaidByPaidAt = !!booking.paid_at
+        const isPaidByAmount = booking.paid_amount_cents && booking.paid_amount_cents > 0
+        const isPaidByProvider = !!booking.payment_provider
+        
+        const isPaid = isPaidByStatus || isPaidByPaymentStatus || isPaidByPaidAt || isPaidByAmount || isPaidByProvider
+        
+        // Debug logging for each booking
+        console.log(`📊 Booking ${booking.id.slice(-8)} payment analysis:`, {
+          booking_code: booking.booking_code,
+          status: booking.status,
+          payment_status: booking.payment_status,
+          paid_at: booking.paid_at,
+          paid_amount_cents: booking.paid_amount_cents,
+          payment_provider: booking.payment_provider,
+          payment_reference: booking.payment_reference,
+          offer_price_cents: booking.offer_price_cents,
+          isPaidCalculated: isPaid,
+          conditions: {
+            isPaidByStatus,
+            isPaidByPaymentStatus,
+            isPaidByPaidAt,
+            isPaidByAmount,
+            isPaidByProvider
+          }
+        })
+        
+        return {
+          ...booking,
+          // Add a computed field for easier access
+          isPaymentConfirmed: isPaid
+        }
+      })
 
-      return bookings;
+      return processedBookings;
     },
     retry: 3,
     refetchOnWindowFocus: true,
-    // Fast refetch for payment status updates
-    refetchInterval: 1500, // Every 1.5 seconds for rapid response
+    // Faster refetch for payment status updates
+    refetchInterval: 2000, // Every 2 seconds for rapid response
     staleTime: 0 // Always consider data stale for immediate updates
   });
 
