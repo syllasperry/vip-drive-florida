@@ -10,12 +10,13 @@ export const useSecurityAudit = () => {
     details?: Record<string, any>
   ) => {
     try {
-      // Try to call the database function, with graceful fallback
-      await supabase.rpc('log_security_event' as any, {
-        p_action: action,
-        p_resource_type: resourceType || null,
-        p_resource_id: resourceId || null,
-        p_details: details || {}
+      // Log to console as the RPC function doesn't exist
+      console.log('Security Event:', {
+        action,
+        resourceType,
+        resourceId,
+        details,
+        timestamp: new Date().toISOString()
       });
     } catch (error) {
       console.warn('Failed to log security event:', error);

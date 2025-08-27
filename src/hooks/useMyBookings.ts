@@ -147,6 +147,11 @@ export const useMyBookings = () => {
     refetchOnWindowFocus: true,
     // CRITICAL FIX: Faster polling for payment status updates
     refetchInterval: (data) => {
+      // Ensure data is an array before calling .some()
+      if (!Array.isArray(data)) {
+        return 5000; // Default polling interval
+      }
+      
       // Faster polling if there are pending payments
       const hasPendingPayments = data?.some(booking => 
         booking.payment_status === 'processing' ||
