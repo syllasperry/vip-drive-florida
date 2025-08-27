@@ -13,7 +13,7 @@ import { useSecurityAudit } from '@/hooks/useSecurityAudit';
 import { sanitizeEmail } from '@/lib/security/enhancedInputSanitizer';
 import { checkRateLimit } from '@/lib/security/enhancedInputSanitizer';
 
-export default function Login() {
+export function PassengerLogin() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -237,3 +237,5 @@ export default function Login() {
     </div>
   );
 }
+
+export default PassengerLogin;
