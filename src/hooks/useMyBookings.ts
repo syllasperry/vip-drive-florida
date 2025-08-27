@@ -149,7 +149,7 @@ export const useMyBookings = (userId?: string) => {
     // Enhanced payment status polling with proper data validation
     refetchInterval: (data, query) => {
       // Only poll if query is successful and data exists
-      if (!query || query.state?.status !== 'success' || !data || !Array.isArray(data)) {
+      if (!query || !query.state || query.state.status !== 'success' || !data || !Array.isArray(data)) {
         return 5000; // Default polling interval
       }
       

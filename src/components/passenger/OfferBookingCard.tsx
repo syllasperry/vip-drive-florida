@@ -29,7 +29,7 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
     // Check multiple payment indicators for comprehensive detection
     const hasPaymentStatus = booking.payment_status === 'paid';
     const hasConfirmationStatus = booking.payment_confirmation_status === 'all_set';
-    const hasGeneralStatus = booking.status === 'payment_confirmed';
+    const hasGeneralStatus = booking.status === 'payment_confirmed' || booking.status === 'all_set';
     const hasRideStatus = booking.ride_status === 'all_set';
     const hasPaidFields = booking.paid_at && booking.paid_amount_cents > 0;
     const hasStripeReference = booking.stripe_payment_intent_id && booking.payment_reference;
@@ -42,8 +42,11 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
         booking_id: booking.id,
         payment_status: booking.payment_status,
         confirmation_status: booking.payment_confirmation_status,
+        status: booking.status,
+        ride_status: booking.ride_status,
         paid_at: booking.paid_at,
-        paid_amount: booking.paid_amount_cents
+        paid_amount: booking.paid_amount_cents,
+        stripe_reference: booking.stripe_payment_intent_id
       });
     }
     
@@ -86,7 +89,17 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
         description: "Your ride has been confirmed. Driver details are now available.",
       });
     }
-  }, [booking.status, booking.ride_status, booking.payment_confirmation_status, booking.payment_status, booking.paid_at, hasShownOfferNotification, toast]);
+  }, [
+    booking.status, 
+    booking.ride_status, 
+    booking.payment_confirmation_status, 
+    booking.payment_status, 
+    booking.paid_at,
+    booking.paid_amount_cents,
+    booking.stripe_payment_intent_id,
+    hasShownOfferNotification, 
+    toast
+  ]);
 
   const getStatusDisplay = () => {
     // CRITICAL FIX: Enhanced status detection with multiple payment indicators
@@ -147,9 +160,10 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
 
   const handlePaymentConfirmed = () => {
     setShowPaymentModal(false);
+    setHasShownOfferNotification(false);
     toast({
-      title: "Payment Processing",
-      description: "Your payment is being processed. You'll receive confirmation shortly.",
+      title: "Payment Successful!",
+      description: "Your ride has been confirmed successfully.",
     });
   };
 
@@ -157,7 +171,7 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
   const driverInfo = booking.drivers || {};
   const driverName = driverInfo.full_name || 'Driver';
   const driverPhone = driverInfo.phone;
-  const driverPhoto = driverInfo.profile_photo_url;
+  const driverPhoto = driverInfo.profile_photo_url || driverInfo.avatar_url;
   const driverEmail = driverInfo.email;
 
   return (
@@ -212,10 +226,8 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
                     className="text-sm text-blue-600 hover:underline block mb-1 cursor-pointer"
                     onClick={(e) => {
                       e.preventDefault();
-                      // Show native options for call/text
-                      if (window.confirm(`Call ${driverName} at ${driverPhone}?`)) {
-                        window.open(`tel:${driverPhone}`);
-                      }
+                      // Open native phone app
+                      window.location.href = `tel:${driverPhone}`;
                     }}
                   >
                     {driverPhone}

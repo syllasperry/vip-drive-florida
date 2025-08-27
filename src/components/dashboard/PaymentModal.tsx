@@ -32,7 +32,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     const indicators = {
       payment_status: booking.payment_status === 'paid',
       confirmation_status: booking.payment_confirmation_status === 'all_set',
-      general_status: booking.status === 'payment_confirmed',
+      general_status: booking.status === 'payment_confirmed' || booking.status === 'all_set',
       ride_status: booking.ride_status === 'all_set',
       paid_fields: booking.paid_at && booking.paid_amount_cents > 0,
       stripe_reference: booking.stripe_payment_intent_id && booking.payment_reference
