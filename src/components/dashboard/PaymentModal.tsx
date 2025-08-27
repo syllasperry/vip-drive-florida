@@ -28,11 +28,27 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
   // CRITICAL FIX: Check if payment is already completed before showing modal
   const isPaymentCompleted = () => {
-    return booking.payment_status === 'paid' ||
-           booking.payment_confirmation_status === 'all_set' ||
-           booking.status === 'payment_confirmed' ||
-           booking.ride_status === 'all_set' ||
-           (booking.paid_at && booking.paid_amount_cents > 0);
+    // Comprehensive payment completion check
+    const indicators = {
+      payment_status: booking.payment_status === 'paid',
+      confirmation_status: booking.payment_confirmation_status === 'all_set',
+      general_status: booking.status === 'payment_confirmed',
+      ride_status: booking.ride_status === 'all_set',
+      paid_fields: booking.paid_at && booking.paid_amount_cents > 0,
+      stripe_reference: booking.stripe_payment_intent_id && booking.payment_reference
+    };
+    
+    const isCompleted = Object.values(indicators).some(Boolean);
+    
+    if (isCompleted) {
+      console.log('💳 Payment completion detected in modal:', {
+        booking_id: booking.id,
+        indicators,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    return isCompleted;
   };
 
   // CRITICAL FIX: Auto-close modal if payment is completed

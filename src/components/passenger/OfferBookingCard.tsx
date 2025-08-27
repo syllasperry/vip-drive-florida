@@ -26,11 +26,28 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
 
   // CRITICAL FIX: Enhanced payment status detection
   const isPaymentCompleted = () => {
-    return booking.payment_status === 'paid' ||
-           booking.payment_confirmation_status === 'all_set' ||
-           booking.status === 'payment_confirmed' ||
-           booking.ride_status === 'all_set' ||
-           (booking.paid_at && booking.paid_amount_cents > 0);
+    // Check multiple payment indicators for comprehensive detection
+    const hasPaymentStatus = booking.payment_status === 'paid';
+    const hasConfirmationStatus = booking.payment_confirmation_status === 'all_set';
+    const hasGeneralStatus = booking.status === 'payment_confirmed';
+    const hasRideStatus = booking.ride_status === 'all_set';
+    const hasPaidFields = booking.paid_at && booking.paid_amount_cents > 0;
+    const hasStripeReference = booking.stripe_payment_intent_id && booking.payment_reference;
+    
+    const isCompleted = hasPaymentStatus || hasConfirmationStatus || hasGeneralStatus || 
+                       hasRideStatus || hasPaidFields || hasStripeReference;
+    
+    if (isCompleted) {
+      console.log('💳 Payment completion detected:', {
+        booking_id: booking.id,
+        payment_status: booking.payment_status,
+        confirmation_status: booking.payment_confirmation_status,
+        paid_at: booking.paid_at,
+        paid_amount: booking.paid_amount_cents
+      });
+    }
+    
+    return isCompleted;
   };
 
   const isOfferPending = () => {

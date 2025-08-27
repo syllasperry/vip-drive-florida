@@ -44,39 +44,41 @@ export default function PassengerDashboard() {
       const bookingId = urlParams.get('booking_id');
       const sessionId = urlParams.get('session_id');
       
+      // Clean up URL parameters immediately to prevent re-processing
+      if (paid || bookingId || sessionId) {
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+      }
+      
       if (paid === 'true' && bookingId) {
         console.log('💳 Payment completion detected from URL:', { bookingId, sessionId });
         
-        // Show success message
-        toast({
-          title: "Payment Successful!",
-          description: "Your ride has been confirmed. You'll receive driver details shortly.",
-        });
-        
-        // Clean up URL parameters immediately to prevent re-processing
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, '', newUrl);
+        // Delay success message to ensure toast is available
+        setTimeout(() => {
+          toast({
+            title: "Payment Successful!",
+            description: "Your ride has been confirmed. You'll receive driver details shortly.",
+          });
+        }, 500);
       }
       
       const canceled = urlParams.get('canceled');
       if (canceled === 'true' && bookingId) {
         console.log('❌ Payment canceled detected from URL:', { bookingId });
         
-        toast({
-          title: "Payment Canceled",
-          description: "Your payment was canceled. You can try again anytime.",
-          variant: "destructive",
-        });
-        
-        // Clean up URL parameters
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, '', newUrl);
+        setTimeout(() => {
+          toast({
+            title: "Payment Canceled",
+            description: "Your payment was canceled. You can try again anytime.",
+            variant: "destructive",
+          });
+        }, 500);
       }
     } catch (error) {
       console.error('Error processing URL parameters:', error);
       // Continue loading dashboard even if URL processing fails
     }
-  }, []);
+  }, [toast]);
 
   const fetchUserProfile = async (forceRefresh = false) => {
     try {

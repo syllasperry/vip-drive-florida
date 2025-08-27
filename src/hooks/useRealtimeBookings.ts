@@ -190,14 +190,18 @@ export const useRealtimeBookings = () => {
             (newData.payment_status === 'paid' && oldData?.payment_status !== 'paid') ||
             (newData.payment_confirmation_status === 'all_set' && oldData?.payment_confirmation_status !== 'all_set') ||
             (newData.status === 'payment_confirmed' && oldData?.status !== 'payment_confirmed') ||
-            (newData.paid_at && !oldData?.paid_at);
+            (newData.paid_at && !oldData?.paid_at) ||
+            (newData.stripe_payment_intent_id && !oldData?.stripe_payment_intent_id) ||
+            (newData.payment_reference && !oldData?.payment_reference);
           
           if (wasPaymentCompleted) {
             console.log('💳 Payment completed for booking:', newData.id);
             setIsOfferJustReceived(null); // Clear any pending offer notifications
             
-            // Force immediate refetch to update UI
+            // Force immediate refetch with multiple attempts for reliability
             setTimeout(() => refetch(), 100);
+            setTimeout(() => refetch(), 1000);
+            setTimeout(() => refetch(), 3000);
             return;
           }
           

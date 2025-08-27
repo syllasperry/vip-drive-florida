@@ -146,8 +146,16 @@ export const useMyBookings = () => {
     retry: 2,
     refetchOnWindowFocus: true,
     // CRITICAL FIX: Faster polling for payment status updates
-    refetchInterval: 2000, // Check every 2 seconds for payment updates
-    refetchIntervalInBackground: true // Continue polling in background
+    refetchInterval: (data) => {
+      // Faster polling if there are pending payments
+      const hasPendingPayments = data?.some(booking => 
+        booking.payment_status === 'processing' ||
+        booking.payment_confirmation_status === 'price_awaiting_acceptance' ||
+        booking.status === 'offer_sent'
+      );
+      return hasPendingPayments ? 1000 : 5000; // 1s for pending, 5s for stable
+    },
+    refetchIntervalInBackground: true
   });
 
   return {

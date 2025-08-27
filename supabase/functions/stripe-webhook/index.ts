@@ -21,7 +21,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🔔 Webhook received')
+    console.log('🔔 Stripe webhook received at:', new Date().toISOString())
     
     const body = await req.text()
     const signature = req.headers.get('stripe-signature')
@@ -93,8 +93,21 @@ serve(async (req) => {
       })
     }
 
-    // Log the webhook event
-    await supabaseClient
+    // Log the webhook event with error handling
+    try {
+      await supabaseClient
+        .from('payment_webhook_events')
+        .insert({
+          provider: 'stripe',
+          provider_event_id: event.id,
+          event_type: event.type,
+          payload: event,
+          processed_ok: false // Will be updated to true if processing succeeds
+        })
+    } catch (logError) {
+      console.error('⚠️ Failed to log webhook event:', logError)
+      // Continue processing even if logging fails
+    }
       .from('payment_webhook_events')
       .insert({
         provider: 'stripe',
@@ -113,73 +126,96 @@ serve(async (req) => {
         const bookingId = session.metadata?.booking_id || session.client_reference_id
         if (!bookingId) {
           console.error('❌ Missing booking_id in session metadata or client_reference_id')
+          throw new Error('Missing booking_id in session')
           break
         }
 
         console.log('📋 Updating booking:', bookingId, 'to paid status')
 
-        // Update booking status to paid with valid status values
-        const { error: updateError } = await supabaseClient
-          .from('bookings')
-          .update({
-            payment_status: 'paid',
-            status: 'payment_confirmed',
-            payment_confirmation_status: 'all_set',
-            ride_status: 'all_set',
-            paid_amount_cents: session.amount_total,
-            paid_at: new Date().toISOString(),
-            payment_provider: 'stripe',
-            payment_reference: session.payment_intent as string || session.id,
-            stripe_payment_intent_id: session.payment_intent as string || session.id,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', bookingId)
+        // CRITICAL FIX: Use atomic transaction for payment completion
+        const { data: updateResult, error: updateError } = await supabaseClient.rpc('complete_payment_transaction', {
+          p_booking_id: bookingId,
+          p_stripe_session_id: session.id,
+          p_payment_intent_id: session.payment_intent as string || session.id,
+          p_amount_cents: session.amount_total || 0
+        })
 
         if (updateError) {
-          console.error('❌ Error updating booking after payment:', updateError)
-          break
+          console.error('❌ Error in payment completion RPC:', updateError)
+          // Fallback to direct update if RPC fails
+          const { error: fallbackError } = await supabaseClient
+            .from('bookings')
+            .update({
+              payment_status: 'paid',
+              status: 'payment_confirmed',
+              payment_confirmation_status: 'all_set',
+              ride_status: 'all_set',
+              paid_amount_cents: session.amount_total,
+              paid_at: new Date().toISOString(),
+              payment_provider: 'stripe',
+              payment_reference: session.payment_intent as string || session.id,
+              stripe_payment_intent_id: session.payment_intent as string || session.id,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', bookingId)
+
+          if (fallbackError) {
+            console.error('❌ Fallback payment update also failed:', fallbackError)
+            throw fallbackError
+          }
         }
-          
-          // CRITICAL FIX: Force real-time notification
-          await supabaseClient
+
+        console.log('✅ Payment completion processed successfully for booking:', bookingId)
+
+        // CRITICAL FIX: Multiple real-time notification channels
+        const notificationPayload = {
+          booking_id: bookingId,
+          status: 'payment_confirmed',
+          payment_status: 'paid',
+          payment_confirmation_status: 'all_set',
+          payment_intent_id: session.payment_intent as string || session.id,
+          amount_cents: session.amount_total,
+          timestamp: new Date().toISOString(),
+          webhook_event_id: event.id
+        }
+
+        // Send to multiple channels for redundancy
+        await Promise.allSettled([
+          // Primary notification channel
+          supabaseClient
             .from('realtime_outbox')
             .insert({
               topic: 'booking_payment_confirmed',
               booking_id: bookingId,
-              payload: {
-                booking_id: bookingId,
-                status: 'payment_confirmed',
-                payment_status: 'paid',
-                payment_confirmation_status: 'all_set',
-                payment_intent_id: session.payment_intent as string || session.id,
-                amount_cents: session.amount_total,
-                timestamp: new Date().toISOString()
+              payload: notificationPayload
+            }),
+          
+          // Secondary notification channel
+          supabaseClient
+            .from('realtime_outbox')
+            .insert({
+              topic: 'payment_status_update',
+              booking_id: bookingId,
+              payload: notificationPayload
+            }),
+
+          // Create payment record
+          supabaseClient
+            .from('payments')
+            .insert({
+              booking_id: bookingId,
+              amount_cents: session.amount_total || 0,
+              currency: 'USD',
+              method: 'stripe',
+              provider_txn_id: session.payment_intent as string || session.id,
+              status: 'PAID',
+              meta: {
+                stripe_session_id: session.id,
+                stripe_payment_intent_id: session.payment_intent,
+                webhook_event_id: event.id
               }
             })
-
-        console.log('✅ Booking updated to paid:', bookingId)
-
-        // Create payment record
-        const { error: paymentError } = await supabaseClient
-          .from('payments')
-          .insert({
-            booking_id: bookingId,
-            amount_cents: session.amount_total || 0,
-            currency: 'USD',
-            method: 'stripe',
-            provider_txn_id: session.payment_intent as string || session.id,
-            status: 'PAID',
-            meta: {
-              stripe_session_id: session.id,
-              stripe_payment_intent_id: session.payment_intent
-            }
-          })
-
-        if (paymentError) {
-          console.error('⚠️ Error creating payment record:', paymentError)
-        } else {
-          console.log('✅ Payment record created')
-        }
+        ])
 
         // Trigger email notifications
         try {
@@ -190,6 +226,13 @@ serve(async (req) => {
         } catch (emailError) {
           console.error('⚠️ Error triggering emails:', emailError)
         }
+
+        // Mark webhook event as successfully processed
+        await supabaseClient
+          .from('payment_webhook_events')
+          .update({ processed_ok: true })
+          .eq('provider_event_id', event.id)
+
         break
       }
 
