@@ -1,7 +1,6 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useEffect } from 'react';
 
 export interface Booking {
   id: string;
@@ -28,9 +27,6 @@ export interface Booking {
   paid_at: string | null;
   payment_provider: string | null;
   payment_reference: string | null;
-  paid_currency: string | null;
-  final_price_cents: number | null;
-  estimated_price_cents: number | null;
   drivers?: {
     full_name: string;
     phone: string;
@@ -38,7 +34,6 @@ export interface Booking {
     car_model: string | null;
     car_color: string | null;
     license_plate: string | null;
-    profile_photo_url: string | null;
     avatar_url: string | null;
     email: string | null;
   } | null;
@@ -87,7 +82,7 @@ export const useMyBookings = () => {
         passenger = newPassenger;
       }
 
-      // Now fetch bookings for this passenger with ALL payment-related fields
+      // Now fetch bookings for this passenger with payment fields
       const { data: rawBookings, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
@@ -115,9 +110,6 @@ export const useMyBookings = () => {
           paid_at,
           payment_provider,
           payment_reference,
-          paid_currency,
-          final_price_cents,
-          estimated_price_cents,
           stripe_payment_intent_id,
           drivers:driver_id (
             full_name,
@@ -126,8 +118,8 @@ export const useMyBookings = () => {
             car_model,
             car_color,
             license_plate,
-            profile_photo_url,
             avatar_url,
+            profile_photo_url,
             email
           )
         `)
@@ -149,47 +141,13 @@ export const useMyBookings = () => {
           : null
       }));
 
-      console.log('📊 Bookings with payment status:', bookings.map(b => ({
-        id: b.id.slice(-8),
-        booking_code: b.booking_code,
-        status: b.status,
-        payment_status: b.payment_status,
-        paid_at: b.paid_at,
-        paid_amount_cents: b.paid_amount_cents,
-        offer_price_cents: b.offer_price_cents
-      })));
-
       return bookings;
     },
     retry: 2,
     refetchOnWindowFocus: true,
-    // More frequent refetch for quicker payment status updates
-    refetchInterval: 3000 // Every 3 seconds
+    // Refetch every 5 seconds to catch webhook updates faster
+    refetchInterval: 5000
   });
-
-  // Set up realtime subscription for booking updates
-  useEffect(() => {
-    const channel = supabase
-      .channel('booking-payment-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'bookings'
-        },
-        (payload) => {
-          console.log('📡 Realtime booking update:', payload);
-          // Refetch bookings when any booking is updated
-          refetch();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [refetch]);
 
   return {
     bookings,
