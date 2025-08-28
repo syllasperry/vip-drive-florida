@@ -4,26 +4,131 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CreditCard, DollarSign, CheckCircle, Clock, Download, Receipt } from "lucide-react";
 import { format } from 'date-fns';
+import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 interface PaymentsTabProps {
   bookings: any[];
 }
 
 export const PaymentsTab = ({ bookings }: PaymentsTabProps) => {
+  const [paidBookings, setPaidBookings] = useState<any[]>([]);
+  const [totalPaid, setTotalPaid] = useState(0);
+  const [awaitingTotal, setAwaitingTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchPaymentData();
+  }, []);
+
+  const fetchPaymentData = async () => {
+    try {
+      setLoading(true);
+      
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get passenger ID
+      const { data: passenger } = await supabase
+        .from('passengers')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!passenger) return;
+
+      // Query paid bookings
+      const { data: paidData, error: paidError } = await supabase
+        .from('bookings')
+        .select(`
+          id,
+          booking_code,
+          pickup_location,
+          dropoff_location,
+          pickup_time,
+          final_price,
+          estimated_price,
+          vehicle_type,
+          created_at,
+          paid_amount_cents,
+          offer_price_cents
+        `)
+        .eq('passenger_id', passenger.id)
+        .eq('status', 'paid')
+        .order('created_at', { ascending: false });
+
+      if (paidError) {
+        console.error('Error fetching paid bookings:', paidError);
+        throw paidError;
+      }
+
+      // Calculate total paid amount
+      const { data: totalPaidData, error: totalPaidError } = await supabase
+        .rpc('calculate_total_paid', { p_passenger_id: passenger.id });
+
+      if (totalPaidError) {
+        console.error('Error calculating total paid:', totalPaidError);
+        // Fallback calculation
+        const fallbackTotal = (paidData || []).reduce((sum, booking) => {
+          const amount = booking.paid_amount_cents 
+            ? booking.paid_amount_cents / 100
+            : booking.final_price || booking.estimated_price || 0;
+          return sum + amount;
+        }, 0);
+        setTotalPaid(fallbackTotal);
+      } else {
+        setTotalPaid(totalPaidData || 0);
+      }
+
+      // Calculate awaiting payments (offer_sent status)
+      const { data: awaitingData, error: awaitingError } = await supabase
+        .rpc('calculate_awaiting_payments', { p_passenger_id: passenger.id });
+
+      if (awaitingError) {
+        console.error('Error calculating awaiting payments:', awaitingError);
+        // Fallback calculation from bookings prop
+        const fallbackAwaiting = bookings
+          .filter(booking => booking.status === 'offer_sent')
+          .reduce((sum, booking) => {
+            const amount = booking.offer_price_cents 
+              ? booking.offer_price_cents / 100
+              : booking.final_price || booking.estimated_price || 0;
+            return sum + amount;
+          }, 0);
+        setAwaitingTotal(fallbackAwaiting);
+      } else {
+        setAwaitingTotal(awaitingData || 0);
+      }
+
+      setPaidBookings(paidData || []);
+
+    } catch (error) {
+      console.error('Error fetching payment data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load payment data. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Filter bookings with payment information
-  const paymentBookings = bookings.filter(booking => 
-    booking.final_price || booking.estimated_price
-  );
+  const paymentBookings = loading ? [] : paidBookings;
 
   const getPaymentStatus = (booking: any) => {
-    const paymentStatus = booking.payment_confirmation_status?.toLowerCase();
-    const rideStatus = booking.ride_status?.toLowerCase();
+    // For paid bookings, always return completed
+    if (booking.status === 'paid') return 'completed';
     
+    // Fallback for other statuses
+    const paymentStatus = booking.payment_confirmation_status?.toLowerCase();
     if (paymentStatus === 'all_set') return 'completed';
     if (paymentStatus === 'passenger_paid') return 'paid';
-    if (rideStatus === 'offer_sent') return 'offer_sent';
-    if (paymentStatus === 'waiting_for_payment') return 'pending';
-    return 'unknown';
+    return 'completed'; // Default for paid bookings
   };
 
   const getStatusColor = (status: string) => {
@@ -46,13 +151,14 @@ export const PaymentsTab = ({ bookings }: PaymentsTabProps) => {
     }
   };
 
-  const totalCompleted = paymentBookings
-    .filter(booking => getPaymentStatus(booking) === 'completed')
-    .reduce((sum, booking) => sum + (booking.final_price || booking.estimated_price || 0), 0);
-
-  const totalPending = paymentBookings
-    .filter(booking => ['offer_sent', 'pending'].includes(getPaymentStatus(booking)))
-    .reduce((sum, booking) => sum + (booking.final_price || booking.estimated_price || 0), 0);
+  const getBookingAmount = (booking: any) => {
+    // Use paid_amount_cents if available (most accurate)
+    if (booking.paid_amount_cents && booking.paid_amount_cents > 0) {
+      return booking.paid_amount_cents / 100;
+    }
+    // Fallback to other price fields
+    return booking.final_price || booking.estimated_price || 0;
+  };
 
   const handleDownloadReceipt = (booking: any) => {
     // This would generate and download a receipt
@@ -71,7 +177,7 @@ export const PaymentsTab = ({ bookings }: PaymentsTabProps) => {
               <CheckCircle className="w-4 h-4 text-green-600" />
               <span className="text-sm font-medium text-green-800">Total Paid</span>
             </div>
-            <p className="text-2xl font-bold text-green-600">${totalCompleted.toFixed(2)}</p>
+            <p className="text-2xl font-bold text-green-600">${totalPaid.toFixed(2)}</p>
             <p className="text-xs text-green-600">Completed rides</p>
           </CardContent>
         </Card>
@@ -82,14 +188,19 @@ export const PaymentsTab = ({ bookings }: PaymentsTabProps) => {
               <Clock className="w-4 h-4 text-orange-600" />
               <span className="text-sm font-medium text-orange-800">Awaiting Payment</span>
             </div>
-            <p className="text-2xl font-bold text-orange-600">${totalPending.toFixed(2)}</p>
+            <p className="text-2xl font-bold text-orange-600">${awaitingTotal.toFixed(2)}</p>
             <p className="text-xs text-orange-600">Active offers</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Payment History */}
-      {paymentBookings.length === 0 ? (
+      {loading ? (
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FF385C] mx-auto mb-4"></div>
+          <p className="text-gray-500">Loading payment history...</p>
+        </div>
+      ) : paymentBookings.length === 0 ? (
         <div className="text-center py-12">
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CreditCard className="w-8 h-8 text-gray-400" />
@@ -117,7 +228,7 @@ export const PaymentsTab = ({ bookings }: PaymentsTabProps) => {
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-gray-900">
-                        #{(booking.booking_code || booking.id.slice(-8)).toUpperCase()}
+                        ${getBookingAmount(booking).toFixed(2)}
                       </span>
                       <Badge className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(paymentStatus)}`}>
                         {getStatusLabel(paymentStatus)}
@@ -144,15 +255,12 @@ export const PaymentsTab = ({ bookings }: PaymentsTabProps) => {
                   </div>
                   
                   <p className="text-sm text-gray-600 mb-2">
-                    {booking.pickup_location.split(',')[0]} → {booking.dropoff_location.split(',')[0]}
+                    {booking.pickup_location?.split(',')[0] || 'Pickup'} → {booking.dropoff_location?.split(',')[0] || 'Dropoff'}
                   </p>
                   
                   <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span>{format(new Date(booking.pickup_time), 'MMM dd, yyyy')}</span>
+                    <span>{format(new Date(booking.pickup_time || booking.created_at), 'MMM dd, yyyy')}</span>
                     <div className="flex items-center gap-4">
-                      {booking.driver_name && paymentStatus === 'completed' && (
-                        <span>Driver: {booking.driver_name}</span>
-                      )}
                       {booking.vehicle_type && (
                         <span>{booking.vehicle_type}</span>
                       )}
