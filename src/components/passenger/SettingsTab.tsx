@@ -14,6 +14,10 @@ import { useToast } from '@/hooks/use-toast';
 import { PhotoUpload } from '@/components/profile/PhotoUpload';
 import { uploadPassengerAvatar, savePassengerPreferences, getPassengerPreferences, PassengerPreferences } from '@/lib/api/passenger-preferences';
 import { HelpSupportModal, HelpContent } from '@/components/ui/help-support-modal';
+import { ChangePasswordModal } from '@/components/modals/ChangePasswordModal';
+import { TwoFactorAuthModal } from '@/components/modals/TwoFactorAuthModal';
+import { PhoneVerificationModal } from '@/components/modals/PhoneVerificationModal';
+import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 
 interface PassengerInfo {
   id: string;
@@ -33,6 +37,9 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [isSavingPreferences, setIsSavingPreferences] = useState(false);
   const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [showTwoFactorModal, setShowTwoFactorModal] = useState(false);
+  const [showPhoneVerificationModal, setShowPhoneVerificationModal] = useState(false);
   const [formData, setFormData] = useState({
     full_name: passengerInfo.full_name || '',
     phone: passengerInfo.phone || '',
@@ -47,12 +54,13 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
     trip_purpose: 'other',
     trip_notes: ''
   });
-  const [notifications, setNotifications] = useState({
-    email: true,
-    push: true,
-    sms: false,
-  });
   const { toast } = useToast();
+  const { 
+    preferences: notifications, 
+    isLoading: notificationsLoading, 
+    isUpdating: notificationsUpdating,
+    updatePreference: updateNotificationPreference 
+  } = useNotificationPreferences();
 
   useEffect(() => {
     loadPreferences();
@@ -172,6 +180,21 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
       };
       console.log('Updated preferences state:', updated);
       return updated;
+    });
+  };
+
+  const handleNotificationToggle = async (key: 'email' | 'push' | 'sms', value: boolean) => {
+    const result = await updateNotificationPreference(key, value);
+    
+    if (result === 'phone_verification_required') {
+      setShowPhoneVerificationModal(true);
+    }
+  };
+
+  const handlePhoneVerified = () => {
+    toast({
+      title: "SMS Notifications Enabled",
+      description: "You'll now receive SMS notifications for ride updates",
     });
   };
 
@@ -509,9 +532,8 @@ Confirming a booking means you accept these terms.`,
             <Switch
               id="email-notifications"
               checked={notifications.email}
-              onCheckedChange={(checked) =>
-                setNotifications({ ...notifications, email: checked })
-              }
+              onCheckedChange={(checked) => handleNotificationToggle('email', checked)}
+              disabled={notificationsLoading || notificationsUpdating}
             />
           </div>
           
@@ -520,9 +542,8 @@ Confirming a booking means you accept these terms.`,
             <Switch
               id="push-notifications"
               checked={notifications.push}
-              onCheckedChange={(checked) =>
-                setNotifications({ ...notifications, push: checked })
-              }
+              onCheckedChange={(checked) => handleNotificationToggle('push', checked)}
+              disabled={notificationsLoading || notificationsUpdating}
             />
           </div>
           
@@ -531,9 +552,8 @@ Confirming a booking means you accept these terms.`,
             <Switch
               id="sms-notifications"
               checked={notifications.sms}
-              onCheckedChange={(checked) =>
-                setNotifications({ ...notifications, sms: checked })
-              }
+              onCheckedChange={(checked) => handleNotificationToggle('sms', checked)}
+              disabled={notificationsLoading || notificationsUpdating}
             />
           </div>
         </CardContent>
@@ -548,14 +568,19 @@ Confirming a booking means you accept these terms.`,
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button variant="outline" className="w-full justify-start">
+          <Button 
+            variant="outline" 
+            className="w-full justify-start"
+            onClick={() => setShowChangePasswordModal(true)}
+          >
             Change Password
           </Button>
-          <Button variant="outline" className="w-full justify-start">
+          <Button 
+            variant="outline" 
+            className="w-full justify-start"
+            onClick={() => setShowTwoFactorModal(true)}
+          >
             Two-Factor Authentication
-          </Button>
-          <Button variant="outline" className="w-full justify-start">
-            Download My Data
           </Button>
         </CardContent>
       </Card>
@@ -646,6 +671,23 @@ Confirming a booking means you accept these terms.`,
       >
         <HelpContent content={helpContent.privacy} />
       </HelpSupportModal>
+
+      {/* Privacy & Security Modals */}
+      <ChangePasswordModal
+        isOpen={showChangePasswordModal}
+        onClose={() => setShowChangePasswordModal(false)}
+      />
+
+      <TwoFactorAuthModal
+        isOpen={showTwoFactorModal}
+        onClose={() => setShowTwoFactorModal(false)}
+      />
+
+      <PhoneVerificationModal
+        isOpen={showPhoneVerificationModal}
+        onClose={() => setShowPhoneVerificationModal(false)}
+        onVerified={handlePhoneVerified}
+      />
     </div>
   );
 };

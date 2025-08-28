@@ -56,7 +56,11 @@ export const TwoFactorAuthModal: React.FC<TwoFactorAuthModalProps> = ({
 
   const generateQRCode = async (otpauthUrl: string) => {
     try {
-      const qrCodeDataUrl = await QRCode.toDataURL(otpauthUrl);
+      const qrCodeDataUrl = await QRCode.toDataURL(otpauthUrl, { 
+        errorCorrectionLevel: 'L',
+        width: 256,
+        margin: 2
+      });
       return qrCodeDataUrl;
     } catch (error) {
       console.error('Error generating QR code:', error);

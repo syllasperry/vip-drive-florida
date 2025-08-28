@@ -40,9 +40,9 @@ export const useNotificationPreferences = () => {
 
       if (data) {
         setPreferences({
-          email: data.email,
-          push: data.push,
-          sms: data.sms
+          email: data.email_enabled || data.email || true,
+          push: data.push_enabled || data.push || false,
+          sms: data.sms || false
         });
       }
     } catch (error) {
@@ -66,10 +66,8 @@ export const useNotificationPreferences = () => {
         .from('user_notification_prefs')
         .upsert({
           user_id: user.id,
-          [key]: value,
-          // Include other current values to ensure they're not overwritten
           email: key === 'email' ? value : preferences.email,
-          push: key === 'push' ? value : preferences.push,
+          push_enabled: key === 'push' ? value : preferences.push,
           sms: key === 'sms' ? value : preferences.sms,
           updated_at: new Date().toISOString()
         }, {
