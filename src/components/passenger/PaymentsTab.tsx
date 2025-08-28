@@ -84,24 +84,16 @@ export const PaymentsTab = ({ bookings }: PaymentsTabProps) => {
       }
 
       // Calculate awaiting payments (offer_sent status)
-      const { data: awaitingData, error: awaitingError } = await supabase
-        .rpc('calculate_awaiting_payments', { p_passenger_id: passenger.id });
-
-      if (awaitingError) {
-        console.error('Error calculating awaiting payments:', awaitingError);
-        // Fallback calculation from bookings prop
-        const fallbackAwaiting = bookings
-          .filter(booking => booking.status === 'offer_sent')
-          .reduce((sum, booking) => {
-            const amount = booking.offer_price_cents 
-              ? booking.offer_price_cents / 100
-              : booking.final_price || booking.estimated_price || 0;
-            return sum + amount;
-          }, 0);
-        setAwaitingTotal(fallbackAwaiting);
-      } else {
-        setAwaitingTotal(awaitingData || 0);
-      }
+      // Calculate awaiting payments from bookings prop
+      const awaitingTotal = bookings
+        .filter(booking => booking.status === 'offer_sent')
+        .reduce((sum, booking) => {
+          const amount = booking.offer_price_cents 
+            ? booking.offer_price_cents / 100
+            : booking.final_price || booking.estimated_price || 0;
+          return sum + amount;
+        }, 0);
+      setAwaitingTotal(awaitingTotal);
 
       setPaidBookings(paidData || []);
 
