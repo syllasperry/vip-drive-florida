@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { PhotoUpload } from '@/components/profile/PhotoUpload';
 import { uploadPassengerAvatar, savePassengerPreferences, getPassengerPreferences, PassengerPreferences } from '@/lib/api/passenger-preferences';
+import { HelpSupportModal, HelpContent } from '@/components/ui/help-support-modal';
 
 interface PassengerInfo {
   id: string;
@@ -31,6 +32,7 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [isSavingPreferences, setIsSavingPreferences] = useState(false);
+  const [activeModal, setActiveModal] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     full_name: passengerInfo.full_name || '',
     phone: passengerInfo.phone || '',
@@ -185,6 +187,51 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
         variant: "destructive",
       });
     }
+  };
+
+  const helpContent = {
+    faq: `**What is VIP Chauffeur Service?**
+VIP Chauffeur is a premium ride service designed to provide safe, reliable, and comfortable transportation with professional drivers.
+
+**How do I book a ride?**
+Select pickup & drop-off, confirm ride details, and pay through our secure checkout.
+
+**Can I cancel my booking? Will I be charged?**
+Yes. Cancellations less than 6 hours before pickup may incur a cancellation fee.
+
+**What payment methods are accepted?**
+All major credit/debit cards via Stripe.
+
+**How do I contact my driver?**
+After payment, your booking card shows your driver's photo, name, phone, and email with shortcuts to call, text, or email.
+
+**What if my driver is late?**
+We monitor rides; you'll receive updates and scheduling adjustments if needed.
+
+**Is my ride insured?**
+Yes, rides are covered by commercial insurance.`,
+    
+    contact: `Need help with your ride? Our support team is available 24/7.
+
+📧 **Email:** support@vipchauffeur.com (tap to open mail client)
+📞 **Phone:** +1 (555) 123-4567 (tap to call)
+💬 **Text Message:** Tap to open SMS composer`,
+    
+    terms: `By using the VIP Chauffeur app, you agree to:
+
+1. **Service Use:** Personal, lawful transportation only.
+2. **Passenger Responsibility:** Provide accurate info, be on time, maintain respectful behavior.
+3. **Company Responsibility:** Deliver safe, high-quality, professional service.
+4. **Cancellations:** Less than 6 hours before pickup may incur fees.
+5. **Liability:** Not responsible for delays due to traffic, weather, or unforeseen events.
+
+Confirming a booking means you accept these terms.`,
+    
+    privacy: `1. **Data Collected:** Name, phone, email, ride details (pickup/drop-off), preferences.
+2. **Data Use:** To process bookings, connect you with your driver, and improve the service.
+3. **Data Sharing:** Only with your assigned driver and Stripe; never sold.
+4. **Data Security:** Encrypted and securely stored.
+5. **Your Rights:** Request to view, edit, or delete your data via Support.`
   };
 
   return (
@@ -522,16 +569,32 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button variant="outline" className="w-full justify-start">
+          <Button 
+            variant="outline" 
+            className="w-full justify-start"
+            onClick={() => setActiveModal('faq')}
+          >
             FAQ
           </Button>
-          <Button variant="outline" className="w-full justify-start">
+          <Button 
+            variant="outline" 
+            className="w-full justify-start"
+            onClick={() => setActiveModal('contact')}
+          >
             Contact Support
           </Button>
-          <Button variant="outline" className="w-full justify-start">
+          <Button 
+            variant="outline" 
+            className="w-full justify-start"
+            onClick={() => setActiveModal('terms')}
+          >
             Terms of Service
           </Button>
-          <Button variant="outline" className="w-full justify-start">
+          <Button 
+            variant="outline" 
+            className="w-full justify-start"
+            onClick={() => setActiveModal('privacy')}
+          >
             Privacy Policy
           </Button>
         </CardContent>
@@ -550,6 +613,39 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Help & Support Modals */}
+      <HelpSupportModal
+        isOpen={activeModal === 'faq'}
+        onClose={() => setActiveModal(null)}
+        title="Frequently Asked Questions"
+      >
+        <HelpContent content={helpContent.faq} />
+      </HelpSupportModal>
+
+      <HelpSupportModal
+        isOpen={activeModal === 'contact'}
+        onClose={() => setActiveModal(null)}
+        title="Contact Support"
+      >
+        <HelpContent content={helpContent.contact} />
+      </HelpSupportModal>
+
+      <HelpSupportModal
+        isOpen={activeModal === 'terms'}
+        onClose={() => setActiveModal(null)}
+        title="Terms of Service"
+      >
+        <HelpContent content={helpContent.terms} />
+      </HelpSupportModal>
+
+      <HelpSupportModal
+        isOpen={activeModal === 'privacy'}
+        onClose={() => setActiveModal(null)}
+        title="Privacy Policy"
+      >
+        <HelpContent content={helpContent.privacy} />
+      </HelpSupportModal>
     </div>
   );
 };
