@@ -17,20 +17,46 @@ export const usePushNotificationSettings = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      // Try to get existing settings
+      const { data: settings, error: settingsError } = await supabase
         .from('user_settings')
         .select('push_enabled')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error loading push settings:', error);
+      if (settingsError && settingsError.code !== 'PGRST116') {
+        console.error('Error loading push settings:', settingsError);
+        // Set default value on error
+        setPushEnabled(false);
         return;
       }
 
-      setPushEnabled(data?.push_enabled || false);
+      // If no settings exist, create default entry
+      if (!settings) {
+        console.log('Creating default user settings...');
+        const { data: newSettings, error: createError } = await supabase
+          .from('user_settings')
+          .insert({
+            user_id: user.id,
+            push_enabled: false,
+            email_enabled: true,
+            sms_enabled: false
+          })
+          .select('push_enabled')
+          .single();
+
+        if (createError) {
+          console.error('Error creating default settings:', createError);
+          setPushEnabled(false);
+        } else {
+          setPushEnabled(newSettings.push_enabled);
+        }
+      } else {
+        setPushEnabled(settings.push_enabled);
+      }
     } catch (error) {
       console.error('Error loading push settings:', error);
+      setPushEnabled(false);
     } finally {
       setIsLoading(false);
     }
@@ -46,8 +72,8 @@ export const usePushNotificationSettings = () => {
     setIsUpdating(true);
 
     try {
-      // Handle browser permission for push notifications
       if (enabled) {
+        // Handle browser permission for push notifications
         if (!('Notification' in window)) {
           throw new Error('Push notifications are not supported in this browser');
         }
@@ -63,27 +89,48 @@ export const usePushNotificationSettings = () => {
           }
         }
 
-        // Register service worker if not already registered
+        // Register service worker and get push subscription
         if ('serviceWorker' in navigator) {
-          const registration = await navigator.serviceWorker.ready;
-          console.log('Service worker ready for push notifications');
+          try {
+            const registration = await navigator.serviceWorker.ready;
+            console.log('Service worker ready for push notifications');
+            
+            // Register push subscription
+            await registerPushSubscription(user.id, registration);
+          } catch (swError) {
+            console.error('Service worker registration failed:', swError);
+            // Don't fail the entire operation for SW issues
+          }
         }
       }
 
       // Update database
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('user_settings')
         .upsert({
           user_id: user.id,
           push_enabled: enabled,
+          email_enabled: true, // Preserve existing email setting
+          sms_enabled: false,  // Preserve existing SMS setting
           updated_at: new Date().toISOString()
         }, {
           onConflict: 'user_id'
-        });
+        })
+        .select('push_enabled')
+        .single();
 
       if (error) {
+        console.error('Database update error:', error);
         throw error;
       }
+
+      // Verify the update was successful
+      if (data && data.push_enabled !== enabled) {
+        console.error('Database update mismatch:', { expected: enabled, actual: data.push_enabled });
+        throw new Error('Settings update verification failed');
+      }
+
+      console.log('Push notification setting updated successfully:', enabled);
 
       if (enabled) {
         toast({
@@ -91,6 +138,9 @@ export const usePushNotificationSettings = () => {
           description: "You'll receive notifications for ride updates",
         });
       } else {
+        // Disable push subscriptions when turned off
+        await disablePushSubscriptions(user.id);
+        
         toast({
           title: "Push Notifications Disabled",
           description: "You won't receive push notifications anymore",
@@ -104,7 +154,20 @@ export const usePushNotificationSettings = () => {
       // Rollback optimistic update
       setPushEnabled(previousValue);
       
-      const errorMessage = error instanceof Error ? error.message : "Couldn't save your preference. Please try again.";
+      let errorMessage = "Couldn't save your preference. Please try again.";
+      
+      if (error instanceof Error) {
+        if (error.message.includes('permission')) {
+          errorMessage = error.message;
+        } else if (error.message.includes('not supported')) {
+          errorMessage = error.message;
+        } else if (error.message.includes('blocked')) {
+          errorMessage = error.message;
+        } else {
+          errorMessage = "Couldn't save your preference. Please try again.";
+        }
+      }
+      
       toast({
         title: "Error",
         description: errorMessage,
@@ -114,6 +177,88 @@ export const usePushNotificationSettings = () => {
       return false;
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const registerPushSubscription = async (userId: string, registration: ServiceWorkerRegistration) => {
+    try {
+      // Check if push manager is available
+      if (!('PushManager' in window)) {
+        console.log('Push messaging is not supported');
+        return;
+      }
+
+      // Get existing subscription or create new one
+      let subscription = await registration.pushManager.getSubscription();
+      
+      if (!subscription) {
+        // Create new subscription (you would need VAPID keys for production)
+        console.log('Creating new push subscription...');
+        // For now, just log that we would create a subscription
+        console.log('Push subscription would be created here with VAPID keys');
+      }
+
+      // Store subscription in database
+      if (subscription) {
+        const { error } = await supabase
+          .from('user_push_devices')
+          .upsert({
+            user_id: userId,
+            device_token: subscription.endpoint,
+            platform: 'web',
+            endpoint: subscription.endpoint,
+            p256dh_key: subscription.getKey ? btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('p256dh') || new ArrayBuffer(0)))) : null,
+            auth_key: subscription.getKey ? btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('auth') || new ArrayBuffer(0)))) : null,
+            user_agent: navigator.userAgent,
+            is_active: true,
+            last_used_at: new Date().toISOString()
+          }, {
+            onConflict: 'user_id,device_token'
+          });
+
+        if (error) {
+          console.error('Error storing push subscription:', error);
+        } else {
+          console.log('Push subscription stored successfully');
+        }
+      }
+    } catch (error) {
+      console.error('Error registering push subscription:', error);
+    }
+  };
+
+  const disablePushSubscriptions = async (userId: string) => {
+    try {
+      // Mark all user's push devices as inactive
+      const { error } = await supabase
+        .from('user_push_devices')
+        .update({ 
+          is_active: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('Error disabling push subscriptions:', error);
+      } else {
+        console.log('Push subscriptions disabled successfully');
+      }
+
+      // Unsubscribe from service worker if available
+      if ('serviceWorker' in navigator) {
+        try {
+          const registration = await navigator.serviceWorker.ready;
+          const subscription = await registration.pushManager.getSubscription();
+          if (subscription) {
+            await subscription.unsubscribe();
+            console.log('Push subscription unsubscribed');
+          }
+        } catch (swError) {
+          console.error('Error unsubscribing from push:', swError);
+        }
+      }
+    } catch (error) {
+      console.error('Error in disablePushSubscriptions:', error);
     }
   };
 

@@ -31,9 +31,32 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js')
       .then((registration) => {
         console.log('VIP Service Worker registered successfully:', registration.scope);
+        
+        // Handle service worker updates
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                // New service worker is available, prompt user to refresh
+                console.log('New service worker available');
+                // Auto-activate new service worker
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
+              }
+            });
+          }
+        });
+        
+        // Listen for service worker controller changes
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          console.log('Service worker controller changed, reloading page');
+          window.location.reload();
+        });
       })
       .catch((error) => {
         console.log('VIP Service Worker registration failed:', error);
       });
   });
+} else {
+  console.log('Service workers are not supported in this browser');
 }
