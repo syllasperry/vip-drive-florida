@@ -46,7 +46,7 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
     full_name: passengerInfo.full_name || '',
     phone: passengerInfo.phone || '',
   });
-  const [preferences, setPreferences] = useState<PassengerPreferences>({
+  const [ridePreferences, setRidePreferences] = useState<PassengerPreferences>({
     air_conditioning: true,
     preferred_temperature: 71,
     temperature_unit: 'F',
@@ -58,7 +58,7 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
   });
   const { toast } = useToast();
   const { 
-    preferences,
+    preferences: notificationPreferences,
     pushEnabled,
     emailEnabled,
     smsEnabled,
@@ -80,7 +80,7 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
       const savedPreferences = await getPassengerPreferences();
       if (savedPreferences) {
         console.log('Loaded preferences:', savedPreferences);
-        setPreferences(savedPreferences);
+        setRidePreferences(savedPreferences);
       } else {
         console.log('No saved preferences found, using defaults');
       }
@@ -145,12 +145,12 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
     try {
       setIsSavingPreferences(true);
       console.log('=== SAVING PREFERENCES ===');
-      console.log('Current preferences state:', preferences);
+      console.log('Current preferences state:', ridePreferences);
       
       // Log the trip purpose value specifically to debug the issue
-      console.log('Trip purpose value being saved:', preferences.trip_purpose);
+      console.log('Trip purpose value being saved:', ridePreferences.trip_purpose);
       
-      await savePassengerPreferences(preferences);
+      await savePassengerPreferences(ridePreferences);
       console.log('=== PREFERENCES SAVED SUCCESSFULLY ===');
       
       toast({
@@ -181,7 +181,7 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
     value: PassengerPreferences[K]
   ) => {
     console.log(`Updating preference ${key}:`, value);
-    setPreferences(prev => {
+    setRidePreferences(prev => {
       const updated = {
         ...prev,
         [key]: value
@@ -353,19 +353,19 @@ Confirming a booking means you accept these terms.`,
               </Label>
               <Switch
                 id="air-conditioning"
-                checked={preferences.air_conditioning}
+                checked={ridePreferences.air_conditioning}
                 onCheckedChange={(checked) => updatePreference('air_conditioning', checked)}
               />
             </div>
 
-            {preferences.air_conditioning && (
+            {ridePreferences.air_conditioning && (
               <div className="space-y-4 pt-2 border-t border-gray-200">
                 <Label className="text-sm font-medium text-gray-700">
-                  Preferred temperature: {preferences.preferred_temperature}°{preferences.temperature_unit}
+                  Preferred temperature: {ridePreferences.preferred_temperature}°{ridePreferences.temperature_unit}
                 </Label>
                 <div className="px-2">
                   <Slider
-                    value={[preferences.preferred_temperature]}
+                    value={[ridePreferences.preferred_temperature]}
                     onValueChange={(value) => updatePreference('preferred_temperature', value[0])}
                     max={85}
                     min={60}
@@ -396,16 +396,16 @@ Confirming a booking means you accept these terms.`,
               </Label>
               <Switch
                 id="radio-on"
-                checked={preferences.radio_on}
+                checked={ridePreferences.radio_on}
                 onCheckedChange={(checked) => updatePreference('radio_on', checked)}
               />
             </div>
 
-            {preferences.radio_on && (
+            {ridePreferences.radio_on && (
               <div className="space-y-3 pt-2 border-t border-gray-200">
                 <Label className="text-sm font-medium text-gray-700">Preferred style</Label>
                 <Select
-                  value={preferences.preferred_music}
+                  value={ridePreferences.preferred_music}
                   onValueChange={(value) => updatePreference('preferred_music', value)}
                 >
                   <SelectTrigger className="border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-xl h-12">
@@ -435,7 +435,7 @@ Confirming a booking means you accept these terms.`,
             </div>
             
             <RadioGroup
-              value={preferences.conversation_preference}
+              value={ridePreferences.conversation_preference}
               onValueChange={(value) => updatePreference('conversation_preference', value)}
               className="space-y-3"
             >
@@ -470,7 +470,7 @@ Confirming a booking means you accept these terms.`,
             </div>
             
             <Select
-              value={preferences.trip_purpose}
+              value={ridePreferences.trip_purpose}
               onValueChange={(value) => {
                 console.log('Trip purpose selected in UI:', value);
                 updatePreference('trip_purpose', value);
@@ -501,7 +501,7 @@ Confirming a booking means you accept these terms.`,
             
             <Textarea
               placeholder="Any special requests, allergies, or specific needs..."
-              value={preferences.trip_notes}
+              value={ridePreferences.trip_notes}
               onChange={(e) => updatePreference('trip_notes', e.target.value)}
               rows={3}
               className="resize-none border-gray-300 focus:border-[#FF385C] focus:ring-[#FF385C] rounded-xl"

@@ -22,7 +22,21 @@ export async function loadPreferences(): Promise<NotificationPreferences> {
   try {
     console.log('📱 Loading notification preferences...');
     
-    const { data, error } = await supabase.rpc('get_notification_preferences');
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.log('📱 No user found, using defaults');
+      return {
+        email_notifications_enabled: true,
+        push_notifications_enabled: false,
+        sms_notifications_enabled: false
+      };
+    }
+
+    const { data, error } = await supabase
+      .from('notification_preferences')
+      .select('email_enabled, push_enabled, promotions_enabled')
+      .eq('user_id', user.id)
+      .maybeSingle();
     
     if (error) {
       console.error('❌ Error loading preferences:', error);
@@ -30,7 +44,7 @@ export async function loadPreferences(): Promise<NotificationPreferences> {
     }
 
     // Handle empty result (no preferences row exists)
-    if (!data || data.length === 0) {
+    if (!data) {
       console.log('📱 No preferences found, using defaults');
       return {
         email_notifications_enabled: true,
@@ -39,16 +53,12 @@ export async function loadPreferences(): Promise<NotificationPreferences> {
       };
     }
 
-    const preferences = data[0];
-    console.log('✅ Preferences loaded:', preferences);
+    console.log('✅ Preferences loaded:', data);
     
     return {
-      email_notifications_enabled: preferences.email_notifications_enabled ?? true,
-      push_notifications_enabled: preferences.push_notifications_enabled ?? false,
-      sms_notifications_enabled: preferences.sms_notifications_enabled ?? false,
-      push_endpoint: preferences.push_endpoint,
-      push_p256dh: preferences.push_p256dh,
-      push_auth: preferences.push_auth
+      email_notifications_enabled: data.email_enabled ?? true,
+      push_notifications_enabled: data.push_enabled ?? false,
+      sms_notifications_enabled: data.promotions_enabled ?? false
     };
   } catch (error) {
     console.error('❌ Error in loadPreferences:', error);
@@ -66,31 +76,37 @@ export async function savePreferences(
   try {
     console.log('💾 Saving notification preferences:', preferences);
     
-    const { data, error } = await supabase.rpc('set_notification_preferences', {
-      email_enabled: preferences.email_notifications_enabled,
-      push_enabled: preferences.push_notifications_enabled,
-      sms_enabled: preferences.sms_notifications_enabled,
-      push_endpoint: pushKeys?.endpoint || null,
-      push_p256dh: pushKeys?.p256dh || null,
-      push_auth: pushKeys?.auth || null
-    });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    const { data, error } = await supabase
+      .from('notification_preferences')
+      .upsert({
+        user_id: user.id,
+        user_type: 'passenger',
+        email_enabled: preferences.email_notifications_enabled,
+        push_enabled: preferences.push_notifications_enabled,
+        promotions_enabled: preferences.sms_notifications_enabled,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_id'
+      })
+      .select()
+      .single();
 
     if (error) {
       console.error('❌ Error saving preferences:', error);
       throw new Error(`Failed to save preferences: ${error.message}`);
     }
 
-    if (!data || data.length === 0) {
-      throw new Error('No data returned from save operation');
-    }
-
-    const result = data[0];
-    console.log('✅ Preferences saved successfully:', result);
+    console.log('✅ Preferences saved successfully:', data);
     
     return {
-      email_notifications_enabled: result.email_notifications_enabled,
-      push_notifications_enabled: result.push_notifications_enabled,
-      sms_notifications_enabled: result.sms_notifications_enabled,
+      email_notifications_enabled: data.email_enabled,
+      push_notifications_enabled: data.push_enabled,
+      sms_notifications_enabled: data.promotions_enabled,
       ...pushKeys
     };
   } catch (error) {
