@@ -1,0 +1,20 @@
+{
+  "name": "VIP",
+  "short_name": "VIP",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/lovable-uploads/3f28aecb-9019-4ca7-b1ca-54367debfe00.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/lovable-uploads/3f28aecb-9019-4ca7-b1ca-54367debfe00.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

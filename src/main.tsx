@@ -24,3 +24,16 @@ createRoot(document.getElementById("root")!).render(
     <App />
   </ErrorBoundary>
 );
+
+// Register service worker for PWA functionality
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then((registration) => {
+        console.log('VIP Service Worker registered successfully:', registration.scope);
+      })
+      .catch((error) => {
+        console.log('VIP Service Worker registration failed:', error);
+      });
+  });
+}

@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Slider } from '@/components/ui/slider';
-import { Bell, User, Shield, HelpCircle, LogOut, Camera, Upload, Thermometer, Music, MessageCircle, MapPin, NotebookPen } from 'lucide-react';
+import { Bell, User, Shield, HelpCircle, LogOut, Camera, Upload, Thermometer, Music, MessageCircle, MapPin, NotebookPen, Info } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { PhotoUpload } from '@/components/profile/PhotoUpload';
@@ -18,6 +18,8 @@ import { ChangePasswordModal } from '@/components/modals/ChangePasswordModal';
 import { TwoFactorAuthModal } from '@/components/modals/TwoFactorAuthModal';
 import { PhoneVerificationModal } from '@/components/modals/PhoneVerificationModal';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
+import { PushNotificationInfoModal } from '@/components/modals/PushNotificationInfoModal';
+import { usePushNotificationSettings } from '@/hooks/usePushNotificationSettings';
 
 interface PassengerInfo {
   id: string;
@@ -40,6 +42,7 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [showTwoFactorModal, setShowTwoFactorModal] = useState(false);
   const [showPhoneVerificationModal, setShowPhoneVerificationModal] = useState(false);
+  const [showPushInfoModal, setShowPushInfoModal] = useState(false);
   const [formData, setFormData] = useState({
     full_name: passengerInfo.full_name || '',
     phone: passengerInfo.phone || '',
@@ -61,6 +64,14 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
     isUpdating: notificationsUpdating,
     updatePreference: updateNotificationPreference 
   } = useNotificationPreferences();
+
+  const { 
+    pushEnabled, 
+    isLoading: pushLoading, 
+    isUpdating: pushUpdating,
+    updatePushSetting,
+    sendTestNotification
+  } = usePushNotificationSettings();
 
   useEffect(() => {
     loadPreferences();
@@ -538,12 +549,22 @@ Confirming a booking means you accept these terms.`,
           </div>
           
           <div className="flex items-center justify-between">
-            <Label htmlFor="push-notifications">Push Notifications</Label>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="push-notifications">Push Notifications</Label>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 w-5 p-0 rounded-full hover:bg-gray-100"
+                onClick={() => setShowPushInfoModal(true)}
+              >
+                <Info className="h-3 w-3 text-gray-400" />
+              </Button>
+            </div>
             <Switch
               id="push-notifications"
-              checked={notifications.push}
-              onCheckedChange={(checked) => handleNotificationToggle('push', checked)}
-              disabled={notificationsLoading || notificationsUpdating}
+              checked={pushEnabled}
+              onCheckedChange={updatePushSetting}
+              disabled={pushLoading || pushUpdating}
             />
           </div>
           
@@ -556,6 +577,21 @@ Confirming a booking means you accept these terms.`,
               disabled={notificationsLoading || notificationsUpdating}
             />
           </div>
+          
+          {/* Test Notification Button - Development Only */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="pt-4 border-t border-gray-200">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={sendTestNotification}
+                disabled={!pushEnabled}
+                className="w-full"
+              >
+                Send Test Notification
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -687,6 +723,11 @@ Confirming a booking means you accept these terms.`,
         isOpen={showPhoneVerificationModal}
         onClose={() => setShowPhoneVerificationModal(false)}
         onVerified={handlePhoneVerified}
+      />
+
+      <PushNotificationInfoModal
+        isOpen={showPushInfoModal}
+        onClose={() => setShowPushInfoModal(false)}
       />
     </div>
   );
