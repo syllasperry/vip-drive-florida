@@ -17,7 +17,6 @@ import { HelpSupportModal, HelpContent } from '@/components/ui/help-support-moda
 import { ChangePasswordModal } from '@/components/modals/ChangePasswordModal';
 import { TwoFactorAuthModal } from '@/components/modals/TwoFactorAuthModal';
 import { PhoneVerificationModal } from '@/components/modals/PhoneVerificationModal';
-import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import { PushNotificationInfoModal } from '@/components/modals/PushNotificationInfoModal';
 import { usePushNotificationSettings } from '@/hooks/usePushNotificationSettings';
 
@@ -59,17 +58,15 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
   });
   const { toast } = useToast();
   const { 
-    preferences: notifications, 
-    isLoading: notificationsLoading, 
-    isUpdating: notificationsUpdating,
-    updatePreference: updateNotificationPreference 
-  } = useNotificationPreferences();
-
-  const { 
-    pushEnabled, 
+    preferences,
+    pushEnabled,
+    emailEnabled,
+    smsEnabled,
     isLoading: pushLoading, 
     isUpdating: pushUpdating,
     updatePushSetting,
+    updateEmailSetting,
+    updateSmsSetting,
     sendTestNotification
   } = usePushNotificationSettings();
 
@@ -192,14 +189,6 @@ export const SettingsTab = ({ passengerInfo, onUpdate }: SettingsTabProps) => {
       console.log('Updated preferences state:', updated);
       return updated;
     });
-  };
-
-  const handleNotificationToggle = async (key: 'email' | 'push' | 'sms', value: boolean) => {
-    const result = await updateNotificationPreference(key, value);
-    
-    if (result === 'phone_verification_required') {
-      setShowPhoneVerificationModal(true);
-    }
   };
 
   const handlePhoneVerified = () => {
@@ -542,9 +531,9 @@ Confirming a booking means you accept these terms.`,
             <Label htmlFor="email-notifications">Email Notifications</Label>
             <Switch
               id="email-notifications"
-              checked={notifications.email}
-              onCheckedChange={(checked) => handleNotificationToggle('email', checked)}
-              disabled={notificationsLoading || notificationsUpdating}
+              checked={emailEnabled}
+              onCheckedChange={updateEmailSetting}
+              disabled={pushLoading || pushUpdating}
             />
           </div>
           
@@ -572,9 +561,15 @@ Confirming a booking means you accept these terms.`,
             <Label htmlFor="sms-notifications">SMS Notifications</Label>
             <Switch
               id="sms-notifications"
-              checked={notifications.sms}
-              onCheckedChange={(checked) => handleNotificationToggle('sms', checked)}
-              disabled={notificationsLoading || notificationsUpdating}
+              checked={smsEnabled}
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  setShowPhoneVerificationModal(true);
+                } else {
+                  updateSmsSetting(false);
+                }
+              }}
+              disabled={pushLoading || pushUpdating}
             />
           </div>
           

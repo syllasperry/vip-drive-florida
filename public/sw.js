@@ -1,5 +1,5 @@
 // VIP Chauffeur Service Worker
-// Minimal implementation for PWA compliance
+// Minimal implementation for PWA compliance and push notifications
 
 const CACHE_NAME = 'vip-chauffeur-v1';
 const urlsToCache = [
