@@ -25,28 +25,50 @@ export const useNotificationPreferences = () => {
   const loadPreferences = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setPreferences({
+          email: true,
+          push: false,
+          sms: false
+        });
+        setIsLoading(false);
+        return;
+      }
 
+      // Query notification preferences from the table
       const { data, error } = await supabase
-        .from('user_notification_prefs')
-        .select('*')
+        .from('notification_preferences')
+        .select('email_enabled, push_enabled, promotions_enabled')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error loading notification preferences:', error);
-        return;
-      }
-
-      if (data) {
         setPreferences({
-          email: data.email_enabled || data.email || true,
-          push: data.push_enabled || data.push || false,
-          sms: data.sms || false
+          email: true,
+          push: false,
+          sms: false
+        });
+      } else if (data) {
+        setPreferences({
+          email: data.email_enabled ?? true,
+          push: data.push_enabled ?? false,
+          sms: data.promotions_enabled ?? false
+        });
+      } else {
+        setPreferences({
+          email: true,
+          push: false,
+          sms: false
         });
       }
     } catch (error) {
       console.error('Error loading notification preferences:', error);
+      setPreferences({
+        email: true,
+        push: false,
+        sms: false
+      });
     } finally {
       setIsLoading(false);
     }
@@ -62,13 +84,18 @@ export const useNotificationPreferences = () => {
     setIsUpdating(true);
 
     try {
+      // Update notification preferences in the table
+      const updateData: any = {};
+      if (key === 'email') updateData.email_enabled = value;
+      if (key === 'push') updateData.push_enabled = value;
+      if (key === 'sms') updateData.promotions_enabled = value;
+
       const { error } = await supabase
-        .from('user_notification_prefs')
+        .from('notification_preferences')
         .upsert({
           user_id: user.id,
-          email: key === 'email' ? value : preferences.email,
-          push_enabled: key === 'push' ? value : preferences.push,
-          sms: key === 'sms' ? value : preferences.sms,
+          user_type: 'passenger',
+          ...updateData,
           updated_at: new Date().toISOString()
         }, {
           onConflict: 'user_id'
@@ -86,6 +113,11 @@ export const useNotificationPreferences = () => {
       if (key === 'sms' && value) {
         return 'phone_verification_required';
       }
+
+      toast({
+        title: "Preferences Updated",
+        description: "Your notification preferences have been saved.",
+      });
 
       return 'success';
     } catch (error) {

@@ -65,28 +65,18 @@ export const PaymentsTab = ({ bookings }: PaymentsTabProps) => {
         throw paidError;
       }
 
-      // Calculate total paid amount
-      const { data: totalPaidData, error: totalPaidError } = await supabase
-        .rpc('calculate_total_paid', { p_passenger_id: passenger.id });
+      // Calculate total paid amount using fallback calculation
+      const fallbackTotal = (paidData || []).reduce((sum, booking) => {
+        const amount = booking.paid_amount_cents 
+          ? booking.paid_amount_cents / 100
+          : booking.final_price || booking.estimated_price || 0;
+        return sum + amount;
+      }, 0);
+      setTotalPaid(fallbackTotal);
 
-      if (totalPaidError) {
-        console.error('Error calculating total paid:', totalPaidError);
-        // Fallback calculation
-        const fallbackTotal = (paidData || []).reduce((sum, booking) => {
-          const amount = booking.paid_amount_cents 
-            ? booking.paid_amount_cents / 100
-            : booking.final_price || booking.estimated_price || 0;
-          return sum + amount;
-        }, 0);
-        setTotalPaid(fallbackTotal);
-      } else {
-        setTotalPaid(totalPaidData || 0);
-      }
-
-      // Calculate awaiting payments (offer_sent status)
       // Calculate awaiting payments from bookings prop
       const awaitingTotal = bookings
-        .filter(booking => booking.status === 'offer_sent')
+        .filter(booking => ['offer_sent', 'pending'].includes(booking.status))
         .reduce((sum, booking) => {
           const amount = booking.offer_price_cents 
             ? booking.offer_price_cents / 100
@@ -260,7 +250,7 @@ export const PaymentsTab = ({ bookings }: PaymentsTabProps) => {
                   </div>
 
                   {/* Action button for pending payments */}
-                  {paymentStatus === 'offer_sent' && (
+                  {['pending', 'offer_sent'].includes(booking.status) && (
                     <div className="mt-3 pt-3 border-t border-gray-100">
                       <Button size="sm" className="w-full">
                         Review Offer & Pay

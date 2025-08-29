@@ -23,9 +23,9 @@ export const usePushNotificationSettings = () => {
 
       console.log('Loading push notification settings for user:', user.id);
 
-      // Get existing settings
-      const { data: settings, error } = await supabase
-        .from('user_settings') 
+      // Query notification preferences from the table
+      const { data, error } = await supabase
+        .from('notification_preferences')
         .select('push_enabled')
         .eq('user_id', user.id)
         .maybeSingle();
@@ -36,12 +36,12 @@ export const usePushNotificationSettings = () => {
         return;
       }
 
-      if (!settings) {
+      if (data) {
+        console.log('Loaded push setting:', data.push_enabled);
+        setPushEnabled(data.push_enabled ?? false);
+      } else {
         console.log('No settings found, using default (false)');
         setPushEnabled(false);
-      } else {
-        console.log('Loaded push setting:', settings.push_enabled);
-        setPushEnabled(settings.push_enabled);
       }
     } catch (error) {
       console.error('Error loading push settings:', error);
@@ -89,42 +89,21 @@ export const usePushNotificationSettings = () => {
 
       console.log('Saving to database...');
       
-      // Upsert user settings
-      const { error: upsertError } = await supabase
-        .from('user_settings')
+      // Update notification preferences in the table
+      const { error: updateError } = await supabase
+        .from('notification_preferences')
         .upsert({
           user_id: user.id,
+          user_type: 'passenger',
           push_enabled: enabled,
-          email_enabled: true,
-          sms_enabled: false,
           updated_at: new Date().toISOString()
         }, {
           onConflict: 'user_id'
         });
 
-      if (upsertError) {
-        console.error('Database upsert error:', upsertError);
-        throw new Error(`Database save failed: ${upsertError.message}`);
-      }
-
-      // Verify the save was successful by reading back
-      const { data: verifyData, error: verifyError } = await supabase
-        .from('user_settings')
-        .select('push_enabled')
-        .eq('user_id', user.id)
-        .single();
-
-      if (verifyError) {
-        console.error('Verification read error:', verifyError);
-        throw new Error('Could not verify settings were saved');
-      }
-
-      if (verifyData.push_enabled !== enabled) {
-        console.error('Settings verification failed:', { 
-          expected: enabled, 
-          actual: verifyData.push_enabled 
-        });
-        throw new Error('Settings save verification failed');
+      if (updateError) {
+        console.error('Database update error:', updateError);
+        throw new Error(`Database save failed: ${updateError.message}`);
       }
 
       console.log('Push notification setting saved and verified successfully:', enabled);
@@ -204,18 +183,14 @@ export const usePushNotificationSettings = () => {
       
       if (subscription) {
         const { error: deviceError } = await supabase
-          .from('user_push_devices')
+          .from('push_subscriptions')
           .upsert({
             user_id: userId,
-            device_token: subscription.endpoint,
-            platform: 'web',
             endpoint: subscription.endpoint,
-            user_agent: navigator.userAgent,
-            is_active: true,
-            last_used_at: new Date().toISOString(),
+            subscription: subscription as any,
             updated_at: new Date().toISOString()
           }, {
-            onConflict: 'user_id,device_token'
+            onConflict: 'user_id'
           });
 
         if (deviceError) {
@@ -234,11 +209,8 @@ export const usePushNotificationSettings = () => {
       console.log('Disabling push subscriptions for user:', userId);
       
       const { error: disableError } = await supabase
-        .from('user_push_devices')
-        .update({ 
-          is_active: false,
-          updated_at: new Date().toISOString()
-        })
+        .from('push_subscriptions')
+        .delete()
         .eq('user_id', userId);
 
       if (disableError) {

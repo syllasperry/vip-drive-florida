@@ -147,11 +147,13 @@ export const useMyBookings = (userId?: string) => {
     retry: 2,
     refetchOnWindowFocus: true,
     // Enhanced payment status polling with proper data validation
-    refetchInterval: (data, query) => {
+    refetchInterval: (query) => {
       // Only poll if query is successful and data exists
-      if (!query || !query.state || query.state.status !== 'success' || !data || !Array.isArray(data)) {
+      if (!query || !query.state || query.state.status !== 'success' || !query.state.data || !Array.isArray(query.state.data)) {
         return 5000; // Default polling interval
       }
+      
+      const data = query.state.data;
       
       // Check for pending payments that need faster polling
       const hasPendingPayments = data.some(booking => 
