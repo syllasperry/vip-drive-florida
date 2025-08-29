@@ -14,44 +14,33 @@ export const usePushNotificationSettings = () => {
 
   const loadSettings = async () => {
     try {
+      setIsLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Try to get existing settings
-      const { data: settings, error: settingsError } = await supabase
-        .from('user_settings')
-        .select('push_enabled')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (settingsError && settingsError.code !== 'PGRST116') {
-        console.error('Error loading push settings:', settingsError);
-        // Set default value on error
+      if (!user) {
         setPushEnabled(false);
         return;
       }
 
-      // If no settings exist, create default entry
-      if (!settings) {
-        console.log('Creating default user settings...');
-        const { data: newSettings, error: createError } = await supabase
-          .from('user_settings')
-          .insert({
-            user_id: user.id,
-            push_enabled: false,
-            email_enabled: true,
-            sms_enabled: false
-          })
-          .select('push_enabled')
-          .single();
+      console.log('Loading push notification settings for user:', user.id);
 
-        if (createError) {
-          console.error('Error creating default settings:', createError);
-          setPushEnabled(false);
-        } else {
-          setPushEnabled(newSettings.push_enabled);
-        }
+      // Get existing settings
+      const { data: settings, error } = await supabase
+        .from('user_settings') 
+        .select('push_enabled')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading push settings:', error);
+        setPushEnabled(false);
+        return;
+      }
+
+      if (!settings) {
+        console.log('No settings found, using default (false)');
+        setPushEnabled(false);
       } else {
+        console.log('Loaded push setting:', settings.push_enabled);
         setPushEnabled(settings.push_enabled);
       }
     } catch (error) {
@@ -63,8 +52,13 @@ export const usePushNotificationSettings = () => {
   };
 
   const updatePushSetting = async (enabled: boolean) => {
+    console.log('Updating push setting to:', enabled);
+    
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return false;
+    if (!user) {
+      console.error('No authenticated user found');
+      return false;
+    }
 
     // Optimistic update
     const previousValue = pushEnabled;
@@ -73,7 +67,8 @@ export const usePushNotificationSettings = () => {
 
     try {
       if (enabled) {
-        // Handle browser permission for push notifications
+        console.log('Requesting browser notification permission...');
+        
         if (!('Notification' in window)) {
           throw new Error('Push notifications are not supported in this browser');
         }
@@ -89,58 +84,70 @@ export const usePushNotificationSettings = () => {
           }
         }
 
-        // Register service worker and get push subscription
-        if ('serviceWorker' in navigator) {
-          try {
-            const registration = await navigator.serviceWorker.ready;
-            console.log('Service worker ready for push notifications');
-            
-            // Register push subscription
-            await registerPushSubscription(user.id, registration);
-          } catch (swError) {
-            console.error('Service worker registration failed:', swError);
-            // Don't fail the entire operation for SW issues
-          }
-        }
+        console.log('Browser permission granted successfully');
       }
 
-      // Update database
-      const { data, error } = await supabase
+      console.log('Saving to database...');
+      
+      // Upsert user settings
+      const { error: upsertError } = await supabase
         .from('user_settings')
         .upsert({
           user_id: user.id,
           push_enabled: enabled,
-          email_enabled: true, // Preserve existing email setting
-          sms_enabled: false,  // Preserve existing SMS setting
+          email_enabled: true,
+          sms_enabled: false,
           updated_at: new Date().toISOString()
         }, {
           onConflict: 'user_id'
-        })
+        });
+
+      if (upsertError) {
+        console.error('Database upsert error:', upsertError);
+        throw new Error(`Database save failed: ${upsertError.message}`);
+      }
+
+      // Verify the save was successful by reading back
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('user_settings')
         .select('push_enabled')
+        .eq('user_id', user.id)
         .single();
 
-      if (error) {
-        console.error('Database update error:', error);
-        throw error;
+      if (verifyError) {
+        console.error('Verification read error:', verifyError);
+        throw new Error('Could not verify settings were saved');
       }
 
-      // Verify the update was successful
-      if (data && data.push_enabled !== enabled) {
-        console.error('Database update mismatch:', { expected: enabled, actual: data.push_enabled });
-        throw new Error('Settings update verification failed');
+      if (verifyData.push_enabled !== enabled) {
+        console.error('Settings verification failed:', { 
+          expected: enabled, 
+          actual: verifyData.push_enabled 
+        });
+        throw new Error('Settings save verification failed');
       }
 
-      console.log('Push notification setting updated successfully:', enabled);
+      console.log('Push notification setting saved and verified successfully:', enabled);
 
       if (enabled) {
+        // Register service worker after successful database save
+        if ('serviceWorker' in navigator) {
+          try {
+            const registration = await navigator.serviceWorker.ready;
+            console.log('Service worker ready for push notifications');
+            await registerPushSubscription(user.id, registration);
+          } catch (swError) {
+            console.warn('Service worker registration failed:', swError);
+            // Don't fail the entire operation for SW issues
+          }
+        }
+        
         toast({
           title: "Push Notifications Enabled",
           description: "You'll receive notifications for ride updates",
         });
       } else {
-        // Disable push subscriptions when turned off
         await disablePushSubscriptions(user.id);
-        
         toast({
           title: "Push Notifications Disabled",
           description: "You won't receive push notifications anymore",
@@ -157,14 +164,12 @@ export const usePushNotificationSettings = () => {
       let errorMessage = "Couldn't save your preference. Please try again.";
       
       if (error instanceof Error) {
-        if (error.message.includes('permission')) {
+        if (error.message.includes('permission') || error.message.includes('denied')) {
           errorMessage = error.message;
-        } else if (error.message.includes('not supported')) {
+        } else if (error.message.includes('not supported') || error.message.includes('blocked')) {
           errorMessage = error.message;
-        } else if (error.message.includes('blocked')) {
-          errorMessage = error.message;
-        } else {
-          errorMessage = "Couldn't save your preference. Please try again.";
+        } else if (error.message.includes('Database') || error.message.includes('verification')) {
+          errorMessage = "Database error. Please try again.";
         }
       }
       
@@ -182,42 +187,39 @@ export const usePushNotificationSettings = () => {
 
   const registerPushSubscription = async (userId: string, registration: ServiceWorkerRegistration) => {
     try {
-      // Check if push manager is available
       if (!('PushManager' in window)) {
-        console.log('Push messaging is not supported');
+        console.warn('Push messaging is not supported');
         return;
       }
 
-      // Get existing subscription or create new one
       let subscription = await registration.pushManager.getSubscription();
       
       if (!subscription) {
-        // Create new subscription (you would need VAPID keys for production)
-        console.log('Creating new push subscription...');
-        // For now, just log that we would create a subscription
-        console.log('Push subscription would be created here with VAPID keys');
+        console.log('No existing subscription found');
+        // In production, you would create a new subscription with VAPID keys
+        return;
       }
 
-      // Store subscription in database
+      console.log('Storing push subscription in database...');
+      
       if (subscription) {
-        const { error } = await supabase
+        const { error: deviceError } = await supabase
           .from('user_push_devices')
           .upsert({
             user_id: userId,
             device_token: subscription.endpoint,
             platform: 'web',
             endpoint: subscription.endpoint,
-            p256dh_key: subscription.getKey ? btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('p256dh') || new ArrayBuffer(0)))) : null,
-            auth_key: subscription.getKey ? btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('auth') || new ArrayBuffer(0)))) : null,
             user_agent: navigator.userAgent,
             is_active: true,
-            last_used_at: new Date().toISOString()
+            last_used_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           }, {
             onConflict: 'user_id,device_token'
           });
 
-        if (error) {
-          console.error('Error storing push subscription:', error);
+        if (deviceError) {
+          console.error('Error storing push subscription:', deviceError);
         } else {
           console.log('Push subscription stored successfully');
         }
@@ -229,8 +231,9 @@ export const usePushNotificationSettings = () => {
 
   const disablePushSubscriptions = async (userId: string) => {
     try {
-      // Mark all user's push devices as inactive
-      const { error } = await supabase
+      console.log('Disabling push subscriptions for user:', userId);
+      
+      const { error: disableError } = await supabase
         .from('user_push_devices')
         .update({ 
           is_active: false,
@@ -238,13 +241,12 @@ export const usePushNotificationSettings = () => {
         })
         .eq('user_id', userId);
 
-      if (error) {
-        console.error('Error disabling push subscriptions:', error);
+      if (disableError) {
+        console.error('Error disabling push subscriptions:', disableError);
       } else {
         console.log('Push subscriptions disabled successfully');
       }
 
-      // Unsubscribe from service worker if available
       if ('serviceWorker' in navigator) {
         try {
           const registration = await navigator.serviceWorker.ready;
@@ -254,7 +256,7 @@ export const usePushNotificationSettings = () => {
             console.log('Push subscription unsubscribed');
           }
         } catch (swError) {
-          console.error('Error unsubscribing from push:', swError);
+          console.warn('Error unsubscribing from push:', swError);
         }
       }
     } catch (error) {
@@ -273,9 +275,7 @@ export const usePushNotificationSettings = () => {
     }
 
     try {
-      // Send test notification via service worker
       if ('serviceWorker' in navigator && 'PushManager' in window) {
-        // For testing, we'll show a browser notification
         if (Notification.permission === 'granted') {
           new Notification('VIP Chauffeur Test', {
             body: 'This is a test notification from VIP Chauffeur Service',
