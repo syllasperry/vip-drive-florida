@@ -11,8 +11,8 @@ max_rows = 1000
 [auth]
 enabled = true
 port = 54324
-site_url = "http://localhost:3000"
-additional_redirect_urls = ["https://localhost:3000"]
+site_url = "https://7e830e49-c9ab-402a-82b9-2f0f8fa7d484.sandbox.lovable.dev"
+additional_redirect_urls = ["https://preview--vip-passenger.lovable.app"]
 jwt_expiry = 3600
 refresh_token_rotation_enabled = true
 security_update_password_require_reauthentication = false

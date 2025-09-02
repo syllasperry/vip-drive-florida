@@ -121,6 +121,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         }
       });
 
+      console.log('📥 Raw Supabase function response:', { data, error });
+
       console.log('📤 Resposta do edge function:', { data, error });
 
       if (error) {
