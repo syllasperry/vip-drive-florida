@@ -21,10 +21,16 @@ export interface RealtimeBooking {
   estimated_price_cents: number | null;
   offer_price_cents: number | null;
   payment_confirmation_status: string | null;
+  payment_status: string | null;
   ride_status: string | null;
   passenger_count: number;
   luggage_count: number;
   flight_info: string | null;
+  paid_amount_cents: number | null;
+  paid_at: string | null;
+  payment_provider: string | null;
+  payment_reference: string | null;
+  stripe_payment_intent_id: string | null;
   passengers?: {
     id: string;
     full_name: string;
@@ -45,6 +51,8 @@ export interface RealtimeBooking {
     car_color: string | null;
     license_plate: string | null;
     profile_photo_url: string | null;
+    avatar_url: string | null;
+    email: string | null;
   } | null;
 }
 
@@ -114,10 +122,16 @@ export const useRealtimeBookings = () => {
           estimated_price_cents,
           offer_price_cents,
           payment_confirmation_status,
+          payment_status,
           ride_status,
           passenger_count,
           luggage_count,
           flight_info,
+          paid_amount_cents,
+          paid_at,
+          payment_provider,
+          payment_reference,
+          stripe_payment_intent_id,
           drivers!bookings_driver_id_fkey (
             full_name,
             phone,
@@ -125,7 +139,9 @@ export const useRealtimeBookings = () => {
             car_model,
             car_color,
             license_plate,
-            profile_photo_url
+            profile_photo_url,
+            avatar_url,
+            email
           ),
           passengers!inner (
             id,

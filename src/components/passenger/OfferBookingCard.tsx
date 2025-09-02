@@ -286,7 +286,7 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
             </div>
           )}
 
-          {/* Payment Button for Offers */}
+          {/* Payment Button for Offers OR Receipt Button for Paid */}
           {shouldShowPaymentButton && !isPaymentCompleted() && (
             <div className="pt-2 border-t border-gray-100">
               <Button 
@@ -295,6 +295,24 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
               >
                 <CreditCard className="w-4 h-4" />
                 Pay to Confirm Ride
+              </Button>
+            </div>
+          )}
+
+          {/* Receipt Button for Paid Bookings */}
+          {isPaymentCompleted() && (
+            <div className="pt-2 border-t border-gray-100">
+              <Button 
+                onClick={() => {
+                  // Show receipt or payment details
+                  console.log('Show receipt for booking:', booking.id);
+                  // TODO: Implement receipt modal or navigation
+                }}
+                variant="outline"
+                className="w-full border-green-200 text-green-700 hover:bg-green-50 flex items-center gap-2"
+              >
+                <CreditCard className="w-4 h-4" />
+                Receipt
               </Button>
             </div>
           )}

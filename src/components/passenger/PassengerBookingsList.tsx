@@ -73,7 +73,10 @@ export default function PassengerBookingsList({ showHeader = true }: PassengerBo
            booking.payment_confirmation_status === 'price_awaiting_acceptance' ||
            booking.payment_status === 'paid' ||
            booking.payment_confirmation_status === 'passenger_paid' ||
-           booking.payment_confirmation_status === 'all_set';
+           booking.payment_confirmation_status === 'all_set' ||
+           booking.status === 'payment_confirmed' ||
+           booking.paid_at ||
+           booking.stripe_payment_intent_id;
   };
 
   return (
