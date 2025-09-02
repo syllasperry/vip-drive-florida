@@ -207,44 +207,54 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
           {/* CRITICAL FIX: Show driver info only when payment is completed */}
           {booking.driver_id && isPaymentCompleted() && (
             <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-              <Avatar className="h-10 w-10">
+              <Avatar className="h-12 w-12">
                 <AvatarImage 
                   src={driverPhoto || driverInfo.avatar_url} 
                   alt={driverName}
                   className="object-cover"
                 />
-                <AvatarFallback className="bg-blue-600 text-white">
+                <AvatarFallback className="bg-blue-600 text-white text-lg font-semibold">
                   {driverName.charAt(0)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
-                <p className="text-sm text-gray-500 mb-1">DRIVER</p>
-                <p className="font-medium text-gray-900 mb-1">{driverName}</p>
-                {driverPhone && (
-                  <a 
-                    href={`tel:${driverPhone}`}
-                    className="text-sm text-blue-600 hover:underline block mb-1 cursor-pointer"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      // Open native phone app
-                      window.location.href = `tel:${driverPhone}`;
-                    }}
-                  >
-                    {driverPhone}
-                  </a>
+                <p className="font-semibold text-gray-900 text-lg mb-1">{driverName}</p>
+                {/* Vehicle Information */}
+                {(driverInfo.car_make || driverInfo.car_model || booking.vehicle_type) && (
+                  <p className="text-gray-600 mb-2">
+                    {driverInfo.car_make && driverInfo.car_model 
+                      ? `${driverInfo.car_make} ${driverInfo.car_model}${driverInfo.car_color ? ` (${driverInfo.car_color})` : ''}`
+                      : booking.vehicle_type || 'Vehicle'
+                    }
+                  </p>
                 )}
-                {driverEmail && (
-                  <a 
-                    href={`mailto:${driverEmail}`}
-                    className="text-sm text-blue-600 hover:underline block cursor-pointer"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      window.open(`mailto:${driverEmail}?subject=VIP Ride - Booking ${booking.booking_code || booking.id.slice(-8).toUpperCase()}`);
-                    }}
-                  >
-                    {driverEmail}
-                  </a>
-                )}
+                {/* Contact Information */}
+                <div className="flex flex-col gap-1">
+                  {driverPhone && (
+                    <a 
+                      href={`tel:${driverPhone}`}
+                      className="text-sm text-blue-600 hover:underline cursor-pointer"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        window.location.href = `tel:${driverPhone}`;
+                      }}
+                    >
+                      📞 {driverPhone}
+                    </a>
+                  )}
+                  {driverEmail && (
+                    <a 
+                      href={`mailto:${driverEmail}`}
+                      className="text-sm text-blue-600 hover:underline cursor-pointer"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        window.open(`mailto:${driverEmail}?subject=VIP Ride - Booking ${booking.booking_code || booking.id.slice(-8).toUpperCase()}`);
+                      }}
+                    >
+                      ✉️ {driverEmail}
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -309,7 +319,7 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
                   // TODO: Implement receipt modal or navigation
                 }}
                 variant="outline"
-                className="w-full border-green-200 text-green-700 hover:bg-green-50 flex items-center gap-2"
+                className="w-full border-gray-200 text-gray-700 hover:bg-gray-50 flex items-center gap-2 bg-white"
               >
                 <CreditCard className="w-4 h-4" />
                 Receipt
