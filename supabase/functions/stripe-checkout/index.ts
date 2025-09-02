@@ -99,14 +99,22 @@ serve(async (req) => {
     // Get the origin for return URLs
     const origin = req.headers.get('origin') || 'http://localhost:8080'
 
-    // CRITICAL FIX: Ensure all metadata values are strings and not null
-    const metadataBookingId = booking_id ? booking_id.toString() : ''
-    const metadataPassengerId = booking.passenger_id ? booking.passenger_id.toString() : ''
+    // 🚨 CRITICAL FIX: Ensure metadata is properly formatted for Stripe
+    console.log('📋 Raw booking data:', { 
+      booking_id: booking_id, 
+      passenger_id: booking.passenger_id,
+      type_booking_id: typeof booking_id,
+      type_passenger_id: typeof booking.passenger_id
+    })
+
+    // Convert UUIDs to simple strings without any special formatting
+    const bookingIdString = String(booking_id || '').trim()
+    const passengerIdString = String(booking.passenger_id || '').trim()
     
-    if (!metadataBookingId) {
-      console.error('❌ booking_id is missing for metadata')
+    if (!bookingIdString) {
+      console.error('❌ booking_id is empty or null')
       return new Response(
-        JSON.stringify({ error: 'booking_id is required for metadata' }),
+        JSON.stringify({ error: 'booking_id is required' }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -114,16 +122,24 @@ serve(async (req) => {
       )
     }
     
-    if (!metadataPassengerId) {
-      console.error('❌ passenger_id is missing for metadata')
+    if (!passengerIdString) {
+      console.error('❌ passenger_id is empty or null')
       return new Response(
-        JSON.stringify({ error: 'passenger_id is required for metadata' }),
+        JSON.stringify({ error: 'passenger_id is required' }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       )
     }
+
+    // 🔍 Log metadata before sending to Stripe
+    const sessionMetadata = {
+      booking_id: bookingIdString,
+      passenger_id: passengerIdString
+    }
+    
+    console.log('📤 Metadata being sent to Stripe:', sessionMetadata)
 
     // Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
@@ -142,20 +158,10 @@ serve(async (req) => {
         },
       ],
       mode: 'payment',
-      client_reference_id: metadataBookingId, // For booking identification
+      client_reference_id: bookingIdString,
       success_url: `${origin}/payment/success?bookingId=${booking_id}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/payment/cancel?bookingId=${booking_id}`,
-      metadata: {
-        booking_id: metadataBookingId,
-        passenger_id: metadataPassengerId,
-        uber_estimate_cents: breakdown?.uberEstimateCents?.toString() || '0',
-        dispatcher_fee_cents: breakdown?.dispatcherFeeCents?.toString() || '0',
-        app_fee_cents: breakdown?.appFeeCents?.toString() || '0',
-        stripe_fee_cents: breakdown?.stripeFeeCents?.toString() || '0',
-        total_cents: amount_cents.toString(),
-        booking_code: booking.booking_code || booking.id.slice(-8).toUpperCase(),
-        created_at: new Date().toISOString()
-      },
+      metadata: sessionMetadata,
     })
 
     // Update booking status to awaiting payment

@@ -202,19 +202,35 @@ serve(async (req) => {
       passenger_id: booking.passenger_id
     })
 
-    // CRITICAL FIX: Ensure all metadata values are strings and not null
-    const metadataBookingId = booking_id ? booking_id.toString() : ''
-    const metadataPassengerId = booking.passenger_id ? booking.passenger_id.toString() : ''
+    // 🚨 CRITICAL FIX: Ensure metadata is properly formatted for Stripe
+    console.log('📋 Raw booking data:', { 
+      booking_id: booking_id, 
+      passenger_id: booking.passenger_id,
+      type_booking_id: typeof booking_id,
+      type_passenger_id: typeof booking.passenger_id
+    })
+
+    // Convert UUIDs to simple strings without any special formatting
+    const bookingIdString = String(booking_id || '').trim()
+    const passengerIdString = String(booking.passenger_id || '').trim()
     
-    if (!metadataBookingId) {
-      console.error('❌ booking_id is missing for metadata')
-      throw new Error('booking_id is required for metadata')
+    if (!bookingIdString) {
+      console.error('❌ booking_id is empty or null')
+      throw new Error('booking_id is required')
     }
     
-    if (!metadataPassengerId) {
-      console.error('❌ passenger_id is missing for metadata')
-      throw new Error('passenger_id is required for metadata')
+    if (!passengerIdString) {
+      console.error('❌ passenger_id is empty or null')
+      throw new Error('passenger_id is required')
     }
+
+    // 🔍 Log metadata before sending to Stripe
+    const sessionMetadata = {
+      booking_id: bookingIdString,
+      passenger_id: passengerIdString
+    }
+    
+    console.log('📤 Metadata being sent to Stripe:', sessionMetadata)
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -233,14 +249,8 @@ serve(async (req) => {
       ],
       mode: 'payment',
       customer_email: customerEmail,
-      client_reference_id: metadataBookingId, // For booking identification
-      metadata: {
-        booking_id: metadataBookingId,
-        passenger_id: metadataPassengerId,
-        offer_price_cents: amountCents.toString(),
-        created_at: new Date().toISOString(),
-        booking_code: booking.booking_code || booking.id.slice(-8).toUpperCase()
-      },
+      client_reference_id: bookingIdString,
+      metadata: sessionMetadata,
       success_url: `${origin}/payments/success?booking_id=${booking_id}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/passenger/dashboard?canceled=true&booking_id=${booking_id}`,
       expires_at: Math.floor(Date.now() / 1000) + (30 * 60) // 30 minute expiration
