@@ -17,6 +17,7 @@ import Login from "./pages/passenger/Login";
 import DriverDashboard from "./pages/driver/Dashboard";
 import DispatcherDashboard from "./pages/dispatcher/Dashboard";
 import DriverLogin from "./pages/driver/Login";
+import PaymentSuccess from "./pages/PaymentSuccess";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,9 @@ const App = () => (
           <Route path="/passenger/booking-form" element={<BookingForm />} />
           <Route path="/passenger/confirmation" element={<Confirmation />} />
           <Route path="/passenger/dashboard" element={<PassengerDashboard />} />
+          
+          {/* Payment Routes */}
+          <Route path="/payments/success" element={<PaymentSuccess />} />
           
           {/* Driver Routes */}
           <Route path="/driver/dashboard" element={<DriverDashboard />} />

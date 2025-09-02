@@ -37,36 +37,19 @@ export default function PassengerDashboard() {
   const { bookings } = useMyBookings(currentUserId || undefined);
   const MAX_RETRIES = 3;
 
-  // CRITICAL FIX: Enhanced URL parameter handling for payment completion
+  // Clean up URL parameters for better UX
   useEffect(() => {
     try {
       const urlParams = new URLSearchParams(window.location.search);
-      const paid = urlParams.get('paid');
+      const canceled = urlParams.get('canceled');
       const bookingId = urlParams.get('booking_id');
-      const sessionId = urlParams.get('session_id');
       
-      // Clean up URL parameters immediately to prevent re-processing
-      if (paid || bookingId || sessionId) {
+      // Clean up URL parameters immediately
+      if (canceled || bookingId) {
         const newUrl = window.location.pathname;
         window.history.replaceState({}, '', newUrl);
       }
       
-      if (paid === 'true' && bookingId) {
-        console.log('💳 Payment completion detected from URL:', { bookingId, sessionId });
-        
-        // Show immediate success message
-        toast({
-          title: "Payment Successful!",
-          description: "Your ride has been confirmed successfully.",
-        });
-        
-        // Force data refresh without full page reload
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-      }
-      
-      const canceled = urlParams.get('canceled');
       if (canceled === 'true' && bookingId) {
         console.log('❌ Payment canceled detected from URL:', { bookingId });
         

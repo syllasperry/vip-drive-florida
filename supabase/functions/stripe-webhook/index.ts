@@ -115,9 +115,9 @@ serve(async (req) => {
         // Use atomic RPC function for payment completion
         const { data: rpcResult, error: rpcError } = await supabaseClient.rpc('complete_payment_transaction', {
           p_booking_id: bookingId,
-          p_amount_cents: session.amount_total || 0,
+          p_stripe_session_id: session.id,
           p_payment_intent_id: session.payment_intent as string || session.id,
-          p_session_id: session.id
+          p_amount_cents: session.amount_total || 0
         })
 
         if (rpcError) {

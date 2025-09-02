@@ -226,7 +226,7 @@ serve(async (req) => {
         offer_price_cents: amountCents.toString(),
         created_at: new Date().toISOString()
       },
-      success_url: `${origin}/passenger/dashboard?paid=true&booking_id=${booking_id}&session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${origin}/payments/success?booking_id=${booking_id}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/passenger/dashboard?canceled=true&booking_id=${booking_id}`,
       expires_at: Math.floor(Date.now() / 1000) + (30 * 60) // 30 minute expiration
     })
