@@ -99,6 +99,32 @@ serve(async (req) => {
     // Get the origin for return URLs
     const origin = req.headers.get('origin') || 'http://localhost:8080'
 
+    // CRITICAL FIX: Ensure all metadata values are strings and not null
+    const metadataBookingId = booking_id ? booking_id.toString() : ''
+    const metadataPassengerId = booking.passenger_id ? booking.passenger_id.toString() : ''
+    
+    if (!metadataBookingId) {
+      console.error('❌ booking_id is missing for metadata')
+      return new Response(
+        JSON.stringify({ error: 'booking_id is required for metadata' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+    
+    if (!metadataPassengerId) {
+      console.error('❌ passenger_id is missing for metadata')
+      return new Response(
+        JSON.stringify({ error: 'passenger_id is required for metadata' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
     // Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -116,16 +142,19 @@ serve(async (req) => {
         },
       ],
       mode: 'payment',
+      client_reference_id: metadataBookingId, // For booking identification
       success_url: `${origin}/payment/success?bookingId=${booking_id}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/payment/cancel?bookingId=${booking_id}`,
       metadata: {
-        booking_id: booking_id,
-        passenger_id: booking.passenger_id,
+        booking_id: metadataBookingId,
+        passenger_id: metadataPassengerId,
         uber_estimate_cents: breakdown?.uberEstimateCents?.toString() || '0',
         dispatcher_fee_cents: breakdown?.dispatcherFeeCents?.toString() || '0',
         app_fee_cents: breakdown?.appFeeCents?.toString() || '0',
         stripe_fee_cents: breakdown?.stripeFeeCents?.toString() || '0',
         total_cents: amount_cents.toString(),
+        booking_code: booking.booking_code || booking.id.slice(-8).toUpperCase(),
+        created_at: new Date().toISOString()
       },
     })
 

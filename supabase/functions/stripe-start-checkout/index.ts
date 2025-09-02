@@ -202,6 +202,20 @@ serve(async (req) => {
       passenger_id: booking.passenger_id
     })
 
+    // CRITICAL FIX: Ensure all metadata values are strings and not null
+    const metadataBookingId = booking_id ? booking_id.toString() : ''
+    const metadataPassengerId = booking.passenger_id ? booking.passenger_id.toString() : ''
+    
+    if (!metadataBookingId) {
+      console.error('❌ booking_id is missing for metadata')
+      throw new Error('booking_id is required for metadata')
+    }
+    
+    if (!metadataPassengerId) {
+      console.error('❌ passenger_id is missing for metadata')
+      throw new Error('passenger_id is required for metadata')
+    }
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
@@ -219,12 +233,13 @@ serve(async (req) => {
       ],
       mode: 'payment',
       customer_email: customerEmail,
-      client_reference_id: booking_id, // For booking identification
+      client_reference_id: metadataBookingId, // For booking identification
       metadata: {
-        booking_id: booking_id,
-        passenger_id: booking.passenger_id,
+        booking_id: metadataBookingId,
+        passenger_id: metadataPassengerId,
         offer_price_cents: amountCents.toString(),
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        booking_code: booking.booking_code || booking.id.slice(-8).toUpperCase()
       },
       success_url: `${origin}/payments/success?booking_id=${booking_id}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/passenger/dashboard?canceled=true&booking_id=${booking_id}`,
