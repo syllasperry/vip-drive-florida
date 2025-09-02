@@ -1,29 +1,35 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 import { MapPin, ArrowRight, Info, User, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SecureGoogleMapsAutocomplete } from "@/components/SecureGoogleMapsAutocomplete";
+import { supabase } from "@/integrations/supabase/client";
 
 const PriceEstimate = () => {
   const [pickup, setPickup] = useState("");
   const [dropoff, setDropoff] = useState("");
   const [estimatedPrice, setEstimatedPrice] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const navigate = useNavigate();
   
   // Auto-scroll to top when this page loads
   useScrollToTop();
   
-  // Check if user is logged in
-  const isPassengerLoggedIn = localStorage.getItem("passenger_logged_in") === "true";
-  const isDriverLoggedIn = localStorage.getItem("driver_logged_in") === "true";
+  // Check authentication status using Supabase
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setIsLoggedIn(!!user);
+    };
+    
+    checkAuthStatus();
+  }, []);
   
   const handleDashboardClick = () => {
-    if (isPassengerLoggedIn) {
+    if (isLoggedIn) {
       navigate("/passenger/dashboard");
-    } else if (isDriverLoggedIn) {
-      navigate("/driver/dashboard");
     } else {
       navigate("/passenger/login");
     }
@@ -72,9 +78,6 @@ const PriceEstimate = () => {
   };
 
   const handleContinue = () => {
-    // Check if user is already logged in
-    const isLoggedIn = localStorage.getItem("passenger_logged_in") === "true";
-    
     if (isLoggedIn) {
       // If logged in, go directly to choose vehicle
       navigate("/cars", { 
@@ -110,7 +113,7 @@ const PriceEstimate = () => {
             Log in
           </button>
           
-          {(isPassengerLoggedIn || isDriverLoggedIn) && (
+          {isLoggedIn && (
             <Button
               variant="ghost"
               size="sm"
