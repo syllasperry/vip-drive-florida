@@ -242,7 +242,7 @@ serve(async (req) => {
         const { data: booking, error: fetchError } = await supabaseClient
           .from('bookings')
           .select('id, payment_status, stripe_payment_intent_id, passenger_id')
-          .or(`payment_reference.eq.${paymentIntent.id},stripe_payment_intent_id.eq.${paymentIntent.id}`)
+          .or(`payment_reference.eq."${paymentIntent.id}",stripe_payment_intent_id.eq."${paymentIntent.id}"`)
           .maybeSingle()
 
         if (fetchError || !booking) {
@@ -304,7 +304,7 @@ serve(async (req) => {
         const { data: booking, error: fetchError } = await supabaseClient
           .from('bookings')
           .select('id')
-          .or(`payment_reference.eq.${paymentIntent.id},stripe_payment_intent_id.eq.${paymentIntent.id}`)
+          .or(`payment_reference.eq."${paymentIntent.id}",stripe_payment_intent_id.eq."${paymentIntent.id}"`)
           .maybeSingle()
 
         if (fetchError || !booking) {
