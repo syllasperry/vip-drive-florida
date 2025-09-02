@@ -128,7 +128,7 @@ serve(async (req) => {
             .from('bookings')
             .update({
               payment_status: 'paid',
-              status: 'paid', // Use valid status from constraint: ['offer_sent', 'paid', 'confirmed', 'completed', 'cancelled']
+              status: 'confirmed', // Use valid status from constraint
               paid_amount_cents: session.amount_total,
               paid_at: new Date().toISOString(),
               payment_provider: 'stripe',
@@ -237,7 +237,7 @@ serve(async (req) => {
             .from('bookings')
             .update({
               payment_status: 'paid',
-              status: 'paid', // Use valid status from constraint: ['offer_sent', 'paid', 'confirmed', 'completed', 'cancelled']
+              status: 'confirmed', // Use valid status from constraint
               paid_amount_cents: paymentIntent.amount,
               payment_provider: 'stripe',
               payment_reference: paymentIntent.id,

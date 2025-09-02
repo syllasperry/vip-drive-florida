@@ -205,7 +205,7 @@ export const useRealtimeBookings = () => {
           const wasPaymentCompleted = 
             (newData.payment_status === 'paid' && oldData?.payment_status !== 'paid') ||
             (newData.payment_confirmation_status === 'all_set' && oldData?.payment_confirmation_status !== 'all_set') ||
-            (newData.status === 'payment_confirmed' && oldData?.status !== 'payment_confirmed') ||
+            (newData.status === 'confirmed' && oldData?.status !== 'confirmed') ||
             (newData.paid_at && !oldData?.paid_at) ||
             (newData.stripe_payment_intent_id && !oldData?.stripe_payment_intent_id) ||
             (newData.payment_reference && !oldData?.payment_reference);
