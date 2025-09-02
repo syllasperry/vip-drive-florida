@@ -66,12 +66,13 @@ const PaymentSuccess = () => {
     verifyPayment();
   }, [bookingId, toast, navigate]);
 
-  // Auto-redirect after 4 seconds
+  // Auto-redirect after 3 seconds
   useEffect(() => {
     if (paymentVerified && !isVerifying) {
       const timer = setTimeout(() => {
-        navigate('/passenger/dashboard');
-      }, 4000);
+        console.log('🚀 Redirecting to passenger dashboard...');
+        navigate('/passenger/dashboard', { replace: true });
+      }, 3000);
 
       return () => clearTimeout(timer);
     }

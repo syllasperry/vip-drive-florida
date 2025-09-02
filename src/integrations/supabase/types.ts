@@ -2463,6 +2463,15 @@ export type Database = {
           user_role: string
         }[]
       }
+      complete_payment_transaction: {
+        Args: {
+          p_amount_cents: number
+          p_booking_id: string
+          p_payment_intent_id: string
+          p_stripe_session_id: string
+        }
+        Returns: boolean
+      }
       compute_suggested_for_booking: {
         Args: { p_booking_id: string }
         Returns: undefined
@@ -2481,6 +2490,16 @@ export type Database = {
           p_provider_txn_id?: string
         }
         Returns: undefined
+      }
+      confirm_payment_secure: {
+        Args: {
+          p_amount_cents: number
+          p_booking_id: string
+          p_method: string
+          p_note?: string
+          p_provider_reference?: string
+        }
+        Returns: Json
       }
       dispatcher_assign_driver: {
         Args:
