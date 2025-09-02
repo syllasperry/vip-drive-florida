@@ -26,24 +26,20 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
 
   // CRITICAL FIX: Enhanced payment status detection
   const isPaymentCompleted = () => {
-    // Check multiple payment indicators for comprehensive detection
+    // Simplified and reliable payment detection based on the fixed webhook
     const hasPaymentStatus = booking.payment_status === 'paid';
-    const hasConfirmationStatus = booking.payment_confirmation_status === 'all_set';
-    const hasGeneralStatus = booking.status === 'payment_confirmed' || booking.status === 'all_set';
-    const hasRideStatus = booking.ride_status === 'all_set';
+    const hasStatusConfirmed = booking.status === 'payment_confirmed';
     const hasPaidFields = booking.paid_at && booking.paid_amount_cents > 0;
-    const hasStripeReference = booking.stripe_payment_intent_id && booking.payment_reference;
+    const hasStripeReference = booking.stripe_payment_intent_id;
     
-    const isCompleted = hasPaymentStatus || hasConfirmationStatus || hasGeneralStatus || 
-                       hasRideStatus || hasPaidFields || hasStripeReference;
+    const isCompleted = hasPaymentStatus || hasStatusConfirmed || hasPaidFields || hasStripeReference;
     
     if (isCompleted) {
       console.log('💳 Payment completion detected:', {
         booking_id: booking.id,
+        booking_code: booking.booking_code,
         payment_status: booking.payment_status,
-        confirmation_status: booking.payment_confirmation_status,
         status: booking.status,
-        ride_status: booking.ride_status,
         paid_at: booking.paid_at,
         paid_amount: booking.paid_amount_cents,
         stripe_reference: booking.stripe_payment_intent_id

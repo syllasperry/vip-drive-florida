@@ -123,14 +123,12 @@ serve(async (req) => {
         if (rpcError) {
           console.error('❌ Error in complete_payment_transaction RPC:', rpcError)
           
-          // Fallback to direct update if RPC fails
+          // Fallback to direct update if RPC fails - use only safe status values
           const { error: updateError } = await supabaseClient
             .from('bookings')
             .update({
               payment_status: 'paid',
-              status: 'payment_confirmed',
-              payment_confirmation_status: 'all_set',
-              ride_status: 'all_set',
+              status: 'payment_confirmed', // This is now allowed by the updated constraint
               paid_amount_cents: session.amount_total,
               paid_at: new Date().toISOString(),
               payment_provider: 'stripe',
@@ -239,9 +237,7 @@ serve(async (req) => {
             .from('bookings')
             .update({
               payment_status: 'paid',
-              status: 'payment_confirmed',
-              payment_confirmation_status: 'all_set',
-              ride_status: 'all_set',
+              status: 'payment_confirmed', // This is now allowed by the updated constraint
               paid_amount_cents: paymentIntent.amount,
               payment_provider: 'stripe',
               payment_reference: paymentIntent.id,
@@ -300,8 +296,7 @@ serve(async (req) => {
           .from('bookings')
           .update({
             payment_status: 'failed',
-            status: 'cancelled',
-            payment_confirmation_status: 'failed',
+            status: 'cancelled', // This is allowed by the constraint
             updated_at: new Date().toISOString()
           })
           .eq('id', booking.id)
