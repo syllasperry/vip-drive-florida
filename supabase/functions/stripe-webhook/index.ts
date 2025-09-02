@@ -138,7 +138,7 @@ serve(async (req) => {
           
           const updateData = {
             payment_status: 'paid',
-            status: 'confirmed', // Use valid status from constraint
+            status: 'payment_confirmed', // Use valid status from enum
             paid_amount_cents: session.amount_total,
             paid_at: new Date().toISOString(),
             payment_provider: 'stripe',
@@ -257,9 +257,9 @@ serve(async (req) => {
           const { error: updateError } = await supabaseClient
             .from('bookings')
             .update({
-              payment_status: 'paid',
-              status: 'confirmed', // Use valid status from constraint
-              paid_amount_cents: paymentIntent.amount,
+            payment_status: 'paid',
+            status: 'payment_confirmed', // Use valid status from constraint
+            paid_amount_cents: paymentIntent.amount,
               payment_provider: 'stripe',
               payment_reference: paymentIntent.id,
               stripe_payment_intent_id: paymentIntent.id,
