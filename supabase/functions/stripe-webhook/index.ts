@@ -14,6 +14,7 @@ serve(async (req) => {
   }
 
   if (req.method !== 'POST') {
+    console.log('❌ Invalid method:', req.method)
     return new Response('Method not allowed', { 
       status: 405, 
       headers: corsHeaders 
@@ -22,8 +23,11 @@ serve(async (req) => {
 
   try {
     console.log('🔔 Stripe webhook received at:', new Date().toISOString())
+    console.log('📝 Headers:', Object.fromEntries(req.headers.entries()))
     
     const body = await req.text()
+    console.log('📄 Raw body length:', body.length)
+    
     const signature = req.headers.get('stripe-signature')
     
     if (!signature) {
@@ -104,13 +108,19 @@ serve(async (req) => {
         const session = event.data.object as Stripe.Checkout.Session
         console.log('💳 Processing checkout.session.completed:', session.id)
         
+        console.log('🔍 Session metadata:', session.metadata)
+        console.log('🔍 Client reference ID:', session.client_reference_id)
+        
         const bookingId = session.metadata?.booking_id || session.client_reference_id
         if (!bookingId) {
           console.error('❌ Missing booking_id in session metadata or client_reference_id')
+          console.error('❌ Session object:', JSON.stringify(session, null, 2))
           throw new Error('Missing booking_id in session')
         }
 
         console.log('📋 Updating booking:', bookingId, 'to paid status')
+        console.log('💰 Payment amount:', session.amount_total)
+        console.log('🆔 Payment intent ID:', session.payment_intent)
 
         // Use atomic RPC function for payment completion
         const { data: rpcResult, error: rpcError } = await supabaseClient.rpc('complete_payment_transaction', {
@@ -124,24 +134,35 @@ serve(async (req) => {
           console.error('❌ Error in complete_payment_transaction RPC:', rpcError)
           
           // Fallback to direct update if RPC fails - use only safe status values
-          const { error: updateError } = await supabaseClient
+          console.log('🔄 Attempting fallback direct update...')
+          
+          const updateData = {
+            payment_status: 'paid',
+            status: 'confirmed', // Use valid status from constraint
+            paid_amount_cents: session.amount_total,
+            paid_at: new Date().toISOString(),
+            payment_provider: 'stripe',
+            payment_reference: session.payment_intent as string || session.id,
+            stripe_payment_intent_id: session.payment_intent as string || session.id,
+            updated_at: new Date().toISOString()
+          }
+          
+          console.log('📝 Update data:', updateData)
+          
+          const { data: updateResult, error: updateError } = await supabaseClient
             .from('bookings')
-            .update({
-              payment_status: 'paid',
-              status: 'confirmed', // Use valid status from constraint
-              paid_amount_cents: session.amount_total,
-              paid_at: new Date().toISOString(),
-              payment_provider: 'stripe',
-              payment_reference: session.payment_intent as string || session.id,
-              stripe_payment_intent_id: session.payment_intent as string || session.id,
-              updated_at: new Date().toISOString()
-            })
+            .update(updateData)
             .eq('id', bookingId)
+            .select()
 
           if (updateError) {
             console.error('❌ Fallback update also failed:', updateError)
             throw updateError
           }
+          
+          console.log('✅ Fallback update successful:', updateResult)
+        } else {
+          console.log('✅ RPC update successful:', rpcResult)
         }
 
         console.log('✅ Payment completion processed successfully for booking:', bookingId)
