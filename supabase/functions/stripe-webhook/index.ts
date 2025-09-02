@@ -128,7 +128,7 @@ serve(async (req) => {
             .from('bookings')
             .update({
               payment_status: 'paid',
-              status: 'payment_confirmed', // This is now allowed by the updated constraint
+              status: 'paid', // Use valid status from constraint: ['offer_sent', 'paid', 'confirmed', 'completed', 'cancelled']
               paid_amount_cents: session.amount_total,
               paid_at: new Date().toISOString(),
               payment_provider: 'stripe',
@@ -171,15 +171,15 @@ serve(async (req) => {
             .insert({
               topic: 'booking_payment_confirmed',
               booking_id: bookingId,
-              payload: {
-                booking_id: bookingId,
-                status: 'payment_confirmed',
-                payment_status: 'paid',
-                payment_confirmation_status: 'all_set',
-                payment_intent_id: session.payment_intent as string || session.id,
-                amount_cents: session.amount_total,
-                timestamp: new Date().toISOString()
-              }
+                payload: {
+                  booking_id: bookingId,
+                  status: 'paid',
+                  payment_status: 'paid',
+                  payment_confirmation_status: 'all_set',
+                  payment_intent_id: session.payment_intent as string || session.id,
+                  amount_cents: session.amount_total,
+                  timestamp: new Date().toISOString()
+                }
             })
 
           // Trigger email notifications
@@ -237,7 +237,7 @@ serve(async (req) => {
             .from('bookings')
             .update({
               payment_status: 'paid',
-              status: 'payment_confirmed', // This is now allowed by the updated constraint
+              status: 'paid', // Use valid status from constraint: ['offer_sent', 'paid', 'confirmed', 'completed', 'cancelled']
               paid_amount_cents: paymentIntent.amount,
               payment_provider: 'stripe',
               payment_reference: paymentIntent.id,
@@ -259,14 +259,14 @@ serve(async (req) => {
                 topic: 'booking_payment_confirmed',
                 booking_id: booking.id,
                 payload: {
-                  booking_id: booking.id,
-                  status: 'payment_confirmed',
-                  payment_status: 'paid',
-                  payment_confirmation_status: 'all_set',
-                  payment_intent_id: paymentIntent.id,
-                  amount_cents: paymentIntent.amount,
-                  timestamp: new Date().toISOString()
-                }
+                   booking_id: booking.id,
+                   status: 'paid',
+                   payment_status: 'paid',
+                   payment_confirmation_status: 'all_set',
+                   payment_intent_id: paymentIntent.id,
+                   amount_cents: paymentIntent.amount,
+                   timestamp: new Date().toISOString()
+                 }
               })
           }
         } else {
