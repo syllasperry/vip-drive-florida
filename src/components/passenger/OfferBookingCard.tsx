@@ -174,6 +174,22 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
     `${booking.drivers.car_make || ''} ${booking.drivers.car_model || ''}`.trim() || booking.vehicle_type :
     booking.vehicle_type;
 
+  // Debug logging for paid bookings
+  if (isPaymentCompleted() && booking.driver_id) {
+    console.log('🚗 PAID BOOKING - Driver Info Check:', {
+      booking_id: booking.id,
+      booking_code: booking.booking_code,
+      driver_id: booking.driver_id,
+      has_drivers_object: !!booking.drivers,
+      drivers_raw: booking.drivers,
+      resolved_name: driverName,
+      resolved_phone: driverPhone,
+      resolved_photo: driverPhoto,
+      payment_status: booking.payment_status,
+      status: booking.status
+    });
+  }
+
   return (
     <>
       <Card className="border border-gray-200 hover:shadow-md transition-all duration-200">
