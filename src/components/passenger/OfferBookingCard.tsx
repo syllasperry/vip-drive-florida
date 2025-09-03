@@ -168,7 +168,7 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
   // Get driver information from the nested drivers object
   const driverName = booking.drivers?.full_name || 'Driver';
   const driverPhone = booking.drivers?.phone;
-  const driverPhoto = booking.drivers?.avatar_url || booking.drivers?.profile_photo_url;
+  const driverPhoto = booking.drivers?.profile_image || booking.drivers?.avatar_url || booking.drivers?.profile_photo_url;
   const driverEmail = booking.drivers?.email;
   const driverVehicle = booking.drivers ? 
     `${booking.drivers.car_make || ''} ${booking.drivers.car_model || ''}`.trim() || booking.vehicle_type :
