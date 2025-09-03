@@ -165,14 +165,14 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
     });
   };
 
-  // Get driver information from the nested drivers object
-  const driverName = booking.drivers?.full_name || 'Driver';
-  const driverPhone = booking.drivers?.phone;
-  const driverPhoto = booking.drivers?.profile_photo_url || booking.drivers?.avatar_url;
-  const driverEmail = booking.drivers?.email;
-  const driverVehicle = booking.drivers ? 
-    `${booking.drivers.car_make || ''} ${booking.drivers.car_model || ''}`.trim() || booking.vehicle_type :
-    booking.vehicle_type;
+  // Get driver information from booking record (driver info is stored directly on booking)
+  const driverName = booking.driver_name || booking.drivers?.full_name || 'Driver';
+  const driverPhone = booking.driver_phone || booking.drivers?.phone;
+  const driverPhoto = booking.driver_photo_url || booking.drivers?.profile_photo_url || booking.drivers?.avatar_url;
+  const driverEmail = booking.driver_email || booking.drivers?.email;
+  const driverVehicle = booking.vehicle_type || (booking.drivers ? 
+    `${booking.drivers.car_make || ''} ${booking.drivers.car_model || ''}`.trim() :
+    'Vehicle');
 
   return (
     <Card className="p-6 mb-4 shadow-md hover:shadow-lg transition-shadow">
