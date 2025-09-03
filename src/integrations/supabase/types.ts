@@ -2634,6 +2634,10 @@ export type Database = {
           driver_phone: string
         }[]
       }
+      force_payment_verification: {
+        Args: { p_booking_id: string }
+        Returns: Json
+      }
       generate_driver_registration_token: {
         Args: Record<PropertyKey, never>
         Returns: string
