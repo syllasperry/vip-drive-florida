@@ -182,9 +182,20 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
       driver_data: booking.drivers,
       resolved_name: driverName,
       resolved_phone: driverPhone,
-      resolved_photo: driverPhoto
+      resolved_photo: driverPhoto,
+      payment_status: booking.payment_status,
+      status: booking.status
     });
   }
+
+  // Additional debug for all bookings to see what data is available
+  console.log('📋 All booking data:', {
+    booking_id: booking.id,
+    has_driver_id: !!booking.driver_id,
+    has_drivers_object: !!booking.drivers,
+    drivers_object: booking.drivers,
+    payment_completed: isPaymentCompleted()
+  });
 
   return (
     <>

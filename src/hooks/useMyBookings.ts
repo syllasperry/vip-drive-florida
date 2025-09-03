@@ -31,12 +31,13 @@ export interface Booking {
   drivers?: {
     full_name: string;
     phone: string;
+    email: string | null;
     car_make: string | null;
     car_model: string | null;
     car_color: string | null;
     license_plate: string | null;
     avatar_url: string | null;
-    email: string | null;
+    profile_photo_url: string | null;
   } | null;
 }
 
@@ -112,16 +113,16 @@ export const useMyBookings = (userId?: string) => {
           payment_provider,
           payment_reference,
           stripe_payment_intent_id,
-          drivers:driver_id (
+          drivers(
             full_name,
             phone,
+            email,
             car_make,
             car_model,
             car_color,
             license_plate,
             avatar_url,
-            profile_photo_url,
-            email
+            profile_photo_url
           )
         `)
         .eq('passenger_id', passenger.id)
@@ -132,15 +133,36 @@ export const useMyBookings = (userId?: string) => {
         throw bookingsError;
       }
 
-      console.log('✅ Bookings fetched successfully:', rawBookings?.length || 0);
+      console.log('✅ Raw bookings data:', rawBookings);
+      
+      // Log detailed driver data for debugging
+      rawBookings?.forEach(booking => {
+        if (booking.driver_id && booking.drivers) {
+          console.log('🚗 Booking with driver data:', {
+            booking_id: booking.id,
+            driver_id: booking.driver_id,
+            drivers_data: booking.drivers,
+            payment_status: booking.payment_status,
+            status: booking.status
+          });
+        }
+      });
       
       // Map the raw data to ensure type safety and proper payment status detection
-      const bookings: Booking[] = (rawBookings || []).map(booking => ({
-        ...booking,
-        drivers: booking.drivers && typeof booking.drivers === 'object' && !Array.isArray(booking.drivers) 
-          ? booking.drivers 
-          : null
-      }));
+      const bookings: Booking[] = (rawBookings || []).map(booking => {
+        console.log('📝 Processing booking:', {
+          id: booking.id,
+          raw_drivers: booking.drivers,
+          driver_id: booking.driver_id
+        });
+        
+        return {
+          ...booking,
+          drivers: booking.drivers && typeof booking.drivers === 'object' && !Array.isArray(booking.drivers) 
+            ? booking.drivers 
+            : null
+        };
+      });
 
       return bookings;
     },
