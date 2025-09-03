@@ -163,12 +163,11 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
     });
   };
 
-  // Get driver information
-  const driverInfo = booking.drivers || {};
-  const driverName = driverInfo.full_name || 'Driver';
-  const driverPhone = driverInfo.phone;
-  const driverPhoto = driverInfo.profile_photo_url || driverInfo.avatar_url;
-  const driverEmail = driverInfo.email;
+  // Get driver information from embedded fields in bookings table
+  const driverName = booking.driver_name || 'Driver';
+  const driverPhone = booking.driver_phone;
+  const driverPhoto = booking.driver_photo_url;
+  const driverEmail = booking.driver_email;
 
   return (
     <>
@@ -205,7 +204,7 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
             <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
               <Avatar className="h-12 w-12">
                 <AvatarImage 
-                  src={driverPhoto || driverInfo.avatar_url} 
+                  src={driverPhoto} 
                   alt={driverName}
                   className="object-cover"
                 />
@@ -216,12 +215,9 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
               <div className="flex-1">
                 <p className="font-semibold text-gray-900 text-lg mb-1">{driverName}</p>
                 {/* Vehicle Information */}
-                {(driverInfo.car_make || driverInfo.car_model || booking.vehicle_type) && (
+                {booking.vehicle_type && (
                   <p className="text-gray-600 mb-2">
-                    {driverInfo.car_make && driverInfo.car_model 
-                      ? `${driverInfo.car_make} ${driverInfo.car_model}${driverInfo.car_color ? ` (${driverInfo.car_color})` : ''}`
-                      : booking.vehicle_type || 'Vehicle'
-                    }
+                    {booking.vehicle_type}
                   </p>
                 )}
                 {/* Contact Information */}
