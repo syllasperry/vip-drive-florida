@@ -7,6 +7,7 @@ import { Clock, MapPin, User, CreditCard, CheckCircle, Car, Phone } from 'lucide
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { PaymentModal } from '@/components/dashboard/PaymentModal';
+import { ReceiptModal } from '@/components/passenger/ReceiptModal';
 import { useToast } from '@/hooks/use-toast';
 
 interface OfferBookingCardProps {
@@ -21,6 +22,7 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
   onViewDetails
 }) => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [hasShownOfferNotification, setHasShownOfferNotification] = useState(false);
   const { toast } = useToast();
 
@@ -325,18 +327,14 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
           {/* Receipt Button for Paid Bookings */}
           {isPaymentCompleted() && (
             <div className="pt-2 border-t border-gray-100">
-              <Button 
-                onClick={() => {
-                  // Show receipt or payment details
-                  console.log('Show receipt for booking:', booking.id);
-                  // TODO: Implement receipt modal or navigation
-                }}
-                variant="outline"
-                className="w-full border-gray-200 text-gray-700 hover:bg-gray-50 flex items-center gap-2 bg-white"
-              >
-                <CreditCard className="w-4 h-4" />
-                Receipt
-              </Button>
+               <Button 
+                 onClick={() => setShowReceiptModal(true)}
+                 variant="outline"
+                 className="w-full border-gray-200 text-gray-700 hover:bg-gray-50 flex items-center gap-2 bg-white"
+               >
+                 <CreditCard className="w-4 h-4" />
+                 Receipt
+               </Button>
             </div>
           )}
 
@@ -363,6 +361,12 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
           onPaymentConfirmed={handlePaymentConfirmed}
         />
       )}
+
+      <ReceiptModal
+        isOpen={showReceiptModal}
+        onClose={() => setShowReceiptModal(false)}
+        booking={booking}
+      />
     </>
   );
 };
