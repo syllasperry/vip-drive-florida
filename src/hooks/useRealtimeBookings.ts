@@ -101,48 +101,12 @@ export const useRealtimeBookings = () => {
         passenger = newPassenger;
       }
 
-      // Now fetch bookings for this passenger with explicit relationship specification
+      // Now fetch bookings for this passenger with proper driver join
       const { data: rawBookings, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
-          id,
-          booking_code,
-          status,
-          pickup_location,
-          dropoff_location,
-          pickup_time,
-          created_at,
-          updated_at,
-          passenger_id,
-          driver_id,
-          vehicle_type,
-          final_price,
-          final_price_cents,
-          estimated_price,
-          estimated_price_cents,
-          offer_price_cents,
-          payment_confirmation_status,
-          payment_status,
-          ride_status,
-          passenger_count,
-          luggage_count,
-          flight_info,
-          paid_amount_cents,
-          paid_at,
-          payment_provider,
-          payment_reference,
-          stripe_payment_intent_id,
-          drivers!bookings_driver_id_fkey (
-            full_name,
-            phone,
-            car_make,
-            car_model,
-            car_color,
-            license_plate,
-            profile_photo_url,
-            avatar_url,
-            email
-          ),
+          *,
+          drivers(*),
           passengers!inner (
             id,
             full_name,
@@ -166,16 +130,42 @@ export const useRealtimeBookings = () => {
 
       console.log('✅ Bookings fetched successfully:', rawBookings?.length || 0);
       
+      // Debug: Check driver data in each booking
+      rawBookings?.forEach(booking => {
+        if (booking.driver_id) {
+          console.log(`🚗 REALTIME BOOKING ${booking.id}:`, {
+            driver_id: booking.driver_id,
+            has_drivers_object: !!booking.drivers,
+            drivers_data: booking.drivers,
+            payment_status: booking.payment_status,
+            status: booking.status
+          });
+        }
+      });
+      
       // Map the raw data to ensure type safety
-      const bookings: RealtimeBooking[] = (rawBookings || []).map(booking => ({
-        ...booking,
-        drivers: booking.drivers && typeof booking.drivers === 'object' && !Array.isArray(booking.drivers) 
-          ? booking.drivers 
-          : null,
-        passengers: booking.passengers && typeof booking.passengers === 'object' && !Array.isArray(booking.passengers)
-          ? booking.passengers
-          : null
-      }));
+      const bookings: RealtimeBooking[] = (rawBookings || []).map(booking => {
+        const mappedBooking = {
+          ...booking,
+          drivers: booking.drivers && typeof booking.drivers === 'object' && !Array.isArray(booking.drivers) 
+            ? booking.drivers 
+            : null,
+          passengers: booking.passengers && typeof booking.passengers === 'object' && !Array.isArray(booking.passengers)
+            ? booking.passengers
+            : null
+        };
+        
+        // Debug mapped data for paid bookings
+        if (mappedBooking.payment_status === 'paid' && mappedBooking.driver_id) {
+          console.log(`💳 PAID BOOKING MAPPED ${booking.id}:`, {
+            driver_name: mappedBooking.drivers?.full_name,
+            driver_phone: mappedBooking.drivers?.phone,
+            driver_photo: mappedBooking.drivers?.profile_photo_url || mappedBooking.drivers?.avatar_url
+          });
+        }
+        
+        return mappedBooking;
+      });
 
       return bookings;
     },
