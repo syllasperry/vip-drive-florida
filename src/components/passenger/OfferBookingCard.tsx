@@ -170,6 +170,9 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
   const driverPhone = booking.drivers?.phone;
   const driverPhoto = booking.drivers?.avatar_url || booking.drivers?.profile_photo_url;
   const driverEmail = booking.drivers?.email;
+  const driverVehicle = booking.drivers ? 
+    `${booking.drivers.car_make || ''} ${booking.drivers.car_model || ''}`.trim() || booking.vehicle_type :
+    booking.vehicle_type;
 
   return (
     <>
