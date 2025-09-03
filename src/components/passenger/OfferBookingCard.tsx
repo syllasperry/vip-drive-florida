@@ -165,11 +165,11 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
     });
   };
 
-  // Get driver information from embedded fields in bookings table
-  const driverName = booking.driver_name || 'Driver';
-  const driverPhone = booking.driver_phone;
-  const driverPhoto = booking.driver_photo_url;
-  const driverEmail = booking.driver_email;
+  // Get driver information from the nested drivers object
+  const driverName = booking.drivers?.full_name || 'Driver';
+  const driverPhone = booking.drivers?.phone;
+  const driverPhoto = booking.drivers?.avatar_url || booking.drivers?.profile_photo_url;
+  const driverEmail = booking.drivers?.email;
 
   return (
     <>
@@ -210,7 +210,7 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
               gap: '0.75rem' 
             }}>
               <img 
-                src={booking.driver_photo_url || 'https://ui-avatars.com/api/?name=Driver'} 
+                src={driverPhoto || 'https://ui-avatars.com/api/?name=Driver'} 
                 alt="Driver" 
                 style={{ 
                   width: '40px', 
@@ -221,8 +221,8 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
                 }} 
               />
               <div style={{ fontSize: '14px' }}>
-                <strong>{booking.driver_name || 'Driver Assigned'}</strong><br />
-                <span>{booking.driver_phone || 'Phone not available'}</span>
+                <strong>{driverName}</strong><br />
+                <span>{driverPhone || 'Phone not available'}</span>
               </div>
             </div>
           )}
