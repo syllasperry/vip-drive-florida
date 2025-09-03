@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, MapPin, User, CreditCard, CheckCircle, Car, Phone } from 'lucide-react';
+import { Clock, MapPin, User, CreditCard, CheckCircle, Car, Phone, Receipt } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { PaymentModal } from '@/components/dashboard/PaymentModal';
@@ -175,141 +175,155 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
     booking.vehicle_type;
 
   return (
-    <>
-      <Card className="border border-gray-200 hover:shadow-md transition-all duration-200">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Badge className={`${statusDisplay.color} border font-medium`}>
-                {statusDisplay.text}
-              </Badge>
-              {booking.booking_code && (
-                <span className="text-sm text-gray-500">#{booking.booking_code}</span>
-              )}
+    <Card className="p-6 mb-4 shadow-md hover:shadow-lg transition-shadow">
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex items-center gap-3">
+          <Badge 
+            className={`${statusDisplay.color} px-3 py-1 font-semibold rounded-full`}
+          >
+            {statusDisplay.text}
+          </Badge>
+          {booking.booking_code && (
+            <span className="text-sm text-muted-foreground font-medium">
+              #{booking.booking_code}
+            </span>
+          )}
+        </div>
+        <div className="text-right">
+          <div className="text-2xl font-bold text-foreground">
+            ${formattedPrice || '0.00'}
+          </div>
+          <div className="text-sm text-muted-foreground">Total Price</div>
+        </div>
+      </div>
+
+      {/* Driver Info - Only show after payment */}
+      {isPaymentCompleted() && booking.driver_id && (
+        <div className="flex items-center gap-3 mb-4">
+          <Avatar className="h-12 w-12">
+            {driverPhoto ? (
+              <AvatarImage src={driverPhoto} alt={driverName || 'Driver'} />
+            ) : (
+              <AvatarFallback className="bg-gray-200 text-gray-600 text-lg font-semibold">
+                {driverName ? driverName.split(' ').map(n => n[0]).join('').toUpperCase() : 'DR'}
+              </AvatarFallback>
+            )}
+          </Avatar>
+          <div className="flex-1">
+            <div className="font-semibold text-foreground text-lg">
+              {driverName || 'Driver'}
             </div>
-            <div className="text-right">
-              {formattedPrice ? (
-                <>
-                  <p className="text-lg font-semibold text-gray-900">${formattedPrice}</p>
-                  <p className="text-xs text-gray-500">Total Price</p>
-                </>
+            <div className="text-sm text-muted-foreground">
+              {driverPhone ? (
+                <a 
+                  href={`tel:${driverPhone}`} 
+                  className="text-blue-600 hover:underline cursor-pointer"
+                >
+                  {driverPhone}
+                </a>
               ) : (
-                <>
-                  <p className="text-lg font-semibold text-gray-900"> </p>
-                  <p className="text-xs text-gray-500">Total Price</p>
-                </>
+                'Phone not available'
               )}
             </div>
+            {driverEmail && (
+              <div className="text-sm text-muted-foreground">
+                <a 
+                  href={`mailto:${driverEmail}`}
+                  className="text-blue-600 hover:underline cursor-pointer"
+                >
+                  {driverEmail}
+                </a>
+              </div>
+            )}
           </div>
-        </CardHeader>
+        </div>
+      )}
 
-        <CardContent className="space-y-4">
-          {/* Driver info - only show when payment is completed and driver is assigned */}
-          {isPaymentCompleted() && booking.driver_id && (
-            <div className="driver-info" style={{ 
-              marginTop: '1rem', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '0.75rem' 
-            }}>
-              <img 
-                src={driverPhoto || 'https://ui-avatars.com/api/?name=Driver'} 
-                alt="Driver" 
-                style={{ 
-                  width: '40px', 
-                  height: '40px', 
-                  borderRadius: '50%', 
-                  objectFit: 'cover', 
-                  border: '1px solid #ccc' 
-                }} 
-              />
-              <div style={{ fontSize: '14px' }}>
-                <strong>{driverName}</strong><br />
-                <span>{driverPhone || 'Phone not available'}</span>
-              </div>
-            </div>
-          )}
-
-          {/* Route Information */}
-          <div className="space-y-2">
-            <div className="flex items-start gap-2">
-              <MapPin className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">Pickup</p>
-                <p className="text-sm text-gray-600">{booking.pickup_location}</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-2">
-              <MapPin className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">Drop-off</p>
-                <p className="text-sm text-gray-600">{booking.dropoff_location}</p>
-              </div>
+      {/* Location Info */}
+      <div className="space-y-3 mb-4">
+        <div className="flex items-start gap-3">
+          <MapPin className="h-4 w-4 text-green-600 mt-1 flex-shrink-0" />
+          <div className="flex-1">
+            <div className="text-sm font-medium text-foreground">Pickup</div>
+            <div className="text-sm text-muted-foreground break-words">
+              {booking.pickup_location}
             </div>
           </div>
+        </div>
+        
+        <div className="flex items-start gap-3">
+          <MapPin className="h-4 w-4 text-red-600 mt-1 flex-shrink-0" />
+          <div className="flex-1">
+            <div className="text-sm font-medium text-foreground">Drop-off</div>
+            <div className="text-sm text-muted-foreground break-words">
+              {booking.dropoff_location}
+            </div>
+          </div>
+        </div>
+      </div>
 
-          {/* Pickup Time */}
+      {/* Date and Time */}
+      <div className="flex items-center gap-3 mb-4">
+        <Clock className="h-4 w-4 text-blue-600" />
+        <div>
+          <div className="text-sm font-medium text-foreground">
+            {format(new Date(booking.pickup_time), 'MMM d, yyyy \'at\' h:mm a')}
+          </div>
+          <div className="text-xs text-muted-foreground">Date & Time</div>
+        </div>
+      </div>
+
+      {/* Vehicle Type */}
+      {booking.vehicle_type && (
+        <div className="flex items-center gap-3 mb-4">
+          <Car className="h-4 w-4 text-purple-600" />
+          <div className="text-sm font-medium text-foreground">
+            {booking.vehicle_type}
+          </div>
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex gap-2 mb-4">
+        {shouldShowPaymentButton && (
+          <Button 
+            onClick={() => setShowPaymentModal(true)}
+            className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
+          >
+            <CreditCard className="h-4 w-4 mr-2" />
+            Pay Now
+          </Button>
+        )}
+        
+        {isPaymentCompleted() && (
+          <Button 
+            variant="outline" 
+            onClick={() => setShowReceiptModal(true)}
+            className="flex-1"
+          >
+            <Receipt className="h-4 w-4 mr-2" />
+            Receipt
+          </Button>
+        )}
+      </div>
+
+      {/* Confirmation Message */}
+      {isPaymentCompleted() && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
           <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-blue-600" />
+            <CheckCircle className="h-5 w-5 text-green-600" />
             <div>
-              <p className="text-sm font-medium text-gray-900">
-                {format(new Date(booking.pickup_time), 'MMM d, yyyy \'at\' h:mm a')}
-              </p>
-              <p className="text-xs text-gray-500">Date & Time</p>
-            </div>
-          </div>
-
-          {/* Vehicle Information */}
-          {booking.vehicle_type && (
-            <div className="flex items-center gap-2">
-              <Car className="w-4 h-4 text-purple-600" />
-              <span className="text-sm text-gray-700">{booking.vehicle_type}</span>
-            </div>
-          )}
-
-          {/* Payment Button for Offers OR Receipt Button for Paid */}
-          {shouldShowPaymentButton && !isPaymentCompleted() && (
-            <div className="pt-2 border-t border-gray-100">
-              <Button 
-                onClick={() => setShowPaymentModal(true)}
-                className="w-full bg-[#FF385C] hover:bg-[#E31C5F] text-white flex items-center gap-2"
-              >
-                <CreditCard className="w-4 h-4" />
-                Pay to Confirm Ride
-              </Button>
-            </div>
-          )}
-
-          {/* Receipt Button for Paid Bookings */}
-          {isPaymentCompleted() && (
-            <div className="pt-2 border-t border-gray-100">
-               <Button 
-                 onClick={() => setShowReceiptModal(true)}
-                 variant="outline"
-                 className="w-full border-gray-200 text-gray-700 hover:bg-gray-50 flex items-center gap-2 bg-white"
-               >
-                 <CreditCard className="w-4 h-4" />
-                 Receipt
-               </Button>
-            </div>
-          )}
-
-          {/* Confirmed Status */}
-          {isPaymentCompleted() && (
-            <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg border border-green-200">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-              <div>
-                <p className="text-sm font-medium text-green-800">Ride Confirmed!</p>
-                <p className="text-xs text-green-600">
-                  {booking.driver_id ? 'Your driver will contact you soon.' : 'Driver assignment in progress.'}
-                </p>
+              <div className="font-semibold text-green-800">Ride Confirmed!</div>
+              <div className="text-sm text-green-700">
+                Your driver will contact you soon.
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        </div>
+      )}
 
-      {showPaymentModal && !isPaymentCompleted() && (
+      {/* Modals */}
+      {showPaymentModal && (
         <PaymentModal
           isOpen={showPaymentModal}
           onClose={() => setShowPaymentModal(false)}
@@ -318,11 +332,13 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
         />
       )}
 
-      <ReceiptModal
-        isOpen={showReceiptModal}
-        onClose={() => setShowReceiptModal(false)}
-        booking={booking}
-      />
-    </>
+      {showReceiptModal && (
+        <ReceiptModal
+          isOpen={showReceiptModal}
+          onClose={() => setShowReceiptModal(false)}
+          booking={booking}
+        />
+      )}
+    </Card>
   );
 };
