@@ -101,12 +101,12 @@ export const useRealtimeBookings = () => {
         passenger = newPassenger;
       }
 
-      // Now fetch bookings for this passenger with proper driver join
+      // Now fetch bookings for this passenger with explicit driver relationship
       const { data: rawBookings, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
           *,
-          drivers(*),
+          drivers!driver_id(*),
           passengers!inner (
             id,
             full_name,
@@ -130,42 +130,16 @@ export const useRealtimeBookings = () => {
 
       console.log('✅ Bookings fetched successfully:', rawBookings?.length || 0);
       
-      // Debug: Check driver data in each booking
-      rawBookings?.forEach(booking => {
-        if (booking.driver_id) {
-          console.log(`🚗 REALTIME BOOKING ${booking.id}:`, {
-            driver_id: booking.driver_id,
-            has_drivers_object: !!booking.drivers,
-            drivers_data: booking.drivers,
-            payment_status: booking.payment_status,
-            status: booking.status
-          });
-        }
-      });
-      
       // Map the raw data to ensure type safety
-      const bookings: RealtimeBooking[] = (rawBookings || []).map(booking => {
-        const mappedBooking = {
-          ...booking,
-          drivers: booking.drivers && typeof booking.drivers === 'object' && !Array.isArray(booking.drivers) 
-            ? booking.drivers 
-            : null,
-          passengers: booking.passengers && typeof booking.passengers === 'object' && !Array.isArray(booking.passengers)
-            ? booking.passengers
-            : null
-        };
-        
-        // Debug mapped data for paid bookings
-        if (mappedBooking.payment_status === 'paid' && mappedBooking.driver_id) {
-          console.log(`💳 PAID BOOKING MAPPED ${booking.id}:`, {
-            driver_name: mappedBooking.drivers?.full_name,
-            driver_phone: mappedBooking.drivers?.phone,
-            driver_photo: mappedBooking.drivers?.profile_photo_url || mappedBooking.drivers?.avatar_url
-          });
-        }
-        
-        return mappedBooking;
-      });
+      const bookings: RealtimeBooking[] = (rawBookings || []).map(booking => ({
+        ...booking,
+        drivers: booking.drivers && typeof booking.drivers === 'object' && !Array.isArray(booking.drivers) 
+          ? booking.drivers 
+          : null,
+        passengers: booking.passengers && typeof booking.passengers === 'object' && !Array.isArray(booking.passengers)
+          ? booking.passengers
+          : null
+      }));
 
       return bookings;
     },

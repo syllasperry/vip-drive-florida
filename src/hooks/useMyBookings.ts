@@ -90,7 +90,7 @@ export const useMyBookings = (userId?: string) => {
         .from('bookings')
         .select(`
           *,
-          drivers(*)
+          drivers!driver_id(*)
         `)
         .eq('passenger_id', passenger.id)
         .order('created_at', { ascending: false });
@@ -102,34 +102,13 @@ export const useMyBookings = (userId?: string) => {
 
       console.log('✅ Raw bookings data from Supabase:', rawBookings);
       
-      // Debug: Check if drivers data is being returned
-      rawBookings?.forEach(booking => {
-        console.log(`📋 Booking ${booking.id}:`, {
-          driver_id: booking.driver_id,
-          drivers_object: booking.drivers,
-          payment_status: booking.payment_status,
-          status: booking.status
-        });
-      });
-      
       // Map the raw data to ensure type safety and proper payment status detection
-      const bookings: Booking[] = (rawBookings || []).map(booking => {        
-        const mappedBooking = {
-          ...booking,
-          drivers: booking.drivers && typeof booking.drivers === 'object' && !Array.isArray(booking.drivers) 
-            ? booking.drivers 
-            : null
-        };
-        
-        console.log(`🔄 Mapped booking ${booking.id}:`, {
-          has_driver_id: !!mappedBooking.driver_id,
-          has_drivers_object: !!mappedBooking.drivers,
-          driver_name: mappedBooking.drivers?.full_name,
-          driver_phone: mappedBooking.drivers?.phone
-        });
-        
-        return mappedBooking;
-      });
+      const bookings: Booking[] = (rawBookings || []).map(booking => ({        
+        ...booking,
+        drivers: booking.drivers && typeof booking.drivers === 'object' && !Array.isArray(booking.drivers) 
+          ? booking.drivers 
+          : null
+      }));
 
       return bookings;
     },
