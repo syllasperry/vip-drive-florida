@@ -28,6 +28,7 @@ export interface Booking {
   paid_at: string | null;
   payment_provider: string | null;
   payment_reference: string | null;
+  stripe_payment_intent_id: string | null;
   drivers?: {
     full_name: string;
     phone: string;
@@ -88,42 +89,8 @@ export const useMyBookings = (userId?: string) => {
       const { data: rawBookings, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
-          id,
-          booking_code,
-          status,
-          pickup_location,
-          dropoff_location,
-          pickup_time,
-          created_at,
-          updated_at,
-          passenger_id,
-          driver_id,
-          vehicle_type,
-          final_price,
-          estimated_price,
-          payment_confirmation_status,
-          payment_status,
-          ride_status,
-          passenger_count,
-          luggage_count,
-          flight_info,
-          offer_price_cents,
-          paid_amount_cents,
-          paid_at,
-          payment_provider,
-          payment_reference,
-          stripe_payment_intent_id,
-          drivers(
-            full_name,
-            phone,
-            email,
-            car_make,
-            car_model,
-            car_color,
-            license_plate,
-            avatar_url,
-            profile_photo_url
-          )
+          *,
+          drivers(*)
         `)
         .eq('passenger_id', passenger.id)
         .order('created_at', { ascending: false });
@@ -135,27 +102,8 @@ export const useMyBookings = (userId?: string) => {
 
       console.log('✅ Raw bookings data:', rawBookings);
       
-      // Log detailed driver data for debugging
-      rawBookings?.forEach(booking => {
-        if (booking.driver_id && booking.drivers) {
-          console.log('🚗 Booking with driver data:', {
-            booking_id: booking.id,
-            driver_id: booking.driver_id,
-            drivers_data: booking.drivers,
-            payment_status: booking.payment_status,
-            status: booking.status
-          });
-        }
-      });
-      
       // Map the raw data to ensure type safety and proper payment status detection
-      const bookings: Booking[] = (rawBookings || []).map(booking => {
-        console.log('📝 Processing booking:', {
-          id: booking.id,
-          raw_drivers: booking.drivers,
-          driver_id: booking.driver_id
-        });
-        
+      const bookings: Booking[] = (rawBookings || []).map(booking => {        
         return {
           ...booking,
           drivers: booking.drivers && typeof booking.drivers === 'object' && !Array.isArray(booking.drivers) 

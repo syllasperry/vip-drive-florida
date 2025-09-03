@@ -174,29 +174,6 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
     `${booking.drivers.car_make || ''} ${booking.drivers.car_model || ''}`.trim() || booking.vehicle_type :
     booking.vehicle_type;
 
-  // Debug logging for driver data retrieval
-  if (isPaymentCompleted() && booking.driver_id) {
-    console.log('🚗 Driver data for paid booking:', {
-      booking_id: booking.id,
-      driver_id: booking.driver_id,
-      driver_data: booking.drivers,
-      resolved_name: driverName,
-      resolved_phone: driverPhone,
-      resolved_photo: driverPhoto,
-      payment_status: booking.payment_status,
-      status: booking.status
-    });
-  }
-
-  // Additional debug for all bookings to see what data is available
-  console.log('📋 All booking data:', {
-    booking_id: booking.id,
-    has_driver_id: !!booking.driver_id,
-    has_drivers_object: !!booking.drivers,
-    drivers_object: booking.drivers,
-    payment_completed: isPaymentCompleted()
-  });
-
   return (
     <>
       <Card className="border border-gray-200 hover:shadow-md transition-all duration-200">
