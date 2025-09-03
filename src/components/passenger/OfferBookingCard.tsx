@@ -168,11 +168,23 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
   // Get driver information from the nested drivers object
   const driverName = booking.drivers?.full_name || 'Driver';
   const driverPhone = booking.drivers?.phone;
-  const driverPhoto = booking.drivers?.profile_image || booking.drivers?.avatar_url || booking.drivers?.profile_photo_url;
+  const driverPhoto = booking.drivers?.profile_photo_url || booking.drivers?.avatar_url;
   const driverEmail = booking.drivers?.email;
   const driverVehicle = booking.drivers ? 
     `${booking.drivers.car_make || ''} ${booking.drivers.car_model || ''}`.trim() || booking.vehicle_type :
     booking.vehicle_type;
+
+  // Debug logging for driver data retrieval
+  if (isPaymentCompleted() && booking.driver_id) {
+    console.log('🚗 Driver data for paid booking:', {
+      booking_id: booking.id,
+      driver_id: booking.driver_id,
+      driver_data: booking.drivers,
+      resolved_name: driverName,
+      resolved_phone: driverPhone,
+      resolved_photo: driverPhoto
+    });
+  }
 
   return (
     <>
