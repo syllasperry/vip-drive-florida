@@ -23,5 +23,8 @@ verify_jwt = true
 [functions.stripe-webhook]
 verify_jwt = false
 
+[functions.verify-payment-status]
+verify_jwt = true
+
 [functions.send-booking-confirmation-emails]
 verify_jwt = false

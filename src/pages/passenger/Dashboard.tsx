@@ -10,6 +10,7 @@ import { MessagesTab } from '@/components/passenger/MessagesTab';
 import { PaymentsTab } from '@/components/passenger/PaymentsTab';
 import { SettingsTab } from '@/components/passenger/SettingsTab';
 import { BottomNavigation } from '@/components/dashboard/BottomNavigation';
+import { PaymentStatusChecker } from '@/components/payment/PaymentStatusChecker';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useMyBookings } from '@/hooks/useMyBookings';
@@ -314,6 +315,25 @@ export default function PassengerDashboard() {
           onProfileUpdate={handleProfileUpdate}
         />
       )}
+
+      {/* Payment Status Checkers - automatically verify payments for bookings that need it */}
+      {bookings?.map(booking => {
+        const needsPaymentCheck = booking.payment_status !== 'paid' && 
+                                 booking.status === 'paid' &&
+                                 !booking.paid_at;
+        
+        return needsPaymentCheck ? (
+          <PaymentStatusChecker
+            key={booking.id}
+            bookingId={booking.id}
+            onPaymentConfirmed={() => {
+              console.log('🔄 Payment confirmed, refetching bookings...');
+              // Force refetch bookings
+              window.location.reload();
+            }}
+          />
+        ) : null;
+      })}
     </div>
   );
 }

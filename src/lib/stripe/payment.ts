@@ -71,24 +71,56 @@ export const redirectToCheckout = async (bookingId: string) => {
 
 export const verifyPaymentStatus = async (bookingId: string) => {
   try {
-    const { data: booking, error } = await supabase
+    console.log('🔍 Verifying payment status for booking:', bookingId);
+    
+    // First check current booking status
+    const { data: booking, error: bookingError } = await supabase
       .from('bookings')
-      .select('payment_status, payment_confirmation_status, paid_at, stripe_payment_intent_id')
+      .select('*')
       .eq('id', bookingId)
       .single();
 
-    if (error) {
-      throw error;
+    if (bookingError) {
+      console.error('❌ Error fetching booking:', bookingError);
+      return { isPaid: false, error: bookingError.message };
     }
 
-    const isPaid = booking.payment_status === 'paid' || 
-                   booking.payment_confirmation_status === 'all_set' ||
-                   (booking.paid_at && booking.stripe_payment_intent_id);
+    console.log('📊 Current booking status:', {
+      id: booking.id,
+      status: booking.status,
+      payment_status: booking.payment_status,
+      payment_confirmation_status: booking.payment_confirmation_status,
+      paid_at: booking.paid_at,
+      stripe_payment_intent_id: booking.stripe_payment_intent_id
+    });
 
-    return {
-      isPaid,
-      booking
-    };
+    // Check if already paid
+    const isPaid = booking.payment_status === 'paid' && 
+                  booking.payment_confirmation_status === 'all_set' &&
+                  booking.paid_at;
+
+    if (isPaid) {
+      console.log('✅ Booking is already paid');
+      return { isPaid: true, booking };
+    }
+
+    // Check if there's a Stripe session to verify by calling our verification function
+    try {
+      const { data: verifyResult, error: verifyError } = await supabase.functions.invoke('verify-payment-status', {
+        body: { booking_id: bookingId }
+      });
+
+      if (verifyError) {
+        console.error('❌ Error in verify-payment-status function:', verifyError);
+      } else if (verifyResult?.updated) {
+        console.log('✅ Payment status updated by verification function');
+        return { isPaid: true, booking: verifyResult.booking };
+      }
+    } catch (functionError) {
+      console.error('❌ Error calling verify-payment-status function:', functionError);
+    }
+
+    return { isPaid, booking };
   } catch (error) {
     console.error('❌ Error verifying payment status:', error);
     return { isPaid: false, booking: null };
