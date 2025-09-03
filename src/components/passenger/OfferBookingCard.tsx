@@ -201,75 +201,28 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* CRITICAL FIX: Show driver info only when payment is completed */}
-          {booking.driver_id && isPaymentCompleted() && (
-            <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-              <Avatar className="h-12 w-12">
-                <AvatarImage 
-                  src={driverPhoto} 
-                  alt={driverName}
-                  className="object-cover"
-                />
-                <AvatarFallback className="bg-blue-600 text-white text-lg font-semibold">
-                  {driverName.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <p className="font-semibold text-gray-900 text-lg mb-1">{driverName}</p>
-                {/* Vehicle Information */}
-                {booking.vehicle_type && (
-                  <p className="text-gray-600 mb-2">
-                    {booking.vehicle_type}
-                  </p>
-                )}
-                {/* Contact Information */}
-                <div className="flex flex-col gap-2">
-                  {driverPhone && (
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => {
-                          // Create phone number without formatting for tel: protocol
-                          const cleanPhone = driverPhone.replace(/\D/g, '');
-                          window.location.href = `tel:+1${cleanPhone}`;
-                        }}
-                        className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-lg transition-colors"
-                      >
-                        <Phone className="w-4 h-4" />
-                        <span>Call {driverPhone}</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          // Create SMS link
-                          const cleanPhone = driverPhone.replace(/\D/g, '');
-                          const message = `Hi ${driverName}, this is regarding VIP booking ${booking.booking_code || booking.id.slice(-8).toUpperCase()}. `;
-                          window.location.href = `sms:+1${cleanPhone}?body=${encodeURIComponent(message)}`;
-                        }}
-                        className="flex items-center gap-2 text-sm text-green-600 hover:text-green-800 hover:underline cursor-pointer bg-green-50 hover:bg-green-100 px-3 py-2 rounded-lg transition-colors"
-                      >
-                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        <span>SMS</span>
-                      </button>
-                    </div>
-                  )}
-                  {driverEmail && (
-                    <button
-                      onClick={() => {
-                        const subject = encodeURIComponent(`VIP Ride - Booking ${booking.booking_code || booking.id.slice(-8).toUpperCase()}`);
-                        const body = encodeURIComponent(`Hi ${driverName},\n\nThis is regarding my VIP booking scheduled for ${format(new Date(booking.pickup_time), 'MMM d, yyyy \'at\' h:mm a')}.\n\nPickup: ${booking.pickup_location}\nDrop-off: ${booking.dropoff_location}\n\nThank you!\n`);
-                        window.location.href = `mailto:${driverEmail}?subject=${subject}&body=${body}`;
-                      }}
-                      className="flex items-center gap-2 text-sm text-purple-600 hover:text-purple-800 hover:underline cursor-pointer bg-purple-50 hover:bg-purple-100 px-3 py-2 rounded-lg transition-colors w-fit"
-                    >
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="m4 4 16 0c1.1 0 2 .9 2 2l0 12c0 1.1-.9 2-2 2l-16 0c-1.1 0-2-.9-2-2l0-12c0-1.1.9-2 2-2z" stroke="currentColor" strokeWidth="2"/>
-                        <polyline points="22,6 12,13 2,6" stroke="currentColor" strokeWidth="2"/>
-                      </svg>
-                      <span>Email {driverEmail}</span>
-                    </button>
-                  )}
-                </div>
+          {/* Driver info - only show when payment is completed */}
+          {booking.status === 'paid' && booking.payment_status === 'paid' && (
+            <div className="driver-info" style={{ 
+              marginTop: '1rem', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.75rem' 
+            }}>
+              <img 
+                src={booking.driver_photo_url || 'https://ui-avatars.com/api/?name=Driver'} 
+                alt="Driver" 
+                style={{ 
+                  width: '40px', 
+                  height: '40px', 
+                  borderRadius: '50%', 
+                  objectFit: 'cover', 
+                  border: '1px solid #ccc' 
+                }} 
+              />
+              <div style={{ fontSize: '14px' }}>
+                <strong>{booking.driver_name || 'Driver Assigned'}</strong><br />
+                <span>{booking.driver_phone || 'Phone not available'}</span>
               </div>
             </div>
           )}
