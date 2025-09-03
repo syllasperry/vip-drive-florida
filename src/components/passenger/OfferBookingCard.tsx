@@ -201,8 +201,8 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* Driver info - only show when payment is completed */}
-          {booking.status === 'paid' && booking.payment_status === 'paid' && (
+          {/* Driver info - only show when payment is completed and driver is assigned */}
+          {isPaymentCompleted() && booking.driver_id && (
             <div className="driver-info" style={{ 
               marginTop: '1rem', 
               display: 'flex', 
