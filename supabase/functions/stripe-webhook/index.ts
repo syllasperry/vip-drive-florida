@@ -138,7 +138,8 @@ serve(async (req) => {
           
           const updateData = {
             payment_status: 'paid',
-            status: 'payment_confirmed', // Use valid status from enum
+            status: 'paid',
+            payment_confirmation_status: 'all_set',
             paid_amount_cents: session.amount_total,
             paid_at: new Date().toISOString(),
             payment_provider: 'stripe',
@@ -257,9 +258,10 @@ serve(async (req) => {
           const { error: updateError } = await supabaseClient
             .from('bookings')
             .update({
-            payment_status: 'paid',
-            status: 'payment_confirmed', // Use valid status from constraint
-            paid_amount_cents: paymentIntent.amount,
+              payment_status: 'paid',
+              status: 'paid',
+              payment_confirmation_status: 'all_set',
+              paid_amount_cents: paymentIntent.amount,
               payment_provider: 'stripe',
               payment_reference: paymentIntent.id,
               stripe_payment_intent_id: paymentIntent.id,
@@ -317,7 +319,8 @@ serve(async (req) => {
           .from('bookings')
           .update({
             payment_status: 'failed',
-            status: 'cancelled', // This is allowed by the constraint
+            status: 'cancelled',
+            payment_confirmation_status: 'cancelled',
             updated_at: new Date().toISOString()
           })
           .eq('id', booking.id)
