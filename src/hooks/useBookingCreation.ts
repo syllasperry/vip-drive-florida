@@ -62,10 +62,10 @@ export const useBookingCreation = () => {
         return;
       }
 
-      // Get or create passenger profile
+      // Get or create passenger profile with full details
       let { data: passenger, error: passengerError } = await supabase
         .from('passengers')
-        .select('id')
+        .select('id, full_name, profile_photo_url, first_name, last_name')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -76,15 +76,17 @@ export const useBookingCreation = () => {
 
       if (!passenger) {
         console.log('🔨 Creating passenger profile...');
+        const fullName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
         const { data: newPassenger, error: createError } = await supabase
           .from('passengers')
           .insert([{
             user_id: user.id,
-            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+            full_name: fullName,
             email: user.email || '',
-            phone: user.user_metadata?.phone || ''
+            phone: user.user_metadata?.phone || '',
+            profile_photo_url: user.user_metadata?.avatar_url || null
           }])
-          .select('id')
+          .select('id, full_name, profile_photo_url, first_name, last_name')
           .single();
 
         if (createError) {
@@ -94,7 +96,13 @@ export const useBookingCreation = () => {
         passenger = newPassenger;
       }
 
-      // Create the booking with sanitized data
+      // Extract passenger details for booking
+      const passengerFullName = passenger.full_name || `${passenger.first_name || ''} ${passenger.last_name || ''}`.trim();
+      const passengerNames = passengerFullName.split(' ');
+      const firstName = passenger.first_name || passengerNames[0] || '';
+      const lastName = passenger.last_name || passengerNames.slice(1).join(' ') || '';
+
+      // Create the booking with sanitized data and passenger profile details
       const { data: booking, error: bookingError } = await supabase
         .from('bookings')
         .insert([{
@@ -108,7 +116,11 @@ export const useBookingCreation = () => {
           flight_info: sanitizedData.flight_info || '',
           status: 'pending',
           payment_confirmation_status: 'waiting_for_offer',
-          ride_status: 'pending_driver'
+          ride_status: 'pending_driver',
+          // Attach passenger profile details for dispatcher visibility
+          passenger_first_name: firstName,
+          passenger_last_name: lastName,
+          passenger_photo_url: passenger.profile_photo_url || null
         }])
         .select()
         .single();
