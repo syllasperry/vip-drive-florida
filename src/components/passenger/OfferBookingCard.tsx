@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, MapPin, User, CreditCard, CheckCircle, Car, Phone, Receipt } from 'lucide-react';
+import { Clock, MapPin, User, CreditCard, CheckCircle, Car, Phone, Receipt, MessageCircle, Mail } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { PaymentModal } from '@/components/dashboard/PaymentModal';
@@ -213,28 +213,52 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
             <div className="font-semibold text-foreground text-lg">
               {driverName || 'Driver'}
             </div>
-            <div className="text-sm text-muted-foreground">
-              {driverPhone ? (
-                <a 
-                  href={`tel:${driverPhone}`} 
-                  className="text-blue-600 hover:underline cursor-pointer"
+            {/* Driver Contact Icons */}
+            <div className="flex items-center gap-2 mt-2">
+              {driverPhone && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const messageTemplate = `Hi ${driverName}, this is ${passengerInfo?.full_name || 'your passenger'}, your VIP passenger for ride #${(booking.booking_code || booking.id.slice(-8)).toUpperCase()} (${booking.pickup_location.split(',')[0]} ➝ ${booking.dropoff_location.split(',')[0]}). Just checking in — let me know if you're available to chat!`;
+                      const smsUrl = `sms:${driverPhone}${/iPhone|iPad|iPod|Mac/.test(navigator.userAgent) ? '&' : '?'}body=${encodeURIComponent(messageTemplate)}`;
+                      window.location.href = smsUrl;
+                    }}
+                    className="p-2 h-8 w-8"
+                  >
+                    <MessageCircle className="w-4 h-4 text-blue-500" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.location.href = `tel:${driverPhone}`;
+                    }}
+                    className="p-2 h-8 w-8"
+                  >
+                    <Phone className="w-4 h-4 text-green-500" />
+                  </Button>
+                </>
+              )}
+              {driverEmail && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const subject = encodeURIComponent(`VIP Ride #${(booking.booking_code || booking.id.slice(-8)).toUpperCase()} - ${passengerInfo?.full_name || 'Passenger'} Contact`);
+                    const body = encodeURIComponent(`Hi ${driverName},\n\nThis is ${passengerInfo?.full_name || 'your passenger'} for VIP ride #${(booking.booking_code || booking.id.slice(-8)).toUpperCase()}.\n\nPickup: ${booking.pickup_location}\nDrop-off: ${booking.dropoff_location}\n\nBest regards,\n${passengerInfo?.full_name || 'Your Passenger'}`);
+                    window.location.href = `mailto:${driverEmail}?subject=${subject}&body=${body}`;
+                  }}
+                  className="p-2 h-8 w-8"
                 >
-                  {driverPhone}
-                </a>
-              ) : (
-                'Phone not available'
+                  <Mail className="w-4 h-4 text-purple-500" />
+                </Button>
               )}
             </div>
-            {driverEmail && (
-              <div className="text-sm text-muted-foreground">
-                <a 
-                  href={`mailto:${driverEmail}`}
-                  className="text-blue-600 hover:underline cursor-pointer"
-                >
-                  {driverEmail}
-                </a>
-              </div>
-            )}
           </div>
         </div>
       )}
