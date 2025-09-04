@@ -7,6 +7,8 @@ import { format } from 'date-fns';
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface PaymentsTabProps {
   bookings: any[];
@@ -142,9 +144,138 @@ export const PaymentsTab = ({ bookings }: PaymentsTabProps) => {
     return booking.final_price || booking.estimated_price || 0;
   };
 
-  const handleDownloadReceipt = (booking: any) => {
-    // This would generate and download a receipt
-    console.log('Downloading receipt for booking:', booking.id);
+  const handleDownloadReceipt = async (booking: any) => {
+    try {
+      // Get current user and passenger data for receipt
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: passenger } = await supabase
+        .from('passengers')
+        .select('full_name, email, phone')
+        .eq('user_id', user.id)
+        .single();
+
+      const doc = new jsPDF();
+      
+      // Header
+      doc.setFontSize(20);
+      doc.text('VIP Transportation Receipt', 20, 30);
+      
+      // Booking details
+      doc.setFontSize(12);
+      const bookingCode = booking.booking_code || booking.id.slice(-8).toUpperCase();
+      doc.text(`Receipt #: ${bookingCode}`, 20, 50);
+      doc.text(`Date: ${format(new Date(booking.pickup_time || booking.created_at), 'MMM dd, yyyy hh:mm a')}`, 20, 60);
+      
+      // Passenger info
+      if (passenger) {
+        doc.text(`Passenger: ${passenger.full_name || 'N/A'}`, 20, 80);
+        if (passenger.email) doc.text(`Email: ${passenger.email}`, 20, 90);
+      }
+      
+      // Trip details
+      doc.text('Trip Details:', 20, 110);
+      doc.text(`Pickup: ${booking.pickup_location}`, 30, 120);
+      doc.text(`Drop-off: ${booking.dropoff_location}`, 30, 130);
+      if (booking.vehicle_type) doc.text(`Vehicle: ${booking.vehicle_type}`, 30, 140);
+      
+      // Payment details
+      const amount = getBookingAmount(booking);
+      doc.text('Payment Details:', 20, 160);
+      doc.text(`Amount Paid: $${amount.toFixed(2)} USD`, 30, 170);
+      doc.text('Payment Method: Card', 30, 180);
+      doc.text('Status: Paid', 30, 190);
+      
+      // Footer
+      doc.setFontSize(10);
+      doc.text('Thank you for choosing VIP Transportation!', 20, 220);
+      
+      doc.save(`VIP-Receipt-${bookingCode}.pdf`);
+      
+      toast({
+        title: "Success",
+        description: "Receipt downloaded successfully!",
+      });
+    } catch (error) {
+      console.error('Error generating receipt:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate receipt. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleExportAll = async () => {
+    try {
+      if (paymentBookings.length === 0) {
+        toast({
+          title: "No Data",
+          description: "No payment history to export.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Get current user and passenger data
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: passenger } = await supabase
+        .from('passengers')
+        .select('full_name, email')
+        .eq('user_id', user.id)
+        .single();
+
+      const doc = new jsPDF();
+      
+      // Header
+      doc.setFontSize(18);
+      doc.text('VIP Transportation - Payment History', 20, 30);
+      
+      // Summary info
+      doc.setFontSize(12);
+      if (passenger?.full_name) {
+        doc.text(`Customer: ${passenger.full_name}`, 20, 50);
+      }
+      doc.text(`Generated: ${format(new Date(), 'MMM dd, yyyy hh:mm a')}`, 20, 60);
+      doc.text(`Total Rides: ${paymentBookings.length}`, 20, 70);
+      doc.text(`Total Paid: $${totalPaid.toFixed(2)} USD`, 20, 80);
+      
+      // Table data
+      const tableData = paymentBookings.map(booking => [
+        booking.booking_code || booking.id.slice(-8).toUpperCase(),
+        format(new Date(booking.pickup_time || booking.created_at), 'MMM dd, yyyy'),
+        booking.pickup_location.split(',')[0] || 'Pickup',
+        booking.dropoff_location.split(',')[0] || 'Dropoff',
+        booking.vehicle_type || 'Standard',
+        `$${getBookingAmount(booking).toFixed(2)}`
+      ]);
+
+      autoTable(doc, {
+        startY: 100,
+        head: [['Booking ID', 'Date', 'Pickup', 'Drop-off', 'Vehicle', 'Amount']],
+        body: tableData,
+        styles: { fontSize: 10 },
+        headStyles: { fillColor: [255, 56, 92] },
+        theme: 'striped'
+      });
+      
+      doc.save(`VIP-Payment-History-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+      
+      toast({
+        title: "Success",
+        description: "Payment history exported successfully!",
+      });
+    } catch (error) {
+      console.error('Error exporting payment history:', error);
+      toast({
+        title: "Error",
+        description: "Failed to export payment history. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -194,7 +325,7 @@ export const PaymentsTab = ({ bookings }: PaymentsTabProps) => {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="font-medium text-gray-900">Payment History</h3>
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button variant="outline" size="sm" className="gap-2" onClick={handleExportAll}>
               <Download className="w-4 h-4" />
               Export All
             </Button>
@@ -216,24 +347,16 @@ export const PaymentsTab = ({ bookings }: PaymentsTabProps) => {
                         {getStatusLabel(paymentStatus)}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1">
-                        <DollarSign className="w-4 h-4 text-gray-600" />
-                        <span className="font-semibold text-gray-900">
-                          ${booking.final_price || booking.estimated_price || 0}
-                        </span>
-                      </div>
-                      {canDownload && (
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleDownloadReceipt(booking)}
-                          className="gap-1 p-2"
-                        >
-                          <Receipt className="w-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
+                    {canDownload && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleDownloadReceipt(booking)}
+                        className="gap-1 p-2"
+                      >
+                        <DollarSign className="w-4 h-4" />
+                      </Button>
+                    )}
                   </div>
                   
                   <p className="text-sm text-gray-600 mb-2">
