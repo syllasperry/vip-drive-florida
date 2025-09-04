@@ -53,6 +53,13 @@ export type Database = {
             referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "app_payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings_with_passenger_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       app_settings: {
@@ -112,7 +119,47 @@ export type Database = {
             referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "app_suggested_pricing_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "bookings_with_passenger_info"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      auth_rate_limit: {
+        Row: {
+          action_type: string
+          attempts: number | null
+          blocked_until: string | null
+          created_at: string | null
+          first_attempt_at: string | null
+          id: string
+          identifier: string
+          last_attempt_at: string | null
+        }
+        Insert: {
+          action_type: string
+          attempts?: number | null
+          blocked_until?: string | null
+          created_at?: string | null
+          first_attempt_at?: string | null
+          id?: string
+          identifier: string
+          last_attempt_at?: string | null
+        }
+        Update: {
+          action_type?: string
+          attempts?: number | null
+          blocked_until?: string | null
+          created_at?: string | null
+          first_attempt_at?: string | null
+          id?: string
+          identifier?: string
+          last_attempt_at?: string | null
+        }
+        Relationships: []
       }
       booking_code_counters: {
         Row: {
@@ -204,6 +251,13 @@ export type Database = {
             referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "booking_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings_with_passenger_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       bookings: {
@@ -214,11 +268,15 @@ export type Database = {
           created_at: string
           dispatcher_id: string | null
           distance_miles: number | null
+          driver_email: string | null
           driver_id: string | null
           driver_location_lat: number | null
           driver_location_lng: number | null
+          driver_name: string | null
           driver_payment_confirmed_at: string | null
           driver_payment_instructions: string | null
+          driver_phone: string | null
+          driver_photo_url: string | null
           driver_status: string | null
           dropoff_location: string
           estimated_fare: number | null
@@ -279,11 +337,15 @@ export type Database = {
           created_at?: string
           dispatcher_id?: string | null
           distance_miles?: number | null
+          driver_email?: string | null
           driver_id?: string | null
           driver_location_lat?: number | null
           driver_location_lng?: number | null
+          driver_name?: string | null
           driver_payment_confirmed_at?: string | null
           driver_payment_instructions?: string | null
+          driver_phone?: string | null
+          driver_photo_url?: string | null
           driver_status?: string | null
           dropoff_location: string
           estimated_fare?: number | null
@@ -344,11 +406,15 @@ export type Database = {
           created_at?: string
           dispatcher_id?: string | null
           distance_miles?: number | null
+          driver_email?: string | null
           driver_id?: string | null
           driver_location_lat?: number | null
           driver_location_lng?: number | null
+          driver_name?: string | null
           driver_payment_confirmed_at?: string | null
           driver_payment_instructions?: string | null
+          driver_phone?: string | null
+          driver_photo_url?: string | null
           driver_status?: string | null
           dropoff_location?: string
           estimated_fare?: number | null
@@ -530,6 +596,13 @@ export type Database = {
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_offers_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings_with_passenger_info"
             referencedColumns: ["id"]
           },
           {
@@ -790,6 +863,13 @@ export type Database = {
             referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "email_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings_with_passenger_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       message_status: {
@@ -900,6 +980,13 @@ export type Database = {
             referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "notification_outbox_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings_with_passenger_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       notification_preferences: {
@@ -907,6 +994,7 @@ export type Database = {
           booking_updates_enabled: boolean | null
           created_at: string | null
           driver_messages_enabled: boolean | null
+          email_2fa_enabled: boolean | null
           email_enabled: boolean | null
           id: string
           promotions_enabled: boolean | null
@@ -920,6 +1008,7 @@ export type Database = {
           booking_updates_enabled?: boolean | null
           created_at?: string | null
           driver_messages_enabled?: boolean | null
+          email_2fa_enabled?: boolean | null
           email_enabled?: boolean | null
           id?: string
           promotions_enabled?: boolean | null
@@ -933,6 +1022,7 @@ export type Database = {
           booking_updates_enabled?: boolean | null
           created_at?: string | null
           driver_messages_enabled?: boolean | null
+          email_2fa_enabled?: boolean | null
           email_enabled?: boolean | null
           id?: string
           promotions_enabled?: boolean | null
@@ -1100,6 +1190,13 @@ export type Database = {
             referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "payment_session_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings_with_passenger_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       payment_sessions: {
@@ -1220,6 +1317,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings_with_passenger_info"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "payments_dispatcher_id_fkey"
             columns: ["dispatcher_id"]
             isOneToOne: false
@@ -1281,6 +1385,33 @@ export type Database = {
             referencedColumns: ["code"]
           },
         ]
+      }
+      profiles: {
+        Row: {
+          account_type: string | null
+          avatar_url: string | null
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+        }
+        Insert: {
+          account_type?: string | null
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id: string
+        }
+        Update: {
+          account_type?: string | null
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+        }
+        Relationships: []
       }
       push_subscriptions: {
         Row: {
@@ -1429,6 +1560,13 @@ export type Database = {
             referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "review_notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings_with_passenger_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       reviews: {
@@ -1465,6 +1603,13 @@ export type Database = {
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings_with_passenger_info"
             referencedColumns: ["id"]
           },
           {
@@ -1543,6 +1688,13 @@ export type Database = {
             referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ride_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings_with_passenger_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ride_status: {
@@ -1587,6 +1739,13 @@ export type Database = {
             referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ride_status_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "bookings_with_passenger_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ride_status_history: {
@@ -1620,6 +1779,13 @@ export type Database = {
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ride_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings_with_passenger_info"
             referencedColumns: ["id"]
           },
         ]
@@ -1691,6 +1857,13 @@ export type Database = {
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "secure_payment_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings_with_passenger_info"
             referencedColumns: ["id"]
           },
         ]
@@ -1792,6 +1965,13 @@ export type Database = {
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timeline_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings_with_passenger_info"
             referencedColumns: ["id"]
           },
           {
@@ -2027,7 +2207,130 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      bookings_with_passenger_info: {
+        Row: {
+          assigned_driver_id: string | null
+          booking_code: string | null
+          code: string | null
+          created_at: string | null
+          dispatcher_id: string | null
+          distance_miles: number | null
+          driver_email: string | null
+          driver_id: string | null
+          driver_location_lat: number | null
+          driver_location_lng: number | null
+          driver_name: string | null
+          driver_payment_confirmed_at: string | null
+          driver_payment_instructions: string | null
+          driver_phone: string | null
+          driver_photo_url: string | null
+          driver_status: string | null
+          dropoff_location: string | null
+          estimated_fare: number | null
+          estimated_price: number | null
+          estimated_price_cents: number | null
+          extra_stops: Json | null
+          final_price: number | null
+          final_price_cents: number | null
+          flight_info: string | null
+          id: string | null
+          luggage_count: number | null
+          luggage_size: string | null
+          offer_amount: number | null
+          offer_amount_cents: number | null
+          offer_currency: string | null
+          offer_price_cents: number | null
+          offer_sent_at: string | null
+          offered_by_dispatcher_id: string | null
+          paid_amount_cents: number | null
+          paid_at: string | null
+          paid_currency: string | null
+          passenger_count: number | null
+          passenger_first_name: string | null
+          passenger_id: string | null
+          passenger_last_name: string | null
+          passenger_name: string | null
+          passenger_payment_confirmed_at: string | null
+          passenger_phone: string | null
+          passenger_photo: string | null
+          passenger_photo_url: string | null
+          passenger_preferences: Json | null
+          passenger_status: string | null
+          payment_confirmation_status: string | null
+          payment_expires_at: string | null
+          payment_method: string | null
+          payment_provider: string | null
+          payment_reference: string | null
+          payment_status: string | null
+          pickup_location: string | null
+          pickup_time: string | null
+          price_confirmed_at: string | null
+          ride_completed_at: string | null
+          ride_stage: string | null
+          ride_started_at: string | null
+          ride_status: string | null
+          status: string | null
+          status_driver: string | null
+          status_passenger: string | null
+          status_updated_at: string | null
+          stripe_payment_intent_id: string | null
+          updated_at: string | null
+          vehicle_category: string | null
+          vehicle_id: string | null
+          vehicle_type: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_dispatcher_id_fkey"
+            columns: ["dispatcher_id"]
+            isOneToOne: false
+            referencedRelation: "dispatchers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_offered_by_dispatcher_id_fkey"
+            columns: ["offered_by_dispatcher_id"]
+            isOneToOne: false
+            referencedRelation: "dispatchers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "passengers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_assigned_driver"
+            columns: ["assigned_driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_dispatcher"
+            columns: ["dispatcher_id"]
+            isOneToOne: false
+            referencedRelation: "dispatchers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       _normalize_vehicle_category: {
@@ -2160,6 +2463,20 @@ export type Database = {
         Args: { driver_uuid: string; user_uuid?: string }
         Returns: boolean
       }
+      check_auth_rate_limit: {
+        Args: {
+          p_action_type: string
+          p_block_minutes?: number
+          p_identifier: string
+          p_max_attempts?: number
+          p_window_minutes?: number
+        }
+        Returns: {
+          attempts_remaining: number
+          blocked_until: string
+          is_allowed: boolean
+        }[]
+      }
       check_booking_access: {
         Args: { p_booking_id: string }
         Returns: {
@@ -2167,6 +2484,16 @@ export type Database = {
           has_access: boolean
           user_role: string
         }[]
+      }
+      check_rate_limit: {
+        Args: {
+          p_action_type: string
+          p_block_minutes?: number
+          p_identifier: string
+          p_max_attempts?: number
+          p_window_minutes?: number
+        }
+        Returns: boolean
       }
       complete_payment_transaction: {
         Args: {
@@ -2617,12 +2944,19 @@ export type Database = {
         Returns: string
       }
       estimate_fare: {
-        Args: {
-          p_apply_smart?: boolean
-          p_category_code: string
-          p_distance_miles: number
-          p_duration_minutes?: number
-        }
+        Args:
+          | {
+              p_apply_smart?: boolean
+              p_base_override?: number
+              p_category: string
+              p_miles: number
+            }
+          | {
+              p_apply_smart?: boolean
+              p_category_code: string
+              p_distance_miles: number
+              p_duration_minutes?: number
+            }
         Returns: Json
       }
       find_matching_drivers: {
@@ -3045,11 +3379,15 @@ export type Database = {
           created_at: string
           dispatcher_id: string | null
           distance_miles: number | null
+          driver_email: string | null
           driver_id: string | null
           driver_location_lat: number | null
           driver_location_lng: number | null
+          driver_name: string | null
           driver_payment_confirmed_at: string | null
           driver_payment_instructions: string | null
+          driver_phone: string | null
+          driver_photo_url: string | null
           driver_status: string | null
           dropoff_location: string
           estimated_fare: number | null

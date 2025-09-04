@@ -72,20 +72,15 @@ export const TwoFactorAuthModal: React.FC<TwoFactorAuthModalProps> = ({
       const code = generateVerificationCode();
       setExpectedCode(code);
       
-      const response = await fetch('/supabase/functions/v1/send-2fa-verification', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-        },
-        body: JSON.stringify({
+      const response = await supabase.functions.invoke('send-2fa-verification', {
+        body: {
           email: userEmail,
           verificationCode: code,
-        }),
+        },
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to send verification email');
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to send verification email');
       }
 
       setEmailSent(true);
