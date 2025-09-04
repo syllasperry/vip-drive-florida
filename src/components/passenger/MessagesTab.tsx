@@ -3,7 +3,8 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MessageCircle, Clock, Send, Bot, Mail, AlertCircle, CheckCircle } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { MessageCircle, Clock, Send, Bot, Mail, AlertCircle, CheckCircle, Phone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface MessagesTabProps {
@@ -19,10 +20,10 @@ export const MessagesTab = ({ bookings, currentUserId, currentUserName }: Messag
   const [emailSent, setEmailSent] = useState(false);
   const { toast } = useToast();
 
-  // Filter bookings that have assigned drivers for messaging (All Set status only)
+  // Filter bookings that have assigned drivers for messaging (Paid status only)
   const messagingBookings = bookings.filter(booking => 
     booking.driver_id && 
-    booking.payment_confirmation_status === 'all_set'
+    booking.payment_status === 'paid'
   );
 
   const handleBotSubmit = (e: React.FormEvent) => {
@@ -198,40 +199,78 @@ export const MessagesTab = ({ bookings, currentUserId, currentUserName }: Messag
             </div>
           ) : (
             <div className="space-y-3">
-              {messagingBookings.map((booking) => (
-                <Card 
-                  key={booking.id} 
-                  className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => {
-                    toast({
-                      title: "Opening Chat",
-                      description: `Starting conversation with ${booking.driver_name}`,
-                    });
-                  }}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <MessageCircle className="w-4 h-4 text-red-500" />
-                          <span className="font-medium text-gray-900">
-                            {booking.driver_name || 'Your Driver'}
-                          </span>
+              {messagingBookings.map((booking) => {
+                // Get driver information from booking record
+                const driverName = booking.driver_name || booking.drivers?.full_name || 'Your Driver';
+                const driverPhone = booking.driver_phone || booking.drivers?.phone;
+                const driverPhoto = booking.driver_photo_url || booking.drivers?.profile_photo_url || booking.drivers?.avatar_url;
+                
+                // Generate pre-filled message
+                const messageTemplate = `Hi ${driverName}, this is ${currentUserName}, your VIP passenger for ride #${(booking.booking_code || booking.id.slice(-8)).toUpperCase()} (${booking.pickup_location.split(',')[0]} ➝ ${booking.dropoff_location.split(',')[0]}). Just checking in — let me know if you're available to chat!`;
+                const smsUrl = `sms:${driverPhone}${/iPhone|iPad|iPod|Mac/.test(navigator.userAgent) ? '&' : '?'}body=${encodeURIComponent(messageTemplate)}`;
+                const callUrl = `tel:${driverPhone}`;
+
+                return (
+                  <Card key={booking.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1">
+                          <Avatar className="w-10 h-10">
+                            <AvatarImage src={driverPhoto} alt={driverName} />
+                            <AvatarFallback className="bg-red-100 text-red-600">
+                              <MessageCircle className="w-4 h-4" />
+                            </AvatarFallback>
+                          </Avatar>
+                          
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-medium text-gray-900">
+                                {driverName}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-1">
+                              Booking #{(booking.booking_code || booking.id.slice(-8)).toUpperCase()}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {booking.pickup_location.split(',')[0]} → {booking.dropoff_location.split(',')[0]}
+                            </p>
+                          </div>
                         </div>
-                        <p className="text-sm text-gray-600 mb-2">
-                          Booking #{(booking.booking_code || booking.id.slice(-8)).toUpperCase()}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {booking.pickup_location.split(',')[0]} → {booking.dropoff_location.split(',')[0]}
-                        </p>
+                        
+                        <div className="flex items-center gap-2">
+                          {driverPhone && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  window.location.href = smsUrl;
+                                }}
+                                className="p-2 h-8 w-8"
+                              >
+                                <MessageCircle className="w-4 h-4 text-blue-500" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  window.location.href = callUrl;
+                                }}
+                                className="p-2 h-8 w-8"
+                              >
+                                <Phone className="w-4 h-4 text-green-500" />
+                              </Button>
+                            </>
+                          )}
+                          <Clock className="w-4 h-4 text-gray-400 ml-2" />
+                        </div>
                       </div>
-                      <div className="flex items-center text-gray-400">
-                        <Clock className="w-4 h-4" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </CardContent>
