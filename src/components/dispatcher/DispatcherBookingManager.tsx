@@ -197,35 +197,29 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">
-                      Booking #{booking.id.slice(-8).toUpperCase()}
+                      {booking.booking_code || booking.code || `Booking #${booking.id.slice(-8).toUpperCase()}`}
                     </CardTitle>
                     {getStatusBadge(booking)}
                   </div>
                   
                   {/* Passenger Information */}
-                  {booking.passengers && (
-                    <div className="flex items-center mt-2">
-                      <Avatar className="h-8 w-8 mr-2">
-                        <AvatarImage src={booking.passengers.profile_photo_url || '/default-avatar.png'} />
-                        <AvatarFallback>{booking.passengers.full_name?.[0] || 'P'}</AvatarFallback>
-                      </Avatar>
-                      <div className="text-sm font-medium text-gray-900">
-                        {booking.passengers.full_name}
-                      </div>
-                      {booking.passengers.phone && (
-                        <div className="ml-4 flex items-center text-sm text-gray-600">
-                          <Phone className="h-3 w-3 mr-1" />
-                          {booking.passengers.phone}
-                        </div>
-                      )}
-                      {booking.passengers.email && (
-                        <div className="ml-4 flex items-center text-sm text-gray-600">
-                          <Mail className="h-3 w-3 mr-1" />
-                          {booking.passengers.email}
-                        </div>
-                      )}
+                  <div className="flex items-center mt-2">
+                    <Avatar className="h-8 w-8 mr-2">
+                      <AvatarImage src={booking.passenger_photo_url || '/default-avatar.png'} />
+                      <AvatarFallback>
+                        {booking.passenger_first_name?.[0] || booking.passenger_last_name?.[0] || 'P'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="text-sm font-medium text-gray-900">
+                      {`${booking.passenger_first_name || ''} ${booking.passenger_last_name || ''}`.trim() || 'Guest'}
                     </div>
-                  )}
+                    {booking.passenger_phone && (
+                      <div className="ml-4 flex items-center text-sm text-gray-600">
+                        <Phone className="h-3 w-3 mr-1" />
+                        {booking.passenger_phone}
+                      </div>
+                    )}
+                  </div>
                 </CardHeader>
                 
                 <CardContent className="space-y-4">
