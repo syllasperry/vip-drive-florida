@@ -557,21 +557,6 @@ Confirming a booking means you accept these terms.`,
             />
           </div>
           
-          <div className="flex items-center justify-between">
-            <Label htmlFor="sms-notifications">SMS Notifications</Label>
-            <Switch
-              id="sms-notifications"
-              checked={smsEnabled}
-              onCheckedChange={(checked) => {
-                if (checked) {
-                  setShowPhoneVerificationModal(true);
-                } else {
-                  updateSmsSetting(false);
-                }
-              }}
-              disabled={pushLoading || pushUpdating}
-            />
-          </div>
           
           {/* Test Notification Button - Development Only */}
           {process.env.NODE_ENV === 'development' && (

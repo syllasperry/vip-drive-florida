@@ -4,10 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { X, Shield, Smartphone, AlertCircle } from 'lucide-react';
+import { X, Shield, Mail, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import QRCode from 'qrcode';
 
 interface TwoFactorAuthModalProps {
   isOpen: boolean;
@@ -20,121 +19,161 @@ export const TwoFactorAuthModal: React.FC<TwoFactorAuthModalProps> = ({
 }) => {
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [enrollmentData, setEnrollmentData] = useState<{
-    factorId: string;
-    qrCode: string;
-    secret: string;
-  } | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
-  const [step, setStep] = useState<'status' | 'setup' | 'verify'>('status');
+  const [expectedCode, setExpectedCode] = useState('');
+  const [userEmail, setUserEmail] = useState('');
+  const [step, setStep] = useState<'status' | 'verify'>('status');
   const { toast } = useToast();
 
   useEffect(() => {
     if (isOpen) {
       checkMfaStatus();
+      loadUserEmail();
     }
   }, [isOpen]);
+
+  const loadUserEmail = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        setUserEmail(user.email);
+      }
+    } catch (error) {
+      console.error('Error loading user email:', error);
+    }
+  };
 
   const checkMfaStatus = async () => {
     try {
       setIsLoading(true);
-      const { data: factors, error } = await supabase.auth.mfa.listFactors();
+      // Check if user has email-based 2FA enabled in our notification preferences
+      const { data: preferences } = await supabase
+        .from('notification_preferences')
+        .select('email_2fa_enabled')
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .single();
       
-      if (error) {
-        console.error('Error checking MFA status:', error);
-        return;
-      }
-
-      const hasMfa = factors?.totp && factors.totp.length > 0;
-      setMfaEnabled(hasMfa);
+      setMfaEnabled(preferences?.email_2fa_enabled || false);
     } catch (error) {
       console.error('Error checking MFA status:', error);
+      setMfaEnabled(false);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const generateQRCode = async (otpauthUrl: string) => {
+  const generateVerificationCode = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  };
+
+  const sendVerificationEmail = async () => {
     try {
-      const qrCodeDataUrl = await QRCode.toDataURL(otpauthUrl, { 
-        errorCorrectionLevel: 'L',
-        width: 256,
-        margin: 2
+      const code = generateVerificationCode();
+      setExpectedCode(code);
+      
+      const response = await fetch('/supabase/functions/v1/send-2fa-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        },
+        body: JSON.stringify({
+          email: userEmail,
+          verificationCode: code,
+        }),
       });
-      return qrCodeDataUrl;
+
+      if (!response.ok) {
+        throw new Error('Failed to send verification email');
+      }
+
+      setEmailSent(true);
+      return true;
     } catch (error) {
-      console.error('Error generating QR code:', error);
-      return '';
+      console.error('Error sending verification email:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send verification code. Please try again later.",
+        variant: "destructive",
+      });
+      return false;
     }
   };
 
   const handleEnableMfa = async () => {
     try {
       setIsLoading(true);
-      setStep('setup');
-
-      const { data, error } = await supabase.auth.mfa.enroll({
-        factorType: 'totp',
-        friendlyName: 'VIP Chauffeur App'
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      const qrCode = await generateQRCode(data.totp.qr_code);
       
-      setEnrollmentData({
-        factorId: data.id,
-        qrCode,
-        secret: data.totp.secret
-      });
-
-      setStep('verify');
+      const emailSent = await sendVerificationEmail();
+      if (emailSent) {
+        setStep('verify');
+        toast({
+          title: "Verification Code Sent",
+          description: `A 6-digit code has been sent to ${userEmail}`,
+        });
+      }
     } catch (error: any) {
-      console.error('Error enrolling MFA:', error);
+      console.error('Error enabling MFA:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to set up two-factor authentication",
+        description: "Failed to set up two-factor authentication",
         variant: "destructive",
       });
-      setStep('status');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleVerifyMfa = async () => {
-    if (!enrollmentData || !verificationCode) return;
+    if (!verificationCode || !expectedCode) return;
 
     try {
       setIsLoading(true);
 
-      const { data, error } = await supabase.auth.mfa.verify({
-        factorId: enrollmentData.factorId,
-        challengeId: '', // Not needed for TOTP enrollment verification
-        code: verificationCode
-      });
-
-      if (error) {
-        throw error;
+      // Verify the code matches what we sent
+      if (verificationCode !== expectedCode) {
+        toast({
+          title: "Error",
+          description: "Invalid verification code. Please try again.",
+          variant: "destructive",
+        });
+        return;
       }
 
+      // Save 2FA enabled status to the database
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not found');
+
+      const { error } = await supabase
+        .from('notification_preferences')
+        .upsert({
+          user_id: user.id,
+          user_type: 'passenger',
+          email_2fa_enabled: true,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
+        });
+
+      if (error) throw error;
+
       toast({
-        title: "Two-Factor Authentication Enabled",
-        description: "Your account is now protected with 2FA",
+        title: "Two-Factor Authentication via Email is now active",
+        description: "Your account is now protected with email-based 2FA",
       });
 
       setMfaEnabled(true);
       setStep('status');
-      setEnrollmentData(null);
       setVerificationCode('');
+      setExpectedCode('');
+      setEmailSent(false);
 
     } catch (error: any) {
       console.error('Error verifying MFA:', error);
       toast({
         title: "Error",
-        description: "Invalid verification code. Please try again.",
+        description: "Failed to enable two-factor authentication. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -146,24 +185,25 @@ export const TwoFactorAuthModal: React.FC<TwoFactorAuthModalProps> = ({
     try {
       setIsLoading(true);
 
-      const { data: factors } = await supabase.auth.mfa.listFactors();
-      const totpFactor = factors?.totp?.[0];
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not found');
 
-      if (!totpFactor) {
-        throw new Error('No TOTP factor found');
-      }
+      const { error } = await supabase
+        .from('notification_preferences')
+        .upsert({
+          user_id: user.id,
+          user_type: 'passenger',
+          email_2fa_enabled: false,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
+        });
 
-      const { error } = await supabase.auth.mfa.unenroll({
-        factorId: totpFactor.id
-      });
-
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       toast({
         title: "Two-Factor Authentication Disabled",
-        description: "2FA has been removed from your account",
+        description: "Email-based 2FA has been removed from your account",
       });
 
       setMfaEnabled(false);
@@ -172,7 +212,7 @@ export const TwoFactorAuthModal: React.FC<TwoFactorAuthModalProps> = ({
       console.error('Error disabling MFA:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to disable two-factor authentication",
+        description: "Failed to disable two-factor authentication",
         variant: "destructive",
       });
     } finally {
@@ -182,50 +222,29 @@ export const TwoFactorAuthModal: React.FC<TwoFactorAuthModalProps> = ({
 
   const handleClose = () => {
     setStep('status');
-    setEnrollmentData(null);
     setVerificationCode('');
+    setExpectedCode('');
+    setEmailSent(false);
     onClose();
   };
 
   const renderContent = () => {
     switch (step) {
-      case 'setup':
-        return (
-          <div className="space-y-4">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Smartphone className="w-8 h-8 text-blue-600" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">Setting up 2FA...</h3>
-              <p className="text-sm text-gray-600">
-                Please wait while we generate your authentication codes.
-              </p>
-            </div>
-          </div>
-        );
-
       case 'verify':
         return (
           <div className="space-y-6">
             <div className="text-center">
-              <h3 className="text-lg font-semibold mb-2">Scan QR Code</h3>
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Mail className="w-8 h-8 text-blue-600" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Check Your Email</h3>
               <p className="text-sm text-gray-600 mb-4">
-                Use your authenticator app to scan this QR code
+                We've sent a 6-digit verification code to <strong>{userEmail}</strong>
               </p>
             </div>
 
-            {enrollmentData?.qrCode && (
-              <div className="flex justify-center">
-                <img 
-                  src={enrollmentData.qrCode} 
-                  alt="QR Code for 2FA setup"
-                  className="w-48 h-48 border border-gray-200 rounded-lg"
-                />
-              </div>
-            )}
-
             <div className="space-y-2">
-              <Label htmlFor="verificationCode">Enter 6-digit code from your app</Label>
+              <Label htmlFor="verificationCode">Enter 6-digit code from email</Label>
               <Input
                 id="verificationCode"
                 type="text"
