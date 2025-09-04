@@ -1,12 +1,15 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, Calendar, RefreshCw } from 'lucide-react';
 import { useRealtimeBookings } from '@/hooks/useRealtimeBookings';
 import { OfferBookingCard } from './OfferBookingCard';
 import { EnhancedBookingCard } from './EnhancedBookingCard';
+import { RideRequestDetailsModal } from './RideRequestDetailsModal';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PassengerBookingsListProps {
   showHeader?: boolean;
@@ -14,7 +17,10 @@ interface PassengerBookingsListProps {
 
 export default function PassengerBookingsList({ showHeader = true }: PassengerBookingsListProps) {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { bookings, loading, error, refetch } = useRealtimeBookings();
+  const [selectedBooking, setSelectedBooking] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Create passenger info from first booking if available
   const passengerInfo = bookings.length > 0 && bookings[0].passengers 
@@ -29,6 +35,47 @@ export default function PassengerBookingsList({ showHeader = true }: PassengerBo
 
   const handleRefresh = () => {
     refetch();
+  };
+
+  const handleViewDetails = (booking: any) => {
+    setSelectedBooking(booking);
+    setIsModalOpen(true);
+  };
+
+  const handleCancelRide = async (bookingId: string) => {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          status: 'cancelled',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingId);
+
+      if (error) {
+        console.error('Error canceling booking:', error);
+        toast({
+          title: "Error",
+          description: "Failed to cancel booking. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Booking Cancelled",
+        description: "Your ride request has been cancelled successfully.",
+      });
+
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error('Error canceling booking:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   if (error) {
@@ -125,7 +172,7 @@ export default function PassengerBookingsList({ showHeader = true }: PassengerBo
                   key={booking.id}
                   booking={booking}
                   passengerInfo={passengerInfo}
-                  onViewDetails={() => console.log('View details for:', booking.id)}
+                  onViewDetails={() => handleViewDetails(booking)}
                 />
               );
             }
@@ -136,12 +183,22 @@ export default function PassengerBookingsList({ showHeader = true }: PassengerBo
                 key={booking.id}
                 booking={booking}
                 passengerInfo={passengerInfo}
-                onViewDetails={() => console.log('View details for:', booking.id)}
+                onViewDetails={() => handleViewDetails(booking)}
               />
             ) : null;
           }).filter(Boolean)
         )}
       </div>
+
+      {/* Ride Request Details Modal */}
+      {selectedBooking && (
+        <RideRequestDetailsModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          booking={selectedBooking}
+          onCancelRide={handleCancelRide}
+        />
+      )}
     </div>
   );
 }
