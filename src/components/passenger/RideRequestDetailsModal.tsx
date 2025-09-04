@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -36,6 +36,8 @@ export const RideRequestDetailsModal: React.FC<RideRequestDetailsModalProps> = (
   booking,
   onCancelRide
 }) => {
+  const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
+  
   const isPendingStatus = booking.status?.toLowerCase() === 'pending' || 
                          booking.status?.toLowerCase() === 'awaiting_driver_assignment' ||
                          booking.status?.toLowerCase() === 'waiting_for_driver';
@@ -63,155 +65,200 @@ export const RideRequestDetailsModal: React.FC<RideRequestDetailsModalProps> = (
   };
 
   const handleCancelClick = () => {
+    setShowCancelConfirmation(true);
+  };
+
+  const handleConfirmCancel = () => {
     if (onCancelRide && isPendingStatus) {
       onCancelRide(booking.id);
+      setShowCancelConfirmation(false);
       onClose();
     }
   };
 
+  const handleCancelConfirmation = () => {
+    setShowCancelConfirmation(false);
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md mx-auto max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl font-semibold text-gray-900">
-              Your Ride Request Details
-            </DialogTitle>
-          </div>
-        </DialogHeader>
-
-        <div className="space-y-6 py-4">
-          {/* Trip Summary */}
-          <div className="space-y-3">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              🧾 Trip Summary
-            </h3>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Booking Code:</span>
-                <span className="font-medium">
-                  #{booking.booking_code || booking.id.slice(-8).toUpperCase()}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Status:</span>
-                <div className="flex items-center gap-2">
-                  <span>Awaiting driver assignment</span>
-                  <span className="text-lg">⏳</span>
-                </div>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Created at:</span>
-                <span className="font-medium">{formatDateTime(booking.created_at)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Last update:</span>
-                <span className="font-medium">Waiting for driver offer</span>
-              </div>
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-md mx-auto max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-xl font-semibold text-gray-900">
+                Your Ride Request Details
+              </DialogTitle>
             </div>
-          </div>
+          </DialogHeader>
 
-          {/* Route */}
-          <div className="space-y-3">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              📍 Route
-            </h3>
+          <div className="space-y-6 py-4">
+            {/* Trip Summary */}
             <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <MapPin className="h-4 w-4 text-green-600 mt-1 flex-shrink-0" />
-                <div>
-                  <p className="font-medium text-gray-900">Pickup Location:</p>
-                  <p className="text-sm text-gray-600">{booking.pickup_location}</p>
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                🧾 Trip Summary
+              </h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Booking Code:</span>
+                  <span className="font-medium">
+                    #{booking.booking_code || booking.id.slice(-8).toUpperCase()}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Status:</span>
+                  <div className="flex items-center gap-2">
+                    <span>Awaiting driver assignment</span>
+                    <span className="text-lg">⏳</span>
+                  </div>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Created at:</span>
+                  <span className="font-medium">{formatDateTime(booking.created_at)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Last update:</span>
+                  <span className="font-medium">Waiting for driver offer</span>
                 </div>
               </div>
-              <div className="flex items-start gap-3">
-                <MapPin className="h-4 w-4 text-red-600 mt-1 flex-shrink-0" />
-                <div>
-                  <p className="font-medium text-gray-900">Drop-off Location:</p>
-                  <p className="text-sm text-gray-600">{booking.dropoff_location}</p>
+            </div>
+
+            {/* Route */}
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                📍 Route
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <MapPin className="h-4 w-4 text-green-600 mt-1 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium text-gray-900">Pickup Location:</p>
+                    <p className="text-sm text-gray-600">{booking.pickup_location}</p>
+                  </div>
                 </div>
+                <div className="flex items-start gap-3">
+                  <MapPin className="h-4 w-4 text-red-600 mt-1 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium text-gray-900">Drop-off Location:</p>
+                    <p className="text-sm text-gray-600">{booking.dropoff_location}</p>
+                  </div>
+                </div>
+                {(booking.distance_miles || getEstimatedDuration()) && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600 pt-2 border-t">
+                    <Clock className="h-4 w-4" />
+                    {booking.distance_miles && (
+                      <span>{Math.round(booking.distance_miles)} miles</span>
+                    )}
+                    {booking.distance_miles && getEstimatedDuration() && <span>•</span>}
+                    {getEstimatedDuration()}
+                  </div>
+                )}
               </div>
-              {(booking.distance_miles || getEstimatedDuration()) && (
-                <div className="flex items-center gap-2 text-sm text-gray-600 pt-2 border-t">
-                  <Clock className="h-4 w-4" />
-                  {booking.distance_miles && (
-                    <span>{Math.round(booking.distance_miles)} miles</span>
-                  )}
-                  {booking.distance_miles && getEstimatedDuration() && <span>•</span>}
-                  {getEstimatedDuration()}
-                </div>
-              )}
             </div>
-          </div>
 
-          {/* Requested Vehicle */}
-          <div className="space-y-3">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              🚗 Requested Vehicle
-            </h3>
-            <div className="space-y-2 text-sm">
-              {booking.vehicle_type && (
-                <div className="flex items-center gap-2">
-                  <Car className="h-4 w-4 text-gray-500" />
-                  <span className="font-medium">{booking.vehicle_type}</span>
-                </div>
-              )}
-              {booking.passenger_phone && (
-                <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-gray-500" />
-                  <span>Passenger Contact: {booking.passenger_phone}</span>
-                </div>
-              )}
+            {/* Requested Vehicle */}
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                🚗 Requested Vehicle
+              </h3>
+              <div className="space-y-2 text-sm">
+                {booking.vehicle_type && (
+                  <div className="flex items-center gap-2">
+                    <Car className="h-4 w-4 text-gray-500" />
+                    <span className="font-medium">{booking.vehicle_type}</span>
+                  </div>
+                )}
+                {booking.passenger_phone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-gray-500" />
+                    <span>Passenger Contact: {booking.passenger_phone}</span>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* What happens next */}
-          <div className="space-y-3">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              👀 What happens next?
-            </h3>
-            <div className="bg-blue-50 p-4 rounded-lg space-y-3">
-              <p className="text-sm text-gray-800">
-                Your ride request has been sent to our dispatch team. A driver will review your trip details and send you a custom offer shortly.
+            {/* What happens next */}
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                👀 What happens next?
+              </h3>
+              <div className="bg-blue-50 p-4 rounded-lg space-y-3">
+                <p className="text-sm text-gray-800">
+                  Your ride request has been sent to our dispatch team. A driver will review your trip details and send you a custom offer shortly.
+                </p>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-900">You'll receive:</p>
+                  <ul className="text-sm text-gray-700 space-y-1 ml-2">
+                    <li>• A driver's profile (with photo and name)</li>
+                    <li>• Vehicle details</li>
+                    <li>• The trip price</li>
+                  </ul>
+                </div>
+                <p className="text-sm text-gray-800">
+                  Once the offer is ready, you can confirm and pay directly in this app.
+                </p>
+              </div>
+            </div>
+
+            {/* Need help */}
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                🛎️ Need help?
+              </h3>
+              <p className="text-sm text-gray-700">
+                If you need to change or cancel your request, tap the red Cancel Ride Request button below or message our support team.
               </p>
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-900">You'll receive:</p>
-                <ul className="text-sm text-gray-700 space-y-1 ml-2">
-                  <li>• A driver's profile (with photo and name)</li>
-                  <li>• Vehicle details</li>
-                  <li>• The trip price</li>
-                </ul>
-              </div>
-              <p className="text-sm text-gray-800">
-                Once the offer is ready, you can confirm and pay directly in this app.
-              </p>
             </div>
-          </div>
 
-          {/* Need help */}
-          <div className="space-y-3">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              🛎️ Need help?
-            </h3>
-            <p className="text-sm text-gray-700">
-              If you need to change or cancel your request, tap the red Cancel Ride Request button below or message our support team.
+            {/* Cancel Button - Only show for pending bookings */}
+            {isPendingStatus && onCancelRide && (
+              <div className="pt-4 border-t">
+                <Button
+                  onClick={handleCancelClick}
+                  variant="destructive"
+                  className="w-full bg-red-600 hover:bg-red-700"
+                >
+                  🔴 Cancel Ride Request
+                </Button>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Modal */}
+      <Dialog open={showCancelConfirmation} onOpenChange={handleCancelConfirmation}>
+        <DialogContent className="max-w-sm mx-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold text-gray-900">
+              Are you sure you want to cancel this ride request?
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <p className="text-sm text-gray-600 mb-6">
+              This action will remove your request from the dashboard. If you change your mind later, you'll need to submit a new ride request.
             </p>
-          </div>
-
-          {/* Cancel Button - Only show for pending bookings */}
-          {isPendingStatus && onCancelRide && (
-            <div className="pt-4 border-t">
+            
+            <div className="flex gap-3">
               <Button
-                onClick={handleCancelClick}
-                variant="destructive"
-                className="w-full bg-red-600 hover:bg-red-700"
+                onClick={handleCancelConfirmation}
+                variant="outline"
+                className="flex-1"
               >
-                🔴 Cancel Ride Request
+                🔙 No, Go Back
+              </Button>
+              <Button
+                onClick={handleConfirmCancel}
+                variant="destructive"
+                className="flex-1 bg-red-600 hover:bg-red-700"
+              >
+                🔴 Yes, Cancel Ride
               </Button>
             </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
