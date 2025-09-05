@@ -47,7 +47,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Booking Code:</span>
                 <span className="font-semibold">
-                  {booking.booking_code || booking.id?.slice(-8).toUpperCase() || 'N/A'}
+                  {booking.booking_code || 'VIP-PENDING'}
                 </span>
               </div>
               

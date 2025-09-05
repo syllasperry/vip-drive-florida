@@ -227,7 +227,8 @@ serve(async (req) => {
     // 🔍 Log metadata before sending to Stripe
     const sessionMetadata = {
       booking_id: bookingIdString,
-      passenger_id: passengerIdString
+      passenger_id: passengerIdString,
+      booking_code: booking.booking_code || 'VIP-PENDING'
     }
     
     console.log('📤 Metadata being sent to Stripe:', sessionMetadata)
@@ -239,7 +240,7 @@ serve(async (req) => {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: `VIP Ride ${booking.booking_code || booking.id.slice(-8).toUpperCase()}`,
+              name: `VIP Ride ${booking.booking_code || 'VIP-PENDING'}`,
               description: `${booking.pickup_location} → ${booking.dropoff_location}`,
             },
             unit_amount: amountCents,
