@@ -196,6 +196,7 @@ export default function PassengerBookingsList({ showHeader = true }: PassengerBo
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           booking={selectedBooking}
+          passengerInfo={passengerInfo}
           onCancelRide={handleCancelRide}
         />
       )}

@@ -23,10 +23,19 @@ interface BookingInfo {
   passenger_phone?: string;
 }
 
+interface PassengerInfo {
+  id: string;
+  full_name?: string;
+  profile_photo_url?: string;
+  phone?: string;
+  email?: string;
+}
+
 interface RideRequestDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   booking: BookingInfo;
+  passengerInfo?: PassengerInfo;
   onCancelRide?: (bookingId: string) => void;
 }
 
@@ -34,6 +43,7 @@ export const RideRequestDetailsModal: React.FC<RideRequestDetailsModalProps> = (
   isOpen,
   onClose,
   booking,
+  passengerInfo,
   onCancelRide
 }) => {
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
@@ -168,10 +178,10 @@ export const RideRequestDetailsModal: React.FC<RideRequestDetailsModalProps> = (
                     <span className="font-medium">{booking.vehicle_type}</span>
                   </div>
                 )}
-                {booking.passenger_phone && (
+                {(passengerInfo?.phone || booking.passenger_phone) && (
                   <div className="flex items-center gap-2">
                     <Phone className="h-4 w-4 text-gray-500" />
-                    <span>Passenger Contact: {booking.passenger_phone}</span>
+                    <span>Passenger Contact: {passengerInfo?.phone || booking.passenger_phone}</span>
                   </div>
                 )}
               </div>
