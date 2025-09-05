@@ -102,7 +102,7 @@ export const RideRequestDetailsModal: React.FC<RideRequestDetailsModalProps> = (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Booking Code:</span>
                   <span className="font-medium">
-                    #{booking.booking_code || booking.id.slice(-8).toUpperCase()}
+                    #{booking.booking_code || 'VIP-PENDING'}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">

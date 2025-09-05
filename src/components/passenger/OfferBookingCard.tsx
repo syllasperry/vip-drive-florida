@@ -222,7 +222,7 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
                     size="sm"
                     onClick={(e) => {
                       e.stopPropagation();
-                      const messageTemplate = `Hi ${driverName}, this is ${passengerInfo?.full_name || 'your passenger'}, your VIP passenger for ride #${(booking.booking_code || booking.id.slice(-8)).toUpperCase()} (${booking.pickup_location.split(',')[0]} ➝ ${booking.dropoff_location.split(',')[0]}). Just checking in — let me know if you're available to chat!`;
+                      const messageTemplate = `Hi ${driverName}, this is ${passengerInfo?.full_name || 'your passenger'}, your VIP passenger for ride #${booking.booking_code || 'VIP-PENDING'} (${booking.pickup_location.split(',')[0]} ➝ ${booking.dropoff_location.split(',')[0]}). Just checking in — let me know if you're available to chat!`;
                       const smsUrl = `sms:${driverPhone}${/iPhone|iPad|iPod|Mac/.test(navigator.userAgent) ? '&' : '?'}body=${encodeURIComponent(messageTemplate)}`;
                       window.location.href = smsUrl;
                     }}
@@ -249,8 +249,8 @@ export const OfferBookingCard: React.FC<OfferBookingCardProps> = ({
                   size="sm"
                   onClick={(e) => {
                     e.stopPropagation();
-                    const subject = encodeURIComponent(`VIP Ride #${(booking.booking_code || booking.id.slice(-8)).toUpperCase()} - ${passengerInfo?.full_name || 'Passenger'} Contact`);
-                    const body = encodeURIComponent(`Hi ${driverName},\n\nThis is ${passengerInfo?.full_name || 'your passenger'} for VIP ride #${(booking.booking_code || booking.id.slice(-8)).toUpperCase()}.\n\nPickup: ${booking.pickup_location}\nDrop-off: ${booking.dropoff_location}\n\nBest regards,\n${passengerInfo?.full_name || 'Your Passenger'}`);
+                    const subject = encodeURIComponent(`VIP Ride #${booking.booking_code || 'VIP-PENDING'} - ${passengerInfo?.full_name || 'Passenger'} Contact`);
+                    const body = encodeURIComponent(`Hi ${driverName},\n\nThis is ${passengerInfo?.full_name || 'your passenger'} for VIP ride #${booking.booking_code || 'VIP-PENDING'}.\n\nPickup: ${booking.pickup_location}\nDrop-off: ${booking.dropoff_location}\n\nBest regards,\n${passengerInfo?.full_name || 'Your Passenger'}`);
                     window.location.href = `mailto:${driverEmail}?subject=${subject}&body=${body}`;
                   }}
                   className="p-2 h-8 w-8"

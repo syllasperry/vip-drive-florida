@@ -164,7 +164,7 @@ export const PaymentsTab = ({ bookings }: PaymentsTabProps) => {
       
       // Booking details
       doc.setFontSize(12);
-      const bookingCode = booking.booking_code || booking.id.slice(-8).toUpperCase();
+      const bookingCode = booking.booking_code || 'VIP-PENDING';
       doc.text(`Receipt #: ${bookingCode}`, 20, 50);
       doc.text(`Date: ${format(new Date(booking.pickup_time || booking.created_at), 'MMM dd, yyyy hh:mm a')}`, 20, 60);
       
@@ -245,7 +245,7 @@ export const PaymentsTab = ({ bookings }: PaymentsTabProps) => {
       
       // Table data
       const tableData = paymentBookings.map(booking => [
-        booking.booking_code || booking.id.slice(-8).toUpperCase(),
+        booking.booking_code || 'VIP-PENDING',
         format(new Date(booking.pickup_time || booking.created_at), 'MMM dd, yyyy'),
         booking.pickup_location.split(',')[0] || 'Pickup',
         booking.dropoff_location.split(',')[0] || 'Dropoff',

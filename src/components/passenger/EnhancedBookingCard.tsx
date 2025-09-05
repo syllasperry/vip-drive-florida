@@ -137,7 +137,7 @@ export const EnhancedBookingCard: React.FC<EnhancedBookingCardProps> = ({
                   {passengerInfo?.full_name || 'Passenger'}
                 </h3>
                 <p className="text-sm text-gray-500">
-                  {booking.booking_code ? `#${booking.booking_code}` : `Booking ${booking.id.slice(-6).toUpperCase()}`}
+                  #{booking.booking_code || 'VIP-PENDING'}
                 </p>
               </div>
             </div>

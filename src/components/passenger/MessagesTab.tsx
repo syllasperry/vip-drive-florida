@@ -206,7 +206,7 @@ export const MessagesTab = ({ bookings, currentUserId, currentUserName }: Messag
                 const driverPhoto = booking.driver_photo_url || booking.drivers?.profile_photo_url || booking.drivers?.avatar_url;
                 
                 // Generate pre-filled message
-                const messageTemplate = `Hi ${driverName}, this is ${currentUserName}, your VIP passenger for ride #${(booking.booking_code || booking.id.slice(-8)).toUpperCase()} (${booking.pickup_location.split(',')[0]} ➝ ${booking.dropoff_location.split(',')[0]}). Just checking in — let me know if you're available to chat!`;
+                const messageTemplate = `Hi ${driverName}, this is ${currentUserName}, your VIP passenger for ride #${booking.booking_code || 'VIP-PENDING'} (${booking.pickup_location.split(',')[0]} ➝ ${booking.dropoff_location.split(',')[0]}). Just checking in — let me know if you're available to chat!`;
                 const smsUrl = `sms:${driverPhone}${/iPhone|iPad|iPod|Mac/.test(navigator.userAgent) ? '&' : '?'}body=${encodeURIComponent(messageTemplate)}`;
                 const callUrl = `tel:${driverPhone}`;
 
@@ -229,7 +229,7 @@ export const MessagesTab = ({ bookings, currentUserId, currentUserName }: Messag
                               </span>
                             </div>
                             <p className="text-sm text-gray-600 mb-1">
-                              Booking #{(booking.booking_code || booking.id.slice(-8)).toUpperCase()}
+                              Booking #{booking.booking_code || 'VIP-PENDING'}
                             </p>
                             <p className="text-xs text-gray-500">
                               {booking.pickup_location.split(',')[0]} → {booking.dropoff_location.split(',')[0]}

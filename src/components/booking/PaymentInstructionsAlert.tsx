@@ -57,7 +57,7 @@ export const PaymentInstructionsAlert = ({ isOpen, onClose, booking, onPaymentCo
           <p className="font-medium">Payment Instructions:</p>
           <ul className="list-disc pl-5 space-y-1 text-sm">
             <li>Use your preferred payment method</li>
-            <li>Include booking reference: #{booking.id.slice(-8).toUpperCase()}</li>
+            <li>Include booking reference: #{booking.booking_code || 'VIP-PENDING'}</li>
             <li>Confirm payment once completed</li>
           </ul>
         </div>

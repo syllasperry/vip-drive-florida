@@ -197,7 +197,7 @@ export const DispatcherBookingManager = ({ bookings, onUpdate }: DispatcherBooki
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">
-                      {booking.booking_code || booking.code || `Booking #${booking.id.slice(-8).toUpperCase()}`}
+                      {booking.booking_code || `VIP-${booking.id.slice(-8).toUpperCase()}`}
                     </CardTitle>
                     {getStatusBadge(booking)}
                   </div>

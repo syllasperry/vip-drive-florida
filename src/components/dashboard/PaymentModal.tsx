@@ -212,7 +212,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             <CardContent className="p-4 space-y-2">
               <div className="flex items-center gap-2 mb-2">
                 <Badge variant="outline" className="text-xs">
-                  #{(booking.booking_code || booking.id.slice(-8)).toUpperCase()}
+                  #{booking.booking_code || 'VIP-PENDING'}
                 </Badge>
               </div>
 

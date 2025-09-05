@@ -102,6 +102,12 @@ export const useBookingCreation = () => {
       const firstName = passenger.first_name || passengerNames[0] || '';
       const lastName = passenger.last_name || passengerNames.slice(1).join(' ') || '';
 
+      // Generate consistent booking code in VIP-DXXXXXXXX format
+      const generateBookingCode = () => {
+        const hash = crypto.randomUUID().split('-')[0].toUpperCase();
+        return `VIP-D${hash}`;
+      };
+
       // Create the booking with sanitized data and passenger profile details
       const { data: booking, error: bookingError } = await supabase
         .from('bookings')
@@ -114,6 +120,7 @@ export const useBookingCreation = () => {
           passenger_count: sanitizedData.passenger_count,
           luggage_count: sanitizedData.luggage_count,
           flight_info: sanitizedData.flight_info || '',
+          booking_code: generateBookingCode(), // Add consistent booking code
           status: 'pending',
           payment_confirmation_status: 'waiting_for_offer',
           ride_status: 'pending_driver',
